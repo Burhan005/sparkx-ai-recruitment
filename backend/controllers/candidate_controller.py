@@ -92,8 +92,12 @@ class CandidateController:
         candidate.interview_status = "Interview Scheduled"
 
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
-        job_title = candidate.job.title if candidate.job else "Target Role"
+        job_title = candidate.job.title if candidate.job else "Target Position"
+        job_skills = candidate.job.required_skills if (candidate.job and candidate.job.required_skills) else (candidate.skills or [])
+        skills_str = ", ".join(job_skills) if job_skills else "Job Competencies"
         scheduled_slot = payload.scheduled_at or "Upcoming slot"
+        notes_clean = payload.notes.strip() if payload.notes else ""
+        notes_line = f"\n• Recruiter Notes: {notes_clean}" if notes_clean else ""
 
         subject = f"[SPARKX CONFIRMED] AI Video Interview: {job_title}"
         body = (
@@ -101,9 +105,9 @@ class CandidateController:
             f"Your AI Video Interview for the position of {job_title} has been officially confirmed!\n\n"
             f"INTERVIEW DETAILS:\n"
             f"• Position: {job_title}\n"
-            f"• Scheduled Time: {scheduled_slot}\n"
-            f"• Candidate Portal URL: http://localhost:3000\n"
-            f"• Recruiter Notes: {payload.notes or 'None'}\n\n"
+            f"• Evaluated Competencies: {skills_str}\n"
+            f"• Scheduled Time: {scheduled_slot}{notes_line}\n"
+            f"• Candidate Portal URL: http://localhost:3000\n\n"
             f"HOW TO JOIN:\n"
             f"1. Log in to your SparkX Candidate Portal at http://localhost:3000.\n"
             f"2. Navigate to 'AI Interview Room' at your confirmed time.\n"
@@ -128,9 +132,13 @@ class CandidateController:
             </div>
             <div style="margin-bottom: 12px;">
               <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Target Position</span>
-              <div style="color: #ffffff; font-size: 14px; font-weight: 600; margin-top: 4px;">{job_title}</div>
+              <div style="color: #ffffff; font-size: 15px; font-weight: 600; margin-top: 4px;">{job_title}</div>
             </div>
-            {f'<div style="margin-bottom: 8px;"><span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Recruiter Notes</span><div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">{payload.notes}</div></div>' if payload.notes else ''}
+            <div style="margin-bottom: 12px;">
+              <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Assessed Competencies</span>
+              <div style="color: #a5b4fc; font-size: 13px; font-weight: 500; margin-top: 4px;">{skills_str}</div>
+            </div>
+            {f'<div style="margin-bottom: 8px;"><span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Recruiter Notes</span><div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">{notes_clean}</div></div>' if notes_clean else ''}
           </div>
 
           <div style="text-align: center; margin: 24px 0;">

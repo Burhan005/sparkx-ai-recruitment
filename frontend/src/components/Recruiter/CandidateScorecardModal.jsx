@@ -408,12 +408,12 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-400 font-semibold mb-1">Recruiter Notes / Instructions</label>
+                    <label className="block text-slate-400 font-semibold mb-1">Recruiter Notes / Instructions (Optional)</label>
                     <input
                       type="text"
                       value={scheduleNotes}
                       onChange={e => setScheduleNotes(e.target.value)}
-                      placeholder="e.g. Prepare system design diagram"
+                      placeholder="e.g. Any special instructions or portfolio links..."
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-indigo-500 focus:outline-none"
                     />
                   </div>
