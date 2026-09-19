@@ -45,8 +45,17 @@ export function normalizeCandidate(c) {
   };
 }
 
+export function getAuthHeaders(extra = {}) {
+  const token = localStorage.getItem('sparkx_token');
+  const headers = { 'Content-Type': 'application/json', ...extra };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export const api = {
-  // ─── Authentication ────────────────────────────────────────────────────────
+  // ─── Authentication & Password Recovery ──────────────────────────────────────
   async login(email, password) {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -57,6 +66,9 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) return { user: null, error: data.detail || 'Login failed' };
+      if (data.token) {
+        localStorage.setItem('sparkx_token', data.token);
+      }
       return { user: data, error: null };
     } catch (err) {
       return { user: null, error: 'Cannot reach backend server. Please verify FastAPI is running.' };
@@ -73,9 +85,44 @@ export const api = {
       });
       const data = await res.json();
       if (!res.ok) return { user: null, error: data.detail || 'Registration failed' };
+      if (data.token) {
+        localStorage.setItem('sparkx_token', data.token);
+      }
       return { user: data, error: null };
     } catch (err) {
       return { user: null, error: 'Cannot reach backend server. Please verify FastAPI is running.' };
+    }
+  },
+
+  async forgotPassword(email) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.detail || 'Password reset request failed' };
+      return { success: true, data, error: null };
+    } catch (err) {
+      return { success: false, error: 'Cannot connect to authentication service.' };
+    }
+  },
+
+  async resetPassword(email, resetCode, newPassword) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, reset_code: resetCode, new_password: newPassword }),
+        signal: AbortSignal.timeout(5000),
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.detail || 'Password reset failed' };
+      return { success: true, data, error: null };
+    } catch (err) {
+      return { success: false, error: 'Cannot connect to authentication service.' };
     }
   },
 

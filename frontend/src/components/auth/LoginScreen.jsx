@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { api } from '../../services/api';
 import { 
   Sparkles, Shield, User, Eye, EyeOff, ArrowRight, Zap, 
-  Brain, ShieldCheck, UserPlus, LogIn, AlertCircle 
+  Brain, ShieldCheck, UserPlus, LogIn, AlertCircle, KeyRound,
+  CheckCircle2, ArrowLeft
 } from 'lucide-react';
 
 export default function LoginScreen({ onLogin }) {
-  const [tab, setTab] = useState('signin'); // 'signin' | 'signup'
+  const [tab, setTab] = useState('signin'); // 'signin' | 'signup' | 'forgot'
   const [role, setRole] = useState('recruiter'); // 'recruiter' | 'candidate'
 
   // Form Fields
@@ -16,14 +17,24 @@ export default function LoginScreen({ onLogin }) {
   const [adminCode, setAdminCode] = useState('');
   const [showPw, setShowPw] = useState(false);
 
+  // Forgot Password Fields
+  const [forgotStep, setForgotStep] = useState(1); // 1: enter email, 2: enter code & new password
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
+
   // Status
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
   // ─── Handle Sign In (Authenticates via POST /api/auth/login) ─────────────────
   const handleSignIn = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setLoading(true);
 
     const { user, error: apiErr } = await api.login(email.trim(), password);
@@ -42,6 +53,7 @@ export default function LoginScreen({ onLogin }) {
   const handleSignUp = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
 
     if (!name.trim()) {
       setError('Please enter your full name');
@@ -69,13 +81,67 @@ export default function LoginScreen({ onLogin }) {
     setLoading(false);
   };
 
-  // Quick Autofill for instant demo evaluation
-  const autofillSeededAccount = (targetRole) => {
-    const creds = SEEDED_CREDENTIALS[targetRole];
-    setRole(targetRole);
-    setEmail(creds.email);
-    setPassword(creds.password);
+  // ─── Handle Forgot Password Step 1 (Request Verification Code) ────────────────
+  const handleRequestResetCode = async (e) => {
+    e.preventDefault();
     setError('');
+    setSuccessMsg('');
+
+    if (!forgotEmail.trim()) {
+      setError('Please enter your registered email address.');
+      return;
+    }
+
+    setLoading(true);
+    const { success, data, error: apiErr } = await api.forgotPassword(forgotEmail.trim());
+
+    if (!success || apiErr) {
+      setError(apiErr || 'Failed to dispatch reset code.');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+    setForgotStep(2);
+    setSuccessMsg(data?.message || 'Verification code dispatched to your email.');
+    if (data?.dev_code) {
+      setResetCode(data.dev_code); // Pre-fill in local dev convenience
+    }
+  };
+
+  // ─── Handle Forgot Password Step 2 (Reset Password) ──────────────────────────
+  const handleConfirmResetPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+
+    if (!resetCode.trim()) {
+      setError('Please enter the 6-digit verification code.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match. Please re-enter.');
+      return;
+    }
+
+    setLoading(true);
+    const { success, error: apiErr } = await api.resetPassword(forgotEmail.trim(), resetCode.trim(), newPassword);
+
+    if (!success || apiErr) {
+      setError(apiErr || 'Failed to reset password.');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+    setEmail(forgotEmail.trim());
+    setPassword(newPassword);
+    setTab('signin');
+    setSuccessMsg('Password reset successful! You can now sign in with your new password.');
   };
 
   return (
@@ -150,178 +216,335 @@ export default function LoginScreen({ onLogin }) {
 
         <div className="w-full max-w-sm space-y-6">
 
-          {/* Sign In vs Sign Up Tabs */}
-          <div className="flex p-1 rounded-2xl bg-slate-900 border border-slate-800">
-            <button
-              type="button"
-              onClick={() => { setTab('signin'); setError(''); }}
-              className={`flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
-                tab === 'signin'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Sign In</span>
-            </button>
+          {/* Sign In vs Sign Up Tabs (Hidden during forgot password) */}
+          {tab !== 'forgot' ? (
+            <div className="flex p-1 rounded-2xl bg-slate-900 border border-slate-800">
+              <button
+                type="button"
+                onClick={() => { setTab('signin'); setError(''); setSuccessMsg(''); }}
+                className={`flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                  tab === 'signin'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => { setTab('signup'); setError(''); }}
-              className={`flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
-                tab === 'signup'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/30'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <UserPlus className="w-3.5 h-3.5" />
-              <span>Create Account</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => { setTab('signup'); setError(''); setSuccessMsg(''); }}
+                className={`flex-1 flex items-center justify-center space-x-2 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                  tab === 'signup'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>Create Account</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => { setTab('signin'); setError(''); setSuccessMsg(''); }}
+                className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-400 hover:text-white transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Return to Sign In</span>
+              </button>
+            </div>
+          )}
 
+          {/* Heading */}
           <div className="text-center space-y-1">
             <h2 className="text-2xl font-black text-white">
-              {tab === 'signin' ? 'Sign in to SparkX' : 'Register New Account'}
+              {tab === 'signin' && 'Sign in to SparkX'}
+              {tab === 'signup' && 'Register New Account'}
+              {tab === 'forgot' && (forgotStep === 1 ? 'Recover Password' : 'Set New Password')}
             </h2>
             <p className="text-xs text-slate-400">
-              {tab === 'signin' 
-                ? 'Enter your registered credentials below' 
-                : 'Create your account to start interviewing or hiring'}
+              {tab === 'signin' && 'Enter your registered credentials below'}
+              {tab === 'signup' && 'Create your account to start interviewing or hiring'}
+              {tab === 'forgot' && (forgotStep === 1 
+                ? 'Enter your registered email to receive a 6-digit recovery code' 
+                : 'Enter the verification code and choose your new password')}
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={tab === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
-            
-            {/* Name field for registration */}
-            {tab === 'signup' && (
+          {/* Feedback Messages */}
+          {error && (
+            <div className="p-3 rounded-xl bg-rose-950/90 border border-rose-700/60 text-rose-300 text-xs font-semibold flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{error}</span>
+            </div>
+          )}
+          {successMsg && (
+            <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-700/60 text-emerald-300 text-xs font-semibold flex items-center space-x-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* ─── TAB: SIGN IN / SIGN UP ────────────────────────────────────── */}
+          {tab !== 'forgot' && (
+            <form onSubmit={tab === 'signin' ? handleSignIn : handleSignUp} className="space-y-4">
+              
+              {/* Name field for registration */}
+              {tab === 'signup' && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Full Name *</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    required
+                    placeholder="e.g. Dr. Rajesh Kumar"
+                    className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
+                  />
+                </div>
+              )}
+
+              {/* Role selector for registration */}
+              {tab === 'signup' && (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Account Type / Role *</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRole('recruiter')}
+                      className={`flex-1 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
+                        role === 'recruiter' 
+                          ? 'bg-purple-950/80 border-purple-600 text-purple-300' 
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Recruiter (Admin)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('candidate')}
+                      className={`flex-1 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
+                        role === 'candidate' 
+                          ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300' 
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      <span>Candidate</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Key input for Recruiter Registration Security */}
+              {tab === 'signup' && role === 'recruiter' && (
+                <div className="space-y-1.5 p-3 rounded-xl bg-purple-950/30 border border-purple-800/40">
+                  <label className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center justify-between">
+                    <span>Admin Authorization Key *</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Security Restricted</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={adminCode}
+                    onChange={e => setAdminCode(e.target.value)}
+                    required
+                    placeholder="e.g. SPARKX-ADMIN-2026"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-purple-700/50 text-white text-xs placeholder-slate-600 focus:outline-none focus:border-purple-400 transition"
+                  />
+                  <p className="text-[10px] text-slate-400 leading-tight">
+                    Recruiter access is restricted to authorized HR personnel with an Admin Key.
+                  </p>
+                </div>
+              )}
+
+              {/* Email field */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Full Name *</label>
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Email Address *</label>
                 <input
-                  type="text"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
                   required
-                  placeholder="e.g. Dr. Rajesh Kumar"
+                  placeholder="your.name@company.com"
                   className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
                 />
               </div>
-            )}
 
-            {/* Role selector for registration */}
-            {tab === 'signup' && (
+              {/* Password field */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Account Type / Role *</label>
-                <div className="flex gap-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password *</label>
+                  {tab === 'signin' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTab('forgot');
+                        setForgotStep(1);
+                        setForgotEmail(email);
+                        setError('');
+                        setSuccessMsg('');
+                      }}
+                      className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 transition"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPw ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 pr-11 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
+                  />
                   <button
                     type="button"
-                    onClick={() => setRole('recruiter')}
-                    className={`flex-1 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
-                      role === 'recruiter' 
-                        ? 'bg-purple-950/80 border-purple-600 text-purple-300' 
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
+                    onClick={() => setShowPw(p => !p)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
                   >
-                    <Shield className="w-3.5 h-3.5" />
-                    <span>Recruiter (Admin)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRole('candidate')}
-                    className={`flex-1 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
-                      role === 'candidate' 
-                        ? 'bg-emerald-950/80 border-emerald-600 text-emerald-300' 
-                        : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <User className="w-3.5 h-3.5" />
-                    <span>Candidate</span>
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
-            )}
 
-            {/* Admin Key input for Recruiter Registration Security */}
-            {tab === 'signup' && role === 'recruiter' && (
-              <div className="space-y-1.5 p-3 rounded-xl bg-purple-950/30 border border-purple-800/40">
-                <label className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center justify-between">
-                  <span>Admin Authorization Key *</span>
-                  <span className="text-[10px] text-slate-400 font-normal">Security Restricted</span>
-                </label>
-                <input
-                  type="password"
-                  value={adminCode}
-                  onChange={e => setAdminCode(e.target.value)}
-                  required
-                  placeholder="e.g. SPARKX-ADMIN-2026"
-                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-purple-700/50 text-white text-xs placeholder-slate-600 focus:outline-none focus:border-purple-400 transition"
-                />
-                <p className="text-[10px] text-slate-400 leading-tight">
-                  Recruiter access is restricted to authorized HR personnel with an Admin Key.
-                </p>
-              </div>
-            )}
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition flex items-center justify-center space-x-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-95 shadow-lg shadow-indigo-600/30 disabled:opacity-50"
+              >
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>{tab === 'signin' ? 'Sign In to Dashboard' : 'Complete Registration'}</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
 
-            {/* Email field */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Email Address *</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                placeholder="your.name@company.com"
-                className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
-              />
-            </div>
+            </form>
+          )}
 
-            {/* Password field */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Password *</label>
-              <div className="relative">
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                  className="w-full px-4 py-3 pr-11 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(p => !p)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
-                >
-                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
+          {/* ─── TAB: FORGOT PASSWORD ──────────────────────────────────────── */}
+          {tab === 'forgot' && (
+            <div className="space-y-4">
+              
+              {/* Step 1: Request Code */}
+              {forgotStep === 1 ? (
+                <form onSubmit={handleRequestResetCode} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Account Email Address *</label>
+                    <input
+                      type="email"
+                      value={forgotEmail}
+                      onChange={e => setForgotEmail(e.target.value)}
+                      required
+                      placeholder="e.g. candidate@sparkx.ai or admin@sparkx.ai"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
+                    />
+                  </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-950/90 border border-rose-700/60 text-rose-300 text-xs font-semibold flex items-center space-x-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition flex items-center justify-center space-x-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-95 shadow-lg shadow-indigo-600/30 disabled:opacity-50"
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition flex items-center justify-center space-x-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-95 shadow-lg shadow-indigo-600/30 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <KeyRound className="w-4 h-4" />
+                        <span>Send 6-Digit Verification Code</span>
+                      </>
+                    )}
+                  </button>
+                </form>
               ) : (
-                <>
-                  <span>{tab === 'signin' ? 'Sign In to Dashboard' : 'Complete Registration'}</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+                /* Step 2: Enter Code and New Password */
+                <form onSubmit={handleConfirmResetPassword} className="space-y-4">
+                  
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">6-Digit Verification Code *</label>
+                      <button
+                        type="button"
+                        onClick={() => { setForgotStep(1); setError(''); }}
+                        className="text-[10px] text-indigo-400 hover:underline"
+                      >
+                        Resend Code
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={resetCode}
+                      onChange={e => setResetCode(e.target.value.trim())}
+                      required
+                      placeholder="123456"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-center tracking-widest text-lg focus:outline-none focus:border-indigo-500 transition"
+                    />
+                  </div>
 
-          </form>
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">New Password *</label>
+                    <div className="relative">
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        required
+                        placeholder="At least 6 characters"
+                        className="w-full px-4 py-3 pr-11 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPw(p => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                      >
+                        {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Confirm New Password *</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      required
+                      placeholder="Re-type new password"
+                      className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition flex items-center justify-center space-x-2 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:opacity-95 shadow-lg shadow-emerald-600/30 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Update Password & Sign In</span>
+                      </>
+                    )}
+                  </button>
+
+                </form>
+              )}
+
+            </div>
+          )}
 
         </div>
       </div>

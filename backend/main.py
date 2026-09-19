@@ -7,7 +7,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from database import engine, Base, SessionLocal
+from database import engine, Base, SessionLocal, ensure_schema_columns
 from models.db_models import JobModel, CandidateModel, IntegrityLogModel
 from views.job_views import router as job_router
 from views.candidate_views import router as candidate_router
@@ -15,8 +15,9 @@ from views.interview_views import router as interview_router
 from views.preset_views import router as preset_router
 from views.auth_views import router as auth_router
 
-# (M) Create all DB tables
+# (M) Create all DB tables & ensure schema columns
 Base.metadata.create_all(bind=engine)
+ensure_schema_columns()
 
 def auto_seed():
     """Auto-seed the database on first boot if empty."""

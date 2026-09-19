@@ -39,6 +39,9 @@ export function RecruitmentProvider({ children }) {
     const role = typeof userObj === 'string' ? userObj : (userObj.role || 'recruiter');
     const user = typeof userObj === 'object' ? userObj : { name: role === 'recruiter' ? 'SparkX Admin' : 'Demo Candidate', role, email: `${role}@sparkx.ai` };
     
+    if (user.token) {
+      localStorage.setItem('sparkx_token', user.token);
+    }
     setCurrentUser(user);
     setUserRole(role);
     setIsLoggedIn(true);
@@ -46,7 +49,7 @@ export function RecruitmentProvider({ children }) {
     localStorage.setItem('sparkx_user_role', role);
     localStorage.setItem('sparkx_logged_in', '1');
     setCurrentView(role === 'candidate' ? 'candidate' : 'recruiter');
-    toastBus.emit(`Welcome, ${user.name}! Signed in as ${role === 'recruiter' ? 'Admin' : 'Candidate'}`, 'success');
+    toastBus.emit(`Welcome, ${user.name}! Signed in as ${role === 'recruiter' ? 'Recruiter' : 'Candidate'}`, 'success');
   }, []);
 
   const logout = useCallback(() => {
@@ -54,6 +57,8 @@ export function RecruitmentProvider({ children }) {
     setCurrentUser(null);
     localStorage.removeItem('sparkx_logged_in');
     localStorage.removeItem('sparkx_user');
+    localStorage.removeItem('sparkx_user_role');
+    localStorage.removeItem('sparkx_token');
     toastBus.emit('Signed out successfully', 'info');
   }, []);
 

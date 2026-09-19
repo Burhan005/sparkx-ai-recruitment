@@ -1,4 +1,4 @@
-﻿"""
+"""
 (C) Candidate Controller - Screening, resume parsing, interview scheduling, and email dispatch
 """
 import uuid
@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from models.db_models import CandidateModel, JobModel
 from schemas import CandidateApply, CandidateStatusUpdate, CandidateScheduleRequest, EmailSendRequest
+from email_service import send_email
 
 class CandidateController:
     @staticmethod
@@ -106,6 +107,9 @@ class CandidateController:
         logs.append(email_event)
         candidate.email_logs = logs
 
+        # Dispatch live SMTP email (or dev telemetry log)
+        send_email(email_event["recipient"], email_event["subject"], email_event["body"])
+
         db.commit()
         db.refresh(candidate)
         return candidate, None
@@ -141,6 +145,9 @@ class CandidateController:
         logs = list(candidate.email_logs or [])
         logs.append(email_event)
         candidate.email_logs = logs
+
+        # Dispatch live SMTP email (or dev telemetry log)
+        send_email(email_event["recipient"], email_event["subject"], email_event["body"])
 
         if payload.template_type == "offer_letter":
             candidate.final_decision = "Offered"

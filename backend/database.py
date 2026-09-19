@@ -49,6 +49,23 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+def ensure_schema_columns():
+    """Ensure newly added columns exist in existing database tables."""
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        try:
+            # Check users table columns
+            if str(engine.url).startswith("sqlite"):
+                cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+                if "reset_token" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR"))
+                    conn.commit()
+                if "reset_token_expiry" not in cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expiry TIMESTAMP"))
+                    conn.commit()
+        except Exception as e:
+            logger.warning(f"Schema check notice: {e}")
+
 def get_db():
     db = SessionLocal()
     try:

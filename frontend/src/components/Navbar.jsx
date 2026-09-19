@@ -1,12 +1,22 @@
-﻿import React from 'react';
+import React from 'react';
 import { useRecruitment } from '../context/RecruitmentContext';
 import { 
   Briefcase, UserCheck, Video, Code2, ShieldAlert, Sparkles,
-  Sun, Moon, Shield, User, TrendingUp, LogOut, RefreshCw
+  Sun, Moon, TrendingUp, LogOut, RefreshCw
 } from 'lucide-react';
 
 export default function Navbar() {
-  const { currentView, setCurrentView, theme, toggleTheme, userRole, switchRole, logout, syncWithDatabase, isDbConnected, currentUser } = useRecruitment();
+  const { 
+    currentView, 
+    setCurrentView, 
+    theme, 
+    toggleTheme, 
+    userRole, 
+    logout, 
+    syncWithDatabase, 
+    isDbConnected, 
+    currentUser 
+  } = useRecruitment();
 
   const recruiterNavItems = [
     { id: 'recruiter', label: 'Recruiter Hub', icon: Briefcase },
@@ -92,32 +102,23 @@ export default function Navbar() {
               <RefreshCw className="w-4 h-4" />
             </button>
 
-            {/* Mode Switcher */}
-            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08]">
-              <button
-                onClick={() => switchRole('recruiter')}
-                className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  userRole === 'recruiter' 
-                    ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
-                }`}
-                title="Switch to Recruiter Mode"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Recruiter</span>
-              </button>
-              <button
-                onClick={() => switchRole('candidate')}
-                className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                  userRole === 'candidate' 
-                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30' 
-                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
-                }`}
-                title="Switch to Candidate Mode"
-              >
-                <User className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Candidate</span>
-              </button>
+            {/* Authenticated User Identity Chip */}
+            <div className="flex items-center space-x-2.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08]">
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-black shadow-sm ${
+                userRole === 'recruiter' 
+                  ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-purple-600/30' 
+                  : 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white shadow-emerald-600/30'
+              }`}>
+                {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : (userRole === 'recruiter' ? 'R' : 'C')}
+              </div>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight truncate max-w-[120px]">
+                  {currentUser?.name || (userRole === 'recruiter' ? 'Admin' : 'Candidate')}
+                </span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize leading-none">
+                  {userRole === 'recruiter' ? 'Recruiter' : 'Candidate'}
+                </span>
+              </div>
             </div>
 
             {/* Theme Toggle */}
