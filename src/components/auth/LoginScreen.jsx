@@ -1,14 +1,9 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { api } from '../../services/api';
 import { 
   Sparkles, Shield, User, Eye, EyeOff, ArrowRight, Zap, 
-  Brain, ShieldCheck, UserPlus, LogIn, CheckCircle2, AlertCircle 
+  Brain, ShieldCheck, UserPlus, LogIn, AlertCircle 
 } from 'lucide-react';
-
-const SEEDED_CREDENTIALS = {
-  recruiter: { email: 'admin@sparkx.ai', password: 'sparkx2026' },
-  candidate: { email: 'candidate@sparkx.ai', password: 'sparkx2026' },
-};
 
 export default function LoginScreen({ onLogin }) {
   const [tab, setTab] = useState('signin'); // 'signin' | 'signup'
@@ -301,37 +296,6 @@ export default function LoginScreen({ onLogin }) {
             </button>
 
           </form>
-
-          {/* Quick Demo Autofill helper */}
-          <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Demo Autofill (Seeded DB Accounts)</span>
-              <span className="text-[10px] text-emerald-400 font-bold flex items-center space-x-1">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>DB Live</span>
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => { setTab('signin'); autofillSeededAccount('recruiter'); }}
-                className="p-2 rounded-lg bg-slate-950 hover:bg-indigo-950/60 border border-slate-800 text-left text-xs transition"
-              >
-                <div className="font-bold text-indigo-400">Admin Account</div>
-                <div className="text-[10px] text-slate-400">admin@sparkx.ai</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setTab('signin'); autofillSeededAccount('candidate'); }}
-                className="p-2 rounded-lg bg-slate-950 hover:bg-emerald-950/60 border border-slate-800 text-left text-xs transition"
-              >
-                <div className="font-bold text-emerald-400">Candidate Account</div>
-                <div className="text-[10px] text-slate-400">candidate@sparkx.ai</div>
-              </button>
-            </div>
-          </div>
 
         </div>
       </div>
