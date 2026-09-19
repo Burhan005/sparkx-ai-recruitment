@@ -120,11 +120,10 @@ export default function AIInterviewRoom() {
           setCustomQuestions(questionsList);
           setTranscript(prev => {
             if (prev.length === 1 && prev[0].id === 'init-0') {
-              const skillsStr = Array.isArray(candidateSkills) ? candidateSkills.slice(0, 3).join(', ') : 'modern engineering';
               return [{
                 id: 'init-0',
                 speaker: 'ai',
-                text: `Hello ${candidateName}! Welcome to your SparkX AI technical interview for the ${activeJob.title} position. I have analyzed your background in ${skillsStr} and synthesized dynamic engineering scenarios tailored to your experience. Let's begin!`,
+                text: `Hello ${candidateName}! Welcome to your technical interview for the ${activeJob.title} position. We will walk through technical scenarios and discuss your hands-on production experience. Whenever you are ready, let's begin!`,
                 timestamp: '00:00'
               }];
             }
@@ -392,7 +391,7 @@ export default function AIInterviewRoom() {
         id: `ai-followup-${Date.now()}`,
         speaker: 'ai',
         isAdaptive: true,
-        text: `[Adaptive AI Probe — ${feedbackText}]: ${followUpQuestion}`,
+        text: followUpQuestion,
         timestamp: currentTimestamp
       };
 
@@ -723,14 +722,6 @@ export default function AIInterviewRoom() {
                     <span>Question {currentQuestionIdx + 1} of {questions.length}</span>
                     <span>•</span>
                     <span className="text-indigo-400 font-semibold">{currentQ?.type || 'Technical Scenario'}</span>
-                    {customQuestions.length > 0 && (
-                      <>
-                        <span>•</span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                          ✨ Synthesized for {activeCandidate?.name?.split(' ')[0] || 'Candidate'}
-                        </span>
-                      </>
-                    )}
                   </div>
                 </div>
               </div>
@@ -760,16 +751,16 @@ export default function AIInterviewRoom() {
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 opacity-60"></div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-                  {isFollowUpActive ? "Adaptive Deep Probe (Evaluating Competency Depth)" : `Targeted Competency Question ${currentQuestionIdx + 1}`}
+                  {isFollowUpActive ? "Technical Follow-Up" : `Question ${currentQuestionIdx + 1}`}
                 </span>
                 {loadingQuestions && (
                   <span className="text-[10px] text-cyan-400 font-mono animate-pulse">
-                    Synthesizing candidate scenarios...
+                    Preparing technical question...
                   </span>
                 )}
               </div>
               <p className="text-sm sm:text-base font-semibold text-white mt-1.5 leading-relaxed">
-                {isFollowUpActive ? activeFollowUpPrompt : (currentQ?.prompt || (loadingQuestions ? 'Synthesizing dynamic role scenario...' : 'Loading scenario...'))}
+                {isFollowUpActive ? activeFollowUpPrompt : (currentQ?.prompt || (loadingQuestions ? 'Preparing question...' : 'Loading scenario...'))}
               </p>
             </div>
 
@@ -811,33 +802,35 @@ export default function AIInterviewRoom() {
           {/* Candidate Response Input & Presets */}
           <div className="glass-card p-4 sm:p-5 rounded-3xl border border-white/[0.08] space-y-3 shadow-xl">
             
-            {/* Quick Demo Answers to Test Adaptive Engine with 1-click */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
-              <span className="font-semibold text-slate-300">Quick Test Responses:</span>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setCandidateAnswer("I would use asynchronous FastAPI endpoints combined with streaming responses and an HNSW vector index in PostgreSQL for sub-50ms latency.")}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition font-medium text-[11px]"
-                >
-                  ⚡ Strong Answer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCandidateAnswer("We basically use caching and databases to make it fast.")}
-                  className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition font-medium text-[11px]"
-                >
-                  ❓ Vague Answer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCandidateAnswer("I don't know much about this yet, haven't encountered it in production.")}
-                  className="px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20 transition font-medium text-[11px]"
-                >
-                  🤷‍♂️ "I don't know" (Adaptive Pivot)
-                </button>
+            {/* Quick Demo Answers to Test Adaptive Engine with 1-click (Recruiter Preview Only) */}
+            {isRecruiterTesting && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 pb-1 border-b border-white/[0.04]">
+                <span className="font-semibold text-slate-400 text-[10px] uppercase tracking-wider">Recruiter Quick Test:</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCandidateAnswer("I would use asynchronous FastAPI endpoints combined with streaming responses and an HNSW vector index in PostgreSQL for sub-50ms latency.")}
+                    className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition font-medium text-[10px]"
+                  >
+                    ⚡ Strong Answer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCandidateAnswer("We basically use caching and databases to make it fast.")}
+                    className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition font-medium text-[10px]"
+                  >
+                    ❓ Vague Answer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCandidateAnswer("I don't know much about this yet, haven't encountered it in production.")}
+                    className="px-2 py-0.5 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20 transition font-medium text-[10px]"
+                  >
+                    🤷 "I don't know"
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Input Form */}
             <form onSubmit={handleAnswerSubmit} className="flex items-center space-x-2">
