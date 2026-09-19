@@ -30,8 +30,8 @@ def seed(force=False):
                     "email": u.email,
                     "password_hash": u.password_hash,
                     "role": u.role,
-                    "reset_code": u.reset_code,
-                    "reset_code_expiry": u.reset_code_expiry
+                    "reset_token": getattr(u, "reset_token", None),
+                    "reset_token_expiry": getattr(u, "reset_token_expiry", None)
                 }
                 for u in existing_users
             ]

@@ -10,6 +10,7 @@ Zero crashes — always safe and non-blocking.
 import os
 import re
 import smtplib
+import threading
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -98,21 +99,14 @@ def create_ics_calendar_event(
     )
     return ics
 
-def send_email(
+def _dispatch_smtp_sync(
     to_email: str,
     subject: str,
     body_text: str,
     html_content: Optional[str] = None,
     ics_content: Optional[str] = None
 ) -> Tuple[bool, str]:
-    """
-    Send an email to a candidate or recruiter with optional HTML card and calendar meeting invite (.ics).
-    Returns (success: bool, status_message: str).
-    """
-    to_email = to_email.strip()
-    if not to_email:
-        return False, "Recipient email address is missing."
-
+    """Execute live SMTP transmission synchronously."""
     host = os.environ.get("SMTP_HOST", "smtp.gmail.com").strip()
     port_str = os.environ.get("SMTP_PORT", "587").strip()
     try:
@@ -159,12 +153,12 @@ def send_email(
         file_part.add_header("Content-Disposition", "attachment", filename="invite.ics")
         msg.attach(file_part)
 
-    # Send via SMTP
+    # Send via SMTP with safety timeout
     try:
         if port == 465:
-            server = smtplib.SMTP_SSL(host, port, timeout=12)
+            server = smtplib.SMTP_SSL(host, port, timeout=8)
         else:
-            server = smtplib.SMTP(host, port, timeout=12)
+            server = smtplib.SMTP(host, port, timeout=8)
             if use_tls:
                 server.starttls()
 
@@ -177,3 +171,33 @@ def send_email(
         err_msg = f"SMTP Delivery Failed: {str(e)}"
         print(f"[EMAIL WARNING] {err_msg}")
         return False, err_msg
+
+def send_email(
+    to_email: str,
+    subject: str,
+    body_text: str,
+    html_content: Optional[str] = None,
+    ics_content: Optional[str] = None,
+    background: bool = True
+) -> Tuple[bool, str]:
+    """
+    Send an email to a candidate or recruiter with optional HTML card and calendar meeting invite (.ics).
+    When background=True (default), dispatches in a daemon thread so the calling HTTP endpoint
+    returns in under 15ms without blocking on external SMTP network roundtrips.
+    """
+    to_email = to_email.strip()
+    if not to_email:
+        return False, "Recipient email address is missing."
+
+    if background:
+        t = threading.Thread(
+            target=_dispatch_smtp_sync,
+            args=(to_email, subject, body_text, html_content, ics_content),
+            daemon=True,
+            name=f"email-dispatch-{to_email[:10]}"
+        )
+        t.start()
+        return True, "Email dispatch initiated in background."
+    else:
+        return _dispatch_smtp_sync(to_email, subject, body_text, html_content, ics_content)
+

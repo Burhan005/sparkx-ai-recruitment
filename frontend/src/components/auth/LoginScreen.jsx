@@ -21,6 +21,7 @@ export default function LoginScreen({ onLogin }) {
   const [forgotStep, setForgotStep] = useState(1); // 1: enter email, 2: enter code & new password
   const [forgotEmail, setForgotEmail] = useState('');
   const [resetCode, setResetCode] = useState('');
+  const [devCode, setDevCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPw, setShowNewPw] = useState(false);
@@ -83,7 +84,7 @@ export default function LoginScreen({ onLogin }) {
 
   // ─── Handle Forgot Password Step 1 (Request Verification Code) ────────────────
   const handleRequestResetCode = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     setError('');
     setSuccessMsg('');
 
@@ -105,7 +106,28 @@ export default function LoginScreen({ onLogin }) {
     setForgotStep(2);
     setSuccessMsg(data?.message || 'Verification code dispatched to your email.');
     if (data?.dev_code) {
+      setDevCode(data.dev_code);
       setResetCode(data.dev_code); // Pre-fill in local dev convenience
+    }
+  };
+
+  // ─── Handle Resend Code in Step 2 ─────────────────────────────────────────────
+  const handleResendCode = async () => {
+    setError('');
+    setSuccessMsg('');
+    setLoading(true);
+    const { success, data, error: apiErr } = await api.forgotPassword(forgotEmail.trim());
+    setLoading(false);
+
+    if (!success || apiErr) {
+      setError(apiErr || 'Failed to dispatch a new verification code.');
+      return;
+    }
+
+    setSuccessMsg('A new 6-digit verification code has been dispatched.');
+    if (data?.dev_code) {
+      setDevCode(data.dev_code);
+      setResetCode(data.dev_code);
     }
   };
 
@@ -457,7 +479,10 @@ export default function LoginScreen({ onLogin }) {
                     className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition flex items-center justify-center space-x-2 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-95 shadow-lg shadow-indigo-600/30 disabled:opacity-50"
                   >
                     {loading ? (
-                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      <div className="flex items-center space-x-2">
+                        <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        <span>Dispatching Verification Code...</span>
+                      </div>
                     ) : (
                       <>
                         <KeyRound className="w-4 h-4" />
@@ -465,18 +490,41 @@ export default function LoginScreen({ onLogin }) {
                       </>
                     )}
                   </button>
+
+                  <div className="text-center pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setTab('signin'); setError(''); setSuccessMsg(''); }}
+                      className="text-xs text-slate-400 hover:text-slate-200 transition inline-flex items-center space-x-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Return to Sign In</span>
+                    </button>
+                  </div>
                 </form>
               ) : (
                 /* Step 2: Enter Code and New Password */
                 <form onSubmit={handleConfirmResetPassword} className="space-y-4">
                   
+                  {/* Development Verification Code Preview Helper */}
+                  {devCode && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-950/70 border border-indigo-700/60 text-xs text-indigo-300 shadow-inner">
+                      <div className="flex items-center space-x-2">
+                        <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <span>Verification Code: <strong className="font-mono text-cyan-300 font-bold tracking-widest text-sm">{devCode}</strong></span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">Dispatched to inbox</span>
+                    </div>
+                  )}
+
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">6-Digit Verification Code *</label>
                       <button
                         type="button"
-                        onClick={() => { setForgotStep(1); setError(''); }}
-                        className="text-[10px] text-indigo-400 hover:underline"
+                        onClick={handleResendCode}
+                        disabled={loading}
+                        className="text-[10px] font-semibold text-indigo-400 hover:text-indigo-300 transition hover:underline disabled:opacity-50"
                       >
                         Resend Code
                       </button>
@@ -539,6 +587,24 @@ export default function LoginScreen({ onLogin }) {
                       </>
                     )}
                   </button>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setForgotStep(1); setError(''); }}
+                      className="text-xs text-slate-400 hover:text-slate-200 transition inline-flex items-center space-x-1"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Use different email</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setTab('signin'); setError(''); setSuccessMsg(''); }}
+                      className="text-xs text-slate-400 hover:text-slate-200 transition"
+                    >
+                      Return to Sign In
+                    </button>
+                  </div>
 
                 </form>
               )}

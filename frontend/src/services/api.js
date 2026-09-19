@@ -63,7 +63,7 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(10000),
       });
       const data = await res.json();
       if (!res.ok) return { user: null, error: data.detail || 'Login failed' };
@@ -72,6 +72,9 @@ export const api = {
       }
       return { user: data, error: null };
     } catch (err) {
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        return { user: null, error: 'Server connection timed out. Please check if FastAPI is running.' };
+      }
       return { user: null, error: 'Cannot reach backend server. Please verify FastAPI is running.' };
     }
   },
@@ -82,7 +85,7 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password, role, admin_code: adminCode }),
-        signal: AbortSignal.timeout(4000),
+        signal: AbortSignal.timeout(10000),
       });
       const data = await res.json();
       if (!res.ok) return { user: null, error: data.detail || 'Registration failed' };
@@ -91,6 +94,9 @@ export const api = {
       }
       return { user: data, error: null };
     } catch (err) {
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        return { user: null, error: 'Server connection timed out. Please check if FastAPI is running.' };
+      }
       return { user: null, error: 'Cannot reach backend server. Please verify FastAPI is running.' };
     }
   },
@@ -101,13 +107,16 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(12000),
       });
       const data = await res.json();
       if (!res.ok) return { success: false, error: data.detail || 'Password reset request failed' };
       return { success: true, data, error: null };
     } catch (err) {
-      return { success: false, error: 'Cannot connect to authentication service.' };
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        return { success: false, error: 'Connection timed out. Please verify backend service.' };
+      }
+      return { success: false, error: err.message || 'Cannot connect to authentication service.' };
     }
   },
 
@@ -117,13 +126,16 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, reset_code: resetCode, new_password: newPassword }),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(12000),
       });
       const data = await res.json();
       if (!res.ok) return { success: false, error: data.detail || 'Password reset failed' };
       return { success: true, data, error: null };
     } catch (err) {
-      return { success: false, error: 'Cannot connect to authentication service.' };
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        return { success: false, error: 'Connection timed out. Please try again.' };
+      }
+      return { success: false, error: err.message || 'Cannot connect to authentication service.' };
     }
   },
 
