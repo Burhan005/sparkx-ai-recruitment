@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRecruitment } from '../context/RecruitmentContext';
+import AIConfigModal from './AIConfigModal';
+import { api } from '../services/api';
 import { 
   Briefcase, UserCheck, Video, Code2, ShieldAlert, Sparkles,
-  Sun, Moon, TrendingUp, LogOut, RefreshCw
+  Sun, Moon, TrendingUp, LogOut, RefreshCw, Cpu
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -17,6 +19,17 @@ export default function Navbar() {
     isDbConnected, 
     currentUser 
   } = useRecruitment();
+
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+  const [aiStatus, setAiStatus] = useState({ active: false, provider: 'Local NLP', has_key: false });
+
+  useEffect(() => {
+    async function checkStatus() {
+      const res = await api.getAIStatus();
+      if (res) setAiStatus(res);
+    }
+    checkStatus();
+  }, []);
 
   const recruiterNavItems = [
     { id: 'recruiter', label: 'Recruiter Hub', icon: Briefcase },
@@ -58,12 +71,23 @@ export default function Navbar() {
                 }`}>
                   {userRole === 'recruiter' ? 'Recruiter Hub' : 'Candidate'}
                 </span>
-                {isDbConnected && (
-                  <span className="hidden sm:inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/40 dark:bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span>AI Engine Active</span>
-                  </span>
-                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAIModalOpen(true);
+                  }}
+                  className={`hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition hover:scale-105 active:scale-95 cursor-pointer ${
+                    aiStatus.active
+                      ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/40 shadow-sm shadow-emerald-500/10'
+                      : 'bg-amber-950/40 text-amber-400 border-amber-800/40 hover:border-amber-500/60'
+                  }`}
+                  title="Click to configure Real-Time LLM Intelligence (Gemini/Groq/OpenAI)"
+                >
+                  <Cpu className="w-3 h-3" />
+                  <span className={`w-1.5 h-1.5 rounded-full ${aiStatus.active ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`} />
+                  <span>{aiStatus.active ? `Live LLM (${aiStatus.provider?.split(' ')[0]})` : 'Simulated AI (Connect Key)'}</span>
+                </button>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium tracking-tight">
                 Enterprise Talent Intelligence Suite
@@ -169,6 +193,12 @@ export default function Navbar() {
 
         </div>
       </div>
+
+      <AIConfigModal
+        isOpen={isAIModalOpen}
+        onClose={() => setIsAIModalOpen(false)}
+        onConfigUpdated={(newStatus) => setAiStatus(newStatus)}
+      />
     </header>
   );
 }

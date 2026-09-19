@@ -18,35 +18,221 @@ from dotenv import load_dotenv
 # Load environment variables from backend/.env
 load_dotenv()
 
-# Optional Gemini API Key from environment
+# LLM API Keys from environment
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
-def call_gemini_llm(prompt: str, system_instruction: str = "") -> str:
-    """Call Google Gemini 1.5 Flash API with timeout protection."""
-    api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY)
-    if not api_key:
-        return None
+def get_llm_status() -> Dict[str, Any]:
+    """Return active LLM provider and status."""
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
 
+    if gemini_key:
+        return {
+            "active": True,
+            "provider": "Google Gemini",
+            "model": "gemini-1.5-flash",
+            "has_key": True,
+            "mode": "live_llm"
+        }
+    elif groq_key:
+        return {
+            "active": True,
+            "provider": "Groq",
+            "model": "llama-3.3-70b-versatile",
+            "has_key": True,
+            "mode": "live_llm"
+        }
+    elif openai_key:
+        return {
+            "active": True,
+            "provider": "OpenAI",
+            "model": "gpt-4o-mini",
+            "has_key": True,
+            "mode": "live_llm"
+        }
+    else:
+        return {
+            "active": False,
+            "provider": "Local Semantic Analyzer",
+            "model": "Contextual Procedural Synthesizer",
+            "has_key": False,
+            "mode": "simulated"
+        }
+
+def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
+    """Dynamically save API key to environment and backend/.env file, then verify connection."""
+    provider_lower = provider.lower()
+    env_var_name = "GEMINI_API_KEY"
+    if "groq" in provider_lower:
+        env_var_name = "GROQ_API_KEY"
+    elif "openai" in provider_lower:
+        env_var_name = "OPENAI_API_KEY"
+
+    clean_key = api_key.strip()
+    os.environ[env_var_name] = clean_key
+
+    # Persist to backend/.env
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    try:
+        content = ""
+        if os.path.exists(env_path):
+            with open(env_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+        if f"{env_var_name}=" in content:
+            content = re.sub(rf"^{env_var_name}=.*$", f"{env_var_name}={clean_key}", content, flags=re.MULTILINE)
+        else:
+            content += f"\n{env_var_name}={clean_key}\n"
+
+        with open(env_path, "w", encoding="utf-8") as f:
+            f.write(content)
+    except Exception as err:
+        print(f"[AI Engine] Could not persist key to .env: {err}")
+
+    # Verify key with a fast test call
+    verification_test = call_llm("Ping! Return ONLY the word PONG", "You are an automated ping responder.")
+    if verification_test:
+        return {
+            "success": True,
+            "provider": env_var_name,
+            "message": f"Successfully authenticated with {provider} Live LLM! Real-time generation is now ACTIVE."
+        }
+    else:
+        return {
+            "success": False,
+            "provider": env_var_name,
+            "message": f"Saved {env_var_name}, but test verification request failed. Please check if the key is valid and has quota."
+        }
+
+def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
+    """Direct call to Google Gemini 1.5 Flash."""
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
+    payload: Dict[str, Any] = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.3,
+            "maxOutputTokens": 1024
+        }
     }
     if system_instruction:
         payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
 
-    try:
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST"
-        )
-        with urllib.request.urlopen(req, timeout=5) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            return res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-    except Exception as e:
-        print(f"[AI Engine] Gemini API fallback triggered: {e}")
-        return None
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=8) as response:
+        res_data = json.loads(response.read().decode("utf-8"))
+        candidates = res_data.get("candidates", [])
+        if candidates and "content" in candidates[0]:
+            parts = candidates[0]["content"].get("parts", [])
+            if parts and "text" in parts[0]:
+                return parts[0]["text"].strip()
+    return None
+
+def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
+    """Direct call to Groq API with Llama 3.3 70B."""
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    messages = []
+    if system_instruction:
+        messages.append({"role": "system", "content": system_instruction})
+    messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": 1024
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=8) as response:
+        res_data = json.loads(response.read().decode("utf-8"))
+        choices = res_data.get("choices", [])
+        if choices and "message" in choices[0]:
+            return choices[0]["message"].get("content", "").strip()
+    return None
+
+def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
+    """Direct call to OpenAI GPT-4o-mini."""
+    url = "https://api.openai.com/v1/chat/completions"
+    messages = []
+    if system_instruction:
+        messages.append({"role": "system", "content": system_instruction})
+    messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": "gpt-4o-mini",
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": 1024
+    }
+    req = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=8) as response:
+        res_data = json.loads(response.read().decode("utf-8"))
+        choices = res_data.get("choices", [])
+        if choices and "message" in choices[0]:
+            return choices[0]["message"].get("content", "").strip()
+    return None
+
+def call_llm(prompt: str, system_instruction: str = "") -> Optional[str]:
+    """
+    Unified Real-Time LLM dispatcher.
+    Checks providers in order: Gemini -> Groq -> OpenAI.
+    Returns live response text from LLM, or None if no keys or network error.
+    """
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        try:
+            res = _call_gemini_api(gemini_key, prompt, system_instruction)
+            if res:
+                return res
+        except Exception as e:
+            print(f"[AI Engine] Gemini call failed: {e}")
+
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if groq_key:
+        try:
+            res = _call_groq_api(groq_key, prompt, system_instruction)
+            if res:
+                return res
+        except Exception as e:
+            print(f"[AI Engine] Groq call failed: {e}")
+
+    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if openai_key:
+        try:
+            res = _call_openai_api(openai_key, prompt, system_instruction)
+            if res:
+                return res
+        except Exception as e:
+            print(f"[AI Engine] OpenAI call failed: {e}")
+
+    return None
+
+# Backward compatibility alias
+def call_gemini_llm(prompt: str, system_instruction: str = "") -> Optional[str]:
+    return call_llm(prompt, system_instruction)
 
 TECH_ENTITIES = {
     "redis": "Redis caching & in-memory data structures",
@@ -309,18 +495,28 @@ def evaluate_adaptive_answer(
     """
     answer_clean = answer.strip() if answer else ""
     
-    # 1. Primary: Gemini LLM Live Evaluation (when GEMINI_API_KEY is configured)
+    # 1. Primary: Live LLM Real-Time Evaluation (when Gemini, Groq, or OpenAI key is configured)
     llm_prompt = (
-        f"Interview Question: {prompt}\n"
-        f"Candidate Answer: {answer_clean}\n"
-        f"Key Target Skills: {', '.join(ideal_keywords or [])}\n\n"
-        f"Evaluate this response like a Senior Tech Lead at Google/Meta. "
-        f"If the candidate says 'I don't know' or acknowledges a gap, respond empathetically and pivot to first principles. "
-        f"If the candidate mentions a specific tool, probe that specific tool. "
-        f"Return ONLY valid JSON with keys: needs_follow_up (bool), follow_up_question (string or null), "
-        f"quality (gap_pivot|vague|solid|advanced|gibberish), score (number 0-100), feedback (string)."
+        f"You are an elite Principal Technical Interviewer at a top tier tech company (Google, Meta, Stripe).\n"
+        f"Question Asked: \"{prompt}\"\n"
+        f"Candidate Answer: \"{answer_clean}\"\n"
+        f"Target Technologies: {', '.join(ideal_keywords or ['System Architecture'])}\n\n"
+        f"Evaluate the candidate's response in real-time according to these conversational rules:\n"
+        f"1. Gaps / Uncertainty: If the candidate says 'I don't know', 'pass', 'not familiar', or acknowledges an area of weakness, DO NOT repeat robotic demands for production examples. Recognize candor as a positive senior engineer trait, and naturally pivot to first-principles thinking or adjacent tools based on the question.\n"
+        f"2. Specific Mentions: If the candidate mentions specific tools or architectural patterns, ask an architectural follow-up probing real trade-offs, failover, or scaling constraints.\n"
+        f"3. Vague: If the answer is hand-wavy or lacks depth, ask a targeted follow-up probing metrics, latency, or error-handling.\n"
+        f"4. Advanced: If the answer is strong, challenge them with a high-concurrency edge case or zero-downtime rollback scenario.\n"
+        f"5. Complete: If the answer is solid and thorough, set needs_follow_up=false.\n\n"
+        f"Output strictly valid JSON with no markdown code blocks:\n"
+        f"{{\n"
+        f"  \"needs_follow_up\": true,\n"
+        f"  \"follow_up_question\": \"...\",\n"
+        f"  \"quality\": \"acknowledged_gap\",\n"
+        f"  \"score\": 75,\n"
+        f"  \"feedback\": \"...\"\n"
+        f"}}"
     )
-    llm_res = call_gemini_llm(llm_prompt, "You are an expert AI interviewer at a top tech enterprise. Return strictly JSON.")
+    llm_res = call_llm(llm_prompt, "You are a Principal Staff Engineer conducting live technical interviews. Return strictly JSON.")
     if llm_res:
         try:
             clean_json = re.sub(r'```json|```', '', llm_res).strip()
@@ -330,10 +526,11 @@ def evaluate_adaptive_answer(
                 "follow_up_question": data.get("follow_up_question"),
                 "quality": data.get("quality", "solid"),
                 "score": int(data.get("score", 70)),
-                "feedback": data.get("feedback", "Evaluated via Gemini AI intelligence model.")
+                "feedback": data.get("feedback", "Evaluated live by Real-Time LLM."),
+                "engine": "live_llm"
             }
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[AI Engine] LLM response JSON parse failed: {e}")
 
     # 2. Local Deterministic Context-Aware NLP Engine
     analysis = analyze_text_quality(answer_clean, ideal_keywords)

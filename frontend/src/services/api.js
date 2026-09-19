@@ -277,6 +277,33 @@ export const api = {
     }
   },
 
+  async getAIStatus() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/interview/ai-status`, {
+        signal: AbortSignal.timeout(3000)
+      });
+      if (!res.ok) throw new Error('AI status fetch failed');
+      return await res.json();
+    } catch (err) {
+      return { active: false, provider: 'Local NLP', has_key: false, mode: 'simulated' };
+    }
+  },
+
+  async updateAIConfig(provider, apiKey) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/interview/ai-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, api_key: apiKey }),
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!res.ok) throw new Error('Failed to update AI config');
+      return await res.json();
+    } catch (err) {
+      return { success: false, message: err.message };
+    }
+  },
+
   async generateCandidateQuestions({ jobId, candidateId, candidateName, candidateSkills = [], experienceYears = 2 }) {
     try {
       const res = await fetch(`${API_BASE_URL}/interview/candidate-questions`, {

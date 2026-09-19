@@ -80,6 +80,19 @@ class AdaptiveQuestionResponse(BaseModel):
     follow_up_question: Optional[str] = None
     quality: str
     feedback: str
+    score: Optional[int] = None
+    engine: Optional[str] = "live_llm"
+
+class AIConfigRequest(BaseModel):
+    provider: str = "gemini"
+    api_key: str
+
+class AIStatusResponse(BaseModel):
+    active: bool
+    provider: str
+    model: str
+    has_key: bool
+    mode: str
 
 class CandidateQuestionsRequest(BaseModel):
     job_id: str
