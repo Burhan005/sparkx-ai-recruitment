@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import ResumeUploadModal from './ResumeUploadModal';
+import { FadeInUp } from '../ui/Primitives';
 import { 
   Briefcase, 
   MapPin, 
@@ -79,10 +80,10 @@ export default function JobCatalog() {
 
         {/* Jobs Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {jobs.map((job) => (
+          {jobs.map((job, idx) => (
+            <FadeInUp key={job.id} delay={idx * 80}>
             <div
-              key={job.id}
-              className="glass-card-hover p-6 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-5"
+              className="glass-card-hover p-6 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-5 h-full"
             >
               <div className="space-y-3">
                 <div className="flex items-start justify-between gap-4">
@@ -148,6 +149,7 @@ export default function JobCatalog() {
               </div>
 
             </div>
+            </FadeInUp>
           ))}
         </div>
       </div>

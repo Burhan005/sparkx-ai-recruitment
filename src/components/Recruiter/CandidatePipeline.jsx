@@ -2,17 +2,16 @@ import React, { useState } from 'react';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import CandidateScorecardModal from './CandidateScorecardModal';
 import JobCreatorModal from './JobCreatorModal';
+import { AnimatedCounter, FadeInUp, SlideIn } from '../ui/Primitives';
 import { 
   Users, 
   Search, 
-  Filter, 
   Plus, 
   ShieldAlert, 
   ShieldCheck, 
   Award, 
   Sparkles, 
   ChevronRight, 
-  TrendingUp, 
   AlertTriangle, 
   Briefcase, 
   CheckCircle, 
@@ -20,8 +19,7 @@ import {
   Clock, 
   GraduationCap, 
   ArrowRight,
-  Eye,
-  Layers
+  Eye
 } from 'lucide-react';
 
 export default function CandidatePipeline() {
@@ -132,9 +130,7 @@ export default function CandidatePipeline() {
         
         <div 
           onClick={() => setActiveTab('jobs')}
-          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition ${
-            activeTab === 'jobs' ? 'ring-2 ring-indigo-500' : ''
-          }`}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition ${activeTab === 'jobs' ? 'ring-2 ring-indigo-500' : ''}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Job Postings</span>
@@ -142,17 +138,15 @@ export default function CandidatePipeline() {
               <Briefcase className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">{jobs.length} Roles</div>
-          <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1 flex items-center space-x-1">
-            <span>Click to view all jobs →</span>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">
+            <AnimatedCounter value={jobs.length} /> <span className="text-base font-semibold text-slate-500">Roles</span>
           </div>
+          <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1">Click to view all jobs →</div>
         </div>
 
         <div 
           onClick={() => setActiveTab('candidates')}
-          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition ${
-            activeTab === 'candidates' ? 'ring-2 ring-indigo-500' : ''
-          }`}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition ${activeTab === 'candidates' ? 'ring-2 ring-indigo-500' : ''}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Applicants</span>
@@ -160,10 +154,10 @@ export default function CandidatePipeline() {
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">{totalApplicants}</div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            <span>In screening & review</span>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">
+            <AnimatedCounter value={totalApplicants} />
           </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">In screening & review</div>
         </div>
 
         <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden">
@@ -173,10 +167,10 @@ export default function CandidatePipeline() {
               <Award className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{evaluatedCount}</div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            <span>Interviews Completed</span>
+          <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
+            <AnimatedCounter value={evaluatedCount} />
           </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Interviews Completed</div>
         </div>
 
         <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden">
@@ -186,13 +180,14 @@ export default function CandidatePipeline() {
               <ShieldAlert className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 mt-2">{integrityFlaggedCount}</div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            <span>Anti-Cheating Alerts</span>
+          <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 mt-2">
+            <AnimatedCounter value={integrityFlaggedCount} />
           </div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Anti-Cheating Alerts</div>
         </div>
 
       </div>
+
 
       {/* Main Mode Switcher: Candidate Pipeline vs Active Job Openings */}
       <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
@@ -435,13 +430,13 @@ export default function CandidatePipeline() {
                 <p className="text-xs text-slate-500 mt-1">Try resetting your search query or filters.</p>
               </div>
             ) : (
-              filteredCandidates.map((cand) => {
+              filteredCandidates.map((cand, idx) => {
                 const hasFraudFlags = cand.fraudFlags && cand.fraudFlags.length > 0;
                 const isHighRisk = cand.integrityRisk === 'High';
 
                 return (
+                  <FadeInUp key={cand.id} delay={idx * 60}>
                   <div
-                    key={cand.id}
                     className="glass-card-hover p-5 sm:p-6 rounded-2xl transition-all duration-200 border border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-6"
                   >
                     {/* Left: Info */}
@@ -551,6 +546,7 @@ export default function CandidatePipeline() {
                     </div>
 
                   </div>
+                  </FadeInUp>
                 );
               })
             )}
