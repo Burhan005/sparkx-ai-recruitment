@@ -11,13 +11,17 @@ import {
   ShieldCheck, 
   Award, 
   Sparkles, 
-  ChevronRight,
-  TrendingUp,
-  AlertTriangle,
-  Briefcase,
-  CheckCircle,
-  XCircle,
-  Clock
+  ChevronRight, 
+  TrendingUp, 
+  AlertTriangle, 
+  Briefcase, 
+  CheckCircle, 
+  MapPin, 
+  Clock, 
+  GraduationCap, 
+  ArrowRight,
+  Eye,
+  Layers
 } from 'lucide-react';
 
 export default function CandidatePipeline() {
@@ -28,16 +32,22 @@ export default function CandidatePipeline() {
     setActiveJobId, 
     selectedCandidate, 
     setSelectedCandidate,
-    updateCandidateStatus,
     setCurrentView
   } = useRecruitment();
 
+  const [activeTab, setActiveTab] = useState('candidates'); // 'candidates' | 'jobs'
+  const [selectedJobFilter, setSelectedJobFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All'); // All | Evaluated | Shortlisted | High Risk
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
+  const [highlightedJobId, setHighlightedJobId] = useState(null);
+  const [successBanner, setSuccessBanner] = useState('');
 
   // Filter candidates
   const filteredCandidates = candidates.filter(c => {
+    const matchesJob = selectedJobFilter === 'ALL' || c.jobId === selectedJobFilter;
+    if (!matchesJob) return false;
+
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           c.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase())) ||
                           c.education.toLowerCase().includes(searchQuery.toLowerCase());
@@ -56,22 +66,43 @@ export default function CandidatePipeline() {
   const integrityFlaggedCount = candidates.filter(c => c.integrityRisk === 'High').length;
   const evaluatedCount = candidates.filter(c => c.status === 'Evaluated').length;
 
+  const handleJobCreated = (newJob) => {
+    setActiveTab('jobs');
+    setHighlightedJobId(newJob.id);
+    setActiveJobId(newJob.id);
+    setSuccessBanner(`🎉 Job "${newJob.title}" has been successfully published to your pipeline!`);
+    setTimeout(() => setSuccessBanner(''), 6000);
+  };
+
   return (
     <div className="space-y-8 pb-12">
       
+      {/* Success Notification Banner */}
+      {successBanner && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm font-semibold flex items-center justify-between shadow-lg animate-bounce">
+          <div className="flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-emerald-400" />
+            <span>{successBanner}</span>
+          </div>
+          <button onClick={() => setSuccessBanner('')} className="text-emerald-400 hover:text-white text-xs underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Top Banner / Metrics Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 uppercase tracking-wider">
               Recruiter Command Center
             </span>
-            <span className="text-xs text-slate-500">Live AI Telemetry</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">Live AI Telemetry</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white mt-1 tracking-tight">
-            Intelligent Talent Pipeline
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">
+            Intelligent Talent Pipeline & Roles
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1">
             Automated screening, adaptive cross-examination dossiers, and integrity verification.
           </p>
         </div>
@@ -80,9 +111,9 @@ export default function CandidatePipeline() {
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setCurrentView('interview')}
-            className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-indigo-500/50 text-slate-200 text-xs font-semibold transition flex items-center space-x-2 shadow-sm"
+            className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-indigo-500/50 text-slate-700 dark:text-slate-200 text-xs font-semibold transition flex items-center space-x-2 shadow-sm"
           >
-            <Sparkles className="w-4 h-4 text-indigo-400" />
+            <Sparkles className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
             <span>Test Live AI Interview</span>
           </button>
           
@@ -99,229 +130,434 @@ export default function CandidatePipeline() {
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden">
+        <div 
+          onClick={() => setActiveTab('jobs')}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition ${
+            activeTab === 'jobs' ? 'ring-2 ring-indigo-500' : ''
+          }`}
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Total Pipeline</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Job Postings</span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+              <Briefcase className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">{jobs.length} Roles</div>
+          <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1 flex items-center space-x-1">
+            <span>Click to view all jobs →</span>
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setActiveTab('candidates')}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition ${
+            activeTab === 'candidates' ? 'ring-2 ring-indigo-500' : ''
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Applicants</span>
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-white mt-2">{totalApplicants}</div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center space-x-1">
-            <span>Across</span>
-            <span className="text-indigo-400 font-medium">{jobs.length} active roles</span>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">{totalApplicants}</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            <span>In screening & review</span>
           </div>
         </div>
 
         <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">AI Evaluated</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">AI Evaluated</span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Award className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-400 mt-2">{evaluatedCount}</div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center space-x-1">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{evaluatedCount}</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
             <span>Interviews Completed</span>
           </div>
         </div>
 
         <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">High Match (&gt;85%)</span>
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-2xl sm:text-3xl font-black text-cyan-400 mt-2">{highMatchCount}</div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center space-x-1">
-            <span>Strong Job-Fit Candidates</span>
-          </div>
-        </div>
-
-        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400">Integrity Anomalies</span>
-            <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Integrity Flags</span>
+            <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <ShieldAlert className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-rose-400 mt-2">{integrityFlaggedCount}</div>
-          <div className="text-[11px] text-slate-500 mt-1 flex items-center space-x-1">
-            <span>Anti-Cheating Flags Triggered</span>
+          <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 mt-2">{integrityFlaggedCount}</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            <span>Anti-Cheating Alerts</span>
           </div>
         </div>
 
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
-        
-        {/* Search Input */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search candidate name, skill, university..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-xs bg-slate-900 border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-          />
+      {/* Main Mode Switcher: Candidate Pipeline vs Active Job Openings */}
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+        <div className="flex items-center space-x-3 text-xs sm:text-sm font-bold">
+          <button
+            onClick={() => setActiveTab('candidates')}
+            className={`flex items-center space-x-2 pb-2.5 border-b-2 transition ${
+              activeTab === 'candidates'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Candidate Pipeline ({filteredCandidates.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('jobs')}
+            className={`flex items-center space-x-2 pb-2.5 border-b-2 transition ${
+              activeTab === 'jobs'
+                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>Active Job Openings ({jobs.length})</span>
+            {highlightedJobId && (
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+            )}
+          </button>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex items-center space-x-1.5 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          {[
-            { id: 'All', label: 'All Candidates' },
-            { id: 'Evaluated', label: 'AI Evaluated' },
-            { id: 'Shortlisted', label: 'Shortlisted' },
-            { id: 'High Risk', label: '⚠️ High Risk Flags' }
-          ].map(f => (
-            <button
-              key={f.id}
-              onClick={() => setFilterStatus(f.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                filterStatus === f.id
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
+        <button
+          onClick={() => setIsJobModalOpen(true)}
+          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Post Another Role</span>
+        </button>
       </div>
 
-      {/* Candidate Pipeline List */}
-      <div className="space-y-4">
-        {filteredCandidates.length === 0 ? (
-          <div className="glass-card p-12 text-center rounded-2xl">
-            <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-slate-300">No candidates match this criteria</h3>
-            <p className="text-xs text-slate-500 mt-1">Try resetting your search query or filters.</p>
-          </div>
-        ) : (
-          filteredCandidates.map((cand) => {
-            const hasFraudFlags = cand.fraudFlags && cand.fraudFlags.length > 0;
-            const isHighRisk = cand.integrityRisk === 'High';
+      {/* VIEW A: ACTIVE JOB OPENINGS */}
+      {activeTab === 'jobs' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {jobs.map((job) => {
+              const isNewlyCreated = highlightedJobId === job.id;
+              const applicantsForThisJob = candidates.filter(c => c.jobId === job.id);
 
-            return (
-              <div
-                key={cand.id}
-                className="glass-card-hover p-5 sm:p-6 rounded-2xl transition-all duration-200 border border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-6"
-              >
-                {/* Left: Info */}
-                <div className="flex items-start space-x-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-slate-800 to-slate-700 flex items-center justify-center font-black text-white text-lg border border-slate-700 shadow-inner">
-                    {cand.name.charAt(0)}
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-bold text-white hover:text-indigo-300 cursor-pointer transition" onClick={() => setSelectedCandidate(cand)}>
-                        {cand.name}
-                      </h3>
-
-                      {/* Integrity Pill */}
-                      {isHighRisk ? (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse">
-                          <ShieldAlert className="w-3 h-3" />
-                          <span>Integrity Flag ({cand.integrityScore}/100)</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          <ShieldCheck className="w-3 h-3" />
-                          <span>Verified ({cand.integrityScore}/100)</span>
-                        </span>
-                      )}
-
-                      {/* Status pill */}
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                        cand.finalDecision === 'Shortlisted'
-                          ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50'
-                          : cand.finalDecision === 'Rejected'
-                          ? 'bg-rose-950/60 text-rose-300 border border-rose-800/50'
-                          : 'bg-slate-800 text-slate-300'
-                      }`}>
-                        {cand.finalDecision || cand.status}
+              return (
+                <div
+                  key={job.id}
+                  className={`glass-card-hover p-6 rounded-2xl border transition-all duration-300 flex flex-col justify-between space-y-4 ${
+                    isNewlyCreated
+                      ? 'border-cyan-500 ring-2 ring-cyan-500/40 shadow-xl shadow-cyan-500/10'
+                      : 'border-slate-200 dark:border-slate-800'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                            {job.department}
+                          </span>
+                          {isNewlyCreated && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-500 border border-cyan-500/40 animate-pulse">
+                              ✨ Newly Created Job
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
+                          {job.title}
+                        </h3>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        {job.status || 'Active'}
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-400 flex items-center space-x-2">
-                      <span>{cand.education}</span>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="flex items-center space-x-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{job.location}</span>
+                      </span>
                       <span>•</span>
-                      <span>{cand.experienceYears} Years Exp</span>
+                      <span className="flex items-center space-x-1">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{job.experience}</span>
+                      </span>
                       <span>•</span>
-                      <span className="text-slate-500">Applied {cand.appliedDate}</span>
+                      <span className="flex items-center space-x-1">
+                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {applicantsForThisJob.length} Applicants
+                        </span>
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2">
+                      {job.description}
                     </p>
 
-                    {/* Resume Summary snippet */}
-                    <p className="text-xs text-slate-300 line-clamp-1 max-w-2xl pt-0.5">
-                      {cand.resumeSummary}
-                    </p>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Required Competencies:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {job.requiredSkills.map((s, i) => (
+                          <span key={i} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-[11px] font-medium border border-slate-200 dark:border-slate-800">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
 
-                    {/* Fraud flags warning if any */}
-                    {hasFraudFlags && (
-                      <div className="flex items-center space-x-1.5 text-xs text-rose-400 font-semibold pt-1">
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        <span className="line-clamp-1">Inconsistency: {cand.fraudFlags[0]}</span>
+                    {job.questions && job.questions.length > 0 && (
+                      <div className="p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-800/40 text-xs space-y-1">
+                        <div className="flex items-center justify-between text-indigo-700 dark:text-indigo-300 font-semibold text-[11px]">
+                          <span className="flex items-center space-x-1">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>AI Question Set Synthesized ({job.questions.length})</span>
+                          </span>
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400">Adaptive Active</span>
+                        </div>
+                        <p className="text-slate-600 dark:text-slate-400 text-[11px] line-clamp-1">
+                          Q1: {job.questions[0]?.prompt}
+                        </p>
                       </div>
                     )}
-
-                    {/* Skills pills */}
-                    <div className="flex flex-wrap gap-1.5 pt-2">
-                      {cand.skills.slice(0, 5).map((skill, idx) => (
-                        <span key={idx} className="px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 text-[11px] font-medium border border-slate-800">
-                          {skill}
-                        </span>
-                      ))}
-                      {cand.skills.length > 5 && (
-                        <span className="text-[11px] text-slate-500 self-center">+{cand.skills.length - 5} more</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Score Metrics & CTA */}
-                <div className="flex items-center justify-between lg:justify-end space-x-6 border-t lg:border-t-0 border-slate-800/80 pt-3 lg:pt-0">
-                  
-                  {/* Scores */}
-                  <div className="flex items-center space-x-5">
-                    <div className="text-center">
-                      <span className="text-[10px] text-slate-500 font-semibold uppercase">Match</span>
-                      <div className="text-lg font-black text-white">{cand.matchScore}%</div>
-                    </div>
-
-                    <div className="text-center">
-                      <span className="text-[10px] text-slate-500 font-semibold uppercase">AI Score</span>
-                      <div className={`text-lg font-black ${
-                        cand.scores?.overall >= 80 ? 'text-emerald-400' : cand.scores?.overall >= 60 ? 'text-amber-400' : 'text-slate-400'
-                      }`}>
-                        {cand.scores?.overall > 0 ? `${cand.scores.overall}/100` : 'Pending'}
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Buttons */}
-                  <div className="flex items-center space-x-2">
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
                     <button
-                      onClick={() => setSelectedCandidate(cand)}
-                      className="px-4 py-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+                      onClick={() => {
+                        setSelectedJobFilter(job.id);
+                        setActiveTab('candidates');
+                      }}
+                      className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
                     >
-                      <Award className="w-3.5 h-3.5" />
-                      <span>View Dossier</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <span>View Applicants ({applicantsForThisJob.length})</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setActiveJobId(job.id);
+                        setCurrentView('candidate');
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-300 text-xs font-bold transition flex items-center space-x-1.5 border border-slate-200 dark:border-slate-800"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Test Candidate View</span>
                     </button>
                   </div>
-
                 </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
+      {/* VIEW B: CANDIDATE PIPELINE */}
+      {activeTab === 'candidates' && (
+        <div className="space-y-6">
+          
+          {/* Filter and Search Bar */}
+          <div className="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            {/* Search Input */}
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search candidate name, skill, university..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center space-x-1.5 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+              {[
+                { id: 'All', label: 'All Status' },
+                { id: 'Evaluated', label: 'AI Evaluated' },
+                { id: 'Shortlisted', label: 'Shortlisted' },
+                { id: 'High Risk', label: '⚠️ High Risk Flags' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setFilterStatus(f.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                    filterStatus === f.id
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                      : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+          </div>
+
+          {/* Job Role Filter Quick Pills */}
+          <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs">
+            <span className="text-slate-400 font-semibold text-[11px] whitespace-nowrap">Filter by Role:</span>
+            <button
+              onClick={() => setSelectedJobFilter('ALL')}
+              className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap text-[11px] transition ${
+                selectedJobFilter === 'ALL'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+              }`}
+            >
+              All Roles ({candidates.length})
+            </button>
+            {jobs.map(j => (
+              <button
+                key={j.id}
+                onClick={() => setSelectedJobFilter(j.id)}
+                className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap text-[11px] transition ${
+                  selectedJobFilter === j.id
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                }`}
+              >
+                {j.title}
+              </button>
+            ))}
+          </div>
+
+          {/* Candidate Pipeline List */}
+          <div className="space-y-4">
+            {filteredCandidates.length === 0 ? (
+              <div className="glass-card p-12 text-center rounded-2xl">
+                <Users className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No candidates match this criteria</h3>
+                <p className="text-xs text-slate-500 mt-1">Try resetting your search query or filters.</p>
               </div>
-            );
-          })
-        )}
-      </div>
+            ) : (
+              filteredCandidates.map((cand) => {
+                const hasFraudFlags = cand.fraudFlags && cand.fraudFlags.length > 0;
+                const isHighRisk = cand.integrityRisk === 'High';
+
+                return (
+                  <div
+                    key={cand.id}
+                    className="glass-card-hover p-5 sm:p-6 rounded-2xl transition-all duration-200 border border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-6"
+                  >
+                    {/* Left: Info */}
+                    <div className="flex items-start space-x-4">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-200 dark:bg-gradient-to-tr dark:from-slate-800 dark:to-slate-700 flex items-center justify-center font-black text-slate-800 dark:text-white text-lg border border-slate-300 dark:border-slate-700 shadow-inner">
+                        {cand.name.charAt(0)}
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer transition" onClick={() => setSelectedCandidate(cand)}>
+                            {cand.name}
+                          </h3>
+
+                          {/* Integrity Pill */}
+                          {isHighRisk ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse">
+                              <ShieldAlert className="w-3 h-3" />
+                              <span>Integrity Flag ({cand.integrityScore}/100)</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                              <ShieldCheck className="w-3 h-3" />
+                              <span>Verified ({cand.integrityScore}/100)</span>
+                            </span>
+                          )}
+
+                          {/* Status pill */}
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            cand.finalDecision === 'Shortlisted'
+                              ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700/50'
+                              : cand.finalDecision === 'Rejected'
+                              ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800/50'
+                              : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
+                          }`}>
+                            {cand.finalDecision || cand.status}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-2">
+                          <span>{cand.education}</span>
+                          <span>•</span>
+                          <span>{cand.experienceYears} Years Exp</span>
+                          <span>•</span>
+                          <span className="text-slate-400 dark:text-slate-500">Applied {cand.appliedDate}</span>
+                        </p>
+
+                        {/* Resume Summary snippet */}
+                        <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-1 max-w-2xl pt-0.5">
+                          {cand.resumeSummary}
+                        </p>
+
+                        {/* Fraud flags warning if any */}
+                        {hasFraudFlags && (
+                          <div className="flex items-center space-x-1.5 text-xs text-rose-500 dark:text-rose-400 font-semibold pt-1">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span className="line-clamp-1">Inconsistency: {cand.fraudFlags[0]}</span>
+                          </div>
+                        )}
+
+                        {/* Skills pills */}
+                        <div className="flex flex-wrap gap-1.5 pt-2">
+                          {cand.skills.slice(0, 5).map((skill, idx) => (
+                            <span key={idx} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-[11px] font-medium border border-slate-200 dark:border-slate-800">
+                              {skill}
+                            </span>
+                          ))}
+                          {cand.skills.length > 5 && (
+                            <span className="text-[11px] text-slate-500 self-center">+{cand.skills.length - 5} more</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Score Metrics & CTA */}
+                    <div className="flex items-center justify-between lg:justify-end space-x-6 border-t lg:border-t-0 border-slate-200 dark:border-slate-800/80 pt-3 lg:pt-0">
+                      
+                      {/* Scores */}
+                      <div className="flex items-center space-x-5">
+                        <div className="text-center">
+                          <span className="text-[10px] text-slate-500 font-semibold uppercase">Match</span>
+                          <div className="text-lg font-black text-slate-900 dark:text-white">{cand.matchScore}%</div>
+                        </div>
+
+                        <div className="text-center">
+                          <span className="text-[10px] text-slate-500 font-semibold uppercase">AI Score</span>
+                          <div className={`text-lg font-black ${
+                            cand.scores?.overall >= 80 ? 'text-emerald-500 dark:text-emerald-400' : cand.scores?.overall >= 60 ? 'text-amber-500 dark:text-amber-400' : 'text-slate-400'
+                          }`}>
+                            {cand.scores?.overall > 0 ? `${cand.scores.overall}/100` : 'Pending'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Buttons */}
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setSelectedCandidate(cand)}
+                          className="px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-600/20 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-white border border-indigo-200 dark:border-indigo-500/30 text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
+                        >
+                          <Award className="w-3.5 h-3.5" />
+                          <span>View Dossier</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                    </div>
+
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+        </div>
+      )}
 
       {/* Candidate Scorecard Modal */}
       {selectedCandidate && (
@@ -335,6 +571,7 @@ export default function CandidatePipeline() {
       <JobCreatorModal
         isOpen={isJobModalOpen}
         onClose={() => setIsJobModalOpen(false)}
+        onJobCreated={handleJobCreated}
       />
 
     </div>

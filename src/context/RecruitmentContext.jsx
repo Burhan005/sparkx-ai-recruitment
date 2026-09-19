@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { INITIAL_JOBS, INITIAL_CANDIDATES } from '../data/mockData';
 import { generateCandidateEvaluation } from '../services/aiRecruiterService';
+import { api } from '../services/api';
 
 const RecruitmentContext = createContext();
 
@@ -69,6 +70,9 @@ export function RecruitmentProvider({ children }) {
       applicantsCount: 0
     };
     setJobs(prev => [newJob, ...prev]);
+    setActiveJobId(newJob.id);
+    // Asynchronously sync to FastAPI backend database
+    api.createJob(newJob).catch(() => {});
     return newJob;
   };
 

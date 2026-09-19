@@ -3,7 +3,7 @@ import { useRecruitment } from '../../context/RecruitmentContext';
 import { generateQuestionsForRole } from '../../services/aiRecruiterService';
 import { X, Sparkles, Plus, CheckCircle, BrainCircuit } from 'lucide-react';
 
-export default function JobCreatorModal({ isOpen, onClose }) {
+export default function JobCreatorModal({ isOpen, onClose, onJobCreated }) {
   const { createJob } = useRecruitment();
   const [formData, setFormData] = useState({
     title: 'Lead AI & Full Stack Engineer',
@@ -45,7 +45,7 @@ export default function JobCreatorModal({ isOpen, onClose }) {
       ? generatedQuestions 
       : generateQuestionsForRole(formData.title, skillsArray, formData.minExperienceYears);
 
-    createJob({
+    const created = createJob({
       title: formData.title,
       department: formData.department,
       location: formData.location,
@@ -75,8 +75,9 @@ function validatePayload(input) {
     setIsSuccess(true);
     setTimeout(() => {
       setIsSuccess(false);
+      if (onJobCreated) onJobCreated(created);
       onClose();
-    }, 900);
+    }, 600);
   };
 
   return (
