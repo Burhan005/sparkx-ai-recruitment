@@ -108,8 +108,9 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
         }
 
 def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
-    """Direct call to Google Gemini 1.5 Flash."""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    """Direct call to Google Gemini with auto-fallback across verified active models."""
+    candidate_models = ["gemini-flash-lite-latest", "gemini-3.1-flash-lite", "gemini-flash-latest"]
+
     payload: Dict[str, Any] = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
@@ -119,20 +120,28 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "") ->
     }
     if system_instruction:
         payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+    data = json.dumps(payload).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
 
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST"
-    )
-    with urllib.request.urlopen(req, timeout=8) as response:
-        res_data = json.loads(response.read().decode("utf-8"))
-        candidates = res_data.get("candidates", [])
-        if candidates and "content" in candidates[0]:
-            parts = candidates[0]["content"].get("parts", [])
-            if parts and "text" in parts[0]:
-                return parts[0]["text"].strip()
+    for model in candidate_models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        try:
+            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=12) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                candidates = res_data.get("candidates", [])
+                if candidates and "content" in candidates[0]:
+                    parts = candidates[0]["content"].get("parts", [])
+                    if parts and "text" in parts[0]:
+                        return parts[0]["text"].strip()
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                continue
+            print(f"[AI Engine] Gemini {model} HTTP {e.code}: {e.reason}")
+            continue
+        except Exception as e:
+            print(f"[AI Engine] Gemini {model} error: {e}")
+            continue
     return None
 
 def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
