@@ -110,6 +110,7 @@ class UserRegister(BaseModel):
     email: str
     password: str
     role: str = "candidate"  # "recruiter" or "candidate"
+    admin_code: Optional[str] = None  # Required if role == "recruiter"
 
 class UserLogin(BaseModel):
     email: str

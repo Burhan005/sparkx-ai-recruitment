@@ -13,6 +13,7 @@ export default function LoginScreen({ onLogin }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [adminCode, setAdminCode] = useState('');
   const [showPw, setShowPw] = useState(false);
 
   // Status
@@ -50,9 +51,13 @@ export default function LoginScreen({ onLogin }) {
       setError('Password must be at least 6 characters');
       return;
     }
+    if (role === 'recruiter' && !adminCode.trim()) {
+      setError('Recruiter registration requires an authorized Admin Key');
+      return;
+    }
 
     setLoading(true);
-    const { user, error: apiErr } = await api.register(name.trim(), email.trim(), password, role);
+    const { user, error: apiErr } = await api.register(name.trim(), email.trim(), password, role, adminCode.trim());
 
     if (apiErr) {
       setError(apiErr);
@@ -233,6 +238,27 @@ export default function LoginScreen({ onLogin }) {
                     <span>Candidate</span>
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Admin Key input for Recruiter Registration Security */}
+            {tab === 'signup' && role === 'recruiter' && (
+              <div className="space-y-1.5 p-3 rounded-xl bg-purple-950/30 border border-purple-800/40">
+                <label className="text-[11px] font-bold text-purple-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>Admin Authorization Key *</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Security Restricted</span>
+                </label>
+                <input
+                  type="password"
+                  value={adminCode}
+                  onChange={e => setAdminCode(e.target.value)}
+                  required
+                  placeholder="e.g. SPARKX-ADMIN-2026"
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-purple-700/50 text-white text-xs placeholder-slate-600 focus:outline-none focus:border-purple-400 transition"
+                />
+                <p className="text-[10px] text-slate-400 leading-tight">
+                  Recruiter access is restricted to authorized HR personnel with an Admin Key.
+                </p>
               </div>
             )}
 

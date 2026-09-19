@@ -63,12 +63,12 @@ export const api = {
     }
   },
 
-  async register(name, email, password, role = 'candidate') {
+  async register(name, email, password, role = 'candidate', adminCode = null) {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify({ name, email, password, role, admin_code: adminCode }),
         signal: AbortSignal.timeout(4000),
       });
       const data = await res.json();

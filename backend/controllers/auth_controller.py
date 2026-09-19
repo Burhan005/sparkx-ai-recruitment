@@ -1,4 +1,4 @@
-﻿"""
+"""
 (C) Auth Controller - User Registration & Authentication logic
 """
 import uuid
@@ -27,6 +27,12 @@ class AuthController:
     @staticmethod
     def register_user(payload: UserRegister, db: Session):
         email_clean = payload.email.strip().lower()
+
+        # Recruiter Security Control: Require Admin Passcode for recruiter account creation
+        target_role = payload.role.lower() if payload.role in ["recruiter", "candidate"] else "candidate"
+        if target_role == "recruiter":
+            if not payload.admin_code or payload.admin_code.strip() != "SPARKX-ADMIN-2026":
+                return None, "Recruiter Registration Restricted: Invalid or missing Admin Authorization Key."
         
         # Check if email already exists
         existing = db.query(UserModel).filter(UserModel.email == email_clean).first()
@@ -41,7 +47,7 @@ class AuthController:
             name=payload.name.strip(),
             email=email_clean,
             password_hash=pw_hash,
-            role=payload.role if payload.role in ["recruiter", "candidate"] else "candidate"
+            role=target_role
         )
 
         db.add(new_user)
