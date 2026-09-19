@@ -95,11 +95,11 @@ export default function CodeAssessment() {
     <div className="space-y-6 pb-16">
       
       {/* Header */}
-      <div className="glass-card p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-800">
+      <div className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-white/[0.08] shadow-xl">
         <div>
           <div className="flex items-center space-x-2">
             <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">
-              Slide 10: Live Practical Skill Assessment
+              Executive Technical Assessment
             </span>
             <span className="text-slate-600">•</span>
             <span className="text-xs text-slate-300 font-semibold">{assessment.title}</span>
@@ -108,7 +108,7 @@ export default function CodeAssessment() {
         </div>
 
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs text-slate-300">
+          <div className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-[#06080E] border border-white/[0.08] text-xs text-slate-300 font-mono shadow-sm">
             <Clock className="w-3.5 h-3.5 text-indigo-400" />
             <span>Time Remaining: 24:18</span>
           </div>
@@ -116,7 +116,7 @@ export default function CodeAssessment() {
           <button
             onClick={handleRunCode}
             disabled={isRunning}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-lg shadow-emerald-600/20"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-lg shadow-emerald-600/25"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>{isRunning ? "Testing Code..." : "Run Tests"}</span>
@@ -129,7 +129,7 @@ export default function CodeAssessment() {
         
         {/* Left: Problem & Instructions (4 Cols) */}
         <div className="lg:col-span-4 space-y-4">
-          <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-4">
+          <div className="glass-card p-5 rounded-3xl border border-white/[0.08] space-y-4 shadow-xl">
             <div className="flex items-center space-x-2 text-indigo-400 font-bold text-xs uppercase tracking-wider">
               <Code2 className="w-4 h-4" />
               <span>Problem Brief</span>
@@ -139,23 +139,23 @@ export default function CodeAssessment() {
               {assessment.instructions}
             </p>
 
-            <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 text-xs space-y-2">
-              <span className="font-semibold text-slate-300">Expected Behavior:</span>
+            <div className="p-3.5 rounded-2xl bg-[#06080E] border border-white/[0.06] text-xs space-y-2 shadow-inner">
+              <span className="font-semibold text-slate-200">Expected Constraints:</span>
               <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
                 <li>Prevent multiple duplicate events from causing alert fatigue.</li>
-                <li>Preserve original event properties while incrementing a <code className="text-cyan-300">count</code> field.</li>
-                <li>Maintain sub-millisecond execution time.</li>
+                <li>Preserve original event properties while incrementing a <code className="text-cyan-300 bg-cyan-950/40 px-1 py-0.5 rounded">count</code> field.</li>
+                <li>Maintain sub-millisecond execution latency.</li>
               </ul>
             </div>
 
             {/* Test Case list */}
             <div>
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Test Suite</span>
-              <div className="mt-2 space-y-2">
+              <div className="mt-2.5 space-y-2">
                 {assessment.testCases?.map((tc, idx) => (
-                  <div key={idx} className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs">
+                  <div key={idx} className="p-3 rounded-xl bg-[#06080E]/80 border border-white/[0.06] text-xs shadow-sm">
                     <div className="font-semibold text-white">{tc.name}</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">Input: {tc.input}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5 font-mono">Input: {tc.input}</div>
                   </div>
                 ))}
               </div>
@@ -167,9 +167,9 @@ export default function CodeAssessment() {
         <div className="lg:col-span-8 space-y-4 flex flex-col">
           
           {/* Code Editor Window */}
-          <div className="glass-card rounded-2xl border border-slate-800 overflow-hidden flex flex-col shadow-xl">
+          <div className="glass-card rounded-3xl border border-white/[0.08] overflow-hidden flex flex-col shadow-2xl">
             {/* Window title bar */}
-            <div className="px-4 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+            <div className="px-4 py-2.5 bg-[#06080E] border-b border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <div className="flex space-x-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
@@ -194,13 +194,13 @@ export default function CodeAssessment() {
               value={code}
               onChange={e => setCode(e.target.value)}
               spellCheck="false"
-              className="w-full h-72 p-4 bg-[#0B0F19] text-emerald-300 font-mono text-xs sm:text-sm focus:outline-none resize-none leading-relaxed selection:bg-indigo-900"
+              className="w-full h-72 p-4 bg-[#070A12] text-emerald-300 font-mono text-xs sm:text-sm focus:outline-none resize-none leading-relaxed selection:bg-indigo-900 shadow-inner"
             />
           </div>
 
           {/* Terminal / Test Output */}
-          <div className="glass-card rounded-2xl border border-slate-800 p-4 space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-slate-800 pb-2">
+          <div className="glass-card rounded-3xl border border-white/[0.08] p-4 sm:p-5 space-y-2 shadow-xl">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-white/[0.06] pb-2.5">
               <div className="flex items-center space-x-1.5">
                 <Terminal className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Execution Output & Diagnostics</span>
@@ -213,7 +213,7 @@ export default function CodeAssessment() {
               )}
             </div>
 
-            <pre className="font-mono text-xs text-slate-300 bg-slate-950 p-3 rounded-xl min-h-[90px] overflow-x-auto whitespace-pre-wrap">
+            <pre className="font-mono text-xs text-slate-300 bg-[#06080E] p-3.5 rounded-2xl min-h-[90px] overflow-x-auto whitespace-pre-wrap border border-white/[0.04]">
               {consoleOutput || '// Click "Run Tests" to execute your solution in the browser sandbox...'}
             </pre>
           </div>

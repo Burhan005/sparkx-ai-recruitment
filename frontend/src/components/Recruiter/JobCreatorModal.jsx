@@ -81,23 +81,26 @@ function validatePayload(input) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 text-slate-100 my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="relative w-full max-w-2xl bg-[#0B0F19] border border-white/[0.08] rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-100 my-8 overflow-hidden">
         
+        {/* Iridescent top hairline */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400"></div>
+
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-lg bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-600/20">
+              <Sparkles className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-white">Create New Job Requirement</h2>
-              <p className="text-xs text-slate-400">System automatically converts requirements into a structured profile & question bank</p>
+              <p className="text-xs text-slate-400">Autonomous profile synthesis & adaptive interview questions generation</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition"
           >
             <X className="w-5 h-5" />
           </button>
@@ -107,22 +110,22 @@ function validatePayload(input) {
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Job Title *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Job Title *</label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={e => setFormData({ ...formData, title: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white"
+                className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#06080E] border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600 shadow-inner"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Department *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Department *</label>
               <input
                 type="text"
                 value={formData.department}
                 onChange={e => setFormData({ ...formData, department: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white"
+                className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#06080E] border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600 shadow-inner"
                 required
               />
             </div>
@@ -130,67 +133,67 @@ function validatePayload(input) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Min Experience (Years) *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Min Experience (Years) *</label>
               <input
                 type="number"
                 min="0"
                 max="20"
                 value={formData.minExperienceYears}
                 onChange={e => setFormData({ ...formData, minExperienceYears: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white"
+                className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#06080E] border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600 shadow-inner"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Location *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Location *</label>
               <input
                 type="text"
                 value={formData.location}
                 onChange={e => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-3.5 py-2 text-sm bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white"
+                className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#06080E] border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600 shadow-inner"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Required Skills (Comma separated) *</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Required Skills (Comma separated) *</label>
             <input
               type="text"
               value={formData.requiredSkills}
               onChange={e => setFormData({ ...formData, requiredSkills: e.target.value })}
-              className="w-full px-3.5 py-2 text-sm bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white"
+              className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#06080E] border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600 shadow-inner"
               placeholder="e.g. Python, FastAPI, React, PyTorch"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Education Qualification *</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Education Qualification *</label>
             <input
               type="text"
               value={formData.education}
               onChange={e => setFormData({ ...formData, education: e.target.value })}
-              className="w-full px-3.5 py-2 text-sm bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white"
+              className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#06080E] border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600 shadow-inner"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Role Description</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Role Description</label>
             <textarea
               rows="2"
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3.5 py-2 text-sm bg-slate-900 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500 text-white"
+              className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-[#06080E] border border-slate-700/80 rounded-xl focus:outline-none focus:border-indigo-500 text-white placeholder-slate-600 shadow-inner"
             />
           </div>
 
           {/* AI Question Generation trigger */}
-          <div className="p-4 rounded-xl bg-indigo-950/40 border border-indigo-800/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="p-4 rounded-2xl bg-[#06080E] border border-indigo-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-inner">
             <div>
               <div className="flex items-center space-x-2 text-indigo-300 font-semibold text-xs">
-                <BrainCircuit className="w-4 h-4" />
+                <BrainCircuit className="w-4 h-4 text-cyan-400" />
                 <span>AI Interview Question & Assessment Generator</span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
@@ -201,7 +204,7 @@ function validatePayload(input) {
               type="button"
               onClick={handleGenerateAIQuestions}
               disabled={isGenerating}
-              className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-md shadow-indigo-600/30 whitespace-nowrap"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-md shadow-indigo-600/30 whitespace-nowrap"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{isGenerating ? "Synthesizing..." : "Preview Questions"}</span>
@@ -210,22 +213,22 @@ function validatePayload(input) {
 
           {/* Questions preview */}
           {generatedQuestions.length > 0 && (
-            <div className="space-y-2 mt-2 max-h-48 overflow-y-auto p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+            <div className="space-y-2 mt-2 max-h-48 overflow-y-auto p-3 bg-[#06080E] rounded-2xl border border-white/[0.06]">
               <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">Generated Adaptive Question Set ({generatedQuestions.length})</span>
               {generatedQuestions.map((q, idx) => (
-                <div key={q.id} className="text-xs p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-300">
+                <div key={q.id} className="text-xs p-3 rounded-xl bg-slate-900/60 border border-white/[0.06] text-slate-300">
                   <div className="font-semibold text-white flex items-center justify-between">
                     <span>Q{idx+1}: {q.type}</span>
-                    <span className="text-[10px] text-indigo-400 bg-indigo-950/80 px-1.5 py-0.5 rounded">Adaptive Follow-ups Ready</span>
+                    <span className="text-[10px] text-indigo-300 bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 rounded-full">Adaptive Probe Ready</span>
                   </div>
-                  <p className="mt-1 text-slate-400">{q.prompt}</p>
+                  <p className="mt-1 text-slate-400 leading-relaxed">{q.prompt}</p>
                 </div>
               ))}
             </div>
           )}
 
           {/* Submit */}
-          <div className="pt-4 flex items-center justify-end space-x-3 border-t border-slate-800">
+          <div className="pt-4 flex items-center justify-end space-x-3 border-t border-white/[0.06]">
             <button
               type="button"
               onClick={onClose}
@@ -236,7 +239,7 @@ function validatePayload(input) {
             <button
               type="submit"
               disabled={isSuccess}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:opacity-95 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30"
             >
               {isSuccess ? (
                 <>

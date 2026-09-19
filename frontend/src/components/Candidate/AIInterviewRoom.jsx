@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { evaluateAnswerAndAdapt } from '../../services/aiRecruiterService';
 import { ProctorMonitor } from '../../services/proctorService';
+import { api } from '../../services/api';
 import { 
   Video, 
   VideoOff, 
@@ -375,36 +376,43 @@ export default function AIInterviewRoom() {
     <div className="space-y-6 pb-16">
       
       {/* Top Header Bar with Live Telemetry Badges */}
-      <div className="glass-card p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-800">
-        <div>
-          <div className="flex items-center space-x-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-            <span className="text-xs font-bold text-white uppercase tracking-wider">Live AI Interview Session</span>
-            <span className="text-slate-600">•</span>
-            <span className="text-xs text-indigo-400 font-semibold">{activeJob.title}</span>
+      <div className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-white/[0.08] shadow-xl">
+        <div className="flex items-center space-x-3">
+          <div className="relative flex items-center justify-center">
+            <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping absolute"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 relative"></span>
           </div>
-          <p className="text-[11px] text-slate-400 mt-0.5">
-            Adaptive cross-questioning & real-time anti-cheating proctoring active
-          </p>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold text-white uppercase tracking-wider">Live AI Interview Session</span>
+              <span className="text-slate-600">•</span>
+              <span className="text-xs text-indigo-400 font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+                {activeJob.title}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5 font-normal">
+              Autonomous conversational interviewer with real-time biometric proctoring & integrity verification
+            </p>
+          </div>
         </div>
 
         {/* Telemetry Status Badges */}
-        <div className="flex items-center space-x-3">
-          <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1.5 border ${
+        <div className="flex items-center space-x-2.5 shrink-0">
+          <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2 border transition-all ${
             tabFocused 
-              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' 
-              : 'bg-rose-950/60 text-rose-300 border-rose-800/60 animate-pulse'
+              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' 
+              : 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse'
           }`}>
             <Eye className="w-3.5 h-3.5" />
-            <span>{tabFocused ? 'Browser Focus: Locked' : 'Tab Switched!'}</span>
+            <span>{tabFocused ? 'Window Focus: Locked' : 'Tab Switched!'}</span>
           </div>
 
-          <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center space-x-1.5 border ${
+          <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2 border transition-all ${
             riskLevel === 'High'
-              ? 'bg-rose-950/60 text-rose-300 border-rose-800/60'
-              : 'bg-indigo-950/60 text-indigo-300 border-indigo-800/60'
+              ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+              : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/25'
           }`}>
-            <ShieldCheck className="w-3.5 h-3.5" />
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
             <span>Integrity: {integrityScore}/100</span>
           </div>
         </div>
@@ -417,7 +425,7 @@ export default function AIInterviewRoom() {
         <div className="lg:col-span-5 space-y-4">
           
           {/* Webcam Box */}
-          <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 aspect-[4/3] flex items-center justify-center shadow-xl">
+          <div className="relative rounded-3xl overflow-hidden bg-[#070A12] border border-white/[0.08] aspect-[4/3] flex items-center justify-center shadow-2xl">
             {/* Real video if available */}
             <video
               ref={videoRef}
@@ -429,14 +437,14 @@ export default function AIInterviewRoom() {
             {/* Simulated Candidate Feed fallback if no webcam */}
             {!cameraActive && (
               <div className="flex flex-col items-center justify-center p-6 text-center space-y-3">
-                <div className="w-24 h-24 rounded-full bg-slate-900 border-2 border-dashed border-indigo-500/40 flex items-center justify-center text-indigo-400 animate-pulse-ring">
-                  <Video className="w-10 h-10" />
+                <div className="w-20 h-20 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-500/10">
+                  <Video className="w-8 h-8" />
                 </div>
-                <div className="text-xs font-semibold text-slate-300">
-                  {cameraError ? cameraError : "Connecting candidate video stream..."}
+                <div className="text-xs font-semibold text-slate-200">
+                  {cameraError ? cameraError : "Connecting biometric video stream..."}
                 </div>
-                <span className="text-[10px] text-slate-500">
-                  Webcam proctoring simulation running seamlessly
+                <span className="text-[11px] text-slate-500">
+                  Computer vision & gaze estimation simulator online
                 </span>
               </div>
             )}
@@ -450,57 +458,57 @@ export default function AIInterviewRoom() {
             />
 
             {/* Top-left HUD badge */}
-            <div className="absolute top-3 left-3 flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-black/70 backdrop-blur-md text-[10px] font-mono font-bold text-white border border-white/10">
-              <span className={`w-2 h-2 rounded-full ${faceStatus === 'VERIFIED' ? 'bg-emerald-400' : 'bg-rose-500 animate-pulse'}`}></span>
-              <span>{faceStatus === 'VERIFIED' ? '1 PERSON DETECTED' : faceStatus}</span>
+            <div className="absolute top-3.5 left-3.5 flex items-center space-x-2 px-3 py-1 rounded-xl bg-black/70 backdrop-blur-md text-[11px] font-mono font-bold text-white border border-white/10 shadow-lg">
+              <span className={`w-2 h-2 rounded-full ${faceStatus === 'VERIFIED' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-rose-500 animate-pulse'}`}></span>
+              <span>{faceStatus === 'VERIFIED' ? '1 BIOMETRIC TARGET' : faceStatus}</span>
             </div>
 
             {/* Top-right REC badge */}
-            <div className="absolute top-3 right-3 flex items-center space-x-1 px-2 py-0.5 rounded bg-rose-950/80 text-rose-400 text-[10px] font-bold border border-rose-800">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
-              <span>REC</span>
+            <div className="absolute top-3.5 right-3.5 flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-rose-950/80 text-rose-400 text-[10px] font-bold border border-rose-800/80 shadow-lg">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+              <span>SECURE REC</span>
             </div>
 
             {/* Bottom watermark */}
-            <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[10px] text-slate-400 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/5">
-              <span>Candidate: {currentInterviewSession.candidateName}</span>
-              <span className="font-mono">FPS: 30 • 720p</span>
+            <div className="absolute bottom-3.5 left-3.5 right-3.5 flex items-center justify-between text-[11px] text-slate-400 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10">
+              <span className="font-medium text-slate-300">Candidate: {currentInterviewSession.candidateName}</span>
+              <span className="font-mono text-cyan-400 text-[10px]">FPS: 30 • 720p HD</span>
             </div>
           </div>
 
-          {/* Presenter / Client Demo Tools */}
-          <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-indigo-400">
-              <span className="flex items-center space-x-1.5">
+          {/* Telemetry Simulator / Test Triggers */}
+          <div className="glass-card p-4 rounded-2xl border border-white/[0.08] space-y-3">
+            <div className="flex items-center justify-between text-xs font-bold">
+              <span className="flex items-center space-x-2 text-indigo-300">
                 <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Client Demo: Test Anti-Cheating Triggers</span>
+                <span>Real-Time Telemetry Simulation</span>
               </span>
-              <span className="text-[10px] text-slate-500">Click to demonstrate Slide 9</span>
+              <span className="text-[10px] text-slate-500 font-mono">Anti-Cheating HUD</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => triggerCheatEvent('TAB_SWITCH')}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-[11px] font-semibold text-slate-300 border border-slate-700 hover:border-amber-500 transition text-center"
+                className="p-2.5 rounded-xl bg-slate-900/80 hover:bg-amber-950/40 text-[11px] font-semibold text-slate-300 hover:text-amber-300 border border-slate-800 hover:border-amber-500/50 transition text-center shadow-sm"
               >
-                Alt-Tab Away
+                Alt-Tab Switch
               </button>
 
               <button
                 type="button"
                 onClick={() => triggerCheatEvent('MULTIPLE_FACES')}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-[11px] font-semibold text-slate-300 border border-slate-700 hover:border-rose-500 transition text-center"
+                className="p-2.5 rounded-xl bg-slate-900/80 hover:bg-rose-950/40 text-[11px] font-semibold text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-500/50 transition text-center shadow-sm"
               >
-                Multi-Person
+                Multiple Faces
               </button>
 
               <button
                 type="button"
                 onClick={() => triggerCheatEvent('NO_FACE')}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-[11px] font-semibold text-slate-300 border border-slate-700 hover:border-amber-500 transition text-center"
+                className="p-2.5 rounded-xl bg-slate-900/80 hover:bg-amber-950/40 text-[11px] font-semibold text-slate-300 hover:text-amber-300 border border-slate-800 hover:border-amber-500/50 transition text-center shadow-sm"
               >
-                Face Lost
+                Face Displaced
               </button>
             </div>
           </div>
@@ -511,16 +519,16 @@ export default function AIInterviewRoom() {
         <div className="lg:col-span-7 space-y-4 flex flex-col justify-between">
           
           {/* AI Interviewer Avatar & Live Question Banner */}
-          <div className="glass-card p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/[0.08] space-y-4 shadow-xl">
             
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-3.5">
                 <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-400 flex items-center justify-center text-white shadow-lg">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 ring-1 ring-white/20">
                     <Bot className="w-6 h-6" />
                   </div>
                   {isAISpeaking && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-cyan-400 rounded-full border-2 border-[#111827] animate-ping"></span>
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-cyan-400 rounded-full border-2 border-[#06080E] animate-ping"></span>
                   )}
                 </div>
 
@@ -528,12 +536,12 @@ export default function AIInterviewRoom() {
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-white text-sm">SparkX Adaptive AI Interviewer</span>
                     {isFollowUpActive && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-sm animate-pulse">
                         ⚡ Adaptive Cross-Questioning
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-400 flex items-center space-x-2">
+                  <div className="text-[11px] text-slate-400 flex items-center space-x-2 mt-0.5">
                     <span>Question {currentQuestionIdx + 1} of {questions.length}</span>
                     <span>•</span>
                     <span className="text-indigo-400 font-semibold">{currentQ.type}</span>
@@ -542,7 +550,7 @@ export default function AIInterviewRoom() {
               </div>
 
               {/* Audio Equalizer Waves */}
-              <div className="flex items-center space-x-1.5 h-8 px-3 rounded-xl bg-slate-900 border border-slate-800">
+              <div className="flex items-center space-x-1.5 h-9 px-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
                 {isAISpeaking ? (
                   <>
                     <div className="w-1 bg-cyan-400 rounded-full audio-bar-1"></div>
@@ -550,10 +558,10 @@ export default function AIInterviewRoom() {
                     <div className="w-1 bg-purple-400 rounded-full audio-bar-3"></div>
                     <div className="w-1 bg-cyan-400 rounded-full audio-bar-4"></div>
                     <div className="w-1 bg-indigo-400 rounded-full audio-bar-5"></div>
-                    <span className="text-[10px] text-cyan-300 font-bold ml-1.5">Speaking</span>
+                    <span className="text-[10px] text-cyan-300 font-bold ml-2">Speaking</span>
                   </>
                 ) : (
-                  <span className="text-[10px] text-slate-500 flex items-center space-x-1">
+                  <span className="text-[11px] text-slate-500 flex items-center space-x-1.5">
                     <Volume2 className="w-3.5 h-3.5" />
                     <span>Listening</span>
                   </span>
@@ -562,11 +570,12 @@ export default function AIInterviewRoom() {
             </div>
 
             {/* Current Active Question Display */}
-            <div className="p-4 rounded-xl bg-slate-900/90 border border-indigo-950/60 shadow-inner">
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#06080E]/90 border border-indigo-500/20 shadow-inner relative overflow-hidden">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 opacity-60"></div>
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-                {isFollowUpActive ? "Adaptive Follow-up (Testing Deep Understanding)" : `Targeted Question ${currentQuestionIdx + 1}`}
+                {isFollowUpActive ? "Adaptive Deep Probe (Evaluating Competency Depth)" : `Targeted Competency Question ${currentQuestionIdx + 1}`}
               </span>
-              <p className="text-sm font-semibold text-white mt-1 leading-relaxed">
+              <p className="text-sm sm:text-base font-semibold text-white mt-1.5 leading-relaxed">
                 {isFollowUpActive ? activeFollowUpPrompt : currentQ.prompt}
               </p>
             </div>
@@ -574,46 +583,56 @@ export default function AIInterviewRoom() {
           </div>
 
           {/* Live Transcript Chat Feed */}
-          <div className="glass-card p-4 rounded-2xl border border-slate-800 max-h-56 overflow-y-auto space-y-3">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Live Speech-to-Text Transcript</span>
+          <div className="glass-card p-4 rounded-3xl border border-white/[0.08] max-h-56 overflow-y-auto space-y-3">
+            <div className="flex items-center justify-between pb-1 border-b border-white/[0.05]">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Speech-to-Text Stream</span>
+              <span className="text-[10px] text-emerald-400 font-mono">NLP Pipeline Active</span>
+            </div>
             {transcript.map((msg) => (
               <div
                 key={msg.id}
-                className={`p-3 rounded-xl text-xs space-y-1 ${
+                className={`p-3.5 rounded-2xl text-xs space-y-1.5 ${
                   msg.speaker === 'ai'
                     ? msg.isAdaptive 
-                      ? 'bg-amber-950/40 border border-amber-800/40 text-amber-200' 
-                      : 'bg-slate-900/90 border border-slate-800 text-slate-200'
-                    : 'bg-indigo-950/60 border border-indigo-800/60 text-indigo-100 ml-6'
+                      ? 'bg-amber-950/30 border border-amber-800/40 text-amber-200' 
+                      : 'bg-slate-900/80 border border-slate-800 text-slate-200'
+                    : 'bg-indigo-950/50 border border-indigo-500/30 text-indigo-100 ml-6'
                 }`}
               >
                 <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold">
-                  <span>{msg.speaker === 'ai' ? '🤖 SparkX AI' : '👤 You (Candidate)'}</span>
-                  <span className="font-mono">{msg.timestamp}</span>
+                  <span className="flex items-center space-x-1.5">
+                    <span>{msg.speaker === 'ai' ? '🤖 SparkX AI' : '👤 You (Candidate)'}</span>
+                    {msg.isAdaptive && (
+                      <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono text-[9px]">
+                        ADAPTIVE
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-mono text-slate-500">{msg.timestamp}</span>
                 </div>
-                <p className="leading-relaxed">{msg.text}</p>
+                <p className="leading-relaxed text-xs sm:text-[13px]">{msg.text}</p>
               </div>
             ))}
           </div>
 
           {/* Candidate Response Input & Presets */}
-          <div className="glass-card p-4 rounded-2xl border border-slate-800 space-y-3">
+          <div className="glass-card p-4 sm:p-5 rounded-3xl border border-white/[0.08] space-y-3 shadow-xl">
             
             {/* Quick Demo Answers to Test Adaptive Engine with 1-click */}
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span className="font-semibold text-slate-300">Quick Test Responses (1-Click Demo):</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
+              <span className="font-semibold text-slate-300">Quick Test Responses:</span>
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
                   onClick={() => setCandidateAnswer("I would use asynchronous FastAPI endpoints combined with streaming responses and an HNSW vector index in PostgreSQL for sub-50ms latency.")}
-                  className="px-2 py-0.5 rounded-md bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 hover:bg-emerald-900/60 transition"
+                  className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition font-medium text-[11px]"
                 >
                   ⚡ Strong Answer
                 </button>
                 <button
                   type="button"
                   onClick={() => setCandidateAnswer("We basically use caching and databases to make it fast.")}
-                  className="px-2 py-0.5 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800/50 hover:bg-amber-900/60 transition"
+                  className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition font-medium text-[11px]"
                 >
                   ❓ Vague Answer (Triggers Follow-Up)
                 </button>
@@ -625,10 +644,10 @@ export default function AIInterviewRoom() {
               <button
                 type="button"
                 onClick={toggleSpeechRecognition}
-                className={`p-2.5 rounded-xl border transition flex items-center justify-center shrink-0 ${
+                className={`p-3 rounded-2xl border transition flex items-center justify-center shrink-0 ${
                   isMicListening
-                    ? 'bg-rose-600 text-white border-rose-500 animate-pulse'
-                    : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white hover:border-indigo-500'
+                    ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/40 animate-pulse'
+                    : 'bg-slate-900/90 text-slate-400 border-slate-700/80 hover:text-white hover:border-indigo-500'
                 }`}
                 title={isMicListening ? "Click to Stop Mic" : "Click to Speak"}
               >
@@ -640,13 +659,13 @@ export default function AIInterviewRoom() {
                 placeholder={isMicListening ? "Listening to your voice... Speak now!" : "Type or speak your answer..."}
                 value={candidateAnswer}
                 onChange={e => setCandidateAnswer(e.target.value)}
-                className="flex-1 px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                className="flex-1 px-4 py-3 bg-[#06080E] border border-slate-700/80 rounded-2xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition shadow-inner"
               />
 
               <button
                 type="submit"
                 disabled={!candidateAnswer.trim()}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-90 disabled:opacity-40 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-indigo-600/20 shrink-0"
+                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 disabled:opacity-35 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30 shrink-0"
               >
                 <span>Submit</span>
                 <Send className="w-3.5 h-3.5" />
@@ -655,11 +674,11 @@ export default function AIInterviewRoom() {
 
             {/* Advance / Next stage */}
             <div className="flex items-center justify-between pt-1 text-[11px] text-slate-500">
-              <span>Answers are automatically cross-examined by the AI engine.</span>
+              <span>Real-time NLP evaluates completeness and triggers deep queries.</span>
               <button
                 type="button"
                 onClick={() => finishInterview(transcript)}
-                className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1"
+                className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 transition"
               >
                 <span>Proceed to Live Coding Assessment</span>
                 <ArrowRight className="w-3.5 h-3.5" />

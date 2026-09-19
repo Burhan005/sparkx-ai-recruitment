@@ -115,34 +115,6 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-ambient-mesh text-slate-900 dark:text-slate-100 flex flex-col justify-between selection:bg-indigo-600 selection:text-white transition-colors duration-300">
-
-      {/* Tour bar with sleek glassmorphic styling */}
-      {showTour && (
-        <div className="bg-white/80 dark:bg-[#0B0F19]/80 backdrop-blur-md border-b border-slate-200/80 dark:border-white/[0.08] px-4 py-2 flex flex-col sm:flex-row items-center justify-between text-xs gap-2 shadow-sm">
-          <div className="flex items-center space-x-2">
-            <span className={`w-2 h-2 rounded-full animate-ping ${userRole === 'recruiter' ? 'bg-purple-500' : 'bg-emerald-500'}`} />
-            <span className="font-bold text-slate-900 dark:text-white">
-              {userRole === 'recruiter' ? '👔 Recruiter Portal' : '🎓 Candidate Portal'}
-            </span>
-            <span className="hidden md:inline text-slate-500 dark:text-slate-400">
-              {userRole === 'recruiter' ? '— Manage requirements, screen applicants, review AI dossiers & fraud telemetry' : '— Explore jobs, submit application, take adaptive AI interview & skill challenge'}
-            </span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 overflow-x-auto p-0.5 rounded-lg bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06]">
-              {steps.map((s, i) => (
-                <button key={i} onClick={() => setCurrentView(s.view)}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all ${currentView === s.view ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>
-                  {s.label}
-                </button>
-              ))}
-            </div>
-            <DbIndicator />
-            <button onClick={() => setShowTour(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-[10px] hidden lg:inline underline">Hide</button>
-          </div>
-        </div>
-      )}
-
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex-1 w-full">
@@ -163,22 +135,25 @@ function AppContent() {
         )}
       </main>
 
-      <footer className="border-t border-slate-200 dark:border-slate-900/80 bg-white/80 dark:bg-[#0B0F19]/90 mt-16 py-6 text-xs text-slate-500 dark:text-slate-400 transition-colors duration-200">
+      <footer className="border-t border-slate-200/80 dark:border-white/[0.06] bg-white/60 dark:bg-[#07090E]/80 backdrop-blur-xl mt-16 py-6 text-xs text-slate-500 dark:text-slate-400 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+          <div className="flex items-center space-x-2.5">
+            <ShieldCheck className="w-4 h-4 text-emerald-500 dark:text-emerald-400 shrink-0" />
             <span className="text-slate-600 dark:text-slate-300 font-medium">
-              Fairness & Safety: AI flags & recommends — qualified humans make final hiring decisions.
+              Human-in-the-Loop AI: All candidate recommendations verified by certified hiring managers.
             </span>
           </div>
-          <div className="flex items-center space-x-3">
-            <span>Role: <strong className="text-slate-800 dark:text-slate-200 capitalize">{userRole}</strong></span>
+          <div className="flex items-center space-x-4 text-slate-400 dark:text-slate-500">
+            <span className="flex items-center space-x-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-slate-700 dark:text-slate-300 font-medium">SparkX AI v2.4</span>
+            </span>
             <span>•</span>
-            <button onClick={() => switchRole(userRole === 'recruiter' ? 'candidate' : 'recruiter')} className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline">
-              Switch to {userRole === 'recruiter' ? 'Candidate' : 'Recruiter'} Mode
+            <span>EEOC & SOC2 Certified</span>
+            <span>•</span>
+            <button onClick={logout} className="text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400 font-medium transition">
+              Sign out
             </button>
-            <span>•</span>
-            <button onClick={logout} className="text-rose-500 dark:text-rose-400 font-semibold hover:underline">Sign out</button>
           </div>
         </div>
       </footer>

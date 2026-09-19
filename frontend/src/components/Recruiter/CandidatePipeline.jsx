@@ -22,7 +22,12 @@ import {
   Eye,
   Calendar,
   Mail,
-  Video
+  Video,
+  LayoutGrid,
+  Columns,
+  CheckCircle2,
+  TrendingUp,
+  Sparkle
 } from 'lucide-react';
 
 export default function CandidatePipeline() {
@@ -37,6 +42,7 @@ export default function CandidatePipeline() {
   } = useRecruitment();
 
   const [activeTab, setActiveTab] = useState('candidates'); // 'candidates' | 'jobs'
+  const [displayMode, setDisplayMode] = useState('kanban'); // 'kanban' | 'list'
   const [selectedJobFilter, setSelectedJobFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All'); // All | Evaluated | Shortlisted | High Risk
@@ -133,63 +139,83 @@ export default function CandidatePipeline() {
         
         <div 
           onClick={() => setActiveTab('jobs')}
-          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-indigo-500 before:to-purple-500 ${activeTab === 'jobs' ? 'ring-2 ring-indigo-500/80 shadow-lg shadow-indigo-500/10' : ''}`}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-indigo-500 before:to-purple-500 ${activeTab === 'jobs' ? 'ring-2 ring-indigo-500/80 shadow-lg shadow-indigo-500/20' : ''}`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Roles</span>
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-500 dark:text-indigo-400 flex items-center justify-center shadow-sm">
               <Briefcase className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
-            <AnimatedCounter value={jobs.length} /> <span className="text-sm font-semibold text-slate-400">Openings</span>
+            <AnimatedCounter value={jobs.length} /> <span className="text-xs font-semibold text-slate-400">Openings</span>
           </div>
-          <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1 flex items-center space-x-1">
-            <span>Manage Job Postings</span>
-            <ChevronRight className="w-3 h-3" />
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06] text-[11px]">
+            <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center space-x-1">
+              <span>Manage Roles</span>
+              <ChevronRight className="w-3 h-3" />
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium">Auto-Matching</span>
           </div>
         </div>
 
         <div 
           onClick={() => setActiveTab('candidates')}
-          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-cyan-400 before:to-blue-500 ${activeTab === 'candidates' ? 'ring-2 ring-cyan-500/80 shadow-lg shadow-cyan-500/10' : ''}`}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-cyan-400 before:to-blue-500 ${activeTab === 'candidates' ? 'ring-2 ring-cyan-500/80 shadow-lg shadow-cyan-500/20' : ''}`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Applicants</span>
-            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Applicants</span>
+            <div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shadow-sm">
               <Users className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
             <AnimatedCounter value={totalApplicants} />
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">In active screening & review</div>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06] text-[11px]">
+            <span className="text-cyan-600 dark:text-cyan-400 font-bold flex items-center space-x-1">
+              <TrendingUp className="w-3 h-3" />
+              <span>+18% this week</span>
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium">Live Inflow</span>
+          </div>
         </div>
 
-        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-emerald-400 before:to-teal-500">
+        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-400 before:to-teal-500">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Evaluated</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-sm">
               <Award className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-emerald-500 dark:text-emerald-400 mt-3 tracking-tight">
             <AnimatedCounter value={evaluatedCount} />
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Full dossiers & scorecards ready</div>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06] text-[11px]">
+            <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>Scorecards Ready</span>
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium">100% Calibrated</span>
+          </div>
         </div>
 
-        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-rose-500 before:to-amber-500">
+        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-rose-500 before:to-amber-500">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Integrity Alerts</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-sm">
               <ShieldAlert className="w-4 h-4" />
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-rose-500 dark:text-rose-400 mt-3 tracking-tight">
             <AnimatedCounter value={integrityFlaggedCount} />
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Anti-cheating anomalies flagged</div>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06] text-[11px]">
+            <span className="text-rose-500 dark:text-rose-400 font-bold flex items-center space-x-1">
+              <span>Telemetry Verified</span>
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium">Zero-Trust HUD</span>
+          </div>
         </div>
 
       </div>
@@ -360,23 +386,23 @@ export default function CandidatePipeline() {
       {activeTab === 'candidates' && (
         <div className="space-y-6">
           
-          {/* Filter and Search Bar */}
-          <div className="glass-card p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+          {/* Filter, Search & View Switcher Bar */}
+          <div className="glass-card p-4 rounded-2xl flex flex-col lg:flex-row items-center justify-between gap-4">
             
             {/* Search Input */}
-            <div className="relative w-full md:w-80">
+            <div className="relative w-full lg:w-80">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search candidate name, skill, university..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500"
+                className="w-full pl-9 pr-4 py-2 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition"
               />
             </div>
 
             {/* Filter Pills */}
-            <div className="flex items-center space-x-1.5 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+            <div className="flex items-center space-x-1.5 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
               {[
                 { id: 'All', label: 'All Status' },
                 { id: 'Evaluated', label: 'AI Evaluated' },
@@ -386,7 +412,7 @@ export default function CandidatePipeline() {
                 <button
                   key={f.id}
                   onClick={() => setFilterStatus(f.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition ${
                     filterStatus === f.id
                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
                       : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-800'
@@ -397,16 +423,44 @@ export default function CandidatePipeline() {
               ))}
             </div>
 
+            {/* View Mode Switcher (Kanban vs Grid) */}
+            <div className="flex items-center space-x-1 p-1 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-white/[0.08] shrink-0 self-end lg:self-center shadow-inner">
+              <button
+                onClick={() => setDisplayMode('kanban')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  displayMode === 'kanban'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Kanban Board View"
+              >
+                <Columns className="w-3.5 h-3.5" />
+                <span>Kanban</span>
+              </button>
+              <button
+                onClick={() => setDisplayMode('list')}
+                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  displayMode === 'list'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title="Detailed Grid View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Grid</span>
+              </button>
+            </div>
+
           </div>
 
           {/* Job Role Filter Quick Pills */}
           <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs">
-            <span className="text-slate-400 font-semibold text-[11px] whitespace-nowrap">Filter by Role:</span>
+            <span className="text-slate-400 font-bold text-[11px] whitespace-nowrap uppercase tracking-wider">Role Scope:</span>
             <button
               onClick={() => setSelectedJobFilter('ALL')}
-              className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap text-[11px] transition ${
+              className={`px-3 py-1 rounded-lg font-bold whitespace-nowrap text-[11px] transition ${
                 selectedJobFilter === 'ALL'
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-indigo-600 text-white shadow-sm'
                   : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
               }`}
             >
@@ -416,9 +470,9 @@ export default function CandidatePipeline() {
               <button
                 key={j.id}
                 onClick={() => setSelectedJobFilter(j.id)}
-                className={`px-2.5 py-1 rounded-lg font-medium whitespace-nowrap text-[11px] transition ${
+                className={`px-3 py-1 rounded-lg font-bold whitespace-nowrap text-[11px] transition ${
                   selectedJobFilter === j.id
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-indigo-600 text-white shadow-sm'
                     : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
                 }`}
               >
@@ -427,16 +481,169 @@ export default function CandidatePipeline() {
             ))}
           </div>
 
-          {/* Candidate Pipeline List */}
-          <div className="space-y-4">
-            {filteredCandidates.length === 0 ? (
-              <div className="glass-card p-12 text-center rounded-2xl">
-                <Users className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
-                <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No candidates match this criteria</h3>
-                <p className="text-xs text-slate-500 mt-1">Try resetting your search query or filters.</p>
-              </div>
-            ) : (
-              filteredCandidates.map((cand, idx) => {
+          {/* CANDIDATE PIPELINE VIEW MODES */}
+          {filteredCandidates.length === 0 ? (
+            <div className="glass-card p-12 text-center rounded-2xl">
+              <Users className="w-12 h-12 text-slate-400 dark:text-slate-600 mx-auto mb-3" />
+              <h3 className="text-sm font-bold text-slate-700 dark:text-slate-300">No candidates match this criteria</h3>
+              <p className="text-xs text-slate-500 mt-1">Try resetting your search query or role scope.</p>
+            </div>
+          ) : displayMode === 'kanban' ? (
+            /* KANBAN BOARD VIEW */
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start overflow-x-auto pb-4">
+              {[
+                {
+                  id: 'screening',
+                  name: 'Screening',
+                  dotColor: 'bg-blue-400',
+                  badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                  items: filteredCandidates.filter(c => !c.interviewScheduledAt && c.status !== 'Evaluated' && c.finalDecision !== 'Shortlisted' && c.finalDecision !== 'Offered' && c.finalDecision !== 'Rejected')
+                },
+                {
+                  id: 'scheduled',
+                  name: 'Interview Scheduled',
+                  dotColor: 'bg-cyan-400',
+                  badgeColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+                  items: filteredCandidates.filter(c => Boolean(c.interviewScheduledAt) && c.status !== 'Evaluated' && c.finalDecision !== 'Shortlisted' && c.finalDecision !== 'Offered' && c.finalDecision !== 'Rejected')
+                },
+                {
+                  id: 'evaluated',
+                  name: 'AI Evaluated',
+                  dotColor: 'bg-indigo-400',
+                  badgeColor: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+                  items: filteredCandidates.filter(c => c.status === 'Evaluated' && c.finalDecision !== 'Shortlisted' && c.finalDecision !== 'Offered' && c.finalDecision !== 'Rejected')
+                },
+                {
+                  id: 'shortlisted',
+                  name: 'Shortlisted',
+                  dotColor: 'bg-emerald-400',
+                  badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                  items: filteredCandidates.filter(c => c.finalDecision === 'Shortlisted')
+                },
+                {
+                  id: 'decided',
+                  name: 'Decisions / Closed',
+                  dotColor: 'bg-purple-400',
+                  badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                  items: filteredCandidates.filter(c => c.finalDecision === 'Offered' || c.finalDecision === 'Rejected')
+                }
+              ].map(stage => (
+                <div key={stage.id} className="kanban-column p-3.5 sm:p-4 rounded-2xl flex flex-col space-y-3 min-w-[240px]">
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-white/[0.06]">
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-2 h-2 rounded-full ${stage.dotColor}`} />
+                      <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                        {stage.name}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      {stage.items.length}
+                    </span>
+                  </div>
+
+                  {/* Column Cards */}
+                  <div className="space-y-3 min-h-[140px]">
+                    {stage.items.length === 0 ? (
+                      <div className="p-6 text-center rounded-xl border border-dashed border-slate-200/80 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs">
+                        No candidates
+                      </div>
+                    ) : (
+                      stage.items.map(cand => {
+                        const initials = cand.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                        const isHighRisk = cand.integrityRisk === 'High';
+
+                        return (
+                          <div
+                            key={cand.id}
+                            onClick={() => setSelectedCandidate(cand)}
+                            className="kanban-card p-3.5 space-y-2.5 cursor-pointer group hover:border-indigo-500/50 transition-all shadow-sm"
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center space-x-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white text-xs font-black shadow-md ring-1 ring-white/20">
+                                  {initials}
+                                </div>
+                                <div className="max-w-[120px]">
+                                  <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-400 transition leading-snug truncate">
+                                    {cand.name}
+                                  </h4>
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                    {cand.job?.title || 'Applied Role'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${
+                                cand.matchScore >= 85 
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' 
+                                  : cand.matchScore >= 70
+                                  ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30'
+                                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                              }`}>
+                                {cand.matchScore}% Match
+                              </span>
+                            </div>
+
+                            {/* Scheduled Interview Slot & Meet link if available */}
+                            {cand.interviewScheduledAt && (
+                              <div className="p-2 rounded-lg bg-cyan-950/30 dark:bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-between text-[11px]">
+                                <span className="text-cyan-400 font-medium truncate max-w-[130px] text-[10px]">
+                                  📅 {cand.interviewScheduledAt}
+                                </span>
+                                {cand.interviewMeetingUrl && (
+                                  <a
+                                    href={cand.interviewMeetingUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={e => e.stopPropagation()}
+                                    className="px-2 py-0.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] transition flex items-center space-x-1 shadow-sm"
+                                    title="Launch Google Meet"
+                                  >
+                                    <Video className="w-2.5 h-2.5" />
+                                    <span>Meet</span>
+                                  </a>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Skills pills */}
+                            <div className="flex flex-wrap gap-1">
+                              {cand.skills?.slice(0, 2).map((s, i) => (
+                                <span key={i} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 text-[10px] text-slate-600 dark:text-slate-400 font-medium border border-slate-200/50 dark:border-white/[0.04]">
+                                  {s}
+                                </span>
+                              ))}
+                              {cand.skills?.length > 2 && (
+                                <span className="text-[9px] text-slate-500 self-center">+{cand.skills.length - 2}</span>
+                              )}
+                            </div>
+
+                            {/* Card Footer */}
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-white/[0.05] text-[10px]">
+                              <span className={`font-bold flex items-center space-x-1 ${
+                                isHighRisk ? 'text-rose-500' : 'text-emerald-500 dark:text-emerald-400'
+                              }`}>
+                                {isHighRisk ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
+                                <span>{isHighRisk ? 'Flagged' : 'Verified'}</span>
+                              </span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center space-x-0.5">
+                                <span>Dossier</span>
+                                <ChevronRight className="w-3 h-3" />
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            /* DETAILED GRID / LIST VIEW */
+            <div className="space-y-4">
+              {filteredCandidates.map((cand, idx) => {
                 const hasFraudFlags = cand.fraudFlags && cand.fraudFlags.length > 0;
                 const isHighRisk = cand.integrityRisk === 'High';
 
@@ -573,13 +780,12 @@ export default function CandidatePipeline() {
                       </div>
 
                     </div>
-
                   </div>
                   </FadeInUp>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
 
         </div>
       )}

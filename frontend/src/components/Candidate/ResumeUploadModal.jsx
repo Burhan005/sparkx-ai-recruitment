@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { api } from '../../services/api';
 import { 
@@ -97,10 +97,13 @@ export default function ResumeUploadModal({ job, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-[#111827] border border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-100 my-6">
+      <div className="relative w-full max-w-3xl bg-[#0B0F19] border border-white/[0.08] rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-100 my-6">
+        
+        {/* Iridescent top hairline */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400"></div>
 
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">AI Candidate Screening</span>
@@ -109,29 +112,29 @@ export default function ResumeUploadModal({ job, onClose }) {
             </div>
             <h2 className="text-xl font-bold text-white mt-1">Upload Resume & Extract Profile</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Demo Presets — fetched from backend /api/presets */}
-        <div className="mt-4 p-3 rounded-2xl bg-indigo-950/30 border border-indigo-800/40">
-          <div className="flex items-center justify-between mb-2">
+        <div className="mt-4 p-3.5 rounded-2xl bg-[#06080E]/90 border border-indigo-500/20 shadow-inner">
+          <div className="flex items-center justify-between mb-2.5">
             <span className="text-xs font-bold text-indigo-300 flex items-center space-x-1.5">
               <Zap className="w-3.5 h-3.5 text-cyan-400" />
               <span>1-Click Sample Resumes (Live from Backend):</span>
             </span>
-            <span className="text-[10px] text-slate-400">Click to auto-fill</span>
+            <span className="text-[10px] text-slate-500 font-mono">Fast-Track Demo</span>
           </div>
           {presetsLoading ? (
             <div className="flex items-center space-x-2 text-xs text-slate-400 py-2">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Loading presets from server...</span>
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" /><span>Loading presets from server...</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {presets.map((preset, idx) => (
                 <button key={idx} type="button" onClick={() => applyPreset(preset)}
-                  className="text-left p-2.5 rounded-xl bg-slate-900/80 hover:bg-indigo-950/60 border border-slate-800 hover:border-indigo-600/50 transition text-xs group">
+                  className="text-left p-2.5 rounded-xl bg-slate-900/60 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/50 transition text-xs group shadow-sm">
                   <div className="font-bold text-white group-hover:text-indigo-300 line-clamp-1">{preset.name}</div>
                   <div className="text-[11px] text-slate-400 mt-0.5">{preset.experience} yrs • {preset.skills[0]}</div>
                 </button>
@@ -141,10 +144,10 @@ export default function ResumeUploadModal({ job, onClose }) {
         </div>
 
         {/* Upload Dropzone */}
-        <div className="mt-4 relative border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-2xl p-6 text-center transition bg-slate-900/40">
-          <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+        <div className="mt-4 relative border-2 border-dashed border-slate-700/80 hover:border-indigo-500/60 rounded-2xl p-6 text-center transition bg-[#06080E]/60 group">
+          <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
           <div className="flex flex-col items-center justify-center space-y-2">
-            <div className="w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30 group-hover:scale-105 transition-transform shadow-lg shadow-indigo-500/10">
               <Upload className="w-6 h-6" />
             </div>
             <div className="text-sm font-bold text-white">
@@ -153,7 +156,7 @@ export default function ResumeUploadModal({ job, onClose }) {
             <p className="text-xs text-slate-400">AI parses skills, education, dates, and cross-checks for timeline anomalies.</p>
           </div>
           {isScanning && (
-            <div className="absolute inset-0 bg-indigo-950/80 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center space-y-3 z-10">
+            <div className="absolute inset-0 bg-[#06080E]/90 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center space-y-3 z-20">
               <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-laser absolute" />
               <Bot className="w-8 h-8 text-cyan-400 animate-bounce" />
               <div className="text-xs font-bold text-white tracking-wider uppercase">AI Extracting Profile & Matching Criteria...</div>
@@ -163,9 +166,9 @@ export default function ResumeUploadModal({ job, onClose }) {
 
         {/* Scan Result */}
         {scanResult && (
-          <div className="mt-4 p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-sm">
+          <div className="mt-4 p-4 rounded-2xl bg-[#06080E] border border-white/[0.08] flex items-center justify-between shadow-md">
+            <div className="flex items-center space-x-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-sm shadow-sm">
                 {scanResult.matchScore}%
               </div>
               <div>
@@ -177,7 +180,7 @@ export default function ResumeUploadModal({ job, onClose }) {
               </div>
             </div>
             {scanResult.fraudFlags.length > 0 && (
-              <span className="text-xs text-rose-400 bg-rose-950/60 px-2.5 py-1 rounded-full border border-rose-800/60 flex items-center space-x-1">
+              <span className="text-xs text-rose-400 bg-rose-950/60 px-3 py-1.5 rounded-full border border-rose-800/60 flex items-center space-x-1.5 shadow-sm">
                 <AlertTriangle className="w-3.5 h-3.5" />
                 <span>{scanResult.fraudFlags.length} Flag{scanResult.fraudFlags.length > 1 ? 's' : ''} Detected</span>
               </span>
@@ -198,13 +201,13 @@ export default function ResumeUploadModal({ job, onClose }) {
             <div key={label} className={span ? `sm:col-span-${span}` : ''}>
               <label className="block text-slate-400 font-semibold mb-1">{label}</label>
               <input type={type} value={val} onChange={e => set(e.target.value)} placeholder={ph}
-                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition" />
+                className="w-full px-3.5 py-2.5 bg-[#06080E] border border-slate-700/80 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition shadow-inner" />
             </div>
           ))}
         </div>
 
         {/* Actions */}
-        <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
+        <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-between">
           <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition">
             Cancel
           </button>
