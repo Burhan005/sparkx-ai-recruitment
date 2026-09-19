@@ -54,9 +54,10 @@ def create_ics_calendar_event(
     start_dt: Optional[datetime] = None,
     candidate_name: str = "Candidate",
     candidate_email: str = "",
-    organizer_email: str = ""
+    organizer_email: str = "",
+    meet_url: str = ""
 ) -> str:
-    """Generate RFC 5545 compliant iCalendar (.ics) meeting invite."""
+    """Generate RFC 5545 compliant iCalendar (.ics) meeting invite with Google Meet conference metadata."""
     if not start_dt:
         start_dt = datetime.utcnow() + timedelta(days=1, hours=2)
     end_dt = start_dt + timedelta(minutes=45)
@@ -66,6 +67,8 @@ def create_ics_calendar_event(
     dtend = end_dt.strftime("%Y%m%dT%H%M%SZ")
 
     clean_desc = description.replace("\r\n", "\\n").replace("\n", "\\n")
+    location_str = meet_url or "http://localhost:3000 (SparkX AI Video Interview Room)"
+    conf_lines = f"X-GOOGLE-CONFERENCE:{meet_url}\r\nCONFERENCE;VALUE=URI:{meet_url}\r\n" if meet_url else ""
 
     ics = (
         "BEGIN:VCALENDAR\r\n"
@@ -80,7 +83,8 @@ def create_ics_calendar_event(
         f"DTEND:{dtend}\r\n"
         f"SUMMARY:{summary}\r\n"
         f"DESCRIPTION:{clean_desc}\r\n"
-        "LOCATION:http://localhost:3000 (SparkX AI Video Interview Room)\r\n"
+        f"LOCATION:{location_str}\r\n"
+        f"{conf_lines}"
         "STATUS:CONFIRMED\r\n"
         f"ORGANIZER;CN=SparkX AI Recruitment:mailto:{organizer_email or 'no-reply@sparkx.ai'}\r\n"
         f"ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN={candidate_name}:mailto:{candidate_email}\r\n"

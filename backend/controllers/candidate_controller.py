@@ -100,31 +100,36 @@ class CandidateController:
         notes_clean = payload.notes.strip() if payload.notes else ""
         notes_line = f"\n• Recruiter Notes: {notes_clean}" if notes_clean else ""
 
+        # Generate Google Meet conference link
+        meet_code = f"spk-{candidate.id[-4:]}-rec"
+        meet_url = f"https://meet.google.com/{meet_code}"
+
         subject = f"[SPARKX CONFIRMED] AI Video Interview: {job_title}"
         body = (
             f"Dear {candidate.name},\n\n"
             f"Your AI Video Interview for the position of {job_title} has been officially confirmed!\n\n"
             f"INTERVIEW DETAILS:\n"
             f"• Position: {job_title}\n"
-            f"• Evaluated Competencies: {skills_str}\n"
-            f"• Scheduled Time: {scheduled_slot}{notes_line}\n"
-            f"• Candidate Portal URL: http://localhost:3000\n\n"
+            f"• Assessed Competencies: {skills_str}\n"
+            f"• Scheduled Slot: {scheduled_slot}{notes_line}\n"
+            f"• Google Meet Video Call: {meet_url}\n"
+            f"• SparkX AI Candidate Portal: http://localhost:3000\n\n"
             f"HOW TO JOIN:\n"
-            f"1. Log in to your SparkX Candidate Portal at http://localhost:3000.\n"
-            f"2. Navigate to 'AI Interview Room' at your confirmed time.\n"
+            f"1. To join via Google Meet: Click {meet_url} at your scheduled time.\n"
+            f"2. To join via SparkX AI Portal: Log in at http://localhost:3000 and enter 'AI Interview Room'.\n"
             f"3. Ensure your webcam, microphone, and a quiet environment are ready.\n\n"
             f"Best regards,\n"
             f"SparkX AI Recruitment Team"
         )
 
         html = f"""
-        <div style="font-family: Arial, sans-serif; background-color: #070A12; color: #FFFFFF; padding: 32px; border-radius: 16px; max-width: 520px; margin: 0 auto; border: 1px solid #1e293b;">
+        <div style="font-family: Arial, sans-serif; background-color: #070A12; color: #FFFFFF; padding: 32px; border-radius: 16px; max-width: 540px; margin: 0 auto; border: 1px solid #1e293b;">
           <div style="margin-bottom: 20px;">
             <span style="font-size: 20px; font-weight: 800; color: #818cf8;">SparkX AI Recruitment</span>
           </div>
           <h2 style="color: #ffffff; margin-top: 0; font-size: 22px;">AI Video Interview Confirmed</h2>
           <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Hello <strong>{candidate.name}</strong>,</p>
-          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Your AI Video Interview for <strong>{job_title}</strong> has been officially confirmed.</p>
+          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Your interview for <strong>{job_title}</strong> has been officially confirmed.</p>
           
           <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 20px 0;">
             <div style="margin-bottom: 12px;">
@@ -142,12 +147,13 @@ class CandidateController:
             {f'<div style="margin-bottom: 8px;"><span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Recruiter Notes</span><div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">{notes_clean}</div></div>' if notes_clean else ''}
           </div>
 
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="http://localhost:3000" style="background: linear-gradient(135deg, #6366f1, #9333ea); color: #ffffff; padding: 12px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block;">Launch Candidate Portal</a>
+          <div style="display: flex; gap: 10px; margin: 24px 0; justify-content: center; flex-wrap: wrap;">
+            <a href="{meet_url}" style="background: linear-gradient(135deg, #1a73e8, #0d47a1); color: #ffffff; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">📹 Join Google Meet</a>
+            <a href="http://localhost:3000" style="background: linear-gradient(135deg, #6366f1, #9333ea); color: #ffffff; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">⚡ Launch SparkX Portal</a>
           </div>
 
           <p style="color: #94a3b8; font-size: 12px; line-height: 1.5;">
-            <strong>Instructions:</strong> Please log in at your scheduled time and ensure your camera and microphone permissions are enabled.
+            <strong>Preparation:</strong> You can join via Google Meet or directly through the SparkX AI Portal. Ensure camera and microphone permissions are enabled.
           </p>
           <hr style="border: none; border-top: 1px solid #1e293b; margin: 24px 0;" />
           <p style="color: #64748b; font-size: 11px; text-align: center;">SparkX AI Recruitment Intelligence Platform</p>
@@ -167,17 +173,18 @@ class CandidateController:
         logs.append(email_event)
         candidate.email_logs = logs
 
-        # Generate automatic iCalendar (.ics) meeting invite for Google Calendar / Outlook
+        # Generate automatic iCalendar (.ics) meeting invite with Google Meet integration
         start_dt = parse_slot_to_datetime(scheduled_slot)
         organizer = os.environ.get("SMTP_FROM_EMAIL", "bkapasi472@rku.ac.in")
         ics_data = create_ics_calendar_event(
             event_id=candidate.id,
             summary=f"SparkX AI Video Interview: {job_title}",
-            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nPortal URL: http://localhost:3000\n{notes_line}",
+            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nGoogle Meet Call: {meet_url}\nPortal URL: http://localhost:3000\n{notes_line}",
             start_dt=start_dt,
             candidate_name=candidate.name,
             candidate_email=candidate.email,
-            organizer_email=organizer
+            organizer_email=organizer,
+            meet_url=meet_url
         )
 
         # Dispatch live SMTP email with plaintext + HTML + automatic Meeting Invite (.ics)
@@ -202,6 +209,8 @@ class CandidateController:
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
         job_title = candidate.job.title if candidate.job else "Open Role"
         scheduled_slot = candidate.interview_scheduled_at or "Upcoming Slot"
+        meet_code = f"spk-{candidate.id[-4:]}-rec"
+        meet_url = f"https://meet.google.com/{meet_code}"
 
         if payload.template_type == "interview_invitation":
             subject = f"[SPARKX INTERVIEW] Invitation for {job_title}"
@@ -209,8 +218,9 @@ class CandidateController:
                 f"Dear {candidate.name},\n\n"
                 f"You are invited to an AI Video Interview for the position of {job_title} at SparkX AI.\n\n"
                 f"• Scheduled Slot: {scheduled_slot}\n"
-                f"• Portal URL: http://localhost:3000\n\n"
-                f"{payload.custom_message or 'Please log in to your candidate portal at the scheduled time.'}\n\n"
+                f"• Google Meet Link: {meet_url}\n"
+                f"• SparkX Portal URL: http://localhost:3000\n\n"
+                f"{payload.custom_message or 'Please join at the scheduled time using the link above.'}\n\n"
                 f"Best regards,\nSparkX AI Recruitment Team"
             )
         elif payload.template_type == "interview_reminder":
@@ -219,7 +229,8 @@ class CandidateController:
                 f"Dear {candidate.name},\n\n"
                 f"This is a reminder for your upcoming AI Video Interview for {job_title}.\n\n"
                 f"• Scheduled Time: {scheduled_slot}\n"
-                f"• Portal URL: http://localhost:3000\n\n"
+                f"• Google Meet Link: {meet_url}\n"
+                f"• SparkX Portal URL: http://localhost:3000\n\n"
                 f"{payload.custom_message or 'Please ensure your camera and microphone are ready before joining.'}\n\n"
                 f"Best regards,\nSparkX AI Recruitment Team"
             )
@@ -229,8 +240,19 @@ class CandidateController:
                 f"Dear {candidate.name},\n\n"
                 f"Congratulations! We are delighted to officially offer you the position of {job_title} at SparkX AI.\n\n"
                 f"{payload.custom_message or 'Our recruitment team was highly impressed with your interview performance and technical competencies.'}\n\n"
-                f"Please log in to your candidate portal at http://localhost:3000 to view your dossier.\n\n"
-                f"Warm regards,\nSparkX AI Talent Acquisition"
+                f"Please log in to your candidate portal at http://localhost:3000 to view your formal offer details.\n\n"
+                f"Warmest regards,\nSparkX AI Talent Acquisition"
+            )
+        elif payload.template_type == "rejection_notice":
+            subject = f"[SPARKX NOTICE] Update on your application for {job_title}"
+            body = (
+                f"Dear {candidate.name},\n\n"
+                f"Thank you for your interest in the position of {job_title} at SparkX AI and for taking the time to participate in our recruitment assessment.\n\n"
+                f"After careful consideration of all applications, we regret to inform you that we will not be moving forward with your candidacy for this position at this time.\n\n"
+                f"{payload.custom_message or 'Our hiring team reviewed your qualifications thoroughly; however, we have chosen to advance candidates whose immediate background more directly aligns with the specific requirements of this opening.'}\n\n"
+                f"We genuinely appreciate your time, effort, and interest in SparkX AI. We will keep your resume on file for future opportunities that match your expertise.\n\n"
+                f"We wish you the very best in your professional endeavors.\n\n"
+                f"Sincerely,\nSparkX AI Talent Acquisition Team"
             )
         else:
             subject = f"[SPARKX UPDATE] Application Status for {job_title}"
@@ -241,11 +263,24 @@ class CandidateController:
                 f"Best regards,\nSparkX AI Recruitment Team"
             )
 
+        # Status badge for HTML card
+        status_badge_color = "#4f46e5"
+        status_badge_text = "Application Update"
+        if payload.template_type == "offer_letter":
+            status_badge_color = "#059669"
+            status_badge_text = "Official Offer"
+        elif payload.template_type == "rejection_notice":
+            status_badge_color = "#e11d48"
+            status_badge_text = "Application Decision"
+
         html = f"""
         <div style="font-family: Arial, sans-serif; background-color: #070A12; color: #FFFFFF; padding: 32px; border-radius: 16px; max-width: 520px; margin: 0 auto; border: 1px solid #1e293b;">
-          <h2 style="color: #818cf8; margin-top: 0; font-size: 20px;">SparkX AI Recruitment Notification</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <span style="font-size: 18px; font-weight: 800; color: #818cf8;">SparkX AI Recruitment</span>
+            <span style="background-color: {status_badge_color}; color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: bold;">{status_badge_text}</span>
+          </div>
           <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Hello <strong>{candidate.name}</strong>,</p>
-          <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 18px; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.6; white-space: pre-line;">
+          <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.7; white-space: pre-line;">
             {body}
           </div>
           <div style="text-align: center; margin: 24px 0;">
