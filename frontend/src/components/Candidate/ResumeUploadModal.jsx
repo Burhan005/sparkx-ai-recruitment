@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 export default function ResumeUploadModal({ job, onClose }) {
-  const { applyForJob, setCurrentView, switchRole } = useRecruitment();
+  const { applyForJob, setCurrentView } = useRecruitment();
 
   // ── Form state (empty defaults — not hardcoded data) ────────────────────────
   const [candidateName,  setCandidateName]  = useState('');
@@ -149,47 +149,39 @@ export default function ResumeUploadModal({ job, onClose }) {
                 <div className="flex items-start space-x-2.5">
                   <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</div>
                   <div>
-                    <strong className="text-white">Recruiter Screening (Active):</strong>
-                    <p className="text-slate-400 mt-0.5">Your profile is now live in the Recruiter Command Center under the <em>Screening</em> column.</p>
+                    <strong className="text-white">Application Screening:</strong>
+                    <p className="text-slate-400 mt-0.5">Your application has been received and is currently in the recruiter screening pipeline.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
                   <div className="w-5 h-5 rounded-full bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
                   <div>
                     <strong className="text-slate-300">Interview Scheduling:</strong>
-                    <p className="text-slate-400 mt-0.5">The recruiter will review your resume and confirm an interview slot (sending Google Meet credentials to your email).</p>
+                    <p className="text-slate-400 mt-0.5">When the recruiter schedules your interview, you will receive an email invitation with the Google Meet link and time slot.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
                   <div className="w-5 h-5 rounded-full bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
                   <div>
                     <strong className="text-slate-300">Live AI Assessment:</strong>
-                    <p className="text-slate-400 mt-0.5">Once scheduled by the recruiter, the AI Interview Room and Code Sandbox unlock automatically.</p>
+                    <p className="text-slate-400 mt-0.5">Once scheduled by the recruiter, you can enter the AI Interview Room and complete your assessment.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            {/* Action Button */}
+            <div className="flex items-center justify-center pt-2">
               <button
                 type="button"
                 onClick={() => {
                   onClose();
-                  switchRole('recruiter');
+                  setCurrentView('candidate');
                 }}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
               >
-                <span>Switch to Recruiter Dashboard to Schedule</span>
+                <span>Return to Job Openings</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition"
-              >
-                Done
               </button>
             </div>
           </div>

@@ -63,11 +63,16 @@ export function RecruitmentProvider({ children }) {
   }, []);
 
   const switchRole = useCallback((newRole) => {
+    // Production RBAC: Candidate accounts cannot arbitrarily elevate to recruiter
+    if (currentUser?.role === 'candidate' && newRole === 'recruiter') {
+      toastBus.emit('Access Denied: Recruiter Hub requires authorized recruiter credentials.', 'error');
+      return;
+    }
     setUserRole(newRole);
     localStorage.setItem('sparkx_user_role', newRole);
     setCurrentView(newRole === 'candidate' ? 'candidate' : 'recruiter');
     toastBus.emit(`Switched to ${newRole === 'recruiter' ? 'Admin' : 'Candidate'} mode`, 'info');
-  }, []);
+  }, [currentUser]);
 
   // ── Core Data State — starts EMPTY, filled by backend ─────────────────────
   const [jobs,       setJobs]       = useState([]);  // ← NEVER has hardcoded data

@@ -159,14 +159,14 @@ export default function SkillGapReport() {
           onClick={() => setCurrentView('candidate')}
           className="px-5 py-2.5 rounded-xl bg-[#06080E] border border-white/[0.08] text-xs font-semibold text-slate-300 hover:text-white transition shadow-sm"
         >
-          Return to Job Catalog
+          Return to Job Openings
         </button>
 
         <button
-          onClick={() => setCurrentView('recruiter')}
+          onClick={() => setCurrentView('assessment')}
           className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition flex items-center space-x-2"
         >
-          <span>View in HR Recruiter Dashboard</span>
+          <span>Practice Technical Assessment</span>
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>

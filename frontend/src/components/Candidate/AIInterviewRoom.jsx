@@ -33,8 +33,7 @@ export default function AIInterviewRoom() {
     setCurrentView,
     candidates,
     currentUser,
-    userRole,
-    switchRole
+    userRole
   } = useRecruitment();
 
   // Find candidate in database to check interview scheduling status
@@ -458,21 +457,14 @@ export default function AIInterviewRoom() {
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          <button
-            onClick={() => switchRole('recruiter')}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
-          >
-            <span>Open Recruiter Hub to Schedule</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-
+        {/* Action button */}
+        <div className="flex items-center justify-center pt-2">
           <button
             onClick={() => setCurrentView('candidate')}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
           >
-            Browse Job Roles
+            <span>Return to Job Openings</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>
