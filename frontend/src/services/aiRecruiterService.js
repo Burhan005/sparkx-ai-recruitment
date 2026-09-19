@@ -1,12 +1,10 @@
-// AI Recruiter Service: Adaptive Questioning, Scoring, & Gap Analysis
+﻿// AI Recruiter Service: Dynamic Evaluation & Adaptive Questioning
+// NO HARDCODED SCORES — every score is computed live from the candidate''s actual text.
 
-/**
- * Dynamically generate tailored interview questions based on job requirements.
- */
 export function generateQuestionsForRole(roleTitle, skills, experienceYears) {
-  const skillList = Array.isArray(skills) ? skills : skills.split(',').map(s => s.trim());
-  const primarySkill = skillList[0] || "core domain";
-  const secondarySkill = skillList[1] || "system design";
+  const skillList = Array.isArray(skills) ? skills : (skills || '').split(',').map(s => s.trim()).filter(Boolean);
+  const primarySkill = skillList[0] || "System Architecture";
+  const secondarySkill = skillList[1] || "Database Optimization";
 
   return [
     {
@@ -36,50 +34,57 @@ export function generateQuestionsForRole(roleTitle, skills, experienceYears) {
   ];
 }
 
-/**
- * Adaptive Cross-Questioning: Analyzes candidate response and decides if an adaptive follow-up is needed.
- */
 export function evaluateAnswerAndAdapt(question, answer) {
   if (!answer || answer.trim().length === 0) {
     return {
       needsFollowUp: true,
       followUpQuestion: "We didn't catch that clearly. Could you elaborate on your experience or give a specific example?",
-      quality: "vague",
+      quality: "empty",
       feedback: "Answer was empty or too brief to evaluate."
     };
   }
 
-  const wordCount = answer.trim().split(/\s+/).length;
+  const words = answer.trim().split(/\s+/);
+  const wordCount = words.length;
   const answerLower = answer.toLowerCase();
+
+  // Detect non-words / gibberish (e.g. 'asdfghj' or repetitive chars)
+  const isGibberish = wordCount < 3 && answer.trim().length > 15 || !/[aeiouAEIOU]/.test(answer);
+
+  if (isGibberish) {
+    return {
+      needsFollowUp: true,
+      followUpQuestion: "Your answer appears unclear or off-topic. Could you provide a concrete technical explanation?",
+      quality: "gibberish",
+      feedback: "Unclear or random input detected. Prompting for technical clarity."
+    };
+  }
   
   // Count matching ideal keywords
-  const matchedKeywords = (question.idealKeywords || []).filter(kw => 
+  const matchedKeywords = (question?.idealKeywords || []).filter(kw => 
     answerLower.includes(kw.toLowerCase())
   );
 
-  // 1. If very brief or missing technical grounding: Trigger Vague Follow-Up
-  if (wordCount < 20 || (matchedKeywords.length === 0 && wordCount < 35)) {
+  if (wordCount < 15 || (matchedKeywords.length === 0 && wordCount < 30)) {
     return {
       needsFollowUp: true,
-      followUpQuestion: question.followUpVague || "Could you provide a concrete production example or technical metric that illustrates your answer?",
+      followUpQuestion: question?.followUpVague || "Could you provide a concrete production example or technical metric that illustrates your answer?",
       quality: "vague",
       matchedKeywords,
-      feedback: "Candidate's response was somewhat generic. Prompting for practical elaboration to test actual understanding."
+      feedback: "Answer lacked specific architectural depth. Probing follow-up triggered."
     };
   }
 
-  // 2. If candidate gives a deep, confident answer with high keyword presence: Challenge with Expert Drill-Down
-  if (matchedKeywords.length >= 3 && wordCount >= 30) {
+  if (matchedKeywords.length >= 2 && wordCount >= 25) {
     return {
       needsFollowUp: true,
-      followUpQuestion: question.followUpExpert || "That's a solid architectural choice. How do you safeguard this under extreme edge cases or network degradation?",
+      followUpQuestion: question?.followUpExpert || "That's a solid architectural choice. How do you safeguard this under extreme edge cases or network degradation?",
       quality: "advanced",
       matchedKeywords,
-      feedback: "Strong technical depth shown. Initiating scenario-based stress test to verify depth of expertise."
+      feedback: "Strong technical depth shown. Initiating scenario-based stress test."
     };
   }
 
-  // 3. Sufficiently answered, proceed to next question
   return {
     needsFollowUp: false,
     quality: "solid",
@@ -88,9 +93,6 @@ export function evaluateAnswerAndAdapt(question, answer) {
   };
 }
 
-/**
- * Generate Comprehensive AI Scorecard & Skill Gap Analysis
- */
 export function generateCandidateEvaluation({
   job,
   candidateName,
@@ -100,67 +102,83 @@ export function generateCandidateEvaluation({
   integrityEvents = [],
   codeScore = 90
 }) {
-  const totalQuestions = transcript.length;
-  let wordCountSum = 0;
-  let totalKeywordMatches = 0;
+  const candidateEntries = transcript.filter(t => t.speaker === 'candidate');
+  const requiredSkills = job?.requiredSkills || [];
 
-  transcript.forEach(item => {
-    if (item.speaker === 'candidate') {
-      const words = item.text.split(/\s+/).length;
-      wordCountSum += words;
-    }
-  });
+  let technicalScore = 30;
+  let communicationScore = 40;
 
-  // Calculate scores (0-100)
-  const avgWordsPerAnswer = totalQuestions > 0 ? wordCountSum / Math.max(1, totalQuestions / 2) : 40;
-  const communicationScore = Math.min(98, Math.max(60, Math.round(70 + (avgWordsPerAnswer > 30 ? 20 : 10))));
-  const technicalScore = Math.min(99, Math.max(50, Math.round((codeScore * 0.4) + (85 * 0.6))));
-  const problemSolvingScore = Math.min(95, Math.max(55, Math.round(technicalScore * 0.9 + 5)));
-  const jobSkillsScore = Math.round((technicalScore * 0.45) + (communicationScore * 0.25) + (problemSolvingScore * 0.3));
+  if (candidateEntries.length > 0) {
+    let totalScore = 0;
+    let totalWords = 0;
+
+    candidateEntries.forEach(entry => {
+      const text = entry.text || '';
+      const words = text.trim().split(/\s+/).filter(Boolean);
+      totalWords += words.length;
+
+      // Check text quality & keyword match
+      const lower = text.toLowerCase();
+      const matched = requiredSkills.filter(s => lower.includes(s.toLowerCase()));
+      const isGibberish = (words.length < 3 && text.length > 15) || !/[aeiouAEIOU]/.test(text);
+
+      if (isGibberish) {
+        totalScore += 15;
+      } else if (words.length < 10) {
+        totalScore += 30 + matched.length * 10;
+      } else if (words.length < 25) {
+        totalScore += 50 + matched.length * 15;
+      } else {
+        totalScore += 70 + Math.min(25, matched.length * 10);
+      }
+    });
+
+    technicalScore = Math.min(98, Math.max(15, Math.round(totalScore / candidateEntries.length)));
+    communicationScore = Math.min(98, Math.max(25, Math.round(30 + Math.min(60, totalWords * 1.2))));
+  }
+
+  const problemSolvingScore = Math.min(98, Math.max(20, Math.round((technicalScore * 0.7) + (codeScore * 0.3))));
+  const jobSkillsScore = Math.round((technicalScore * 0.5) + (codeScore * 0.3) + (communicationScore * 0.2));
   
-  // Aggregate overall fit
   const overall = Math.round(
-    (jobSkillsScore * 0.4) + 
-    (technicalScore * 0.3) + 
+    (jobSkillsScore * 0.35) + 
+    (technicalScore * 0.35) + 
     (communicationScore * 0.15) + 
     (integrityScore * 0.15)
   );
 
   // Skill Gap Analysis
-  const requiredSkills = job.requiredSkills || [];
-  const candidateSkillsLower = resumeSkills.map(s => s.toLowerCase());
-  
+  const candidateSkillsLower = (resumeSkills || []).map(s => s.toLowerCase());
+  const transcriptTextLower = candidateEntries.map(t => t.text || '').join(' ').toLowerCase();
+
   const strongSkills = [];
   const missingSkills = [];
 
   requiredSkills.forEach(skill => {
-    if (candidateSkillsLower.some(cs => cs.includes(skill.toLowerCase()) || skill.toLowerCase().includes(cs))) {
+    const sLower = skill.toLowerCase();
+    if (candidateSkillsLower.some(cs => cs.includes(sLower) || sLower.includes(cs)) || transcriptTextLower.includes(sLower)) {
       strongSkills.push(skill);
     } else {
       missingSkills.push(skill);
     }
   });
 
-  // Recommendations
   const recommendations = [];
   if (missingSkills.length > 0) {
     missingSkills.forEach(skill => {
-      recommendations.push(`Targeted upskilling in ${skill}: Hands-on module & practical architectural design.`);
+      recommendations.push(`Targeted upskilling in ${skill}: Complete hands-on module and architecture sandbox.`);
     });
   } else {
-    recommendations.push("Ready for high-impact production leadership; focus on cross-functional system scaling.");
-    recommendations.push("Mentorship capability for junior team members in modern engineering workflows.");
+    recommendations.push("Demonstrated comprehensive coverage across all role competencies.");
   }
 
-  // Hire-and-develop readiness assessment
   let readiness = "Immediately Job-Ready";
-  if (missingSkills.length >= 3 || overall < 70) {
+  if (overall < 60 || missingSkills.length >= 3) {
     readiness = "Requires Core Upskilling (Skill Gap > 40%)";
-  } else if (missingSkills.length > 0 || overall < 85) {
+  } else if (overall < 80 || missingSkills.length > 0) {
     readiness = "Hire-and-Develop (Trainable with 30-day onboarding)";
   }
 
-  // Integrity Risk
   let integrityRisk = "Low";
   if (integrityScore < 60 || integrityEvents.some(e => e.type === "MULTIPLE_FACES")) {
     integrityRisk = "High";
@@ -168,14 +186,13 @@ export function generateCandidateEvaluation({
     integrityRisk = "Medium";
   }
 
-  // Evidence Snippets for HR
-  const evidenceSnippets = transcript
-    .filter(t => t.speaker === 'candidate' && t.text.length > 20)
+  const evidenceSnippets = candidateEntries
+    .filter(t => (t.text || '').length > 10)
     .slice(0, 3)
     .map(t => ({
       question: t.relatedQuestion || "Assessment Dialogue",
       answer: t.text,
-      aiInsight: "Candidate demonstrated structural understanding under direct questioning."
+      aiInsight: `Analyzed dynamically — word count: ${(t.text || '').split(/\s+/).length}.`
     }));
 
   return {
@@ -188,7 +205,7 @@ export function generateCandidateEvaluation({
     },
     integrityScore,
     integrityRisk,
-    interviewSummary: `Candidate completed the automated AI interview and live skill assessment. Demonstrated strong fluency with an overall score of ${overall}/100. Integrity rating evaluated at ${integrityRisk} risk.`,
+    interviewSummary: `Candidate completed the automated AI interview and assessment. Overall competency scored dynamically at ${overall}/100 with ${integrityScore}/100 integrity rating.`,
     evidenceSnippets,
     skillGaps: {
       strongSkills,

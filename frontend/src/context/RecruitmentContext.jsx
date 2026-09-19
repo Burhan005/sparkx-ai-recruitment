@@ -242,15 +242,10 @@ export function RecruitmentProvider({ children }) {
     const targetCandidate = candidates.find(c => c.id === candId);
     const targetJob = jobs.find(j => j.id === (targetCandidate?.jobId || currentInterviewSession.jobId)) || jobs[0];
 
-    const evaluation = generateCandidateEvaluation({
-      job: targetJob,
-      candidateName: targetCandidate?.name || currentInterviewSession.candidateName,
-      resumeSkills:  targetCandidate?.skills || ['React', 'JavaScript', 'Python'],
-      transcript, integrityScore, integrityEvents, codeScore,
-    });
-
+    // Authoritative dynamic evaluation from FastAPI backend ai_engine
+    let evaluation = null;
     if (candId) {
-      api.evaluateInterview({
+      evaluation = await api.evaluateInterview({
         candidate_id:      candId,
         job_id:            targetJob?.id,
         transcript,
@@ -260,12 +255,22 @@ export function RecruitmentProvider({ children }) {
       });
     }
 
+    // Fallback to dynamic text analysis if backend call fails
+    if (!evaluation) {
+      evaluation = generateCandidateEvaluation({
+        job: targetJob,
+        candidateName: targetCandidate?.name || currentInterviewSession.candidateName,
+        resumeSkills:  targetCandidate?.skills || ['React', 'JavaScript', 'Python'],
+        transcript, integrityScore, integrityEvents, codeScore,
+      });
+    }
+
     const updatedData = {
       ...evaluation,
       status: 'Evaluated',
       integrityEvents,
       integrityScore,
-      finalDecision: evaluation.scores.overall >= 80 && evaluation.integrityRisk === 'Low' ? 'Shortlisted' : 'Under Review',
+      finalDecision: (evaluation.scores?.overall || 0) >= 80 && (evaluation.integrityRisk || 'Low') === 'Low' ? 'Shortlisted' : 'Under Review',
     };
 
     if (candId) {
