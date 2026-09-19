@@ -1,29 +1,35 @@
-﻿import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { INITIAL_JOBS, INITIAL_CANDIDATES } from '../data/mockData';
+﻿/**
+ * RecruitmentContext.jsx
+ * Single source of truth for all app state.
+ * ALL data is fetched from the FastAPI backend — zero static/mock data.
+ */
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { generateCandidateEvaluation } from '../services/aiRecruiterService';
 import { api } from '../services/api';
 
 const RecruitmentContext = createContext();
 
-// ─── Mini toast event bus (avoids circular deps with ToastProvider) ───────────
+// ─── Mini event bus for toasts (avoids circular deps) ────────────────────────
 const toastBus = { listeners: [], emit(msg, type) { this.listeners.forEach(fn => fn(msg, type)); } };
-export const onContextToast = (fn) => { toastBus.listeners.push(fn); return () => { toastBus.listeners = toastBus.listeners.filter(l => l !== fn); }; };
+export const onContextToast = (fn) => {
+  toastBus.listeners.push(fn);
+  return () => { toastBus.listeners = toastBus.listeners.filter(l => l !== fn); };
+};
 
 export function RecruitmentProvider({ children }) {
 
   // ── Theme ──────────────────────────────────────────────────────────────────
   const [theme, setTheme] = useState(() => localStorage.getItem('sparkx_theme') || 'dark');
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle('dark', theme === 'dark');
-    root.classList.toggle('light', theme !== 'dark');
+    document.documentElement.classList.toggle('dark',  theme === 'dark');
+    document.documentElement.classList.toggle('light', theme !== 'dark');
     localStorage.setItem('sparkx_theme', theme);
   }, [theme]);
   const toggleTheme = () => setTheme(p => p === 'dark' ? 'light' : 'dark');
 
-  // ── Auth / Role ────────────────────────────────────────────────────────────
+  // ── Auth ───────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('sparkx_logged_in'));
-  const [userRole, setUserRole] = useState(() => localStorage.getItem('sparkx_user_role') || 'recruiter');
+  const [userRole,   setUserRole]   = useState(() => localStorage.getItem('sparkx_user_role') || 'recruiter');
 
   const login = useCallback((role) => {
     setUserRole(role);
@@ -47,17 +53,18 @@ export function RecruitmentProvider({ children }) {
     toastBus.emit(`Switched to ${newRole === 'recruiter' ? 'Admin' : 'Candidate'} mode`, 'info');
   }, []);
 
-  // ── Data & Loading States ──────────────────────────────────────────────────
-  const [jobs, setJobs] = useState([]);
-  const [candidates, setCandidates] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);   // true on first load
+  // ── Core Data State — starts EMPTY, filled by backend ─────────────────────
+  const [jobs,       setJobs]       = useState([]);  // ← NEVER has hardcoded data
+  const [candidates, setCandidates] = useState([]);  // ← NEVER has hardcoded data
+  const [activeJobId,   setActiveJobId]   = useState(null);
+  const [isLoading,     setIsLoading]     = useState(true);
   const [isDbConnected, setIsDbConnected] = useState(false);
-  const [currentView, setCurrentView] = useState(() => {
+  const [dbError,       setDbError]       = useState(null); // error message when backend offline
+  const [currentView,   setCurrentView]   = useState(() => {
     const r = localStorage.getItem('sparkx_user_role') || 'recruiter';
     return r === 'candidate' ? 'candidate' : 'recruiter';
   });
   const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [activeJobId, setActiveJobId] = useState(null);
   const [currentInterviewSession, setCurrentInterviewSession] = useState({
     candidateId: null,
     candidateName: 'You (Live Candidate)',
@@ -72,39 +79,35 @@ export function RecruitmentProvider({ children }) {
   // ── DB Sync ────────────────────────────────────────────────────────────────
   const syncWithDatabase = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
+    setDbError(null);
     try {
       const health = await api.checkHealth();
-      if (health) {
-        setIsDbConnected(true);
-        const [dbJobs, dbCandidates] = await Promise.all([api.getJobs(), api.getCandidates()]);
-        if (dbJobs && dbJobs.length > 0) {
-          setJobs(dbJobs);
-          setActiveJobId(prev => prev || dbJobs[0]?.id || null);
+      if (!health) throw new Error('Cannot reach backend at http://localhost:8000');
+
+      setIsDbConnected(true);
+      const [dbJobs, dbCandidates] = await Promise.all([api.getJobs(), api.getCandidates()]);
+
+      const safeJobs  = (dbJobs       && dbJobs.length       > 0) ? dbJobs       : [];
+      const safeCands = (dbCandidates && dbCandidates.length  > 0) ? dbCandidates : [];
+
+      setJobs(safeJobs);
+      setCandidates(safeCands);
+      setActiveJobId(prev => prev || safeJobs[0]?.id || null);
+
+      if (!silent) {
+        if (safeJobs.length === 0) {
+          toastBus.emit('DB connected but empty — run: python backend/seed.py', 'warning');
         } else {
-          // Backend up but empty — load initial seed data and show fallback
-          setJobs(INITIAL_JOBS);
-          setActiveJobId(INITIAL_JOBS[0]?.id || null);
+          toastBus.emit(`Live DB synced — ${safeJobs.length} jobs, ${safeCands.length} candidates`, 'success');
         }
-        if (dbCandidates && dbCandidates.length > 0) {
-          setCandidates(dbCandidates);
-        } else {
-          setCandidates(INITIAL_CANDIDATES);
-        }
-        if (!silent) toastBus.emit('Live database connected — data synced', 'success');
-      } else {
-        throw new Error('Backend offline');
       }
-    } catch {
+    } catch (err) {
       setIsDbConnected(false);
-      // Fallback: localStorage or mock data
-      const savedJobs = localStorage.getItem('sparkx_jobs');
-      const savedCands = localStorage.getItem('sparkx_candidates');
-      const fallbackJobs = savedJobs ? JSON.parse(savedJobs) : INITIAL_JOBS;
-      const fallbackCands = savedCands ? JSON.parse(savedCands) : INITIAL_CANDIDATES;
-      setJobs(fallbackJobs);
-      setCandidates(fallbackCands);
-      setActiveJobId(prev => prev || fallbackJobs[0]?.id || null);
-      if (!silent) toastBus.emit('Backend offline — showing cached data', 'warning');
+      setJobs([]);       // ← Clear data — show empty state, NOT fake data
+      setCandidates([]); // ← Clear data — show empty state, NOT fake data
+      const msg = `Backend offline: ${err.message}`;
+      setDbError(msg);
+      if (!silent) toastBus.emit('Backend offline — start: python -m uvicorn main:app --reload --port 8000', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -113,64 +116,67 @@ export function RecruitmentProvider({ children }) {
   // Initial load
   useEffect(() => { syncWithDatabase(false); }, [syncWithDatabase]);
 
-  // Sync on window focus (catches DBeaver / external edits)
+  // Sync on window focus (catches DBeaver / external DB edits)
   useEffect(() => {
-    const handleFocus = () => syncWithDatabase(true);
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    const handle = () => syncWithDatabase(true);
+    window.addEventListener('focus', handle);
+    return () => window.removeEventListener('focus', handle);
   }, [syncWithDatabase]);
 
-  // Polling every 30 seconds when db is connected
+  // Poll every 30s when connected
   const pollRef = useRef(null);
   useEffect(() => {
+    clearInterval(pollRef.current);
     if (isDbConnected) {
       pollRef.current = setInterval(() => syncWithDatabase(true), 30000);
     }
     return () => clearInterval(pollRef.current);
   }, [isDbConnected, syncWithDatabase]);
 
-  // Persist to localStorage whenever state changes
-  useEffect(() => { if (jobs.length > 0) localStorage.setItem('sparkx_jobs', JSON.stringify(jobs)); }, [jobs]);
-  useEffect(() => { if (candidates.length > 0) localStorage.setItem('sparkx_candidates', JSON.stringify(candidates)); }, [candidates]);
-
   // ── Recruiter Actions ──────────────────────────────────────────────────────
   const createJob = async (newJobData) => {
     const savedJob = await api.createJob(newJobData);
-    const newJob = savedJob || {
-      ...newJobData,
-      id: `job-${Date.now()}`,
-      status: 'Active',
-      applicantsCount: 0,
-    };
-    setJobs(prev => [newJob, ...prev.filter(j => j.id !== newJob.id)]);
-    setActiveJobId(newJob.id);
-    toastBus.emit(`Job "${newJob.title}" posted successfully!`, 'success');
-    return newJob;
+    if (!savedJob) {
+      toastBus.emit('Failed to create job — is the backend running?', 'error');
+      return null;
+    }
+    setJobs(prev => [savedJob, ...prev.filter(j => j.id !== savedJob.id)]);
+    setActiveJobId(savedJob.id);
+    toastBus.emit(`Job "${savedJob.title}" posted to database!`, 'success');
+    return savedJob;
   };
 
-  const updateCandidateStatus = (candidateId, newStatus, hrNotes = '') => {
-    api.updateCandidateStatus(candidateId, newStatus, hrNotes);
-    const update = { status: newStatus === 'Rejected' ? 'Rejected' : 'Evaluated', finalDecision: newStatus, hrNotes: hrNotes };
+  const updateCandidateStatus = async (candidateId, newStatus, hrNotes = '') => {
+    const result = await api.updateCandidateStatus(candidateId, newStatus, hrNotes);
+    const update = {
+      status:        newStatus === 'Rejected' ? 'Rejected' : 'Evaluated',
+      finalDecision: newStatus,
+      hrNotes:       hrNotes,
+    };
     setCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, ...update } : c));
-    if (selectedCandidate?.id === candidateId) setSelectedCandidate(prev => ({ ...prev, ...update }));
-    const emoji = newStatus === 'Shortlisted' ? '🎉' : newStatus === 'Rejected' ? '❌' : '📋';
-    toastBus.emit(`${emoji} Candidate ${newStatus} — decision saved to database`, newStatus === 'Rejected' ? 'warning' : 'success');
+    if (selectedCandidate?.id === candidateId) setSelectedCandidate(p => ({ ...p, ...update }));
+    const emoji = { Shortlisted: '🎉', Rejected: '❌', 'Under Review': '📋' }[newStatus] || '📋';
+    toastBus.emit(`${emoji} ${newStatus} — HR decision saved to database`, newStatus === 'Rejected' ? 'warning' : 'success');
   };
 
   // ── Candidate Actions ──────────────────────────────────────────────────────
   const applyForJob = async ({ jobId, name, email, phone, experienceYears, education, skills, resumeSummary, fraudFlags = [] }) => {
     const targetJob = jobs.find(j => j.id === jobId) || jobs[0];
-    const requiredSkills = targetJob?.requiredSkills || [];
+    if (!targetJob) {
+      toastBus.emit('No jobs found — is the backend running?', 'error');
+      return null;
+    }
+    // Client-side match preview score (backend recalculates authoritatively)
+    const reqSkills = targetJob.requiredSkills || [];
     const lowerSkills = skills.map(s => s.toLowerCase());
-    let matchCount = 0;
-    requiredSkills.forEach(req => { if (lowerSkills.some(s => s.includes(req.toLowerCase()) || req.toLowerCase().includes(s))) matchCount++; });
-    let matchPercentage = Math.round((matchCount / Math.max(1, requiredSkills.length)) * 70);
-    matchPercentage += Number(experienceYears) >= (targetJob?.minExperienceYears || 2) ? 25 : 10;
+    const matchCount = reqSkills.filter(req => lowerSkills.some(s => s.includes(req.toLowerCase()) || req.toLowerCase().includes(s))).length;
+    let matchPercentage = Math.round((matchCount / Math.max(1, reqSkills.length)) * 70);
+    matchPercentage += Number(experienceYears) >= (targetJob.minExperienceYears || 2) ? 25 : 10;
     matchPercentage = Math.min(99, Math.max(35, matchPercentage));
 
     const localCand = {
       id: `cand-${Date.now()}`,
-      jobId: targetJob?.id,
+      jobId: targetJob.id,
       name, email,
       phone: phone || '+91 98000 00000',
       appliedDate: new Date().toISOString().split('T')[0],
@@ -178,23 +184,24 @@ export function RecruitmentProvider({ children }) {
       matchScore: matchPercentage,
       experienceYears: Number(experienceYears),
       education, skills, resumeSummary, fraudFlags,
-      integrityScore: 100,
-      integrityRisk: 'Low',
-      integrityEvents: [],
+      integrityScore: 100, integrityRisk: 'Low', integrityEvents: [],
       scores: { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
       interviewSummary: 'Screening completed. Ready for Live AI Interview & Assessment.',
-      evidenceSnippets: [],
-      skillGaps: null,
-      hrNotes: '',
-      finalDecision: 'Pending Interview',
+      evidenceSnippets: [], skillGaps: null, hrNotes: '', finalDecision: 'Pending Interview',
     };
 
     const savedCand = await api.applyCandidate(localCand);
-    const newCandidate = savedCand || localCand;
+    const newCandidate = savedCand || localCand; // graceful fallback if backend saves fail
+
     setCandidates(prev => [newCandidate, ...prev.filter(c => c.id !== newCandidate.id)]);
-    setJobs(prev => prev.map(j => j.id === targetJob?.id ? { ...j, applicantsCount: (j.applicantsCount || 0) + 1 } : j));
-    setCurrentInterviewSession({ candidateId: newCandidate.id, candidateName: newCandidate.name, jobId: targetJob?.id, transcript: [], integrityScore: 100, integrityRisk: 'Low', integrityEvents: [], codeScore: 85 });
-    toastBus.emit(`Application submitted for "${targetJob?.title}" — match score: ${matchPercentage}%`, 'success');
+    setJobs(prev => prev.map(j => j.id === targetJob.id ? { ...j, applicantsCount: (j.applicantsCount || 0) + 1 } : j));
+    setCurrentInterviewSession({
+      candidateId: newCandidate.id,
+      candidateName: newCandidate.name,
+      jobId: targetJob.id,
+      transcript: [], integrityScore: 100, integrityRisk: 'Low', integrityEvents: [], codeScore: 85,
+    });
+    toastBus.emit(`Application submitted — match score: ${matchPercentage}%`, 'success');
     return newCandidate;
   };
 
@@ -202,21 +209,39 @@ export function RecruitmentProvider({ children }) {
     const candId = currentInterviewSession.candidateId;
     const targetCandidate = candidates.find(c => c.id === candId);
     const targetJob = jobs.find(j => j.id === (targetCandidate?.jobId || currentInterviewSession.jobId)) || jobs[0];
+
     const evaluation = generateCandidateEvaluation({
       job: targetJob,
-      candidateName: targetCandidate ? targetCandidate.name : currentInterviewSession.candidateName,
-      resumeSkills: targetCandidate ? targetCandidate.skills : ['React', 'JavaScript', 'Python'],
+      candidateName: targetCandidate?.name || currentInterviewSession.candidateName,
+      resumeSkills:  targetCandidate?.skills || ['React', 'JavaScript', 'Python'],
       transcript, integrityScore, integrityEvents, codeScore,
     });
+
     if (candId) {
-      api.evaluateInterview({ candidate_id: candId, job_id: targetJob?.id, transcript, integrity_score: integrityScore, integrity_events: integrityEvents, code_score: codeScore });
+      api.evaluateInterview({
+        candidate_id:      candId,
+        job_id:            targetJob?.id,
+        transcript,
+        integrity_score:   integrityScore,
+        integrity_events:  integrityEvents,
+        code_score:        codeScore,
+      });
     }
-    const updatedData = { ...evaluation, status: 'Evaluated', integrityEvents, integrityScore, finalDecision: evaluation.scores.overall >= 80 && evaluation.integrityRisk === 'Low' ? 'Shortlisted' : 'Under Review' };
+
+    const updatedData = {
+      ...evaluation,
+      status: 'Evaluated',
+      integrityEvents,
+      integrityScore,
+      finalDecision: evaluation.scores.overall >= 80 && evaluation.integrityRisk === 'Low' ? 'Shortlisted' : 'Under Review',
+    };
+
     if (candId) {
       setCandidates(prev => prev.map(c => c.id === candId ? { ...c, ...updatedData } : c));
       setSelectedCandidate({ ...targetCandidate, ...updatedData });
     }
-    toastBus.emit(`AI Interview complete — Overall Score: ${evaluation.scores.overall}/100`, 'success');
+
+    toastBus.emit(`Interview complete — Score: ${evaluation.scores.overall}/100`, 'success');
     return evaluation;
   };
 
@@ -227,7 +252,7 @@ export function RecruitmentProvider({ children }) {
       theme, toggleTheme,
       isLoggedIn, login, logout,
       userRole, switchRole,
-      isDbConnected, isLoading,
+      isDbConnected, isLoading, dbError,
       jobs, candidates,
       currentView, setCurrentView,
       selectedCandidate, setSelectedCandidate,

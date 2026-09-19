@@ -46,24 +46,26 @@ export default function AIInterviewRoom() {
   const [activeFollowUpPrompt, setActiveFollowUpPrompt] = useState('');
 
   // Proctoring telemetry
-  const [faceStatus, setFaceStatus] = useState('VERIFIED'); // 'VERIFIED' | 'NO_FACE' | 'MULTIPLE_FACES'
+  const [faceStatus, setFaceStatus] = useState('VERIFIED');
   const [integrityScore, setIntegrityScore] = useState(100);
   const [integrityEvents, setIntegrityEvents] = useState([]);
   const [riskLevel, setRiskLevel] = useState('Low');
   const [tabFocused, setTabFocused] = useState(true);
+
+  // Questions come 100% from the active job stored in DB
+  const questions = activeJob?.questions || [];
+  const currentQ = questions[currentQuestionIdx] || null;
 
   // Transcript
   const [transcript, setTranscript] = useState([
     {
       id: 'init-0',
       speaker: 'ai',
-      text: `Hello ${currentInterviewSession.candidateName || 'Candidate'}! Welcome to your SparkX AI interview for the ${activeJob.title} position. I will ask you role-specific questions and may ask adaptive follow-ups based on your depth. Let's begin!`,
+      text: `Hello ${currentInterviewSession.candidateName || 'Candidate'}! Welcome to your SparkX AI interview${activeJob ? ` for the ${activeJob.title} position` : ''}. I will ask you role-specific questions and may ask adaptive follow-ups based on your depth. Let's begin!`,
       timestamp: '00:00'
     }
   ]);
 
-  const questions = activeJob.questions || [];
-  const currentQ = questions[currentQuestionIdx] || questions[0];
 
   // 1. Initialize Proctoring
   useEffect(() => {
