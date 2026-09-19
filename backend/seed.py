@@ -21,11 +21,29 @@ def seed(force=False):
             return
 
         if force:
+            # Preserve existing registered users so personal accounts are never lost
+            existing_users = db.query(UserModel).all()
+            user_snapshots = [
+                {
+                    "id": u.id,
+                    "name": u.name,
+                    "email": u.email,
+                    "password_hash": u.password_hash,
+                    "role": u.role,
+                    "reset_code": u.reset_code,
+                    "reset_code_expiry": u.reset_code_expiry
+                }
+                for u in existing_users
+            ]
             db.close()
             Base.metadata.drop_all(bind=engine)
             Base.metadata.create_all(bind=engine)
             db = SessionLocal()
-            print("Cleared existing tables and recreated DB schema...")
+            print("Cleared existing tables and recreated DB schema (preserving registered users)...")
+            # Restore preserved users
+            for u_data in user_snapshots:
+                db.add(UserModel(**u_data))
+            db.commit()
 
         print("Seeding SparkX DB with SIH 2026 demo data & default accounts...")
 
