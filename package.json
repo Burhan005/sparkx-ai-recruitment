@@ -1,0 +1,12 @@
+{
+  "name": "sparkx-ai-recruitment-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SparkX AI Recruitment Monorepo Root",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix frontend run dev",
+    "backend": "cd backend && python -m uvicorn main:app --reload --port 8000"
+  }
+}
