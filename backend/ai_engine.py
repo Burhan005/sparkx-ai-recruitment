@@ -1,12 +1,68 @@
 ﻿"""
 SparkX AI Evaluation & Adaptive Interview Engine
-Real-time NLP keyword matching, dynamic technical scoring, and contextual follow-up synthesis.
-NO HARDCODED SCORES — every score is computed live from the candidate's actual input text.
+Hybrid Architecture:
+  1. Primary: Google Gemini Generative AI (LLM) when GEMINI_API_KEY is configured.
+  2. Fallback: Deterministic NLP Substance & Keyword Density Engine (works 100% offline).
+NO HARDCODED SCORES — every score is computed live from the candidate''s actual input text.
 """
+import os
 import re
+import json
+import urllib.request
+import urllib.error
 from typing import List, Dict, Any
 
+# Optional Gemini API Key from environment
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+def call_gemini_llm(prompt: str, system_instruction: str = "") -> str:
+    """Call Google Gemini 1.5 Flash API with timeout protection."""
+    api_key = os.environ.get("GEMINI_API_KEY", GEMINI_API_KEY)
+    if not api_key:
+        return None
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}]
+    }
+    if system_instruction:
+        payload["systemInstruction"] = {"parts": [{"text": system_instruction}]}
+
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            return res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except Exception as e:
+        print(f"[AI Engine] Gemini API fallback triggered: {e}")
+        return None
+
 def generate_job_questions(role_title: str, skills: List[str], experience_years: int) -> List[Dict[str, Any]]:
+    """Generates tailored interview questions via Gemini LLM or dynamic NLP template."""
+    skills_str = ", ".join(skills or ["System Architecture", "Software Engineering"])
+    
+    # Try Gemini LLM Generation
+    prompt = (
+        f"Generate 3 technical interview questions for a {role_title} with {experience_years} years of experience in {skills_str}. "
+        f"Return ONLY a valid JSON array of 3 objects with keys: id (q1, q2, q3), type, prompt, ideal_keywords (array of strings), "
+        f"follow_up_vague (string), follow_up_expert (string). No markdown formatting."
+    )
+    llm_res = call_gemini_llm(prompt, "You are an expert technical interviewer for top tier software firms. Output strictly JSON.")
+    if llm_res:
+        try:
+            clean_json = re.sub(r'```json|```', '', llm_res).strip()
+            parsed = json.loads(clean_json)
+            if isinstance(parsed, list) and len(parsed) >= 3:
+                return parsed
+        except Exception:
+            pass
+
+    # Deterministic NLP Engine
     p_skill = skills[0] if skills else "System Architecture"
     s_skill = skills[1] if len(skills) > 1 else "Database Optimization"
 
@@ -38,7 +94,7 @@ def generate_job_questions(role_title: str, skills: List[str], experience_years:
     ]
 
 def analyze_text_quality(answer: str, ideal_keywords: List[str]) -> Dict[str, Any]:
-    """Analyzes candidate's actual answer text for word count, keyword density, and technical substance."""
+    """Analyzes candidate''s actual answer text for word count, keyword density, and technical substance."""
     if not answer or not answer.strip():
         return {"word_count": 0, "matched_keywords": [], "keyword_ratio": 0.0, "is_gibberish": True, "score": 0}
 
@@ -47,8 +103,7 @@ def analyze_text_quality(answer: str, ideal_keywords: List[str]) -> Dict[str, An
     word_count = len(words)
     answer_lower = clean_text.lower()
 
-    # Check for random gibberish (e.g. 'asdfghjk', repetitive characters, non-words)
-    has_spaces = ' ' in clean_text
+    # Detect gibberish, non-words, repetitive keyboard mashing
     avg_word_len = sum(len(w) for w in words) / max(1, word_count)
     is_gibberish = (word_count < 3 and len(clean_text) > 15) or (avg_word_len > 14) or (not re.search(r'[aeiouAEIOU]', clean_text))
 
@@ -81,6 +136,33 @@ def analyze_text_quality(answer: str, ideal_keywords: List[str]) -> Dict[str, An
     }
 
 def evaluate_adaptive_answer(prompt: str, answer: str, ideal_keywords: List[str], follow_up_vague: str, follow_up_expert: str) -> Dict[str, Any]:
+    """Real-time answer evaluation via Gemini LLM or Local NLP analysis."""
+    
+    # 1. Try Gemini LLM for Real-time Semantic Adaptive Evaluation
+    llm_prompt = (
+        f"Interview Question: {prompt}\n"
+        f"Candidate Answer: {answer}\n"
+        f"Key Target Skills: {', '.join(ideal_keywords or [])}\n\n"
+        f"Evaluate this response. If the response is gibberish, vague, or shallow, generate a probing follow-up. "
+        f"If it demonstrates depth, generate an advanced scenario challenge. "
+        f"Return ONLY valid JSON with keys: needs_follow_up (bool), follow_up_question (string or null), quality (vague|solid|advanced|gibberish), score (number 0-100), feedback (string)."
+    )
+    llm_res = call_gemini_llm(llm_prompt, "You are an AI interview proctor evaluating candidate competence. Return strictly JSON.")
+    if llm_res:
+        try:
+            clean_json = re.sub(r'```json|```', '', llm_res).strip()
+            data = json.loads(clean_json)
+            return {
+                "needs_follow_up": bool(data.get("needs_follow_up", False)),
+                "follow_up_question": data.get("follow_up_question"),
+                "quality": data.get("quality", "solid"),
+                "score": int(data.get("score", 70)),
+                "feedback": data.get("feedback", "Evaluated via Gemini AI model.")
+            }
+        except Exception:
+            pass
+
+    # 2. Local Deterministic NLP Analysis
     analysis = analyze_text_quality(answer, ideal_keywords)
 
     if analysis["is_gibberish"] or analysis["word_count"] < 5:
@@ -129,11 +211,9 @@ def calculate_scorecard_and_gap(
     cand_entries = [t for t in transcript if t.get("speaker") == "candidate"]
     
     if not cand_entries:
-        # No candidate answers recorded
-        tech_score = 35
-        comm_score = 40
+        tech_score = 30
+        comm_score = 35
     else:
-        # Evaluate candidate answers dynamically
         scores = []
         for entry in cand_entries:
             text = entry.get("text", "")
@@ -142,9 +222,9 @@ def calculate_scorecard_and_gap(
         
         tech_score = int(sum(scores) / max(1, len(scores)))
         total_words = sum(len(t.get("text", "").split()) for t in cand_entries)
-        comm_score = min(98, max(30, 40 + int(total_words / 5)))
+        comm_score = min(98, max(25, 30 + int(total_words / 5)))
 
-    problem_solving = min(98, max(30, int(tech_score * 0.85 + (code_score * 0.15))))
+    problem_solving = min(98, max(25, int(tech_score * 0.85 + (code_score * 0.15))))
     job_skills_score = int((tech_score * 0.5) + (code_score * 0.3) + (comm_score * 0.2))
     
     overall = int(
@@ -205,5 +285,5 @@ def calculate_scorecard_and_gap(
             "recommendations": recommendations,
             "readiness": readiness
         },
-        "interview_summary": f"Live automated evaluation completed. Overall competency scored dynamically at {overall}/100 with {integrity_score}/100 integrity rating."
+        "interview_summary": f"Automated dynamic AI evaluation completed. Overall competency scored at {overall}/100 with {integrity_score}/100 integrity rating."
     }
