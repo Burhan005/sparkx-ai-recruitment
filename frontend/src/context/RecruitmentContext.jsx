@@ -19,7 +19,14 @@ export const onContextToast = (fn) => {
 export function RecruitmentProvider({ children }) {
 
   // ── Theme ──────────────────────────────────────────────────────────────────
-  const [theme, setTheme] = useState(() => localStorage.getItem('sparkx_theme') || 'dark');
+  const [theme, setTheme] = useState(() => {
+    const saved = localStorage.getItem('sparkx_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light'; // Default to browser/OS light mode if dark is not preferred
+  });
   useEffect(() => {
     document.documentElement.classList.toggle('dark',  theme === 'dark');
     document.documentElement.classList.toggle('light', theme !== 'dark');

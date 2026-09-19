@@ -100,24 +100,24 @@ export default function ResumeUploadModal({ job, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-[#0B0F19] border border-white/[0.08] rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-100 my-6">
+      <div className="relative w-full max-w-3xl bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/[0.08] rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-900 dark:text-slate-100 my-6">
         
         {/* Iridescent top hairline */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400"></div>
 
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-white/[0.06]">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider">AI Candidate Screening</span>
-              <span className="text-slate-600">•</span>
-              <span className="text-xs text-slate-400">{job.title}</span>
+              <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">AI Candidate Screening</span>
+              <span className="text-slate-400 dark:text-slate-600">•</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{job.title}</span>
             </div>
-            <h2 className="text-xl font-bold text-white mt-1">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
               {submittedCandidate ? 'Application Status' : 'Upload Resume & Apply'}
             </h2>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition">
+          <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -125,46 +125,46 @@ export default function ResumeUploadModal({ job, onClose }) {
         {submittedCandidate ? (
           /* Application Submitted Success State */
           <div className="py-8 text-center space-y-6 animate-in fade-in zoom-in-95">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-xl">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto shadow-xl">
               <CheckCircle2 className="w-9 h-9" />
             </div>
 
             <div className="space-y-2">
-              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 uppercase tracking-wider">
                 Current Stage: 📋 Recruiter Screening
               </span>
-              <h3 className="text-2xl font-black text-white">Application Received!</h3>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white">Application Received!</h3>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-relaxed">
                 Thank you, <strong>{submittedCandidate.name}</strong>. Your profile has been submitted for <strong>{job.title}</strong> and matched with a <strong>{submittedCandidate.matchScore}%</strong> competency score.
               </p>
             </div>
 
             {/* Lifecycle Explainer */}
-            <div className="p-4 rounded-2xl bg-[#06080E] border border-white/[0.08] text-left max-w-md mx-auto space-y-3 text-xs shadow-inner">
-              <div className="flex items-center justify-between text-slate-400 border-b border-white/[0.06] pb-2">
-                <span className="font-semibold text-slate-200">Official Hiring Workflow</span>
-                <span className="text-blue-400 font-bold">Step 1 of 3</span>
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] text-left max-w-md mx-auto space-y-3 text-xs shadow-inner">
+              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.06] pb-2">
+                <span className="font-semibold text-slate-800 dark:text-slate-200">Official Hiring Workflow</span>
+                <span className="text-blue-600 dark:text-blue-400 font-bold">Step 1 of 3</span>
               </div>
               <div className="space-y-2.5 text-[11px]">
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</div>
+                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</div>
                   <div>
-                    <strong className="text-white">Application Screening:</strong>
-                    <p className="text-slate-400 mt-0.5">Your application has been received and is currently in the recruiter screening pipeline.</p>
+                    <strong className="text-slate-900 dark:text-white">Application Screening:</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Your application has been received and is currently in the recruiter screening pipeline.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
+                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
                   <div>
-                    <strong className="text-slate-300">Interview Scheduling:</strong>
-                    <p className="text-slate-400 mt-0.5">When the recruiter schedules your interview, you will receive an email invitation with the Google Meet link and time slot.</p>
+                    <strong className="text-slate-700 dark:text-slate-300">Interview Scheduling:</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">When the recruiter schedules your interview, you will receive an email invitation with the Google Meet link and time slot.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-800 text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
+                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
                   <div>
-                    <strong className="text-slate-300">Live AI Assessment:</strong>
-                    <p className="text-slate-400 mt-0.5">Once scheduled by the recruiter, you can enter the AI Interview Room and complete your assessment.</p>
+                    <strong className="text-slate-700 dark:text-slate-300">Live AI Assessment:</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Once scheduled by the recruiter, you can enter the AI Interview Room and complete your assessment.</p>
                   </div>
                 </div>
               </div>
@@ -189,25 +189,25 @@ export default function ResumeUploadModal({ job, onClose }) {
           /* Form Content */
           <>
             {/* Demo Presets — fetched from backend /api/presets */}
-            <div className="mt-4 p-3.5 rounded-2xl bg-[#06080E]/90 border border-indigo-500/20 shadow-inner">
+            <div className="mt-4 p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-[#06080E]/90 border border-indigo-200 dark:border-indigo-500/20 shadow-inner">
               <div className="flex items-center justify-between mb-2.5">
-                <span className="text-xs font-bold text-indigo-300 flex items-center space-x-1.5">
-                  <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center space-x-1.5">
+                  <Zap className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
                   <span>1-Click Sample Resumes (Live from Backend):</span>
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono">Fast-Track Demo</span>
               </div>
               {presetsLoading ? (
-                <div className="flex items-center space-x-2 text-xs text-slate-400 py-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" /><span>Loading presets from server...</span>
+                <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 py-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500 dark:text-indigo-400" /><span>Loading presets from server...</span>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {presets.map((preset, idx) => (
                     <button key={idx} type="button" onClick={() => applyPreset(preset)}
-                      className="text-left p-2.5 rounded-xl bg-slate-900/60 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/50 transition text-xs group shadow-sm">
-                      <div className="font-bold text-white group-hover:text-indigo-300 line-clamp-1">{preset.name}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">{preset.experience} yrs • {preset.skills[0]}</div>
+                      className="text-left p-2.5 rounded-xl bg-white dark:bg-slate-900/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500/50 transition text-xs group shadow-sm">
+                      <div className="font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 line-clamp-1">{preset.name}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{preset.experience} yrs • {preset.skills[0]}</div>
                     </button>
                   ))}
                 </div>
@@ -215,43 +215,43 @@ export default function ResumeUploadModal({ job, onClose }) {
             </div>
 
             {/* Upload Dropzone */}
-            <div className="mt-4 relative border-2 border-dashed border-slate-700/80 hover:border-indigo-500/60 rounded-2xl p-6 text-center transition bg-[#06080E]/60 group">
+            <div className="mt-4 relative border-2 border-dashed border-slate-300 dark:border-slate-700/80 hover:border-indigo-500/60 rounded-2xl p-6 text-center transition bg-slate-50/60 dark:bg-[#06080E]/60 group">
               <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
               <div className="flex flex-col items-center justify-center space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30 group-hover:scale-105 transition-transform shadow-lg shadow-indigo-500/10">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-500/30 group-hover:scale-105 transition-transform shadow-md shadow-indigo-500/10">
                   <Upload className="w-6 h-6" />
                 </div>
-                <div className="text-sm font-bold text-white">
+                <div className="text-sm font-bold text-slate-900 dark:text-white">
                   {selectedFileName ? selectedFileName : 'Drag & drop your resume (PDF/DOCX) or browse'}
                 </div>
-                <p className="text-xs text-slate-400">AI parses skills, education, dates, and cross-checks for timeline anomalies.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">AI parses skills, education, dates, and cross-checks for timeline anomalies.</p>
               </div>
               {isScanning && (
-                <div className="absolute inset-0 bg-[#06080E]/90 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center space-y-3 z-20">
+                <div className="absolute inset-0 bg-white/95 dark:bg-[#06080E]/90 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center space-y-3 z-20">
                   <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent animate-laser absolute" />
-                  <Bot className="w-8 h-8 text-cyan-400 animate-bounce" />
-                  <div className="text-xs font-bold text-white tracking-wider uppercase">AI Extracting Profile & Matching Criteria...</div>
+                  <Bot className="w-8 h-8 text-indigo-600 dark:text-cyan-400 animate-bounce" />
+                  <div className="text-xs font-bold text-slate-900 dark:text-white tracking-wider uppercase">AI Extracting Profile & Matching Criteria...</div>
                 </div>
               )}
             </div>
 
             {/* Scan Result */}
             {scanResult && (
-              <div className="mt-4 p-4 rounded-2xl bg-[#06080E] border border-white/[0.08] flex items-center justify-between shadow-md">
+              <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] flex items-center justify-between shadow-md">
                 <div className="flex items-center space-x-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-sm shadow-sm">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-black text-sm shadow-sm">
                     {scanResult.matchScore}%
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-white flex items-center space-x-2">
+                    <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-2">
                       <span>Candidate Match Score</span>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
-                    <div className="text-[11px] text-slate-400">Matched {scanResult.matchedSkillsCount} / {job.requiredSkills?.length || 0} required skills</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">Matched {scanResult.matchedSkillsCount} / {job.requiredSkills?.length || 0} required skills</div>
                   </div>
                 </div>
                 {scanResult.fraudFlags.length > 0 && (
-                  <span className="text-xs text-rose-400 bg-rose-950/60 px-3 py-1.5 rounded-full border border-rose-800/60 flex items-center space-x-1.5 shadow-sm">
+                  <span className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-3 py-1.5 rounded-full border border-rose-200 dark:border-rose-800/60 flex items-center space-x-1.5 shadow-sm">
                     <AlertTriangle className="w-3.5 h-3.5" />
                     <span>{scanResult.fraudFlags.length} Flag{scanResult.fraudFlags.length > 1 ? 's' : ''} Detected</span>
                   </span>
@@ -270,16 +270,16 @@ export default function ResumeUploadModal({ job, onClose }) {
                 { label: 'Parsed Skills (comma-separated)', span: 2, val: skillsString, set: setSkillsString, type: 'text', ph: 'React, Python, FastAPI...' },
               ].map(({ label, val, set, type, ph, span }) => (
                 <div key={label} className={span ? `sm:col-span-${span}` : ''}>
-                  <label className="block text-slate-400 font-semibold mb-1">{label}</label>
+                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">{label}</label>
                   <input type={type} value={val} onChange={e => set(e.target.value)} placeholder={ph}
-                    className="w-full px-3.5 py-2.5 bg-[#06080E] border border-slate-700/80 rounded-xl text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition shadow-inner" />
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-[#06080E] border border-slate-300 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-indigo-500 transition shadow-inner" />
                 </div>
               ))}
             </div>
 
             {/* Actions */}
-            <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-between">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition">
+            <div className="mt-6 pt-4 border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
+              <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition">
                 Cancel
               </button>
               <button 
