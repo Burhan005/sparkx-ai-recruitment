@@ -68,7 +68,7 @@ export default function CandidatePipeline() {
     if (!matchesSearch) return false;
 
     if (filterStatus === 'All') return true;
-    if (filterStatus === 'Evaluated') return c.status === 'Evaluated';
+    if (filterStatus === 'Evaluated') return c.status === 'Evaluated' || (c.scores && c.scores.overall > 0) || c.interviewSummary;
     if (filterStatus === 'Shortlisted') return c.finalDecision === 'Shortlisted';
     if (filterStatus === 'High Risk') return c.integrityRisk === 'High';
     return true;
@@ -77,7 +77,19 @@ export default function CandidatePipeline() {
   const totalApplicants = candidates.length;
   const highMatchCount = candidates.filter(c => c.matchScore >= 85).length;
   const integrityFlaggedCount = candidates.filter(c => c.integrityRisk === 'High').length;
-  const evaluatedCount = candidates.filter(c => c.status === 'Evaluated').length;
+  const evaluatedCount = candidates.filter(c => c.status === 'Evaluated' || (c.scores && c.scores.overall > 0) || c.interviewSummary).length;
+
+  const handleKpiClick = (status, tab = 'candidates', mode = 'list') => {
+    setActiveTab(tab);
+    if (tab === 'candidates') {
+      setFilterStatus(status);
+      setDisplayMode(mode);
+    }
+    const el = document.getElementById('pipeline-content-area');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleJobCreated = (newJob) => {
     setActiveTab('jobs');
@@ -143,9 +155,15 @@ export default function CandidatePipeline() {
       {/* KPI Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         
+        {/* CARD 1: ACTIVE ROLES */}
         <div 
-          onClick={() => setActiveTab('jobs')}
-          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-indigo-500 before:to-purple-500 ${activeTab === 'jobs' ? 'ring-2 ring-indigo-500/80 shadow-lg shadow-indigo-500/20' : ''}`}
+          onClick={() => handleKpiClick('All', 'jobs')}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-indigo-500 before:to-purple-500 ${
+            activeTab === 'jobs' 
+              ? 'ring-2 ring-indigo-500/80 shadow-lg shadow-indigo-500/20 bg-indigo-500/5' 
+              : ''
+          }`}
+          title="Click to view all active job openings"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Roles</span>
@@ -158,16 +176,22 @@ export default function CandidatePipeline() {
           </div>
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06] text-[11px]">
             <span className="text-indigo-600 dark:text-indigo-400 font-bold flex items-center space-x-1">
-              <span>Manage Roles</span>
+              <span>View Roles ({jobs.length})</span>
               <ChevronRight className="w-3 h-3" />
             </span>
-            <span className="text-[10px] text-slate-500 font-medium">Auto-Matching</span>
+            <span className="text-[10px] text-slate-500 font-medium">Click to view</span>
           </div>
         </div>
 
+        {/* CARD 2: TOTAL APPLICANTS */}
         <div 
-          onClick={() => setActiveTab('candidates')}
-          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-cyan-400 before:to-blue-500 ${activeTab === 'candidates' ? 'ring-2 ring-cyan-500/80 shadow-lg shadow-cyan-500/20' : ''}`}
+          onClick={() => handleKpiClick('All', 'candidates', 'list')}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-cyan-400 before:to-blue-500 ${
+            activeTab === 'candidates' && filterStatus === 'All'
+              ? 'ring-2 ring-cyan-500/80 shadow-lg shadow-cyan-500/20 bg-cyan-500/5' 
+              : ''
+          }`}
+          title="Click to view full list of all applicants"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Applicants</span>
@@ -180,14 +204,23 @@ export default function CandidatePipeline() {
           </div>
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06] text-[11px]">
             <span className="text-cyan-600 dark:text-cyan-400 font-bold flex items-center space-x-1">
-              <TrendingUp className="w-3 h-3" />
-              <span>+18% this week</span>
+              <span>View All List ({totalApplicants})</span>
+              <ChevronRight className="w-3 h-3" />
             </span>
-            <span className="text-[10px] text-slate-500 font-medium">Live Inflow</span>
+            <span className="text-[10px] text-slate-500 font-medium">Click to view</span>
           </div>
         </div>
 
-        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-400 before:to-teal-500">
+        {/* CARD 3: AI EVALUATED */}
+        <div 
+          onClick={() => handleKpiClick('Evaluated', 'candidates', 'list')}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-emerald-400 before:to-teal-500 ${
+            activeTab === 'candidates' && filterStatus === 'Evaluated'
+              ? 'ring-2 ring-emerald-500/80 shadow-lg shadow-emerald-500/20 bg-emerald-500/5' 
+              : ''
+          }`}
+          title="Click to view list of AI evaluated candidates"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Evaluated</span>
             <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-sm">
@@ -199,14 +232,23 @@ export default function CandidatePipeline() {
           </div>
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06] text-[11px]">
             <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1">
-              <CheckCircle2 className="w-3 h-3" />
-              <span>Scorecards Ready</span>
+              <span>View Evaluated List ({evaluatedCount})</span>
+              <ChevronRight className="w-3 h-3" />
             </span>
-            <span className="text-[10px] text-slate-500 font-medium">100% Calibrated</span>
+            <span className="text-[10px] text-slate-500 font-medium">Click to view</span>
           </div>
         </div>
 
-        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-rose-500 before:to-amber-500">
+        {/* CARD 4: INTEGRITY ALERTS */}
+        <div 
+          onClick={() => handleKpiClick('High Risk', 'candidates', 'list')}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] before:absolute before:inset-x-0 before:top-0 before:h-1 before:bg-gradient-to-r before:from-rose-500 before:to-amber-500 ${
+            activeTab === 'candidates' && filterStatus === 'High Risk'
+              ? 'ring-2 ring-rose-500/80 shadow-lg shadow-rose-500/20 bg-rose-500/5' 
+              : ''
+          }`}
+          title="Click to view list of flagged profiles"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Integrity Alerts</span>
             <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shadow-sm">
@@ -218,17 +260,17 @@ export default function CandidatePipeline() {
           </div>
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.06] text-[11px]">
             <span className="text-rose-500 dark:text-rose-400 font-bold flex items-center space-x-1">
-              <span>Telemetry Verified</span>
+              <span>View Flagged List ({integrityFlaggedCount})</span>
+              <ChevronRight className="w-3 h-3" />
             </span>
-            <span className="text-[10px] text-slate-500 font-medium">Zero-Trust HUD</span>
+            <span className="text-[10px] text-slate-500 font-medium">Click to view</span>
           </div>
         </div>
 
       </div>
 
-
       {/* Main Mode Switcher: Candidate Pipeline vs Active Job Openings */}
-      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div id="pipeline-content-area" className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
         <div className="flex items-center space-x-3 text-xs sm:text-sm font-bold">
           <button
             onClick={() => setActiveTab('candidates')}
@@ -486,6 +528,24 @@ export default function CandidatePipeline() {
               </button>
             ))}
           </div>
+
+          {/* Active Filter Notification Bar */}
+          {filterStatus !== 'All' && (
+            <div className="p-3 px-4 rounded-xl bg-indigo-500/10 dark:bg-indigo-950/40 border border-indigo-500/20 flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                <span className="text-slate-700 dark:text-slate-200 font-medium">
+                  Showing <strong>{filteredCandidates.length}</strong> candidate(s) filtered by: <strong className="text-indigo-600 dark:text-indigo-400">{filterStatus}</strong>
+                </span>
+              </div>
+              <button
+                onClick={() => setFilterStatus('All')}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
+              >
+                <span>Clear Filter (Show All {candidates.length})</span>
+              </button>
+            </div>
+          )}
 
           {/* CANDIDATE PIPELINE VIEW MODES */}
           {filteredCandidates.length === 0 ? (
