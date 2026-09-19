@@ -11,6 +11,10 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Tuple
+from dotenv import load_dotenv
+
+# Ensure .env is loaded
+load_dotenv()
 
 def is_smtp_configured() -> bool:
     """Check if real SMTP credentials have been provided in the environment."""
