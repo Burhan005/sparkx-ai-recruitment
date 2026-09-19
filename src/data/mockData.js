@@ -1,0 +1,314 @@
+export const INITIAL_JOBS = [
+  {
+    id: "job-101",
+    title: "Senior AI / Full-Stack Engineer",
+    department: "AI Research & Product",
+    location: "Bengaluru, India (Hybrid)",
+    experience: "3-6 years",
+    minExperienceYears: 3,
+    education: "B.Tech / M.Tech in CS, AI, or equivalent",
+    languages: ["English", "Hindi"],
+    description: "Design and implement scalable generative AI pipelines, LLM-based agent systems, and robust full-stack web applications with FastAPI and React.",
+    requiredSkills: ["Python", "FastAPI", "React", "PyTorch / Transformers", "LangChain", "PostgreSQL", "System Design"],
+    optionalCriteria: "Experience with WebRTC, real-time proctoring, or vector databases (Pinecone/Milvus).",
+    status: "Active",
+    applicantsCount: 6,
+    questions: [
+      {
+        id: "q1",
+        type: "Technical",
+        prompt: "How would you architect a low-latency LLM agent pipeline that requires streaming responses while maintaining memory of a long conversation?",
+        idealKeywords: ["streaming", "chunking", "token buffer", "vector memory", "cache", "async", "FastAPI", "WebSockets"],
+        followUpVague: "You mentioned caching and streaming, but how specifically would you handle token limit overflows and context pruning?",
+        followUpExpert: "Given the latency of vector lookups at scale, what indexing algorithm (like HNSW or IVFFlat) would you configure in PostgreSQL pgvector?"
+      },
+      {
+        id: "q2",
+        type: "System Design",
+        prompt: "Describe an anti-cheating or browser telemetry mechanism for online assessments. How do you guard against false positives?",
+        idealKeywords: ["MediaPipe", "face-api", "visibilitychange", "blur event", "event log", "heuristic threshold", "audit trail"],
+        followUpVague: "What happens if a user accidentally alt-tabs for 1 second? How do you prevent that from disqualifying them?",
+        followUpExpert: "How would you handle WebRTC video processing server-side versus client-side to minimize CPU usage on low-end candidate devices?"
+      },
+      {
+        id: "q3",
+        type: "Behavioral",
+        prompt: "Tell us about a time you identified an algorithmic bias or reliability failure in an AI pipeline and how you rectified it.",
+        idealKeywords: ["evaluation dataset", "ground truth", "guardrails", "monitoring", "stakeholder communication"],
+        followUpVague: "Could you walk through the concrete metric you used to verify that the fix actually reduced hallucination or bias?",
+        followUpExpert: "What automated regression tests did you put into the CI/CD pipeline to ensure model drift didn't reintroduce that failure?"
+      }
+    ],
+    codingAssessment: {
+      title: "Real-time Telemetry Debounce & Event Aggregator",
+      language: "javascript",
+      instructions: "Implement an integrity log aggregator that collapses consecutive duplicate suspicious events within a 3-second window to prevent alert fatigue for HR.",
+      initialCode: `// Implement aggregateSuspiciousEvents(events)
+// Each event: { type: string, timestamp: number }
+// Return filtered events where duplicates within 3000ms are combined.
+
+function aggregateSuspiciousEvents(events) {
+  if (!events || events.length === 0) return [];
+  
+  const result = [];
+  let lastEvent = null;
+
+  for (const ev of events) {
+    if (!lastEvent || ev.type !== lastEvent.type || (ev.timestamp - lastEvent.timestamp) > 3000) {
+      result.push({ ...ev, count: 1 });
+      lastEvent = ev;
+    } else {
+      result[result.length - 1].count += 1;
+    }
+  }
+
+  return result;
+}
+
+// Test call
+console.log(aggregateSuspiciousEvents([
+  { type: "TAB_SWITCH", timestamp: 1000 },
+  { type: "TAB_SWITCH", timestamp: 2500 },
+  { type: "FACE_LOST", timestamp: 6000 }
+]));`,
+      testCases: [
+        { name: "Debounce consecutive tab switches (<3s)", input: "2 identical events at 1s and 2.5s", expected: "1 aggregated event (count: 2)" },
+        { name: "Separate distinct events", input: "Events separated by 5s", expected: "2 distinct events" }
+      ]
+    }
+  },
+  {
+    id: "job-102",
+    title: "Frontend Software Engineer (React & UX)",
+    department: "Core Experience",
+    location: "Remote (India)",
+    experience: "2-4 years",
+    minExperienceYears: 2,
+    education: "B.Tech / BCA / MCA or equivalent portfolio",
+    languages: ["English"],
+    description: "Build ultra-responsive, accessible user interfaces for candidate video assessment and recruiter dashboards with Tailwind CSS, React, and Canvas APIs.",
+    requiredSkills: ["React", "TypeScript / JavaScript", "Tailwind CSS", "Canvas API", "State Management", "Performance Optimization"],
+    optionalCriteria: "Experience with Web Speech API, Chart.js, or micro-frontends.",
+    status: "Active",
+    applicantsCount: 4,
+    questions: [
+      {
+        id: "q1",
+        type: "Technical",
+        prompt: "How do you ensure smooth 60fps rendering when doing real-time video overlay and Canvas bounding box animations?",
+        idealKeywords: ["requestAnimationFrame", "offscreen canvas", "GPU acceleration", "useRef", "memo", "debouncing"],
+        followUpVague: "What specific React hooks or lifecycle patterns do you use to avoid unnecessary component re-renders during 30fps video processing?",
+        followUpExpert: "How would you implement an OffscreenCanvas web worker to decouple computer vision calculations from the main UI thread?"
+      },
+      {
+        id: "q2",
+        type: "Problem Solving",
+        prompt: "How would you design an inclusive, accessible UI for candidates with speech or visual impairments taking an online AI interview?",
+        idealKeywords: ["ARIA live regions", "keyboard navigation", "high contrast", "speech-to-text fallback", "WCAG"],
+        followUpVague: "What fallback input mechanism would you offer if the user's browser fails to support the Web Speech Recognition API?",
+        followUpExpert: "How do you test screen reader compliance dynamically for live streaming subtitles and AI question prompts?"
+      }
+    ],
+    codingAssessment: {
+      title: "Custom React Hook: useMediaStream",
+      language: "javascript",
+      instructions: "Write a safe camera stream hook logic with error handling for NotFoundError and NotAllowedError.",
+      initialCode: `// Write stream initialization logic with camera permission handling
+async function initCameraStream(videoElement) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    if (videoElement) {
+      videoElement.srcObject = stream;
+    }
+    return { success: true, stream };
+  } catch (err) {
+    if (err.name === 'NotAllowedError') {
+      return { success: false, error: 'Camera/Mic permission denied by user' };
+    }
+    return { success: false, error: err.message };
+  }
+}`,
+      testCases: [
+        { name: "Handles camera permission denial cleanly", input: "NotAllowedError", expected: "Returns descriptive error message" }
+      ]
+    }
+  }
+];
+
+export const INITIAL_CANDIDATES = [
+  {
+    id: "cand-001",
+    jobId: "job-101",
+    name: "Aarav Sharma",
+    email: "aarav.sharma@example.com",
+    phone: "+91 98765 43210",
+    appliedDate: "2026-09-18",
+    status: "Evaluated", // Screening | Interviewing | Evaluated | Shortlisted | Offered | Rejected
+    matchScore: 94,
+    experienceYears: 4.5,
+    education: "B.Tech Computer Science, IIT Roorkee (2022)",
+    skills: ["Python", "FastAPI", "React", "PyTorch", "PostgreSQL", "LangChain", "Docker", "System Design"],
+    resumeSummary: "4+ years building distributed AI products. Led development of an automated document intelligence pipeline serving 50k requests/day with FastAPI and PyTorch.",
+    fraudFlags: [],
+    integrityScore: 96,
+    integrityRisk: "Low", // Low | Medium | High
+    integrityEvents: [
+      { id: "e1", timestamp: "00:12", type: "FACE_VERIFIED", description: "Identity verified at session start with webcam feed." },
+      { id: "e2", timestamp: "03:45", type: "FOCUS_MAINTAINED", description: "Continuous single-person presence confirmed." }
+    ],
+    scores: {
+      jobSkills: 95,
+      technicalScore: 92,
+      communication: 90,
+      problemSolving: 94,
+      overall: 93
+    },
+    interviewSummary: "Demonstrated deep mastery of asynchronous Python and vector databases. Handled the adaptive cross-examination on pgvector indexing algorithms with concrete production examples. Clear communication with zero integrity flags.",
+    evidenceSnippets: [
+      {
+        question: "How would you architect a low-latency LLM agent pipeline?",
+        answer: "We decouple the prompt expansion and generation into an async FastAPI worker with Server-Sent Events (SSE). For memory, we store conversational summary embeddings in pgvector using an HNSW index.",
+        aiInsight: "Candidate demonstrated clear architectural maturity rather than reciting generic documentation."
+      },
+      {
+        question: "Adaptive Follow-up: What indexing algorithm would you configure?",
+        answer: "HNSW is superior for low latency over IVFFlat because IVFFlat requires periodic retraining and clustering when data scales, whereas HNSW offers rapid graph traversal.",
+        aiInsight: "Verified genuine deep understanding under adaptive challenge."
+      }
+    ],
+    skillGaps: {
+      missingSkills: ["WebRTC audio streaming"],
+      strongSkills: ["FastAPI", "LangChain", "pgvector", "System Architecture"],
+      recommendations: [
+        "Explore WebRTC data channels for sub-100ms real-time audio transport.",
+        "Review production benchmarking for LLM speculative decoding."
+      ],
+      readiness: "Immediately Job-Ready"
+    },
+    hrNotes: "Top-tier candidate for the Lead AI role. Excellent command over architecture.",
+    finalDecision: "Shortlisted"
+  },
+  {
+    id: "cand-002",
+    jobId: "job-101",
+    name: "Neha Patel",
+    email: "neha.patel@techmail.in",
+    phone: "+91 98111 22334",
+    appliedDate: "2026-09-18",
+    status: "Evaluated",
+    matchScore: 86,
+    experienceYears: 3.2,
+    education: "B.E. Information Technology, Pune University (2023)",
+    skills: ["Python", "FastAPI", "React", "TypeScript", "PostgreSQL", "Tailwind CSS"],
+    resumeSummary: "Full-stack developer with 3 years building cloud dashboards and RESTful microservices. Solid frontend skills with growing AI integration experience.",
+    fraudFlags: [],
+    integrityScore: 88,
+    integrityRisk: "Low",
+    integrityEvents: [
+      { id: "e1", timestamp: "00:08", type: "FACE_VERIFIED", description: "Face verified at interview start." },
+      { id: "e2", timestamp: "04:12", type: "TAB_SWITCH", description: "Window lost focus for 2.4 seconds (candidate returned promptly)." }
+    ],
+    scores: {
+      jobSkills: 84,
+      technicalScore: 82,
+      communication: 92,
+      problemSolving: 85,
+      overall: 86
+    },
+    interviewSummary: "Strong full-stack fundamentals and exceptionally articulate communicator. Slightly less experience in deep PyTorch internals, but demonstrates fast learning ability.",
+    evidenceSnippets: [
+      {
+        question: "How would you architect a low-latency LLM agent pipeline?",
+        answer: "I would use FastAPI with asynchronous endpoints, streaming tokens directly to the React frontend using ReadableStream readers.",
+        aiInsight: "Clean frontend-to-backend data flow explanation."
+      }
+    ],
+    skillGaps: {
+      missingSkills: ["PyTorch model fine-tuning", "Advanced Vector Indexing (HNSW)"],
+      strongSkills: ["React", "FastAPI", "REST APIs", "Clean Code Architecture"],
+      recommendations: [
+        "Complete 'Deep Learning Foundations' module on Hugging Face / PyTorch.",
+        "Practice implementing RAG with vector search indexing."
+      ],
+      readiness: "Hire-and-Develop (Trainable within 30 days)"
+    },
+    hrNotes: "High potential hire. Would thrive in a collaborative squad with quick mentorship.",
+    finalDecision: "Under Review"
+  },
+  {
+    id: "cand-003",
+    jobId: "job-101",
+    name: "Rohan Verma (Suspicious/Flagged Profile)",
+    email: "rohan.v.test@tempmail.org",
+    phone: "+91 99000 88776",
+    appliedDate: "2026-09-19",
+    status: "Evaluated",
+    matchScore: 48,
+    experienceYears: 1.0,
+    education: "BCA, Distance Education (2025)",
+    skills: ["Python (Beginner)", "HTML/CSS"],
+    resumeSummary: "Resume claims 8 years of Senior Tech Lead experience despite degree completion in 2025. Contradictory dates in employment timeline.",
+    fraudFlags: [
+      "Inconsistent timeline: Claims 8 years experience at age 22.",
+      "Identical boilerplate project descriptions detected from public repository templates.",
+      "Unverified employer domain."
+    ],
+    integrityScore: 35,
+    integrityRisk: "High",
+    integrityEvents: [
+      { id: "e1", timestamp: "01:10", type: "MULTIPLE_FACES", description: "Secondary person detected in camera background." },
+      { id: "e2", timestamp: "02:30", type: "TAB_SWITCH", description: "Tab switched to external window for 14.5 seconds." },
+      { id: "e3", timestamp: "04:02", type: "TAB_SWITCH", description: "Tab switched to search engine window for 18.2 seconds." },
+      { id: "e4", timestamp: "05:15", type: "FACE_LOST", description: "Candidate face completely out of frame for 8 seconds." }
+    ],
+    scores: {
+      jobSkills: 42,
+      technicalScore: 38,
+      communication: 50,
+      problemSolving: 35,
+      overall: 41
+    },
+    interviewSummary: "Candidate recited memorized definitions. When asked adaptive follow-up questions to explain specific technical choices, candidate paused for extended periods while multiple tab switches were registered.",
+    evidenceSnippets: [
+      {
+        question: "Adaptive Follow-up: How do you handle cache invalidation?",
+        answer: "Cache invalidation is... basically we clear the cache when it gets full or we use Redis.",
+        aiInsight: "Answer was vague and generic. Lacked concrete implementation understanding."
+      }
+    ],
+    skillGaps: {
+      missingSkills: ["System Architecture", "FastAPI", "Vector DBs", "Async Programming"],
+      strongSkills: ["Basic Python syntax"],
+      recommendations: [
+        "Need fundamental computer science coursework in Data Structures & Systems."
+      ],
+      readiness: "Not Job-Ready"
+    },
+    hrNotes: "Integrity alert triggered. Heavy discrepancy in resume timeline and multiple external tab lookups during interview.",
+    finalDecision: "Rejected"
+  }
+];
+
+export const DEMO_RESUME_PRESETS = [
+  {
+    name: "Priya S. (Senior AI Engineer - Strong)",
+    experience: 4,
+    education: "B.Tech in Artificial Intelligence, Delhi Technological University (2022)",
+    skills: ["Python", "FastAPI", "React", "PyTorch / Transformers", "LangChain", "PostgreSQL", "System Design", "Docker"],
+    summary: "AI systems architect with 4 years experience deploying LLM agents and multi-tenant FastAPI backends."
+  },
+  {
+    name: "Vikram Mehta (Frontend & UI Specialist)",
+    experience: 3,
+    education: "B.Tech Computer Science, BITS Pilani (2023)",
+    skills: ["React", "TypeScript / JavaScript", "Tailwind CSS", "Canvas API", "Web Speech API", "State Management"],
+    summary: "Passionate frontend engineer specializing in responsive, high-performance web applications and interactive canvas tools."
+  },
+  {
+    name: "Ananya Iyer (Junior Full Stack Developer)",
+    experience: 1.5,
+    education: "BCA, Mumbai University (2024)",
+    skills: ["JavaScript", "React", "Python", "SQL", "HTML/CSS"],
+    summary: "Recent graduate with internship experience building CRUD applications and REST APIs."
+  }
+];
