@@ -1,4 +1,4 @@
-﻿"""
+"""
 Database Seeding Script for SparkX AI Recruitment
 Pre-populates SQLite/PostgreSQL with realistic demo data.
 Run: python seed.py
@@ -8,7 +8,8 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database import SessionLocal, engine, Base
-from models.db_models import JobModel, CandidateModel
+from models.db_models import JobModel, CandidateModel, UserModel
+from controllers.auth_controller import hash_password
 
 Base.metadata.create_all(bind=engine)
 
@@ -22,10 +23,30 @@ def seed(force=False):
         if force:
             db.query(CandidateModel).delete()
             db.query(JobModel).delete()
+            db.query(UserModel).delete()
             db.commit()
             print("Cleared existing data...")
 
-        print("Seeding SparkX DB with SIH 2026 demo data...")
+        print("Seeding SparkX DB with SIH 2026 demo data & default accounts...")
+
+        # Seed Default System Users
+        admin_user = UserModel(
+            id="usr-admin01",
+            name="SparkX Admin",
+            email="admin@sparkx.ai",
+            password_hash=hash_password("sparkx2026"),
+            role="recruiter"
+        )
+        cand_user = UserModel(
+            id="usr-cand01",
+            name="Demo Candidate",
+            email="candidate@sparkx.ai",
+            password_hash=hash_password("sparkx2026"),
+            role="candidate"
+        )
+        db.add(admin_user)
+        db.add(cand_user)
+        db.commit()
 
         job1 = JobModel(
             id="job-101",
@@ -218,7 +239,7 @@ def seed(force=False):
         db.add(cand2)
         db.add(cand3)
         db.commit()
-        print("✅ Seeded: 2 jobs, 3 candidates")
+        print("[OK] Seeded database: 2 jobs, 3 candidates, 2 users")
 
     finally:
         db.close()

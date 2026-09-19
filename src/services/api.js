@@ -1,4 +1,4 @@
-﻿// ─── SparkX API Service ───────────────────────────────────────────────────────
+// ─── SparkX API Service ───────────────────────────────────────────────────────
 // Connects the React frontend to the Python FastAPI backend.
 // ALL data comes from the backend — zero hardcoded data in this file.
 
@@ -43,6 +43,39 @@ export function normalizeCandidate(c) {
 }
 
 export const api = {
+  // ─── Authentication ────────────────────────────────────────────────────────
+  async login(email, password) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        signal: AbortSignal.timeout(4000),
+      });
+      const data = await res.json();
+      if (!res.ok) return { user: null, error: data.detail || 'Login failed' };
+      return { user: data, error: null };
+    } catch (err) {
+      return { user: null, error: 'Cannot reach backend server. Please verify FastAPI is running.' };
+    }
+  },
+
+  async register(name, email, password, role = 'candidate') {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role }),
+        signal: AbortSignal.timeout(4000),
+      });
+      const data = await res.json();
+      if (!res.ok) return { user: null, error: data.detail || 'Registration failed' };
+      return { user: data, error: null };
+    } catch (err) {
+      return { user: null, error: 'Cannot reach backend server. Please verify FastAPI is running.' };
+    }
+  },
+
   // ─── Health ──────────────────────────────────────────────────────────────
   async checkHealth() {
     try {

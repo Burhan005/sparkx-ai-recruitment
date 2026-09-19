@@ -91,3 +91,25 @@ class EvaluationRequest(BaseModel):
     integrity_score: int
     integrity_events: List[Dict[str, Any]]
     code_score: int = 90
+
+# ─── Auth Schemas ─────────────────────────────────────────────────────────────
+class UserRegister(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str = "candidate"  # "recruiter" or "candidate"
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    role: str
+    token: str
+
+    class Config:
+        from_attributes = True
+

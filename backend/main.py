@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from database import engine, Base, SessionLocal
@@ -7,6 +7,7 @@ from views.job_views import router as job_router
 from views.candidate_views import router as candidate_router
 from views.interview_views import router as interview_router
 from views.preset_views import router as preset_router
+from views.auth_views import router as auth_router
 
 # (M) Create all DB tables
 Base.metadata.create_all(bind=engine)
@@ -45,6 +46,7 @@ app.add_middleware(
 )
 
 # (V) Mount View Routers
+app.include_router(auth_router)
 app.include_router(job_router)
 app.include_router(candidate_router)
 app.include_router(interview_router)

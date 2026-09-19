@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RecruitmentContext.jsx
  * Single source of truth for all app state.
  * ALL data is fetched from the FastAPI backend — zero static/mock data.
@@ -30,19 +30,30 @@ export function RecruitmentProvider({ children }) {
   // ── Auth ───────────────────────────────────────────────────────────────────
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('sparkx_logged_in'));
   const [userRole,   setUserRole]   = useState(() => localStorage.getItem('sparkx_user_role') || 'recruiter');
+  const [currentUser, setCurrentUser] = useState(() => {
+    const saved = localStorage.getItem('sparkx_user');
+    return saved ? JSON.parse(saved) : null;
+  });
 
-  const login = useCallback((role) => {
+  const login = useCallback((userObj) => {
+    const role = typeof userObj === 'string' ? userObj : (userObj.role || 'recruiter');
+    const user = typeof userObj === 'object' ? userObj : { name: role === 'recruiter' ? 'SparkX Admin' : 'Demo Candidate', role, email: `${role}@sparkx.ai` };
+    
+    setCurrentUser(user);
     setUserRole(role);
     setIsLoggedIn(true);
+    localStorage.setItem('sparkx_user', JSON.stringify(user));
     localStorage.setItem('sparkx_user_role', role);
     localStorage.setItem('sparkx_logged_in', '1');
     setCurrentView(role === 'candidate' ? 'candidate' : 'recruiter');
-    toastBus.emit(`Signed in as ${role === 'recruiter' ? 'Admin (Recruiter)' : 'Candidate'}`, 'success');
+    toastBus.emit(`Welcome, ${user.name}! Signed in as ${role === 'recruiter' ? 'Admin' : 'Candidate'}`, 'success');
   }, []);
 
   const logout = useCallback(() => {
     setIsLoggedIn(false);
+    setCurrentUser(null);
     localStorage.removeItem('sparkx_logged_in');
+    localStorage.removeItem('sparkx_user');
     toastBus.emit('Signed out successfully', 'info');
   }, []);
 
@@ -250,7 +261,7 @@ export function RecruitmentProvider({ children }) {
   return (
     <RecruitmentContext.Provider value={{
       theme, toggleTheme,
-      isLoggedIn, login, logout,
+      isLoggedIn, login, logout, currentUser,
       userRole, switchRole,
       isDbConnected, isLoading, dbError,
       jobs, candidates,
