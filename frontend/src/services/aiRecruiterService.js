@@ -1,35 +1,66 @@
-﻿// AI Recruiter Service: Dynamic Evaluation & Adaptive Questioning
-// NO HARDCODED SCORES — every score is computed live from the candidate''s actual text.
+// AI Recruiter Service: Dynamic Evaluation & Adaptive Questioning
+// NO HARDCODED SCORES — every score is computed live from the candidate's actual text.
 
-export function generateQuestionsForRole(roleTitle, skills, experienceYears) {
+const TECH_ENTITIES = {
+  redis: "Redis caching & in-memory data structures",
+  kafka: "Apache Kafka event streaming & partition offsets",
+  docker: "Docker container virtualization",
+  kubernetes: "Kubernetes pod orchestration & cluster ingress",
+  postgres: "PostgreSQL relational query optimization",
+  postgresql: "PostgreSQL relational query optimization",
+  mongodb: "MongoDB document sharding & replica sets",
+  mysql: "MySQL transaction isolation",
+  graphql: "GraphQL schema design & N+1 batch loading",
+  grpc: "gRPC protocol buffer streaming",
+  websocket: "WebSocket bidirectional frame streaming",
+  fastapi: "FastAPI asynchronous event loops",
+  react: "React virtual DOM diffing & state reconciliation",
+  node: "Node.js non-blocking asynchronous I/O",
+  typescript: "TypeScript strict type enforcement",
+  jwt: "JWT bearer tokens & cryptographic signature verification",
+  oauth: "OAuth2 / OIDC authorization flows",
+  caching: "distributed cache invalidation & TTL policies",
+  microservices: "microservice service boundaries & network partitions",
+  aws: "AWS cloud infrastructure & IAM policy isolation"
+};
+
+const UNSURE_PATTERNS = [
+  /\bi don't know\b/i, /\bi dont know\b/i, /\bno idea\b/i, /\bnot sure\b/i,
+  /\bnot familiar\b/i, /\bhaven't used\b/i, /\bhavent used\b/i, /\bnever used\b/i,
+  /\bpass\b/i, /\bskip\b/i, /\bno clue\b/i, /\bcan't answer\b/i, /\bcant answer\b/i,
+  /\bnot worked with\b/i, /\bhaven't worked with\b/i, /\bhavent worked with\b/i,
+  /\bnot experienced\b/i, /\bno experience\b/i, /\bunfamiliar\b/i
+];
+
+export function generateQuestionsForRole(roleTitle, skills, experienceYears = 2, candidateName = 'Candidate') {
   const skillList = Array.isArray(skills) ? skills : (skills || '').split(',').map(s => s.trim()).filter(Boolean);
   const primarySkill = skillList[0] || "System Architecture";
-  const secondarySkill = skillList[1] || "Database Optimization";
+  const secondarySkill = skillList[1] || (skillList[0] || "Database Optimization");
 
   return [
     {
       id: "gen-q1",
-      type: "Technical Competence",
-      prompt: `In the context of ${roleTitle}, how do you leverage ${primarySkill} in production to handle high throughput, concurrency, and reliability?`,
-      idealKeywords: [primarySkill.toLowerCase(), "concurrency", "optimization", "monitoring", "latency", "async", "cache"],
-      followUpVague: `You mentioned utilizing ${primarySkill}, but what specific architectural bottlenecks did you encounter, and how did you measure performance improvements?`,
-      followUpExpert: `Given your deep familiarity with ${primarySkill}, how would you architect automated failover and zero-downtime deployments under sudden traffic spikes?`
+      type: "Technical Competence & Concurrency",
+      prompt: `In your production work with ${primarySkill}, how have you architected services to handle high concurrency and prevent memory leaks or thread starvation under sudden traffic bursts?`,
+      idealKeywords: [primarySkill.toLowerCase(), "concurrency", "optimization", "monitoring", "latency", "async", "cache", "throughput"],
+      followUpVague: `You mentioned utilizing ${primarySkill}, but what specific profiling tools or metrics did you use to detect memory or CPU bottlenecks?`,
+      followUpExpert: `Under a 10x traffic spike on ${primarySkill}, what backpressure and circuit-breaker patterns did you implement?`
     },
     {
       id: "gen-q2",
-      type: "System Architecture",
-      prompt: `How would you integrate ${primarySkill} with ${secondarySkill} while maintaining data consistency, modular separation, and secure access control?`,
+      type: "Distributed Architecture & Modular Boundaries",
+      prompt: `How do you design modular communication between ${primarySkill} services and ${secondarySkill} backends while enforcing strict schema contracts and security boundaries?`,
       idealKeywords: ["api", "contract", "schema", "validation", "security", "token", "encryption", secondarySkill.toLowerCase()],
-      followUpVague: `Could you specify the protocol, data formats, and error handling mechanisms you would establish between these components?`,
-      followUpExpert: `What caching or eventual consistency strategy would you adopt if ${secondarySkill} experiences network partitions or backpressure?`
+      followUpVague: `What serialization protocol and error retry policies did you configure between ${primarySkill} and ${secondarySkill}?`,
+      followUpExpert: `What eventual consistency or saga pattern did you implement when ${secondarySkill} encounters a network partition?`
     },
     {
       id: "gen-q3",
-      type: "Adaptive Behavioral & Problem Solving",
-      prompt: `Walk me through a challenging production bug or unexpected outage you investigated in your past ${experienceYears}+ years of work. What was your root-cause analysis process?`,
-      idealKeywords: ["root cause", "post-mortem", "logs", "telemetry", "tracing", "remediation", "prevention"],
-      followUpVague: `What specific observability tools or telemetry metrics pointed you to the root cause rather than guessing?`,
-      followUpExpert: `What automated guardrails or alert thresholds did your team introduce afterwards to guarantee that exact failure mode never recurs?`
+      type: "Production Incident Triage & Root Cause",
+      prompt: `Walk me through a severe production outage or silent performance degradation you investigated in your past ${experienceYears}+ years of work. What was your root-cause analysis procedure?`,
+      idealKeywords: ["root cause", "post-mortem", "logs", "telemetry", "tracing", "remediation", "prevention", "metrics"],
+      followUpVague: `What specific observability tools or telemetry traces pointed you to the root cause rather than guesswork?`,
+      followUpExpert: `What automated canary checks or regression suites were deployed in CI/CD to guarantee that failure mode never recurs?`
     }
   ];
 }
@@ -38,53 +69,108 @@ export function evaluateAnswerAndAdapt(question, answer) {
   if (!answer || answer.trim().length === 0) {
     return {
       needsFollowUp: true,
-      followUpQuestion: "We didn't catch that clearly. Could you elaborate on your experience or give a specific example?",
+      followUpQuestion: "We didn't catch that clearly. Could you summarize your core technical approach in 2-3 sentences?",
       quality: "empty",
       feedback: "Answer was empty or too brief to evaluate."
     };
   }
 
-  const words = answer.trim().split(/\s+/);
+  const answerTrimmed = answer.trim();
+  const words = answerTrimmed.split(/\s+/);
   const wordCount = words.length;
-  const answerLower = answer.toLowerCase();
+  const answerLower = answerTrimmed.toLowerCase();
+  const primaryTopic = question?.idealKeywords?.[0] || "this architecture";
 
-  // Detect non-words / gibberish (e.g. 'asdfghj' or repetitive chars)
-  const isGibberish = wordCount < 3 && answer.trim().length > 15 || !/[aeiouAEIOU]/.test(answer);
+  // Case 1: Detect explicit admissions of uncertainty / lack of knowledge ("I don't know")
+  const isUnsure = UNSURE_PATTERNS.some(p => p.test(answerTrimmed));
+  if (isUnsure) {
+    const unsurePivots = [
+      `Understood — transparency about technical boundaries is a vital trait in senior engineering. If you encountered a system requiring ${primaryTopic} on the job tomorrow, what first-principles approach would you take to research, prototype, and validate it?`,
+      `Fair enough, thanks for your upfront answer. Looking at the wider system around ${primaryTopic}, have you worked with any adjacent tools or alternative patterns that accomplish a similar goal?`,
+      `That's completely fine. Let's look at it conceptually: even without direct hands-on experience in ${primaryTopic}, how would you reason about the trade-offs of latency versus data consistency here?`
+    ];
+    const chosen = unsurePivots[answerTrimmed.length % unsurePivots.length];
+    return {
+      needsFollowUp: true,
+      followUpQuestion: chosen,
+      quality: "acknowledged_gap",
+      feedback: `Candidate transparently acknowledged unfamiliarity with ${primaryTopic}. Pivot dispatched to evaluate first-principles reasoning.`
+    };
+  }
 
+  // Case 2: Detect non-words / gibberish (e.g. 'asdfghj' or repetitive chars)
+  const isGibberish = (wordCount < 3 && answerTrimmed.length > 15) || !/[aeiouAEIOU]/.test(answerTrimmed);
   if (isGibberish) {
     return {
       needsFollowUp: true,
-      followUpQuestion: "Your answer appears unclear or off-topic. Could you provide a concrete technical explanation?",
+      followUpQuestion: "That didn't come through clearly. Could you summarize your core technical approach or design choice in 2-3 sentences?",
       quality: "gibberish",
       feedback: "Unclear or random input detected. Prompting for technical clarity."
     };
   }
   
+  // Case 3: Check if candidate specifically referenced a technical tool/concept
+  let matchedEntity = null;
+  for (const [k, v] of Object.entries(TECH_ENTITIES)) {
+    if (new RegExp(`\\b${k}\\b`, 'i').test(answerLower)) {
+      matchedEntity = v;
+      break;
+    }
+  }
+
+  if (wordCount < 25 && matchedEntity) {
+    const entityProbes = [
+      `You specifically highlighted using ${matchedEntity}. What were the key production trade-offs or constraints you navigated when implementing that?`,
+      `Regarding ${matchedEntity}, how did your team ensure high availability, monitoring, and failover under peak traffic loads?`,
+      `When operating with ${matchedEntity}, what failure modes or unexpected edge cases did your team have to architect around?`
+    ];
+    return {
+      needsFollowUp: true,
+      followUpQuestion: entityProbes[answerTrimmed.length % entityProbes.length],
+      quality: "targeted_mention",
+      feedback: `Candidate referenced ${matchedEntity}. Context-aware deep-dive dispatched.`
+    };
+  }
+
   // Count matching ideal keywords
   const matchedKeywords = (question?.idealKeywords || []).filter(kw => 
     answerLower.includes(kw.toLowerCase())
   );
 
-  if (wordCount < 15 || (matchedKeywords.length === 0 && wordCount < 30)) {
+  // Case 4: Vague / high-level response (< 20 words or no keywords matched)
+  if (wordCount < 20 || matchedKeywords.length === 0) {
+    const vagueProbes = [
+      question?.followUpVague || `Could you elaborate on the specific tools, telemetry metrics, or frameworks you relied on in that scenario?`,
+      `In terms of production reliability, what was the biggest technical constraint or bottleneck you had to engineer around in that scenario?`,
+      `What specific error handling, retry policies, or test suites did you implement to validate that approach?`
+    ];
     return {
       needsFollowUp: true,
-      followUpQuestion: question?.followUpVague || "Could you provide a concrete production example or technical metric that illustrates your answer?",
+      followUpQuestion: vagueProbes[answerTrimmed.length % vagueProbes.length],
       quality: "vague",
       matchedKeywords,
-      feedback: "Answer lacked specific architectural depth. Probing follow-up triggered."
+      feedback: `Answer was high-level (${wordCount} words). Targeted probing question dispatched.`
     };
   }
 
+  // Case 5: Strong technical depth shown (>= 2 keywords, >= 25 words)
   if (matchedKeywords.length >= 2 && wordCount >= 25) {
+    const kwStr = matchedKeywords.slice(0, 2).join(', ');
+    const advancedProbes = [
+      question?.followUpExpert || `You highlighted ${kwStr}. How do you safeguard this architecture under 10x traffic spikes and automated failover?`,
+      `Given your experience with ${kwStr}, how would you architect automated canary deployments and zero-downtime rollbacks if a regression is detected?`,
+      `That's a sound architectural design for ${kwStr}. What automated alerts and telemetry thresholds do you configure to catch degradation before users notice?`
+    ];
     return {
       needsFollowUp: true,
-      followUpQuestion: question?.followUpExpert || "That's a solid architectural choice. How do you safeguard this under extreme edge cases or network degradation?",
+      followUpQuestion: advancedProbes[answerTrimmed.length % advancedProbes.length],
       quality: "advanced",
       matchedKeywords,
-      feedback: "Strong technical depth shown. Initiating scenario-based stress test."
+      feedback: `Strong technical depth shown on ${kwStr}. Initiating scenario-based stress test.`
     };
   }
 
+  // Case 6: Functional standard answer
   return {
     needsFollowUp: false,
     quality: "solid",

@@ -4,10 +4,39 @@
 import uuid
 from sqlalchemy.orm import Session
 from models.db_models import CandidateModel, JobModel, IntegrityLogModel
-from schemas import AdaptiveQuestionRequest, TelemetryEventCreate, EvaluationRequest
-from ai_engine import evaluate_adaptive_answer, calculate_scorecard_and_gap
+from schemas import AdaptiveQuestionRequest, TelemetryEventCreate, EvaluationRequest, CandidateQuestionsRequest
+from ai_engine import evaluate_adaptive_answer, calculate_scorecard_and_gap, synthesize_candidate_interview_questions
 
 class InterviewController:
+    @staticmethod
+    def generate_candidate_questions(payload: CandidateQuestionsRequest, db: Session):
+        job = db.query(JobModel).filter(JobModel.id == payload.job_id).first()
+        cand = None
+        if payload.candidate_id:
+            cand = db.query(CandidateModel).filter(CandidateModel.id == payload.candidate_id).first()
+
+        role_title = job.title if job else "Software Engineer"
+        job_skills = job.required_skills if (job and job.required_skills) else []
+        cand_name = cand.name if cand else (payload.candidate_name or "Candidate")
+        cand_skills = cand.skills if (cand and cand.skills) else (payload.candidate_skills or [])
+        exp_years = cand.experience_years if cand else (payload.experience_years or 2.0)
+        cand_id = cand.id if cand else payload.candidate_id
+
+        questions = synthesize_candidate_interview_questions(
+            role_title=role_title,
+            job_skills=job_skills,
+            candidate_name=cand_name,
+            candidate_skills=cand_skills,
+            experience_years=exp_years,
+            candidate_id=cand_id
+        )
+
+        return {
+            "candidate_name": cand_name,
+            "role_title": role_title,
+            "questions": questions
+        }
+
     @staticmethod
     def process_adaptive_question(payload: AdaptiveQuestionRequest):
         return evaluate_adaptive_answer(

@@ -4,10 +4,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas import AdaptiveQuestionRequest, AdaptiveQuestionResponse, TelemetryEventCreate, EvaluationRequest
+from schemas import (
+    AdaptiveQuestionRequest, AdaptiveQuestionResponse, 
+    TelemetryEventCreate, EvaluationRequest,
+    CandidateQuestionsRequest, CandidateQuestionsResponse
+)
 from controllers.interview_controller import InterviewController
 
 router = APIRouter(prefix="/api/interview", tags=["Interview"])
+
+@router.post("/candidate-questions", response_model=CandidateQuestionsResponse)
+def candidate_questions(payload: CandidateQuestionsRequest, db: Session = Depends(get_db)):
+    return InterviewController.generate_candidate_questions(payload, db)
 
 @router.post("/adaptive-question", response_model=AdaptiveQuestionResponse)
 def adaptive_question(payload: AdaptiveQuestionRequest):

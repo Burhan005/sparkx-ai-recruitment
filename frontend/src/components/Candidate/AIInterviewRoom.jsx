@@ -75,8 +75,12 @@ export default function AIInterviewRoom() {
   const [riskLevel, setRiskLevel] = useState('Low');
   const [tabFocused, setTabFocused] = useState(true);
 
-  // Questions come 100% from the active job stored in DB
-  const questions = activeJob?.questions || [];
+  // Dynamic Candidate Questions
+  const [customQuestions, setCustomQuestions] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+
+  // Questions come from dynamic candidate-specific synthesis or fallback to active job
+  const questions = customQuestions.length > 0 ? customQuestions : (activeJob?.questions || []);
   const currentQ = questions[currentQuestionIdx] || null;
 
   // Transcript
@@ -84,11 +88,59 @@ export default function AIInterviewRoom() {
     {
       id: 'init-0',
       speaker: 'ai',
-      text: `Hello ${currentInterviewSession.candidateName || 'Candidate'}! Welcome to your SparkX AI interview${activeJob ? ` for the ${activeJob.title} position` : ''}. I will ask you role-specific questions and may ask adaptive follow-ups based on your depth. Let's begin!`,
+      text: `Hello ${currentInterviewSession?.candidateName || activeCandidate?.name || 'Candidate'}! Welcome to your SparkX AI interview${activeJob ? ` for the ${activeJob.title} position` : ''}. I will ask you role-specific questions and may ask adaptive follow-ups based on your depth. Let's begin!`,
       timestamp: '00:00'
     }
   ]);
 
+
+  // 0. Dynamic Question Synthesis for Candidate
+  useEffect(() => {
+    if (!canEnterInterview || !activeJob) return;
+
+    let isMounted = true;
+    async function loadCandidateSpecificQuestions() {
+      setLoadingQuestions(true);
+      try {
+        const candidateId = activeCandidate?.id || currentInterviewSession?.candidateId || currentUser?.id || 'candidate-default';
+        const candidateName = activeCandidate?.name || currentInterviewSession?.candidateName || currentUser?.name || 'Candidate';
+        const candidateSkills = activeCandidate?.skills || ['Distributed Systems', 'Backend Architecture'];
+        const experienceYears = activeCandidate?.experienceYears || 3;
+
+        const res = await api.generateCandidateQuestions({
+          jobId: activeJob.id,
+          candidateId,
+          candidateName,
+          candidateSkills,
+          experienceYears
+        });
+
+        const questionsList = Array.isArray(res) ? res : (res?.questions || []);
+        if (isMounted && questionsList.length > 0) {
+          setCustomQuestions(questionsList);
+          setTranscript(prev => {
+            if (prev.length === 1 && prev[0].id === 'init-0') {
+              const skillsStr = Array.isArray(candidateSkills) ? candidateSkills.slice(0, 3).join(', ') : 'modern engineering';
+              return [{
+                id: 'init-0',
+                speaker: 'ai',
+                text: `Hello ${candidateName}! Welcome to your SparkX AI technical interview for the ${activeJob.title} position. I have analyzed your background in ${skillsStr} and synthesized dynamic engineering scenarios tailored to your experience. Let's begin!`,
+                timestamp: '00:00'
+              }];
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        console.warn('Personalized question synthesis fallback to standard job set:', err);
+      } finally {
+        if (isMounted) setLoadingQuestions(false);
+      }
+    }
+
+    loadCandidateSpecificQuestions();
+    return () => { isMounted = false; };
+  }, [canEnterInterview, activeJob?.id, activeCandidate?.id]);
 
   // 1. Initialize Proctoring
   useEffect(() => {
@@ -216,14 +268,15 @@ export default function AIInterviewRoom() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // Speak initial question on load
+  // Speak question on load or index advance
   useEffect(() => {
-    if (currentQ) {
-      setTimeout(() => {
+    if (currentQ?.prompt && !loadingQuestions) {
+      const timer = setTimeout(() => {
         speakAI(currentQ.prompt);
       }, 800);
+      return () => clearTimeout(timer);
     }
-  }, [currentQuestionIdx]);
+  }, [currentQuestionIdx, currentQ?.prompt, loadingQuestions]);
 
   // 4. Speech Recognition Toggle (Candidate speaks)
   const toggleSpeechRecognition = () => {
@@ -669,7 +722,15 @@ export default function AIInterviewRoom() {
                   <div className="text-[11px] text-slate-400 flex items-center space-x-2 mt-0.5">
                     <span>Question {currentQuestionIdx + 1} of {questions.length}</span>
                     <span>•</span>
-                    <span className="text-indigo-400 font-semibold">{currentQ.type}</span>
+                    <span className="text-indigo-400 font-semibold">{currentQ?.type || 'Technical Scenario'}</span>
+                    {customQuestions.length > 0 && (
+                      <>
+                        <span>•</span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                          ✨ Synthesized for {activeCandidate?.name?.split(' ')[0] || 'Candidate'}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -697,11 +758,18 @@ export default function AIInterviewRoom() {
             {/* Current Active Question Display */}
             <div className="p-4 sm:p-5 rounded-2xl bg-[#06080E]/90 border border-indigo-500/20 shadow-inner relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 opacity-60"></div>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-                {isFollowUpActive ? "Adaptive Deep Probe (Evaluating Competency Depth)" : `Targeted Competency Question ${currentQuestionIdx + 1}`}
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                  {isFollowUpActive ? "Adaptive Deep Probe (Evaluating Competency Depth)" : `Targeted Competency Question ${currentQuestionIdx + 1}`}
+                </span>
+                {loadingQuestions && (
+                  <span className="text-[10px] text-cyan-400 font-mono animate-pulse">
+                    Synthesizing candidate scenarios...
+                  </span>
+                )}
+              </div>
               <p className="text-sm sm:text-base font-semibold text-white mt-1.5 leading-relaxed">
-                {isFollowUpActive ? activeFollowUpPrompt : currentQ.prompt}
+                {isFollowUpActive ? activeFollowUpPrompt : (currentQ?.prompt || (loadingQuestions ? 'Synthesizing dynamic role scenario...' : 'Loading scenario...'))}
               </p>
             </div>
 
@@ -746,7 +814,7 @@ export default function AIInterviewRoom() {
             {/* Quick Demo Answers to Test Adaptive Engine with 1-click */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
               <span className="font-semibold text-slate-300">Quick Test Responses:</span>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setCandidateAnswer("I would use asynchronous FastAPI endpoints combined with streaming responses and an HNSW vector index in PostgreSQL for sub-50ms latency.")}
@@ -759,7 +827,14 @@ export default function AIInterviewRoom() {
                   onClick={() => setCandidateAnswer("We basically use caching and databases to make it fast.")}
                   className="px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition font-medium text-[11px]"
                 >
-                  ❓ Vague Answer (Triggers Follow-Up)
+                  ❓ Vague Answer
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCandidateAnswer("I don't know much about this yet, haven't encountered it in production.")}
+                  className="px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20 transition font-medium text-[11px]"
+                >
+                  🤷‍♂️ "I don't know" (Adaptive Pivot)
                 </button>
               </div>
             </div>

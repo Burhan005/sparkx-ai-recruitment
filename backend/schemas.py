@@ -81,6 +81,18 @@ class AdaptiveQuestionResponse(BaseModel):
     quality: str
     feedback: str
 
+class CandidateQuestionsRequest(BaseModel):
+    job_id: str
+    candidate_id: Optional[str] = None
+    candidate_name: Optional[str] = "Candidate"
+    candidate_skills: Optional[List[str]] = []
+    experience_years: Optional[float] = 2.0
+
+class CandidateQuestionsResponse(BaseModel):
+    candidate_name: str
+    role_title: str
+    questions: List[Dict[str, Any]]
+
 class TelemetryEventCreate(BaseModel):
     candidate_id: str
     timestamp: str

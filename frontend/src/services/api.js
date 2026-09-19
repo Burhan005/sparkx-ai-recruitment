@@ -277,6 +277,33 @@ export const api = {
     }
   },
 
+  async generateCandidateQuestions({ jobId, candidateId, candidateName, candidateSkills = [], experienceYears = 2 }) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/interview/candidate-questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: jobId,
+          candidate_id: candidateId,
+          candidate_name: candidateName || 'Candidate',
+          candidate_skills: candidateSkills,
+          experience_years: Number(experienceYears || 2),
+        }),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) throw new Error('Dynamic question generation failed');
+      const data = await res.json();
+      return {
+        questions: data?.questions || [],
+        candidateName: data?.candidate_name,
+        roleTitle: data?.role_title
+      };
+    } catch (err) {
+      console.warn('[API] generateCandidateQuestions fallback:', err.message);
+      return null;
+    }
+  },
+
   async evaluateAdaptiveAnswer(questionPrompt, candidateAnswer, idealKeywords = [], followUpVague = null, followUpExpert = null) {
     try {
       const res = await fetch(`${API_BASE_URL}/interview/adaptive-question`, {
