@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "nodemon": "nodemon --watch src --exec vite",
     "build": "vite build",
     "preview": "vite preview"
   },
