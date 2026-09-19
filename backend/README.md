@@ -1,38 +1,27 @@
 # ⚡ SparkX AI Recruitment — FastAPI + PostgreSQL Backend
 
-High-performance asynchronous Python backend with SQLAlchemy ORM, Pydantic data validation, automated resume parsing, adaptive cross-questioning, and PostgreSQL database storage.
+High-performance asynchronous Python backend with SQLAlchemy ORM, Pydantic data validation, automated resume parsing, adaptive cross-questioning, and database storage.
 
 ---
 
-## 🚀 Quick Setup
+## 🚀 Quick Start in VS Code Terminal
 
-### 1. Install Dependencies
-In the `backend` directory, run:
-```bash
+### 1. In the `backend` folder, install requirements:
+```powershell
 pip install -r requirements.txt
 ```
 
-### 2. Configure Database (`.env`)
-By default, `.env` is configured for PostgreSQL:
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sparkx_recruitment
-```
-> **Smart Fallback:** If your local PostgreSQL instance is not started or configured yet, the backend will automatically and gracefully fall back to a local SQLite database (`sparkx_recruitment.db`), ensuring you never encounter crashes during local presentations or client demos!
-
-### 3. Seed Database with SIH Roles & Candidates
-```bash
+### 2. Seed Database:
+```powershell
 python seed.py
 ```
+> **Note on PostgreSQL vs SQLite:** If your PostgreSQL service on port 5432 is not running, the system will automatically and seamlessly use a local SQLite database (`sparkx_recruitment.db`). It will never crash or hang!
 
-### 4. Start Server
-Run with Uvicorn (or Nodemon):
-```bash
-uvicorn main:app --reload --port 8000
-```
-Or with nodemon:
-```bash
-npx nodemon --watch . --ext py --exec "uvicorn main:app --reload --port 8000"
+### 3. Start the Server:
+On Windows PowerShell, use `python -m uvicorn` to avoid any PATH issues:
+```powershell
+python -m uvicorn main:app --reload --port 8000
 ```
 
-### 5. Interactive API Documentation
-Open **[http://localhost:8000/docs](http://localhost:8000/docs)** for the interactive Swagger UI testing every endpoint live.
+### 4. Interactive API Documentation
+Open **[http://localhost:8000/docs](http://localhost:8000/docs)** to test the live Swagger UI.
