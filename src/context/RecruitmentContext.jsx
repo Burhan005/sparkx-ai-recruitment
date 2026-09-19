@@ -5,6 +5,27 @@ import { generateCandidateEvaluation } from '../services/aiRecruiterService';
 const RecruitmentContext = createContext();
 
 export function RecruitmentProvider({ children }) {
+  // Theme state: dark or light
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('sparkx_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    } else {
+      root.classList.remove('dark');
+      root.classList.add('light');
+    }
+    localStorage.setItem('sparkx_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   const [jobs, setJobs] = useState(() => {
     const saved = localStorage.getItem('sparkx_jobs');
     return saved ? JSON.parse(saved) : INITIAL_JOBS;
@@ -183,6 +204,8 @@ export function RecruitmentProvider({ children }) {
   return (
     <RecruitmentContext.Provider
       value={{
+        theme,
+        toggleTheme,
         jobs,
         candidates,
         currentView,
