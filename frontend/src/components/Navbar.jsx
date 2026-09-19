@@ -136,10 +136,24 @@ export default function Navbar() {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition hover:scale-105 active:scale-95 shadow-sm"
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border transition hover:scale-105 active:scale-95 shadow-sm text-xs font-bold ${
+                theme === 'dark'
+                  ? 'border-white/[0.08] bg-slate-900/90 text-amber-300 hover:border-amber-400/40'
+                  : 'border-slate-200 bg-white text-indigo-600 hover:border-indigo-400'
+              }`}
+              title={`Currently in ${theme === 'dark' ? 'Dark' : 'Light'} Mode. Click to toggle.`}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline text-[11px] font-semibold">Dark Mode</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="hidden sm:inline text-[11px] font-semibold">Light Mode</span>
+                </>
+              )}
             </button>
 
             {/* Logout */}

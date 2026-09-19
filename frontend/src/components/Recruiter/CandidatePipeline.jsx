@@ -491,154 +491,166 @@ export default function CandidatePipeline() {
           ) : displayMode === 'kanban' ? (
             /* KANBAN BOARD VIEW */
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start overflow-x-auto pb-4">
-              {[
-                {
-                  id: 'screening',
-                  name: 'Screening',
-                  dotColor: 'bg-blue-400',
-                  badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-                  items: filteredCandidates.filter(c => !c.interviewScheduledAt && c.status !== 'Evaluated' && c.finalDecision !== 'Shortlisted' && c.finalDecision !== 'Offered' && c.finalDecision !== 'Rejected')
-                },
-                {
-                  id: 'scheduled',
-                  name: 'Interview Scheduled',
-                  dotColor: 'bg-cyan-400',
-                  badgeColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-                  items: filteredCandidates.filter(c => Boolean(c.interviewScheduledAt) && c.status !== 'Evaluated' && c.finalDecision !== 'Shortlisted' && c.finalDecision !== 'Offered' && c.finalDecision !== 'Rejected')
-                },
-                {
-                  id: 'evaluated',
-                  name: 'AI Evaluated',
-                  dotColor: 'bg-indigo-400',
-                  badgeColor: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
-                  items: filteredCandidates.filter(c => c.status === 'Evaluated' && c.finalDecision !== 'Shortlisted' && c.finalDecision !== 'Offered' && c.finalDecision !== 'Rejected')
-                },
-                {
-                  id: 'shortlisted',
-                  name: 'Shortlisted',
-                  dotColor: 'bg-emerald-400',
-                  badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-                  items: filteredCandidates.filter(c => c.finalDecision === 'Shortlisted')
-                },
-                {
-                  id: 'decided',
-                  name: 'Decisions / Closed',
-                  dotColor: 'bg-purple-400',
-                  badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-                  items: filteredCandidates.filter(c => c.finalDecision === 'Offered' || c.finalDecision === 'Rejected')
-                }
-              ].map(stage => (
-                <div key={stage.id} className="kanban-column p-3.5 sm:p-4 rounded-2xl flex flex-col space-y-3 min-w-[240px]">
-                  {/* Column Header */}
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-white/[0.06]">
-                    <div className="flex items-center space-x-2">
-                      <span className={`w-2 h-2 rounded-full ${stage.dotColor}`} />
-                      <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                        {stage.name}
+              {(() => {
+                const getCandidateStage = (c) => {
+                  if (c.finalDecision === 'Offered' || c.finalDecision === 'Rejected') return 'decided';
+                  if (c.finalDecision === 'Shortlisted') return 'shortlisted';
+                  if (c.interviewScheduledAt) return 'scheduled';
+                  if (c.status === 'Evaluated' || c.interviewSummary || (c.scores && c.scores.overall > 0)) return 'evaluated';
+                  return 'screening';
+                };
+
+                return [
+                  {
+                    id: 'screening',
+                    name: 'Screening',
+                    dotColor: 'bg-blue-400',
+                    badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                    items: filteredCandidates.filter(c => getCandidateStage(c) === 'screening')
+                  },
+                  {
+                    id: 'scheduled',
+                    name: 'Interview Scheduled',
+                    dotColor: 'bg-cyan-400',
+                    badgeColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+                    items: filteredCandidates.filter(c => getCandidateStage(c) === 'scheduled')
+                  },
+                  {
+                    id: 'evaluated',
+                    name: 'AI Evaluated',
+                    dotColor: 'bg-indigo-400',
+                    badgeColor: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+                    items: filteredCandidates.filter(c => getCandidateStage(c) === 'evaluated')
+                  },
+                  {
+                    id: 'shortlisted',
+                    name: 'Shortlisted',
+                    dotColor: 'bg-emerald-400',
+                    badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                    items: filteredCandidates.filter(c => getCandidateStage(c) === 'shortlisted')
+                  },
+                  {
+                    id: 'decided',
+                    name: 'Decisions / Closed',
+                    dotColor: 'bg-purple-400',
+                    badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                    items: filteredCandidates.filter(c => getCandidateStage(c) === 'decided')
+                  }
+                ].map(stage => (
+                  <div key={stage.id} className="kanban-column p-3.5 sm:p-4 rounded-2xl flex flex-col space-y-3 min-w-[240px]">
+                    {/* Column Header */}
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-white/[0.06]">
+                      <div className="flex items-center space-x-2">
+                        <span className={`w-2 h-2 rounded-full ${stage.dotColor}`} />
+                        <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                          {stage.name}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                        {stage.items.length}
                       </span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                      {stage.items.length}
-                    </span>
-                  </div>
 
-                  {/* Column Cards */}
-                  <div className="space-y-3 min-h-[140px]">
-                    {stage.items.length === 0 ? (
-                      <div className="p-6 text-center rounded-xl border border-dashed border-slate-200/80 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-xs">
-                        No candidates
-                      </div>
-                    ) : (
-                      stage.items.map(cand => {
-                        const initials = cand.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-                        const isHighRisk = cand.integrityRisk === 'High';
+                    {/* Column Cards */}
+                    <div className="space-y-3 min-h-[140px]">
+                      {stage.items.length === 0 ? (
+                        <div className="p-6 text-center rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.01] text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center space-y-1">
+                          <span className="text-base opacity-40">📭</span>
+                          <span className="text-[11px] font-medium">No candidates in {stage.name.toLowerCase()}</span>
+                        </div>
+                      ) : (
+                        stage.items.map(cand => {
+                          const initials = cand.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                          const isHighRisk = cand.integrityRisk === 'High';
 
-                        return (
-                          <div
-                            key={cand.id}
-                            onClick={() => setSelectedCandidate(cand)}
-                            className="kanban-card p-3.5 space-y-2.5 cursor-pointer group hover:border-indigo-500/50 transition-all shadow-sm"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center space-x-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white text-xs font-black shadow-md ring-1 ring-white/20">
-                                  {initials}
+                          return (
+                            <div
+                              key={cand.id}
+                              onClick={() => setSelectedCandidate(cand)}
+                              className="kanban-card p-3.5 space-y-2.5 cursor-pointer group hover:border-indigo-500/50 transition-all shadow-sm"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-indigo-500 flex items-center justify-center text-white text-xs font-black shadow-md ring-1 ring-white/20 shrink-0">
+                                    {initials}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition leading-snug truncate">
+                                      {cand.name}
+                                    </h4>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                                      {cand.job?.title || 'Applied Role'}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="max-w-[120px]">
-                                  <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-400 transition leading-snug truncate">
-                                    {cand.name}
-                                  </h4>
-                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                                    {cand.job?.title || 'Applied Role'}
-                                  </p>
-                                </div>
+
+                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border shrink-0 whitespace-nowrap ${
+                                  cand.matchScore >= 85 
+                                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' 
+                                    : cand.matchScore >= 70
+                                    ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30'
+                                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                                }`}>
+                                  {cand.matchScore}% Match
+                                </span>
                               </div>
 
-                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${
-                                cand.matchScore >= 85 
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30' 
-                                  : cand.matchScore >= 70
-                                  ? 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/30'
-                                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
-                              }`}>
-                                {cand.matchScore}% Match
-                              </span>
-                            </div>
+                              {/* Scheduled Interview Slot & Meet link if available */}
+                              {cand.interviewScheduledAt && (
+                                <div className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-950/50 border border-cyan-200 dark:border-cyan-800/50 flex items-center justify-between text-[11px] shadow-sm">
+                                  <span className="text-cyan-800 dark:text-cyan-300 font-medium truncate text-[10px] flex items-center space-x-1">
+                                    <span>📅</span>
+                                    <span className="truncate max-w-[125px]">{cand.interviewScheduledAt}</span>
+                                  </span>
+                                  {cand.interviewMeetingUrl && (
+                                    <a
+                                      href={cand.interviewMeetingUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={e => e.stopPropagation()}
+                                      className="px-2 py-0.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] transition flex items-center space-x-1 shadow-sm shrink-0 ml-1.5"
+                                      title="Launch Google Meet"
+                                    >
+                                      <Video className="w-2.5 h-2.5" />
+                                      <span>Meet</span>
+                                    </a>
+                                  )}
+                                </div>
+                              )}
 
-                            {/* Scheduled Interview Slot & Meet link if available */}
-                            {cand.interviewScheduledAt && (
-                              <div className="p-2 rounded-lg bg-cyan-950/30 dark:bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-between text-[11px]">
-                                <span className="text-cyan-400 font-medium truncate max-w-[130px] text-[10px]">
-                                  📅 {cand.interviewScheduledAt}
-                                </span>
-                                {cand.interviewMeetingUrl && (
-                                  <a
-                                    href={cand.interviewMeetingUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={e => e.stopPropagation()}
-                                    className="px-2 py-0.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] transition flex items-center space-x-1 shadow-sm"
-                                    title="Launch Google Meet"
-                                  >
-                                    <Video className="w-2.5 h-2.5" />
-                                    <span>Meet</span>
-                                  </a>
+                              {/* Skills pills */}
+                              <div className="flex flex-wrap gap-1">
+                                {cand.skills?.slice(0, 2).map((s, i) => (
+                                  <span key={i} className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/80 text-[10px] text-slate-700 dark:text-slate-300 font-medium border border-slate-200 dark:border-white/[0.04]">
+                                    {s}
+                                  </span>
+                                ))}
+                                {cand.skills?.length > 2 && (
+                                  <span className="text-[9px] text-slate-500 self-center">+{cand.skills.length - 2}</span>
                                 )}
                               </div>
-                            )}
 
-                            {/* Skills pills */}
-                            <div className="flex flex-wrap gap-1">
-                              {cand.skills?.slice(0, 2).map((s, i) => (
-                                <span key={i} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 text-[10px] text-slate-600 dark:text-slate-400 font-medium border border-slate-200/50 dark:border-white/[0.04]">
-                                  {s}
+                              {/* Card Footer */}
+                              <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-white/[0.05] text-[10px]">
+                                <span className={`font-bold flex items-center space-x-1 ${
+                                  isHighRisk ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'
+                                }`}>
+                                  {isHighRisk ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
+                                  <span>{isHighRisk ? 'Flagged' : 'Verified'}</span>
                                 </span>
-                              ))}
-                              {cand.skills?.length > 2 && (
-                                <span className="text-[9px] text-slate-500 self-center">+{cand.skills.length - 2}</span>
-                              )}
+                                <span className="text-indigo-600 dark:text-indigo-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center space-x-0.5">
+                                  <span>Dossier</span>
+                                  <ChevronRight className="w-3 h-3" />
+                                </span>
+                              </div>
                             </div>
-
-                            {/* Card Footer */}
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-white/[0.05] text-[10px]">
-                              <span className={`font-bold flex items-center space-x-1 ${
-                                isHighRisk ? 'text-rose-500' : 'text-emerald-500 dark:text-emerald-400'
-                              }`}>
-                                {isHighRisk ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
-                                <span>{isHighRisk ? 'Flagged' : 'Verified'}</span>
-                              </span>
-                              <span className="text-indigo-600 dark:text-indigo-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center space-x-0.5">
-                                <span>Dossier</span>
-                                <ChevronRight className="w-3 h-3" />
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
             </div>
           ) : (
             /* DETAILED GRID / LIST VIEW */

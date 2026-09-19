@@ -235,11 +235,103 @@ def seed(force=False):
             final_decision="Rejected"
         )
 
+        cand4 = CandidateModel(
+            id="cand-004",
+            job_id="job-101",
+            name="Priya Nair",
+            email="priya.nair@techinnovations.io",
+            phone="+91 97654 32109",
+            applied_date="2026-09-19",
+            status="Screening",
+            match_score=89,
+            experience_years=3.5,
+            education="B.Tech Computer Science, BITS Pilani (2022)",
+            skills=["Python", "FastAPI", "Docker", "PostgreSQL", "LangChain", "Kubernetes"],
+            resume_summary="Backend AI engineer with 3.5 years of experience deploying microservices, Dockerizing LLM chains, and designing RESTful APIs.",
+            fraud_flags=[],
+            integrity_score=100,
+            integrity_risk="Low",
+            integrity_events=[],
+            scores={},
+            interview_summary=None,
+            evidence_snippets=[],
+            skill_gaps={},
+            hr_notes="Strong candidate from resume screening. Recommended for AI interview round.",
+            final_decision="Pending Interview",
+            interview_scheduled_at=None,
+            interview_meeting_url=None,
+            interview_status="Applied"
+        )
+
+        cand5 = CandidateModel(
+            id="cand-005",
+            job_id="job-101",
+            name="Vikram Malhotra",
+            email="vikram.malhotra@cloudai.dev",
+            phone="+91 98450 11223",
+            applied_date="2026-09-17",
+            status="Interview Scheduled",
+            match_score=92,
+            experience_years=4.8,
+            education="M.Tech AI & Data Systems, IIIT Hyderabad (2021)",
+            skills=["Python", "FastAPI", "React", "PyTorch", "pgvector", "LangChain", "System Design"],
+            resume_summary="Lead ML platform engineer specializing in agentic workflows, low-latency streaming endpoints, and vector index tuning.",
+            fraud_flags=[],
+            integrity_score=100,
+            integrity_risk="Low",
+            integrity_events=[],
+            scores={},
+            interview_summary=None,
+            evidence_snippets=[],
+            skill_gaps={},
+            hr_notes="Interview invitation sent. Google Meet link dispatched.",
+            final_decision="Pending Interview",
+            interview_scheduled_at="Tomorrow, 02:30 PM",
+            interview_meeting_url="https://meet.google.com/spk-aixr-rec",
+            interview_status="Interview Scheduled"
+        )
+
+        cand6 = CandidateModel(
+            id="cand-006",
+            job_id="job-102",
+            name="Kavita Sen",
+            email="kavita.sen@frontendlab.org",
+            phone="+91 99887 66554",
+            applied_date="2026-09-16",
+            status="Evaluated",
+            match_score=96,
+            experience_years=4.0,
+            education="B.E. Computer Engineering, Delhi Technological University (2022)",
+            skills=["React", "TypeScript", "Tailwind CSS", "Canvas API", "Web Speech API", "Micro-frontends"],
+            resume_summary="Senior Frontend Engineer with 4 years building high-frequency telemetry dashboards, real-time video canvases, and accessible design systems.",
+            fraud_flags=[],
+            integrity_score=98,
+            integrity_risk="Low",
+            integrity_events=[
+                {"id": "e1", "timestamp": "00:10", "type": "FACE_VERIFIED", "description": "Identity confirmed at session start."},
+                {"id": "e2", "timestamp": "05:22", "type": "FOCUS_MAINTAINED", "description": "Continuous single-person engagement throughout assessment."}
+            ],
+            scores={"jobSkills": 96, "technicalScore": 95, "communication": 94, "problemSolving": 92, "overall": 95},
+            interview_summary="Exceptional UI architecture mastery. Demonstrated custom WebRTC hook implementation and 60fps canvas bounding box calculations with zero lag. Clear communicator and team player.",
+            evidence_snippets=[
+                {"question": "How do you ensure smooth 60fps rendering with real-time video overlay and Canvas?", "answer": "We offload vision landmark inferences to a Web Worker using OffscreenCanvas and bind render cycles strictly to requestAnimationFrame with double-buffered layers.", "aiInsight": "Candidate demonstrated pristine systems-level frontend performance engineering."}
+            ],
+            skill_gaps={"missingSkills": [], "strongSkills": ["React", "Canvas API", "Performance Optimization", "Accessibility"], "recommendations": ["Ready to mentor junior frontend engineers."], "readiness": "Senior Ready"},
+            hr_notes="Formal offer letter dispatched. Candidate accepted; onboarding scheduled.",
+            final_decision="Offered",
+            interview_scheduled_at="Completed (2026-09-18)",
+            interview_meeting_url=None,
+            interview_status="Offer Sent"
+        )
+
         db.add(cand1)
         db.add(cand2)
         db.add(cand3)
+        db.add(cand4)
+        db.add(cand5)
+        db.add(cand6)
         db.commit()
-        print("[OK] Seeded database: 2 jobs, 3 candidates, 2 users")
+        print("[OK] Seeded database: 2 jobs, 6 candidates across all 5 pipeline stages, 2 users")
 
     finally:
         db.close()
