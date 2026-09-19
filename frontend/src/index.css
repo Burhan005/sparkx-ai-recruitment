@@ -5,27 +5,85 @@
 @layer base {
   :root {
     --bg-page: #F8FAFC;
-    --card-bg: rgba(255, 255, 255, 0.90);
+    --card-bg: rgba(255, 255, 255, 0.95);
     --card-border: rgba(226, 232, 240, 0.9);
-    --card-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.06);
+    --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    --accent-glow: rgba(99, 102, 241, 0.12);
   }
 
   .dark {
-    --bg-page: #070A12;
-    --card-bg: rgba(17, 24, 39, 0.72);
-    --card-border: rgba(255, 255, 255, 0.07);
-    --card-shadow: 0 8px 36px 0 rgba(0, 0, 0, 0.40);
+    --bg-page: #080B11;
+    --card-bg: rgba(13, 17, 26, 0.78);
+    --card-border: rgba(255, 255, 255, 0.08);
+    --card-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+    --accent-glow: rgba(99, 102, 241, 0.20);
   }
 
   body {
     background-color: var(--bg-page);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #0F172A;
     transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  .dark body {
+    color: #F1F5F9;
   }
 
   html {
     scroll-behavior: smooth;
   }
+}
+
+/* ─── Premium Ambient Background Mesh ───────────────────────── */
+.bg-ambient-mesh {
+  background-color: var(--bg-page);
+  background-image: 
+    radial-gradient(at 50% 0%, rgba(99, 102, 241, 0.14) 0px, transparent 55%),
+    radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.08) 0px, transparent 40%),
+    radial-gradient(at 0% 50%, rgba(6, 182, 212, 0.06) 0px, transparent 45%);
+}
+
+.dark .bg-ambient-mesh {
+  background-image: 
+    radial-gradient(at 50% -5%, rgba(99, 102, 241, 0.18) 0px, transparent 55%),
+    radial-gradient(at 95% 15%, rgba(168, 85, 247, 0.12) 0px, transparent 45%),
+    radial-gradient(at 5% 40%, rgba(6, 182, 212, 0.08) 0px, transparent 40%);
+}
+
+/* ─── Glassmorphism & High-End Cards ────────────────────────── */
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+}
+
+.glass-card-hover {
+  background: var(--card-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 20px 48px -12px rgba(99, 102, 241, 0.22), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  transform: translateY(-3px);
+}
+
+/* ─── Glow Accents ──────────────────────────────────────────── */
+.glow-primary {
+  box-shadow: 0 0 28px -4px rgba(99, 102, 241, 0.45);
+}
+.glow-emerald {
+  box-shadow: 0 0 28px -4px rgba(16, 185, 129, 0.40);
+}
+.glow-rose {
+  box-shadow: 0 0 28px -4px rgba(244, 63, 94, 0.35);
 }
 
 /* ─── Custom Scrollbar ──────────────────────────────────────── */
@@ -35,38 +93,10 @@
 .dark ::-webkit-scrollbar-thumb { background: #1E293B; border: 1px solid rgba(255,255,255,0.05); }
 ::-webkit-scrollbar-thumb:hover { background: #6366F1; }
 
-/* ─── Glassmorphism ─────────────────────────────────────────── */
-.glass-card {
-  background: var(--card-bg);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
-}
-
-.glass-card-hover {
-  background: var(--card-bg);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
-  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.glass-card-hover:hover {
-  border-color: rgba(99, 102, 241, 0.42);
-  box-shadow: 0 20px 48px -12px rgba(99, 102, 241, 0.20);
-  transform: translateY(-4px);
-}
-
-/* ─── Glows ─────────────────────────────────────────────────── */
-.glow-primary  { box-shadow: 0 0 32px -6px rgba(99, 102, 241, 0.40); }
-.glow-emerald  { box-shadow: 0 0 32px -6px rgba(16, 185, 129, 0.40); }
-.glow-rose     { box-shadow: 0 0 32px -6px rgba(244, 63, 94, 0.35); }
-
-/* ─── Keyframes ─────────────────────────────────────────────── */
+/* ─── Keyframe Animations ───────────────────────────────────── */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-7px); }
+  50%       { transform: translateY(-6px); }
 }
 
 @keyframes laser-scan {
@@ -76,8 +106,8 @@
 }
 
 @keyframes audio-wave {
-  0%, 100% { height: 5px; }
-  50%       { height: 28px; }
+  0%, 100% { height: 4px; }
+  50%       { height: 26px; }
 }
 
 @keyframes shimmer {
@@ -86,26 +116,26 @@
 }
 
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0);    }
 }
 
 @keyframes slide-in-right {
-  from { opacity: 0; transform: translateX(-28px); }
+  from { opacity: 0; transform: translateX(-24px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.93); }
+  from { opacity: 0; transform: scale(0.95); }
   to   { opacity: 1; transform: scale(1); }
 }
 
 /* ─── Animation Utilities ───────────────────────────────────── */
 .animate-float      { animation: float 4s ease-in-out infinite; }
 .animate-laser      { animation: laser-scan 2s ease-in-out infinite alternate; }
-.animate-fade-in-up { animation: fade-in-up 0.55s cubic-bezier(0.16,1,0.3,1) both; }
-.animate-slide-in   { animation: slide-in-right 0.55s cubic-bezier(0.16,1,0.3,1) both; }
-.animate-scale-in   { animation: scale-in 0.45s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-fade-in-up { animation: fade-in-up 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-slide-in   { animation: slide-in-right 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-scale-in   { animation: scale-in 0.4s cubic-bezier(0.16,1,0.3,1) both; }
 
 /* Shimmer skeleton */
 .animate-shimmer {
@@ -121,29 +151,16 @@
 .audio-bar-4 { animation: audio-wave 0.7s ease-in-out infinite 0.15s; }
 .audio-bar-5 { animation: audio-wave 0.85s ease-in-out infinite 0.25s; }
 
-/* ─── Stagger helpers ───────────────────────────────────────── */
-.delay-100  { animation-delay: 100ms;  }
-.delay-200  { animation-delay: 200ms;  }
-.delay-300  { animation-delay: 300ms;  }
-.delay-400  { animation-delay: 400ms;  }
-.delay-500  { animation-delay: 500ms;  }
-.delay-600  { animation-delay: 600ms;  }
+/* Stagger helpers */
+.delay-100 { animation-delay: 100ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-600 { animation-delay: 600ms; }
 
-/* ─── Cyber Grid Background ─────────────────────────────────── */
-.bg-cyber-grid {
-  background-size: 36px 36px;
-  background-image:
-    linear-gradient(to right,  rgba(0,0,0,0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,0.025) 1px, transparent 1px);
-}
-.dark .bg-cyber-grid {
-  background-image:
-    linear-gradient(to right,  rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
-}
-
-/* ─── Focus ring for accessibility ─────────────────────────── */
+/* Accessibility Focus Ring */
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid #6366F1;
   outline-offset: 2px;
 }

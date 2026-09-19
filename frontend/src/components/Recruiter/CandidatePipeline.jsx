@@ -132,60 +132,63 @@ export default function CandidatePipeline() {
         
         <div 
           onClick={() => setActiveTab('jobs')}
-          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition ${activeTab === 'jobs' ? 'ring-2 ring-indigo-500' : ''}`}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-indigo-500 before:to-purple-500 ${activeTab === 'jobs' ? 'ring-2 ring-indigo-500/80 shadow-lg shadow-indigo-500/10' : ''}`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Active Job Postings</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active Roles</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 flex items-center justify-center">
               <Briefcase className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">
-            <AnimatedCounter value={jobs.length} /> <span className="text-base font-semibold text-slate-500">Roles</span>
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
+            <AnimatedCounter value={jobs.length} /> <span className="text-sm font-semibold text-slate-400">Openings</span>
           </div>
-          <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1">Click to view all jobs →</div>
+          <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-1 flex items-center space-x-1">
+            <span>Manage Job Postings</span>
+            <ChevronRight className="w-3 h-3" />
+          </div>
         </div>
 
         <div 
           onClick={() => setActiveTab('candidates')}
-          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition ${activeTab === 'candidates' ? 'ring-2 ring-indigo-500' : ''}`}
+          className={`glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden cursor-pointer transition-all before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-cyan-400 before:to-blue-500 ${activeTab === 'candidates' ? 'ring-2 ring-cyan-500/80 shadow-lg shadow-cyan-500/10' : ''}`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Applicants</span>
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Applicants</span>
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-2">
+          <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
             <AnimatedCounter value={totalApplicants} />
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">In screening & review</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">In active screening & review</div>
         </div>
 
-        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden">
+        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-emerald-400 before:to-teal-500">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">AI Evaluated</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">AI Evaluated</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Award className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
+          <div className="text-2xl sm:text-3xl font-black text-emerald-500 dark:text-emerald-400 mt-3 tracking-tight">
             <AnimatedCounter value={evaluatedCount} />
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Interviews Completed</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Full dossiers & scorecards ready</div>
         </div>
 
-        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden">
+        <div className="glass-card-hover p-4 sm:p-5 rounded-2xl relative overflow-hidden before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-gradient-to-r before:from-rose-500 before:to-amber-500">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Integrity Flags</span>
-            <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Integrity Alerts</span>
+            <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <ShieldAlert className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 mt-2">
+          <div className="text-2xl sm:text-3xl font-black text-rose-500 dark:text-rose-400 mt-3 tracking-tight">
             <AnimatedCounter value={integrityFlaggedCount} />
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Anti-Cheating Alerts</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Anti-cheating anomalies flagged</div>
         </div>
 
       </div>
