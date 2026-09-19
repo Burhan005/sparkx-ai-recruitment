@@ -75,8 +75,33 @@ class CandidateController:
         if not candidate:
             return False
 
-        candidate.final_decision = payload.status
-        candidate.status = "Rejected" if payload.status == "Rejected" else "Evaluated"
+        status_lower = payload.status.lower()
+        if status_lower in ["screening", "applied"]:
+            candidate.status = "Screening"
+            candidate.final_decision = "Pending Interview"
+        elif status_lower in ["scheduled", "interview scheduled"]:
+            candidate.status = "Interview Scheduled"
+            candidate.final_decision = "Pending Interview"
+            if not candidate.interview_scheduled_at:
+                candidate.interview_scheduled_at = "Upcoming Slot"
+            if not candidate.interview_meeting_url:
+                short_id = candidate.id.replace("cand-", "")[:6]
+                candidate.interview_meeting_url = f"https://meet.google.com/spk-{short_id[:3]}-{short_id[3:] or 'rec'}"
+        elif status_lower in ["evaluated", "ai evaluated", "under review"]:
+            candidate.status = "Evaluated"
+            candidate.final_decision = "Under Review"
+        elif status_lower in ["shortlisted"]:
+            candidate.status = "Evaluated"
+            candidate.final_decision = "Shortlisted"
+        elif status_lower in ["offered", "offer"]:
+            candidate.status = "Evaluated"
+            candidate.final_decision = "Offered"
+        elif status_lower in ["rejected"]:
+            candidate.status = "Rejected"
+            candidate.final_decision = "Rejected"
+        else:
+            candidate.final_decision = payload.status
+
         if payload.hr_notes:
             candidate.hr_notes = payload.hr_notes
 

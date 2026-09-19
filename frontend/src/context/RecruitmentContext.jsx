@@ -163,16 +163,70 @@ export function RecruitmentProvider({ children }) {
   };
 
   const updateCandidateStatus = async (candidateId, newStatus, hrNotes = '') => {
-    const result = await api.updateCandidateStatus(candidateId, newStatus, hrNotes);
-    const update = {
-      status:        newStatus === 'Rejected' ? 'Rejected' : 'Evaluated',
-      finalDecision: newStatus,
-      hrNotes:       hrNotes,
+    await api.updateCandidateStatus(candidateId, newStatus, hrNotes);
+
+    let statusVal = 'Evaluated';
+    let decisionVal = newStatus;
+    let scheduledAt = null;
+    let meetingUrl = null;
+
+    if (newStatus === 'Screening' || newStatus === 'Applied') {
+      statusVal = 'Screening';
+      decisionVal = 'Pending Interview';
+    } else if (newStatus === 'Interview Scheduled' || newStatus === 'Scheduled') {
+      statusVal = 'Interview Scheduled';
+      decisionVal = 'Pending Interview';
+      scheduledAt = 'Upcoming Slot';
+      const shortId = (candidateId || '').replace('cand-', '').slice(0, 6);
+      meetingUrl = `https://meet.google.com/spk-${shortId.slice(0, 3)}-${shortId.slice(3) || 'rec'}`;
+    } else if (newStatus === 'Evaluated' || newStatus === 'Under Review') {
+      statusVal = 'Evaluated';
+      decisionVal = 'Under Review';
+    } else if (newStatus === 'Shortlisted') {
+      statusVal = 'Evaluated';
+      decisionVal = 'Shortlisted';
+    } else if (newStatus === 'Offered') {
+      statusVal = 'Evaluated';
+      decisionVal = 'Offered';
+    } else if (newStatus === 'Rejected') {
+      statusVal = 'Rejected';
+      decisionVal = 'Rejected';
+    }
+
+    setCandidates(prev => prev.map(c => {
+      if (c.id !== candidateId) return c;
+      return {
+        ...c,
+        status: statusVal,
+        finalDecision: decisionVal,
+        hrNotes: hrNotes || c.hrNotes,
+        interviewScheduledAt: statusVal === 'Screening' ? null : (c.interviewScheduledAt || scheduledAt),
+        interviewMeetingUrl: statusVal === 'Screening' ? null : (c.interviewMeetingUrl || meetingUrl),
+      };
+    }));
+
+    if (selectedCandidate?.id === candidateId) {
+      setSelectedCandidate(p => ({
+        ...p,
+        status: statusVal,
+        finalDecision: decisionVal,
+        hrNotes: hrNotes || p?.hrNotes,
+        interviewScheduledAt: statusVal === 'Screening' ? null : (p?.interviewScheduledAt || scheduledAt),
+        interviewMeetingUrl: statusVal === 'Screening' ? null : (p?.interviewMeetingUrl || meetingUrl),
+      }));
+    }
+
+    const emojiMap = {
+      Shortlisted: '🎉',
+      Offered: '🤝',
+      Rejected: '❌',
+      'Under Review': '📋',
+      Evaluated: '🤖',
+      'Interview Scheduled': '📅',
+      Screening: '📋'
     };
-    setCandidates(prev => prev.map(c => c.id === candidateId ? { ...c, ...update } : c));
-    if (selectedCandidate?.id === candidateId) setSelectedCandidate(p => ({ ...p, ...update }));
-    const emoji = { Shortlisted: '🎉', Rejected: '❌', 'Under Review': '📋' }[newStatus] || '📋';
-    toastBus.emit(`${emoji} ${newStatus} — HR decision saved to database`, newStatus === 'Rejected' ? 'warning' : 'success');
+    const emoji = emojiMap[decisionVal] || emojiMap[newStatus] || '📋';
+    toastBus.emit(`${emoji} Moved to ${newStatus} — saved to database!`, newStatus === 'Rejected' ? 'warning' : 'success');
   };
 
   const scheduleInterview = async (candidateId, scheduledAt, notes = '', meetingUrl = '') => {

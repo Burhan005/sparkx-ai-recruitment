@@ -3,6 +3,7 @@ import { useRecruitment } from '../../context/RecruitmentContext';
 import CandidateScorecardModal from './CandidateScorecardModal';
 import JobCreatorModal from './JobCreatorModal';
 import { AnimatedCounter, FadeInUp, SlideIn } from '../ui/Primitives';
+import confetti from 'canvas-confetti';
 import { 
   Users, 
   Search, 
@@ -27,7 +28,8 @@ import {
   Columns,
   CheckCircle2,
   TrendingUp,
-  Sparkle
+  Sparkle,
+  ArrowRightLeft
 } from 'lucide-react';
 
 export default function CandidatePipeline() {
@@ -38,7 +40,8 @@ export default function CandidatePipeline() {
     setActiveJobId, 
     selectedCandidate, 
     setSelectedCandidate,
-    setCurrentView
+    setCurrentView,
+    updateCandidateStatus
   } = useRecruitment();
 
   const [activeTab, setActiveTab] = useState('candidates'); // 'candidates' | 'jobs'
@@ -49,6 +52,9 @@ export default function CandidatePipeline() {
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const [successBanner, setSuccessBanner] = useState('');
+  const [draggedCandidateId, setDraggedCandidateId] = useState(null);
+  const [dragOverStage, setDragOverStage] = useState(null);
+  const [openMoveMenuId, setOpenMoveMenuId] = useState(null);
 
   // Filter candidates
   const filteredCandidates = candidates.filter(c => {
@@ -493,11 +499,37 @@ export default function CandidatePipeline() {
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start overflow-x-auto pb-4">
               {(() => {
                 const getCandidateStage = (c) => {
-                  if (c.finalDecision === 'Offered' || c.finalDecision === 'Rejected') return 'decided';
+                  if (c.finalDecision === 'Offered' || c.finalDecision === 'Rejected' || c.status === 'Rejected') return 'decided';
                   if (c.finalDecision === 'Shortlisted') return 'shortlisted';
-                  if (c.interviewScheduledAt) return 'scheduled';
-                  if (c.status === 'Evaluated' || c.interviewSummary || (c.scores && c.scores.overall > 0)) return 'evaluated';
+                  if (c.status === 'Screening' || c.status === 'Applied') return 'screening';
+                  if (c.status === 'Interview Scheduled' || (c.interviewScheduledAt && c.status !== 'Evaluated')) return 'scheduled';
+                  if (c.status === 'Evaluated' || c.finalDecision === 'Under Review' || (c.scores && c.scores.overall > 0) || c.interviewSummary) return 'evaluated';
                   return 'screening';
+                };
+
+                const handleStageDrop = async (candId, targetStageId) => {
+                  setDragOverStage(null);
+                  setDraggedCandidateId(null);
+                  if (!candId) return;
+
+                  const stageToStatus = {
+                    screening: 'Screening',
+                    scheduled: 'Interview Scheduled',
+                    evaluated: 'Under Review',
+                    shortlisted: 'Shortlisted',
+                    decided: 'Offered'
+                  };
+
+                  const targetStatus = stageToStatus[targetStageId] || 'Screening';
+                  await updateCandidateStatus(candId, targetStatus);
+
+                  if (targetStageId === 'shortlisted' || targetStatus === 'Offered') {
+                    confetti({
+                      particleCount: 80,
+                      spread: 70,
+                      origin: { y: 0.6 }
+                    });
+                  }
                 };
 
                 return [
@@ -537,7 +569,29 @@ export default function CandidatePipeline() {
                     items: filteredCandidates.filter(c => getCandidateStage(c) === 'decided')
                   }
                 ].map(stage => (
-                  <div key={stage.id} className="kanban-column p-3.5 sm:p-4 rounded-2xl flex flex-col space-y-3 min-w-[240px]">
+                  <div 
+                    key={stage.id} 
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverStage !== stage.id) setDragOverStage(stage.id);
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) {
+                        setDragOverStage(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const candId = e.dataTransfer.getData('text/plain') || draggedCandidateId;
+                      handleStageDrop(candId, stage.id);
+                    }}
+                    className={`kanban-column p-3.5 sm:p-4 rounded-2xl flex flex-col space-y-3 min-w-[240px] transition-all duration-200 ${
+                      dragOverStage === stage.id
+                        ? 'ring-2 ring-indigo-500 bg-indigo-500/10 dark:bg-indigo-950/40 border-indigo-400 dark:border-indigo-500 shadow-lg'
+                        : ''
+                    }`}
+                  >
                     {/* Column Header */}
                     <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-white/[0.06]">
                       <div className="flex items-center space-x-2">
@@ -556,7 +610,7 @@ export default function CandidatePipeline() {
                       {stage.items.length === 0 ? (
                         <div className="p-6 text-center rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.01] text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center space-y-1">
                           <span className="text-base opacity-40">📭</span>
-                          <span className="text-[11px] font-medium">No candidates in {stage.name.toLowerCase()}</span>
+                          <span className="text-[11px] font-medium">Drop candidate here or move</span>
                         </div>
                       ) : (
                         stage.items.map(cand => {
@@ -566,8 +620,20 @@ export default function CandidatePipeline() {
                           return (
                             <div
                               key={cand.id}
+                              draggable
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('text/plain', cand.id);
+                                e.dataTransfer.effectAllowed = 'move';
+                                setDraggedCandidateId(cand.id);
+                              }}
+                              onDragEnd={() => {
+                                setDraggedCandidateId(null);
+                                setDragOverStage(null);
+                              }}
                               onClick={() => setSelectedCandidate(cand)}
-                              className="kanban-card p-3.5 space-y-2.5 cursor-pointer group hover:border-indigo-500/50 transition-all shadow-sm"
+                              className={`kanban-card p-3.5 space-y-2.5 cursor-grab active:cursor-grabbing group hover:border-indigo-500/50 transition-all shadow-sm relative ${
+                                draggedCandidateId === cand.id ? 'opacity-30 border-dashed border-indigo-500 scale-95' : ''
+                              }`}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-center space-x-2.5 min-w-0 flex-1">
@@ -638,10 +704,57 @@ export default function CandidatePipeline() {
                                   {isHighRisk ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
                                   <span>{isHighRisk ? 'Flagged' : 'Verified'}</span>
                                 </span>
-                                <span className="text-indigo-600 dark:text-indigo-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center space-x-0.5">
-                                  <span>Dossier</span>
-                                  <ChevronRight className="w-3 h-3" />
-                                </span>
+
+                                <div className="flex items-center space-x-1.5">
+                                  {/* Quick Stage Mover */}
+                                  <div className="relative" onClick={e => e.stopPropagation()}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenMoveMenuId(openMoveMenuId === cand.id ? null : cand.id)}
+                                      className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition flex items-center space-x-0.5"
+                                      title="Move candidate stage"
+                                    >
+                                      <ArrowRightLeft className="w-2.5 h-2.5" />
+                                      <span>Move</span>
+                                    </button>
+
+                                    {openMoveMenuId === cand.id && (
+                                      <div className="absolute right-0 bottom-full mb-1.5 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 p-1.5 space-y-0.5 text-[11px] backdrop-blur-md">
+                                        <div className="px-2 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                                          Move to Stage
+                                        </div>
+                                        {[
+                                          { label: '📋 Screening', status: 'Screening' },
+                                          { label: '📅 Interview Scheduled', status: 'Interview Scheduled' },
+                                          { label: '🤖 AI Evaluated', status: 'Under Review' },
+                                          { label: '🌟 Shortlist', status: 'Shortlisted' },
+                                          { label: '🤝 Send Offer', status: 'Offered' },
+                                          { label: '❌ Reject', status: 'Rejected' },
+                                        ].map(item => (
+                                          <button
+                                            key={item.status}
+                                            type="button"
+                                            onClick={() => {
+                                              updateCandidateStatus(cand.id, item.status);
+                                              setOpenMoveMenuId(null);
+                                              if (item.status === 'Shortlisted' || item.status === 'Offered') {
+                                                confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+                                              }
+                                            }}
+                                            className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-300 text-slate-700 dark:text-slate-300 font-medium transition flex items-center justify-between"
+                                          >
+                                            <span>{item.label}</span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <span className="text-indigo-600 dark:text-indigo-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center space-x-0.5">
+                                    <span>Dossier</span>
+                                    <ChevronRight className="w-3 h-3" />
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           );
