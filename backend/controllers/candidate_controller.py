@@ -1,12 +1,13 @@
 """
 (C) Candidate Controller - Screening, resume parsing, interview scheduling, and email dispatch
 """
+import os
 import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
 from models.db_models import CandidateModel, JobModel
 from schemas import CandidateApply, CandidateStatusUpdate, CandidateScheduleRequest, EmailSendRequest
-from email_service import send_email
+from email_service import send_email, create_ics_calendar_event, parse_slot_to_datetime
 
 class CandidateController:
     @staticmethod
@@ -166,8 +167,27 @@ class CandidateController:
         logs.append(email_event)
         candidate.email_logs = logs
 
-        # Dispatch live SMTP email with plaintext + HTML
-        send_email(email_event["recipient"], email_event["subject"], email_event["body"], html)
+        # Generate automatic iCalendar (.ics) meeting invite for Google Calendar / Outlook
+        start_dt = parse_slot_to_datetime(scheduled_slot)
+        organizer = os.environ.get("SMTP_FROM_EMAIL", "bkapasi472@rku.ac.in")
+        ics_data = create_ics_calendar_event(
+            event_id=candidate.id,
+            summary=f"SparkX AI Video Interview: {job_title}",
+            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nPortal URL: http://localhost:3000\n{notes_line}",
+            start_dt=start_dt,
+            candidate_name=candidate.name,
+            candidate_email=candidate.email,
+            organizer_email=organizer
+        )
+
+        # Dispatch live SMTP email with plaintext + HTML + automatic Meeting Invite (.ics)
+        send_email(
+            email_event["recipient"], 
+            email_event["subject"], 
+            email_event["body"], 
+            html, 
+            ics_content=ics_data
+        )
 
         db.commit()
         db.refresh(candidate)
