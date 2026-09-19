@@ -14,13 +14,15 @@ import {
   Sparkles, 
   Send, 
   ArrowRight, 
-  AlertTriangle,
-  RefreshCw,
-  CheckCircle2,
-  Bot,
-  Zap,
-  Eye,
-  Activity
+  AlertTriangle, 
+  RefreshCw, 
+  CheckCircle2, 
+  Bot, 
+  Zap, 
+  Eye, 
+  Activity,
+  Clock,
+  Calendar
 } from 'lucide-react';
 
 export default function AIInterviewRoom() {
@@ -28,8 +30,29 @@ export default function AIInterviewRoom() {
     activeJob, 
     currentInterviewSession, 
     setCurrentInterviewSession, 
-    setCurrentView 
+    setCurrentView,
+    candidates,
+    currentUser,
+    userRole,
+    switchRole
   } = useRecruitment();
+
+  // Find candidate in database to check interview scheduling status
+  const activeCandidate = candidates.find(c => 
+    c.id === currentInterviewSession?.candidateId || 
+    (currentUser && c.email?.toLowerCase() === currentUser.email?.toLowerCase())
+  ) || null;
+
+  // Gatekeeper:
+  // 1. Recruiter in test mode is allowed
+  // 2. Candidate is allowed ONLY if recruiter scheduled an interview or status is 'Interview Scheduled'
+  const isRecruiterTesting = userRole === 'recruiter';
+  const isInterviewScheduled = Boolean(activeCandidate && (
+    activeCandidate.status === 'Interview Scheduled' || 
+    Boolean(activeCandidate.interviewScheduledAt) ||
+    activeCandidate.status === 'Evaluated'
+  ));
+  const canEnterInterview = isRecruiterTesting || isInterviewScheduled;
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -70,6 +93,8 @@ export default function AIInterviewRoom() {
 
   // 1. Initialize Proctoring
   useEffect(() => {
+    if (!canEnterInterview) return;
+
     proctorRef.current = new ProctorMonitor({
       onEvent: (ev, score, risk) => {
         setIntegrityEvents(prev => [ev, ...prev]);
@@ -90,10 +115,12 @@ export default function AIInterviewRoom() {
         try { recognitionRef.current.stop(); } catch (e) {}
       }
     };
-  }, []);
+  }, [canEnterInterview]);
 
   // 2. Initialize Camera & Canvas Tracking
   useEffect(() => {
+    if (!canEnterInterview) return;
+
     let streamInstance = null;
 
     async function startCamera() {
@@ -372,9 +399,115 @@ export default function AIInterviewRoom() {
     }
   };
 
+  if (!canEnterInterview) {
+    return (
+      <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-6 animate-in fade-in zoom-in-95">
+        <div className="w-20 h-20 rounded-3xl bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xl">
+          <Clock className="w-10 h-10" />
+        </div>
+
+        <div className="space-y-2">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+            {activeCandidate ? 'Stage: 📋 Recruiter Screening' : 'No Active Application'}
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            Interview Access Restricted
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+            {activeCandidate ? (
+              <>
+                Hi <strong>{activeCandidate.name}</strong>, your application for <strong>{activeJob?.title || 'the position'}</strong> has been received and is currently in the <strong>Screening</strong> stage with the hiring team.
+              </>
+            ) : (
+              <>
+                You have not submitted an application for this role yet. Please browse open roles and submit your profile first.
+              </>
+            )}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Per company recruitment protocol, candidates cannot enter the AI Interview Room until the recruiter reviews the application and schedules an official interview slot.
+          </p>
+        </div>
+
+        {activeCandidate && (
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/[0.08] text-left space-y-2.5 text-xs shadow-md">
+            <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-white/[0.06] pb-2">
+              <span className="font-semibold">Candidate Status</span>
+              <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
+                Stage 1: Screening
+              </span>
+            </div>
+            <div className="flex justify-between text-slate-600 dark:text-slate-300">
+              <span>Applicant Name:</span>
+              <span className="font-bold text-slate-900 dark:text-white">{activeCandidate.name}</span>
+            </div>
+            <div className="flex justify-between text-slate-600 dark:text-slate-300">
+              <span>Applied Role:</span>
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">{activeJob?.title || 'Applied Position'}</span>
+            </div>
+            <div className="flex justify-between text-slate-600 dark:text-slate-300">
+              <span>Resume Match:</span>
+              <span className="text-cyan-600 dark:text-cyan-400 font-bold">{activeCandidate.matchScore}% Match</span>
+            </div>
+            <div className="flex justify-between text-slate-600 dark:text-slate-300">
+              <span>Interview Status:</span>
+              <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center space-x-1">
+                <span>⏳ Awaiting Recruiter Scheduling</span>
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => switchRole('recruiter')}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
+          >
+            <span>Open Recruiter Hub to Schedule</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => setCurrentView('candidate')}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition"
+          >
+            Browse Job Roles
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-16">
       
+      {/* Recruiter Confirmed Interview Banner */}
+      {activeCandidate?.interviewScheduledAt && (
+        <div className="p-3.5 px-4 rounded-2xl bg-cyan-950/40 border border-cyan-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-cyan-300 font-bold">Interview Confirmed by Recruiter</span>
+              <p className="text-slate-400 text-[11px]">Scheduled Slot: <strong className="text-white">{activeCandidate.interviewScheduledAt}</strong></p>
+            </div>
+          </div>
+          {activeCandidate.interviewMeetingUrl && (
+            <a
+              href={activeCandidate.interviewMeetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] transition flex items-center space-x-1.5 shadow-sm self-start sm:self-auto"
+            >
+              <Video className="w-3.5 h-3.5" />
+              <span>Join Google Meet Room</span>
+            </a>
+          )}
+        </div>
+      )}
+
       {/* Top Header Bar with Live Telemetry Badges */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-white/[0.08] shadow-xl">
         <div className="flex items-center space-x-3">
