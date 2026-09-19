@@ -63,6 +63,11 @@ def ensure_schema_columns():
                 if "reset_token_expiry" not in cols:
                     conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expiry TIMESTAMP"))
                     conn.commit()
+                # Check candidates table columns
+                cand_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(candidates)")).fetchall()]
+                if "interview_meeting_url" not in cand_cols:
+                    conn.execute(text("ALTER TABLE candidates ADD COLUMN interview_meeting_url VARCHAR"))
+                    conn.commit()
         except Exception as e:
             logger.warning(f"Schema check notice: {e}")
 

@@ -56,6 +56,13 @@ class CandidateModel(Base):
     # Human-in-the-Loop Decisions (Slide 14 & 17)
     hr_notes = Column(Text, default="")
     final_decision = Column(String, default="Pending Interview")
+    
+    # Real-time Scheduling & Email Telemetry
+    interview_scheduled_at = Column(String, nullable=True)
+    interview_meeting_url = Column(String, nullable=True)
+    interview_status = Column(String, default="Applied")
+    email_logs = Column(JSON, default=list)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     job = relationship("JobModel", back_populates="candidates")

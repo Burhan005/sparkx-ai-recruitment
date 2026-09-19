@@ -61,6 +61,7 @@ class CandidateResponse(BaseModel):
     hr_notes: Optional[str]
     final_decision: Optional[str]
     interview_scheduled_at: Optional[str] = None
+    interview_meeting_url: Optional[str] = None
     interview_status: Optional[str] = "Applied"
     email_logs: Optional[List[Dict[str, Any]]] = []
 
@@ -99,6 +100,7 @@ class EvaluationRequest(BaseModel):
 class CandidateScheduleRequest(BaseModel):
     scheduled_at: str  # ISO string or formatted "2026-09-20 14:00"
     notes: Optional[str] = ""
+    meeting_url: Optional[str] = None
 
 class EmailSendRequest(BaseModel):
     template_type: str  # "interview_invitation" | "interview_reminder" | "offer_letter" | "rejection_notice"

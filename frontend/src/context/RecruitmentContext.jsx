@@ -175,8 +175,8 @@ export function RecruitmentProvider({ children }) {
     toastBus.emit(`${emoji} ${newStatus} — HR decision saved to database`, newStatus === 'Rejected' ? 'warning' : 'success');
   };
 
-  const scheduleInterview = async (candidateId, scheduledAt, notes = '') => {
-    const updatedCand = await api.scheduleInterview(candidateId, scheduledAt, notes);
+  const scheduleInterview = async (candidateId, scheduledAt, notes = '', meetingUrl = '') => {
+    const updatedCand = await api.scheduleInterview(candidateId, scheduledAt, notes, meetingUrl);
     if (updatedCand) {
       setCandidates(prev => prev.map(c => c.id === candidateId ? updatedCand : c));
       if (selectedCandidate?.id === candidateId) setSelectedCandidate(updatedCand);

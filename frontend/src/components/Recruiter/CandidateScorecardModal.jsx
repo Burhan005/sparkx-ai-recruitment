@@ -19,7 +19,8 @@ import {
   Calendar,
   Mail,
   Send,
-  Loader2
+  Loader2,
+  Video
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -31,6 +32,7 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
 
   // Schedule & Email Form States
   const [scheduledAt, setScheduledAt] = useState(candidate?.interviewScheduledAt || '2026-09-20 14:00');
+  const [meetingUrl, setMeetingUrl] = useState(candidate?.interviewMeetingUrl || '');
   const [scheduleNotes, setScheduleNotes] = useState('');
   const [sendingEmailType, setSendingEmailType] = useState(null);
   const [customEmailMsg, setCustomEmailMsg] = useState('');
@@ -41,7 +43,7 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
     e.preventDefault();
     if (!scheduledAt) return;
     setSendingEmailType('schedule');
-    await scheduleInterview(candidate.id, scheduledAt, scheduleNotes);
+    await scheduleInterview(candidate.id, scheduledAt, scheduleNotes, meetingUrl);
     setSendingEmailType(null);
   };
 
@@ -384,28 +386,65 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
               
               {/* Scheduling Form */}
               <form onSubmit={handleScheduleSubmit} className="p-5 rounded-2xl bg-indigo-950/20 border border-indigo-800/40 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center space-x-2 text-indigo-300 font-bold text-sm">
                     <Calendar className="w-4 h-4 text-cyan-400" />
                     <span>Set & Dispatch Scheduled Interview Slot</span>
                   </div>
-                  {candidate.interviewScheduledAt && (
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">
-                      Scheduled: {candidate.interviewScheduledAt}
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-2 flex-wrap gap-1">
+                    {candidate.interviewScheduledAt && (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">
+                        Scheduled: {candidate.interviewScheduledAt}
+                      </span>
+                    )}
+                    {candidate.interviewMeetingUrl && (
+                      <a
+                        href={candidate.interviewMeetingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-950 text-blue-300 border border-blue-700/50 hover:bg-blue-900 transition flex items-center space-x-1"
+                        title="Open Video Call Meeting Room"
+                      >
+                        <Video className="w-3 h-3" />
+                        <span>Google Meet</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <label className="block text-slate-400 font-semibold mb-1">Select Slot Date & Time *</label>
-                    <input
-                      type="text"
-                      value={scheduledAt}
-                      onChange={e => setScheduledAt(e.target.value)}
-                      placeholder="e.g. 2026-09-21 14:30 IST"
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-indigo-500 focus:outline-none"
-                    />
+                <div className="space-y-3 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-400 font-semibold mb-1">Select Slot Date & Time *</label>
+                      <input
+                        type="text"
+                        value={scheduledAt}
+                        onChange={e => setScheduledAt(e.target.value)}
+                        placeholder="e.g. 2026-09-21 14:30 IST"
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-slate-400 font-semibold">Google Meet / Video Call URL</label>
+                        <a 
+                          href="https://meet.google.com/new" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-cyan-400 hover:text-cyan-300 font-semibold flex items-center space-x-0.5 hover:underline"
+                          title="Generate a real instant Google Meet room from your Google account"
+                        >
+                          <span>+ Create Google Meet ↗</span>
+                        </a>
+                      </div>
+                      <input
+                        type="text"
+                        value={meetingUrl}
+                        onChange={e => setMeetingUrl(e.target.value)}
+                        placeholder="e.g. https://meet.google.com/xyz-abcd-efg"
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-indigo-500 focus:outline-none"
+                      />
+                    </div>
                   </div>
                   <div>
                     <label className="block text-slate-400 font-semibold mb-1">Recruiter Notes / Instructions (Optional)</label>
@@ -413,10 +452,13 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
                       type="text"
                       value={scheduleNotes}
                       onChange={e => setScheduleNotes(e.target.value)}
-                      placeholder="e.g. Any special instructions or portfolio links..."
+                      placeholder="e.g. Any special instructions, portfolio links, or preparation steps..."
                       className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-indigo-500 focus:outline-none"
                     />
                   </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed bg-slate-900/80 p-2 rounded-lg border border-slate-800">
+                    💡 <strong className="text-slate-200">Real Google Meet:</strong> Google requires meeting rooms to be initiated from a Google account. Click <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline font-semibold">+ Create Google Meet ↗</a>, copy your meeting link (e.g. <code className="text-indigo-300">meet.google.com/abc-defg-hij</code>), and paste it above so candidates can join without error.
+                  </p>
                 </div>
 
                 <button

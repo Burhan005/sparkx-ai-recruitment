@@ -21,7 +21,8 @@ import {
   ArrowRight,
   Eye,
   Calendar,
-  Mail
+  Mail,
+  Video
 } from 'lucide-react';
 
 export default function CandidatePipeline() {
@@ -486,6 +487,21 @@ export default function CandidatePipeline() {
                               <Calendar className="w-3 h-3" />
                               <span>Slot: {cand.interviewScheduledAt}</span>
                             </span>
+                          )}
+
+                          {/* Meeting Link badge if set */}
+                          {cand.interviewMeetingUrl && (
+                            <a
+                              href={cand.interviewMeetingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={e => e.stopPropagation()}
+                              className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 transition"
+                              title="Open Video Call Meeting Room"
+                            >
+                              <Video className="w-3 h-3" />
+                              <span>Meet</span>
+                            </a>
                           )}
                         </div>
 

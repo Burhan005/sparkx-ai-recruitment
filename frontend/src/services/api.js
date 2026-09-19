@@ -40,6 +40,7 @@ export function normalizeCandidate(c) {
     scores:          c.scores          ?? { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
     skills:          c.skills          ?? [],
     interviewScheduledAt: c.interview_scheduled_at ?? c.interviewScheduledAt ?? null,
+    interviewMeetingUrl:  c.interview_meeting_url  ?? c.interviewMeetingUrl  ?? null,
     interviewStatus:      c.interview_status       ?? c.interviewStatus      ?? 'Applied',
     emailLogs:            c.email_logs             ?? c.emailLogs            ?? [],
   };
@@ -228,13 +229,17 @@ export const api = {
     } catch { return null; }
   },
 
-  async scheduleInterview(candidateId, scheduledAt, notes = '') {
+  async scheduleInterview(candidateId, scheduledAt, notes = '', meetingUrl = '') {
     try {
       const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/schedule`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scheduled_at: scheduledAt, notes }),
-        signal: AbortSignal.timeout(4000),
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ 
+          scheduled_at: scheduledAt, 
+          notes,
+          meeting_url: meetingUrl 
+        }),
+        signal: AbortSignal.timeout(6000),
       });
       if (!res.ok) throw new Error('Failed to schedule interview');
       return normalizeCandidate(await res.json());

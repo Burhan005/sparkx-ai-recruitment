@@ -100,10 +100,18 @@ class CandidateController:
         notes_clean = payload.notes.strip() if payload.notes else ""
         notes_line = f"\n• Recruiter Notes: {notes_clean}" if notes_clean else ""
 
-        # Generate dynamic Google Meet conference credentials
-        short_id = candidate.id.replace("cand-", "")[:6]
-        meet_code = f"spk-{short_id[:3]}-{short_id[3:] or 'rec'}"
-        meet_url = f"https://meet.google.com/{meet_code}"
+        # Determine dynamic or recruiter-supplied Google Meet conference credentials
+        custom_url = (payload.meeting_url or "").strip()
+        if custom_url:
+            meet_url = custom_url
+            clean_part = custom_url.split("?")[0].rstrip("/")
+            meet_code = clean_part.split("/")[-1] if "/" in clean_part else custom_url
+        else:
+            short_id = candidate.id.replace("cand-", "")[:6]
+            meet_code = f"spk-{short_id[:3]}-{short_id[3:] or 'rec'}"
+            meet_url = f"https://meet.google.com/{meet_code}"
+
+        candidate.interview_meeting_url = meet_url
         pin_code = f"{abs(hash(candidate.id)) % 900000 + 100000}"
 
         subject = f"[SPARKX CONFIRMED] AI Video Interview: {job_title}"
@@ -131,46 +139,59 @@ class CandidateController:
         html = f"""
         <div style="font-family: Arial, sans-serif; background-color: #070A12; color: #FFFFFF; padding: 32px; border-radius: 16px; max-width: 540px; margin: 0 auto; border: 1px solid #1e293b;">
           <div style="margin-bottom: 20px;">
-            <span style="font-size: 20px; font-weight: 800; color: #818cf8;">SparkX AI Recruitment</span>
+            <span style="font-size: 20px; font-weight: 800; color: #818cf8; font-family: Arial, sans-serif;">SparkX AI Recruitment</span>
           </div>
-          <h2 style="color: #ffffff; margin-top: 0; font-size: 22px;">AI Video Interview Confirmed</h2>
-          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Hello <strong>{candidate.name}</strong>,</p>
-          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Your interview for <strong>{job_title}</strong> has been officially scheduled.</p>
+          <h2 style="color: #ffffff; margin-top: 0; font-size: 22px; font-family: Arial, sans-serif;">AI Video Interview Confirmed</h2>
+          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; font-family: Arial, sans-serif;">Hello <strong>{candidate.name}</strong>,</p>
+          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; font-family: Arial, sans-serif;">Your interview for <strong>{job_title}</strong> has been officially scheduled.</p>
           
           <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 20px 0;">
             <div style="margin-bottom: 12px;">
-              <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Confirmed Slot</span>
-              <div style="color: #38bdf8; font-size: 18px; font-weight: 700; margin-top: 4px;">{scheduled_slot}</div>
+              <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; font-family: Arial, sans-serif;">Confirmed Slot</span>
+              <div style="color: #38bdf8; font-size: 18px; font-weight: 700; margin-top: 4px; font-family: Arial, sans-serif;">{scheduled_slot}</div>
             </div>
             <div style="margin-bottom: 12px;">
-              <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Target Position</span>
-              <div style="color: #ffffff; font-size: 15px; font-weight: 600; margin-top: 4px;">{job_title}</div>
+              <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; font-family: Arial, sans-serif;">Target Position</span>
+              <div style="color: #ffffff; font-size: 15px; font-weight: 600; margin-top: 4px; font-family: Arial, sans-serif;">{job_title}</div>
             </div>
             <div style="margin-bottom: 12px;">
-              <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Assessed Competencies</span>
-              <div style="color: #a5b4fc; font-size: 13px; font-weight: 500; margin-top: 4px;">{skills_str}</div>
+              <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; font-family: Arial, sans-serif;">Assessed Competencies</span>
+              <div style="color: #a5b4fc; font-size: 13px; font-weight: 500; margin-top: 4px; font-family: Arial, sans-serif;">{skills_str}</div>
             </div>
-            {f'<div style="margin-bottom: 8px;"><span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Recruiter Notes</span><div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">{notes_clean}</div></div>' if notes_clean else ''}
+            {f'<div style="margin-bottom: 8px;"><span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px; font-family: Arial, sans-serif;">Recruiter Notes</span><div style="color: #e2e8f0; font-size: 13px; margin-top: 4px; font-family: Arial, sans-serif;">{notes_clean}</div></div>' if notes_clean else ''}
           </div>
 
           <!-- Video Conference Credentials Box -->
-          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #475569; border-radius: 12px; padding: 18px; margin: 20px 0;">
-            <div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px;">Google Meet Conference Access</div>
-            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px;">• <strong>Meeting Link:</strong> <a href="{meet_url}" style="color: #60a5fa; text-decoration: underline;">{meet_url}</a></div>
-            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px;">• <strong>Meeting ID:</strong> <span style="font-family: monospace; color: #facc15; font-weight: bold;">{meet_code}</span></div>
-            <div style="font-size: 13px; color: #cbd5e1;">• <strong>Passcode / PIN:</strong> <span style="font-family: monospace; color: #4ade80; font-weight: bold;">{pin_code}</span></div>
+          <div style="background-color: #1e293b; border: 1px solid #475569; border-radius: 12px; padding: 18px; margin: 20px 0;">
+            <div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; font-family: Arial, sans-serif;">Google Meet Conference Access</div>
+            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px; font-family: Arial, sans-serif;">• <strong>Meeting Link:</strong> <a href="{meet_url}" target="_blank" style="color: #60a5fa; text-decoration: underline;">{meet_url}</a></div>
+            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px; font-family: Arial, sans-serif;">• <strong>Meeting ID:</strong> <span style="font-family: monospace; color: #facc15; font-weight: bold;">{meet_code}</span></div>
+            <div style="font-size: 13px; color: #cbd5e1; font-family: Arial, sans-serif;">• <strong>Passcode / PIN:</strong> <span style="font-family: monospace; color: #4ade80; font-weight: bold;">{pin_code}</span></div>
           </div>
 
-          <div style="display: flex; gap: 10px; margin: 24px 0; justify-content: center; flex-wrap: wrap;">
-            <a href="{meet_url}" style="background: linear-gradient(135deg, #1a73e8, #0d47a1); color: #ffffff; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">📹 Join Google Meet</a>
-            <a href="http://localhost:3000" style="background: linear-gradient(135deg, #6366f1, #9333ea); color: #ffffff; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">⚡ Launch SparkX Portal</a>
-          </div>
+          <!-- Bulletproof Action Buttons Table Layout -->
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 28px 0; text-align: center;">
+            <tr>
+              <td align="center">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+                  <tr>
+                    <td align="center" style="padding: 6px 8px;">
+                      <a href="{meet_url}" target="_blank" style="background-color: #1a73e8; color: #ffffff; padding: 13px 22px; border-radius: 10px; text-decoration: none; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; display: inline-block; line-height: 1.2; text-align: center; border: 1px solid #1a73e8; min-width: 160px; box-sizing: border-box;">📹 Join Google Meet</a>
+                    </td>
+                    <td align="center" style="padding: 6px 8px;">
+                      <a href="http://localhost:3000" target="_blank" style="background-color: #4f46e5; color: #ffffff; padding: 13px 22px; border-radius: 10px; text-decoration: none; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; display: inline-block; line-height: 1.2; text-align: center; border: 1px solid #4f46e5; min-width: 160px; box-sizing: border-box;">⚡ Launch SparkX Portal</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
 
-          <p style="color: #94a3b8; font-size: 12px; line-height: 1.5;">
+          <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; font-family: Arial, sans-serif;">
             <strong>Instructions:</strong> You can join via Google Meet (enter Passcode: {pin_code} if prompted) or directly through the SparkX AI Portal. Ensure camera and microphone permissions are enabled.
           </p>
           <hr style="border: none; border-top: 1px solid #1e293b; margin: 24px 0;" />
-          <p style="color: #64748b; font-size: 11px; text-align: center;">SparkX AI Recruitment Intelligence Platform</p>
+          <p style="color: #64748b; font-size: 11px; text-align: center; font-family: Arial, sans-serif;">SparkX AI Recruitment Intelligence Platform</p>
         </div>
         """
 
@@ -223,8 +244,13 @@ class CandidateController:
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
         job_title = candidate.job.title if candidate.job else "Open Role"
         scheduled_slot = candidate.interview_scheduled_at or "Upcoming Slot"
-        meet_code = f"spk-{candidate.id[-4:]}-rec"
-        meet_url = f"https://meet.google.com/{meet_code}"
+        if candidate.interview_meeting_url:
+            meet_url = candidate.interview_meeting_url
+            clean_part = meet_url.split("?")[0].rstrip("/")
+            meet_code = clean_part.split("/")[-1] if "/" in clean_part else meet_url
+        else:
+            meet_code = f"spk-{candidate.id[-4:]}-rec"
+            meet_url = f"https://meet.google.com/{meet_code}"
 
         if payload.template_type == "interview_invitation":
             subject = f"[SPARKX INTERVIEW] Invitation for {job_title}"
@@ -289,19 +315,35 @@ class CandidateController:
 
         html = f"""
         <div style="font-family: Arial, sans-serif; background-color: #070A12; color: #FFFFFF; padding: 32px; border-radius: 16px; max-width: 520px; margin: 0 auto; border: 1px solid #1e293b;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <span style="font-size: 18px; font-weight: 800; color: #818cf8;">SparkX AI Recruitment</span>
-            <span style="background-color: {status_badge_color}; color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: bold;">{status_badge_text}</span>
-          </div>
-          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Hello <strong>{candidate.name}</strong>,</p>
-          <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.7; white-space: pre-line;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+            <tr>
+              <td align="left">
+                <span style="font-size: 18px; font-weight: 800; color: #818cf8; font-family: Arial, sans-serif;">SparkX AI Recruitment</span>
+              </td>
+              <td align="right">
+                <span style="background-color: {status_badge_color}; color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: bold; font-family: Arial, sans-serif; display: inline-block;">{status_badge_text}</span>
+              </td>
+            </tr>
+          </table>
+          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; font-family: Arial, sans-serif;">Hello <strong>{candidate.name}</strong>,</p>
+          <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.7; white-space: pre-line; font-family: Arial, sans-serif;">
             {body}
           </div>
-          <div style="text-align: center; margin: 24px 0;">
-            <a href="http://localhost:3000" style="background: linear-gradient(135deg, #6366f1, #9333ea); color: #ffffff; padding: 10px 24px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">Open Candidate Portal</a>
-          </div>
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 24px 0; text-align: center;">
+            <tr>
+              <td align="center">
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
+                  <tr>
+                    <td align="center" style="background-color: #4f46e5; border-radius: 10px;">
+                      <a href="http://localhost:3000" target="_blank" style="background-color: #4f46e5; color: #ffffff; padding: 13px 28px; border-radius: 10px; text-decoration: none; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; display: inline-block; text-align: center; border: 1px solid #4f46e5;">Open Candidate Portal</a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
           <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;" />
-          <p style="color: #64748b; font-size: 11px; text-align: center;">SparkX AI Recruitment Intelligence Platform</p>
+          <p style="color: #64748b; font-size: 11px; text-align: center; font-family: Arial, sans-serif;">SparkX AI Recruitment Intelligence Platform</p>
         </div>
         """
 
