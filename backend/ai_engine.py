@@ -1,4 +1,4 @@
-﻿"""
+"""
 SparkX AI Evaluation & Adaptive Interview Engine
 Hybrid Architecture:
   1. Primary: Google Gemini Generative AI (LLM) when GEMINI_API_KEY is configured.
@@ -11,6 +11,10 @@ import json
 import urllib.request
 import urllib.error
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables from backend/.env
+load_dotenv()
 
 # Optional Gemini API Key from environment
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
