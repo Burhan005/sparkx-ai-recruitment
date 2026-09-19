@@ -13,36 +13,49 @@ import {
   ShieldCheck, 
   Info,
   ExternalLink,
-  Layers
+  Shield,
+  User
 } from 'lucide-react';
 
 function AppContent() {
-  const { currentView, setCurrentView } = useRecruitment();
+  const { currentView, setCurrentView, userRole, switchRole } = useRecruitment();
   const [showDemoGuide, setShowDemoGuide] = useState(true);
 
-  const demoTourSteps = [
-    { view: 'recruiter', label: '1. Recruiter Hub & Job Creator' },
-    { view: 'candidate', label: '2. 1-Click Resume Parsing' },
-    { view: 'interview', label: '3. Adaptive AI Interview' },
-    { view: 'assessment', label: '4. Live Code Assessment' },
-    { view: 'feedback', label: '5. Skill Gap Roadmap' },
-    { view: 'proctor', label: '6. Anti-Cheating Telemetry' }
+  const recruiterSteps = [
+    { view: 'recruiter', label: '1. Recruiter Hub & Active Jobs' },
+    { view: 'recruiter', label: '2. Candidate Pipeline & Review' },
+    { view: 'proctor', label: '3. Anti-Cheating Telemetry' }
   ];
+
+  const candidateSteps = [
+    { view: 'candidate', label: '1. Browse Jobs & Apply' },
+    { view: 'interview', label: '2. Live Adaptive AI Interview' },
+    { view: 'assessment', label: '3. Practical Code Challenge' },
+    { view: 'feedback', label: '4. Skill Gap Feedback & Roadmap' }
+  ];
+
+  const activeSteps = userRole === 'recruiter' ? recruiterSteps : candidateSteps;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#070A12] text-slate-900 dark:text-slate-100 flex flex-col justify-between selection:bg-indigo-600 selection:text-white bg-cyber-grid transition-colors duration-200">
       
-      {/* Client Presentation Interactive Quick-Bar */}
+      {/* Role-Specific Quick Tour Bar */}
       {showDemoGuide && (
         <div className="bg-indigo-50/90 dark:bg-gradient-to-r dark:from-indigo-950 dark:via-slate-900 dark:to-purple-950 border-b border-indigo-100 dark:border-indigo-800/40 px-4 py-2 flex flex-col sm:flex-row items-center justify-between text-xs gap-2">
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-indigo-600 dark:bg-cyan-400 animate-ping"></span>
-            <span className="font-bold text-indigo-900 dark:text-indigo-200">Presentation Demo Tour:</span>
-            <span className="hidden md:inline text-slate-600 dark:text-slate-400">Follow the 6-step end-to-end hackathon workflow</span>
+            <span className={`w-2 h-2 rounded-full animate-ping ${userRole === 'recruiter' ? 'bg-purple-500' : 'bg-emerald-500'}`}></span>
+            <span className="font-bold text-slate-900 dark:text-white">
+              {userRole === 'recruiter' ? '👔 Admin (Recruiter) View:' : '🎓 User (Candidate) View:'}
+            </span>
+            <span className="hidden md:inline text-slate-600 dark:text-slate-400">
+              {userRole === 'recruiter' 
+                ? 'Manage job requirements, screen applicants, review AI scorecards & fraud alerts' 
+                : 'Explore job openings, upload resume, complete voice AI interview & coding challenge'}
+            </span>
           </div>
 
           <div className="flex items-center space-x-1 overflow-x-auto max-w-full pb-1 sm:pb-0">
-            {demoTourSteps.map((step, idx) => (
+            {activeSteps.map((step, idx) => (
               <button
                 key={idx}
                 onClick={() => setCurrentView(step.view)}
@@ -66,17 +79,28 @@ function AppContent() {
         </div>
       )}
 
-      {/* Main Navbar with Dark/Light Toggle */}
+      {/* Main Navbar with Role Switcher & Theme Toggle */}
       <Navbar />
 
       {/* Main View Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex-1 w-full">
-        {currentView === 'recruiter' && <CandidatePipeline />}
-        {currentView === 'candidate' && <JobCatalog />}
-        {currentView === 'interview' && <AIInterviewRoom />}
-        {currentView === 'assessment' && <CodeAssessment />}
-        {currentView === 'feedback' && <SkillGapReport />}
-        {currentView === 'proctor' && <ProctorLiveMonitor />}
+        {userRole === 'recruiter' ? (
+          <>
+            {currentView === 'recruiter' && <CandidatePipeline />}
+            {currentView === 'proctor' && <ProctorLiveMonitor />}
+            {/* Fallback to recruiter if switched from candidate view */}
+            {currentView !== 'recruiter' && currentView !== 'proctor' && <CandidatePipeline />}
+          </>
+        ) : (
+          <>
+            {currentView === 'candidate' && <JobCatalog />}
+            {currentView === 'interview' && <AIInterviewRoom />}
+            {currentView === 'assessment' && <CodeAssessment />}
+            {currentView === 'feedback' && <SkillGapReport />}
+            {/* Fallback to candidate if switched from recruiter view */}
+            {currentView !== 'candidate' && currentView !== 'interview' && currentView !== 'assessment' && currentView !== 'feedback' && <JobCatalog />}
+          </>
+        )}
       </main>
 
       {/* Slide 17 Footer: Privacy, Fairness & Safety Policy */}
@@ -89,16 +113,15 @@ function AppContent() {
             </span>
           </div>
 
-          <div className="flex items-center space-x-4 text-slate-500 dark:text-slate-400">
-            <span>Team SparkX • SIH 2026</span>
+          <div className="flex items-center space-x-3 text-slate-500 dark:text-slate-400">
+            <span>Role: <strong className="text-slate-800 dark:text-slate-200 capitalize">{userRole}</strong></span>
             <span>•</span>
-            <span className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer" onClick={() => setCurrentView('recruiter')}>
-              Recruiter Dashboard
-            </span>
-            <span>•</span>
-            <span className="hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer" onClick={() => setCurrentView('proctor')}>
-              Anti-Cheating Telemetry
-            </span>
+            <button 
+              onClick={() => switchRole(userRole === 'recruiter' ? 'candidate' : 'recruiter')}
+              className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+            >
+              Switch to {userRole === 'recruiter' ? 'Candidate Mode' : 'Recruiter Mode'}
+            </button>
           </div>
         </div>
       </footer>

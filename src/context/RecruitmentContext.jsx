@@ -11,6 +11,8 @@ export function RecruitmentProvider({ children }) {
     return localStorage.getItem('sparkx_theme') || 'dark';
   });
 
+  const [isDbConnected, setIsDbConnected] = useState(false);
+
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {
@@ -37,7 +39,25 @@ export function RecruitmentProvider({ children }) {
     return saved ? JSON.parse(saved) : INITIAL_CANDIDATES;
   });
 
-  const [currentView, setCurrentView] = useState('recruiter'); // 'recruiter' | 'candidate' | 'interview' | 'assessment' | 'feedback' | 'proctor'
+  // User Role: 'recruiter' (Admin) or 'candidate' (User)
+  const [userRole, setUserRole] = useState(() => {
+    return localStorage.getItem('sparkx_user_role') || 'recruiter';
+  });
+
+  const switchRole = (newRole) => {
+    setUserRole(newRole);
+    localStorage.setItem('sparkx_user_role', newRole);
+    if (newRole === 'candidate') {
+      setCurrentView('candidate');
+    } else {
+      setCurrentView('recruiter');
+    }
+  };
+
+  const [currentView, setCurrentView] = useState(() => {
+    const savedRole = localStorage.getItem('sparkx_user_role') || 'recruiter';
+    return savedRole === 'candidate' ? 'candidate' : 'recruiter';
+  });
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [activeJobId, setActiveJobId] = useState(INITIAL_JOBS[0].id);
 
@@ -53,6 +73,31 @@ export function RecruitmentProvider({ children }) {
     codeScore: 90
   });
 
+  // Pull live database records from FastAPI + PostgreSQL backend on startup
+  useEffect(() => {
+    async function syncWithDatabase() {
+      try {
+        const health = await api.checkHealth();
+        if (health) {
+          setIsDbConnected(true);
+          const [dbJobs, dbCandidates] = await Promise.all([
+            api.getJobs(),
+            api.getCandidates()
+          ]);
+          if (dbJobs && dbJobs.length > 0) {
+            setJobs(dbJobs);
+          }
+          if (dbCandidates && dbCandidates.length > 0) {
+            setCandidates(dbCandidates);
+          }
+        }
+      } catch (err) {
+        console.info('Using local fallback state:', err);
+      }
+    }
+    syncWithDatabase();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('sparkx_jobs', JSON.stringify(jobs));
   }, [jobs]);
@@ -62,21 +107,26 @@ export function RecruitmentProvider({ children }) {
   }, [candidates]);
 
   // Recruiter actions
-  const createJob = (newJobData) => {
-    const newJob = {
+  const createJob = async (newJobData) => {
+    // 1. Save directly to FastAPI backend database
+    const savedJob = await api.createJob(newJobData);
+    
+    const newJob = savedJob || {
       ...newJobData,
       id: `job-${Date.now()}`,
       status: 'Active',
       applicantsCount: 0
     };
-    setJobs(prev => [newJob, ...prev]);
+
+    setJobs(prev => [newJob, ...prev.filter(j => j.id !== newJob.id)]);
     setActiveJobId(newJob.id);
-    // Asynchronously sync to FastAPI backend database
-    api.createJob(newJob).catch(() => {});
     return newJob;
   };
 
   const updateCandidateStatus = (candidateId, newStatus, hrNotes = "") => {
+    // Sync with backend API
+    api.updateCandidateStatus(candidateId, newStatus, hrNotes);
+
     setCandidates(prev => prev.map(c => {
       if (c.id === candidateId) {
         return {
@@ -100,7 +150,7 @@ export function RecruitmentProvider({ children }) {
   };
 
   // Candidate application
-  const applyForJob = ({ jobId, name, email, phone, experienceYears, education, skills, resumeSummary, fraudFlags = [] }) => {
+  const applyForJob = async ({ jobId, name, email, phone, experienceYears, education, skills, resumeSummary, fraudFlags = [] }) => {
     const targetJob = jobs.find(j => j.id === jobId) || jobs[0];
     
     // Calculate initial match score based on skills overlap & experience
@@ -121,7 +171,7 @@ export function RecruitmentProvider({ children }) {
     }
     matchPercentage = Math.min(99, Math.max(35, matchPercentage));
 
-    const newCandidate = {
+    const localCand = {
       id: `cand-${Date.now()}`,
       jobId: targetJob.id,
       name,
@@ -152,7 +202,11 @@ export function RecruitmentProvider({ children }) {
       finalDecision: "Pending Interview"
     };
 
-    setCandidates(prev => [newCandidate, ...prev]);
+    // Post to backend database
+    const savedCand = await api.applyCandidate(localCand);
+    const newCandidate = savedCand || localCand;
+
+    setCandidates(prev => [newCandidate, ...prev.filter(c => c.id !== newCandidate.id)]);
     setJobs(prev => prev.map(j => j.id === targetJob.id ? { ...j, applicantsCount: (j.applicantsCount || 0) + 1 } : j));
 
     // Set current active session for candidate to interview
@@ -171,7 +225,7 @@ export function RecruitmentProvider({ children }) {
   };
 
   // Complete interview session and evaluate
-  const completeInterviewAndEvaluate = ({ transcript, integrityScore, integrityEvents, codeScore }) => {
+  const completeInterviewAndEvaluate = async ({ transcript, integrityScore, integrityEvents, codeScore }) => {
     const candId = currentInterviewSession.candidateId;
     const targetCandidate = candidates.find(c => c.id === candId);
     const targetJob = jobs.find(j => j.id === (targetCandidate?.jobId || currentInterviewSession.jobId)) || jobs[0];
@@ -186,12 +240,24 @@ export function RecruitmentProvider({ children }) {
       codeScore
     });
 
+    // Send evaluation to FastAPI database
+    if (candId) {
+      api.evaluateInterview({
+        candidate_id: candId,
+        job_id: targetJob.id,
+        transcript,
+        integrity_score: integrityScore,
+        integrity_events: integrityEvents,
+        code_score: codeScore
+      });
+    }
+
     const updatedData = {
       ...evaluation,
       status: 'Evaluated',
       integrityEvents,
       integrityScore,
-      finalDecision: evaluation.scores.overall >= 80 && evaluation.integrityRisk === 'Low' ? 'Recommended for Shortlist' : 'Review Required'
+      finalDecision: evaluation.scores.overall >= 80 && evaluation.integrityRisk === 'Low' ? 'Shortlisted' : 'Under Review'
     };
 
     if (candId) {
@@ -210,6 +276,9 @@ export function RecruitmentProvider({ children }) {
       value={{
         theme,
         toggleTheme,
+        userRole,
+        switchRole,
+        isDbConnected,
         jobs,
         candidates,
         currentView,
