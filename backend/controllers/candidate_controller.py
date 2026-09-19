@@ -100,22 +100,28 @@ class CandidateController:
         notes_clean = payload.notes.strip() if payload.notes else ""
         notes_line = f"\n• Recruiter Notes: {notes_clean}" if notes_clean else ""
 
-        # Generate Google Meet conference link
-        meet_code = f"spk-{candidate.id[-4:]}-rec"
+        # Generate dynamic Google Meet conference credentials
+        short_id = candidate.id.replace("cand-", "")[:6]
+        meet_code = f"spk-{short_id[:3]}-{short_id[3:] or 'rec'}"
         meet_url = f"https://meet.google.com/{meet_code}"
+        pin_code = f"{abs(hash(candidate.id)) % 900000 + 100000}"
 
         subject = f"[SPARKX CONFIRMED] AI Video Interview: {job_title}"
         body = (
             f"Dear {candidate.name},\n\n"
             f"Your AI Video Interview for the position of {job_title} has been officially confirmed!\n\n"
             f"INTERVIEW DETAILS:\n"
-            f"• Position: {job_title}\n"
+            f"• Target Position: {job_title}\n"
             f"• Assessed Competencies: {skills_str}\n"
-            f"• Scheduled Slot: {scheduled_slot}{notes_line}\n"
-            f"• Google Meet Video Call: {meet_url}\n"
+            f"• Scheduled Slot: {scheduled_slot}{notes_line}\n\n"
+            f"VIDEO CONFERENCE CREDENTIALS:\n"
+            f"• Platform: Google Meet\n"
+            f"• Direct Video Link: {meet_url}\n"
+            f"• Meeting ID: {meet_code}\n"
+            f"• Access Passcode / PIN: {pin_code}\n"
             f"• SparkX AI Candidate Portal: http://localhost:3000\n\n"
             f"HOW TO JOIN:\n"
-            f"1. To join via Google Meet: Click {meet_url} at your scheduled time.\n"
+            f"1. To join via Google Meet: Click {meet_url} at your scheduled time (Passcode: {pin_code}).\n"
             f"2. To join via SparkX AI Portal: Log in at http://localhost:3000 and enter 'AI Interview Room'.\n"
             f"3. Ensure your webcam, microphone, and a quiet environment are ready.\n\n"
             f"Best regards,\n"
@@ -129,7 +135,7 @@ class CandidateController:
           </div>
           <h2 style="color: #ffffff; margin-top: 0; font-size: 22px;">AI Video Interview Confirmed</h2>
           <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Hello <strong>{candidate.name}</strong>,</p>
-          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Your interview for <strong>{job_title}</strong> has been officially confirmed.</p>
+          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">Your interview for <strong>{job_title}</strong> has been officially scheduled.</p>
           
           <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 20px 0;">
             <div style="margin-bottom: 12px;">
@@ -147,13 +153,21 @@ class CandidateController:
             {f'<div style="margin-bottom: 8px;"><span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: bold; letter-spacing: 0.5px;">Recruiter Notes</span><div style="color: #e2e8f0; font-size: 13px; margin-top: 4px;">{notes_clean}</div></div>' if notes_clean else ''}
           </div>
 
+          <!-- Video Conference Credentials Box -->
+          <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #475569; border-radius: 12px; padding: 18px; margin: 20px 0;">
+            <div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px;">Google Meet Conference Access</div>
+            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px;">• <strong>Meeting Link:</strong> <a href="{meet_url}" style="color: #60a5fa; text-decoration: underline;">{meet_url}</a></div>
+            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px;">• <strong>Meeting ID:</strong> <span style="font-family: monospace; color: #facc15; font-weight: bold;">{meet_code}</span></div>
+            <div style="font-size: 13px; color: #cbd5e1;">• <strong>Passcode / PIN:</strong> <span style="font-family: monospace; color: #4ade80; font-weight: bold;">{pin_code}</span></div>
+          </div>
+
           <div style="display: flex; gap: 10px; margin: 24px 0; justify-content: center; flex-wrap: wrap;">
             <a href="{meet_url}" style="background: linear-gradient(135deg, #1a73e8, #0d47a1); color: #ffffff; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">📹 Join Google Meet</a>
             <a href="http://localhost:3000" style="background: linear-gradient(135deg, #6366f1, #9333ea); color: #ffffff; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">⚡ Launch SparkX Portal</a>
           </div>
 
           <p style="color: #94a3b8; font-size: 12px; line-height: 1.5;">
-            <strong>Preparation:</strong> You can join via Google Meet or directly through the SparkX AI Portal. Ensure camera and microphone permissions are enabled.
+            <strong>Instructions:</strong> You can join via Google Meet (enter Passcode: {pin_code} if prompted) or directly through the SparkX AI Portal. Ensure camera and microphone permissions are enabled.
           </p>
           <hr style="border: none; border-top: 1px solid #1e293b; margin: 24px 0;" />
           <p style="color: #64748b; font-size: 11px; text-align: center;">SparkX AI Recruitment Intelligence Platform</p>
@@ -179,7 +193,7 @@ class CandidateController:
         ics_data = create_ics_calendar_event(
             event_id=candidate.id,
             summary=f"SparkX AI Video Interview: {job_title}",
-            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nGoogle Meet Call: {meet_url}\nPortal URL: http://localhost:3000\n{notes_line}",
+            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nGoogle Meet Call: {meet_url}\nMeeting ID: {meet_code} | Passcode: {pin_code}\nPortal URL: http://localhost:3000\n{notes_line}",
             start_dt=start_dt,
             candidate_name=candidate.name,
             candidate_email=candidate.email,
