@@ -60,6 +60,9 @@ class CandidateResponse(BaseModel):
     skill_gaps: Optional[Dict[str, Any]]
     hr_notes: Optional[str]
     final_decision: Optional[str]
+    interview_scheduled_at: Optional[str] = None
+    interview_status: Optional[str] = "Applied"
+    email_logs: Optional[List[Dict[str, Any]]] = []
 
     class Config:
         from_attributes = True
@@ -91,6 +94,15 @@ class EvaluationRequest(BaseModel):
     integrity_score: int
     integrity_events: List[Dict[str, Any]]
     code_score: int = 90
+
+# ─── Scheduling & Email Schemas ───────────────────────────────────────────────
+class CandidateScheduleRequest(BaseModel):
+    scheduled_at: str  # ISO string or formatted "2026-09-20 14:00"
+    notes: Optional[str] = ""
+
+class EmailSendRequest(BaseModel):
+    template_type: str  # "interview_invitation" | "interview_reminder" | "offer_letter" | "rejection_notice"
+    custom_message: Optional[str] = ""
 
 # ─── Auth Schemas ─────────────────────────────────────────────────────────────
 class UserRegister(BaseModel):

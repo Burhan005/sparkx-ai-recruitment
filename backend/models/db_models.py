@@ -59,6 +59,12 @@ class CandidateModel(Base):
     # Human Decisions
     hr_notes = Column(Text, default="")
     final_decision = Column(String, default="Pending Interview")
+    
+    # Real-time Scheduling & Email Telemetry
+    interview_scheduled_at = Column(String, nullable=True)
+    interview_status = Column(String, default="Applied")  # "Applied" | "Interview Scheduled" | "Interview Completed" | "Offer Sent" | "Rejected"
+    email_logs = Column(JSON, default=list)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     job = relationship("JobModel", back_populates="candidates")

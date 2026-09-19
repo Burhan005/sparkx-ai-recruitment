@@ -15,17 +15,42 @@ import {
   Sparkles,
   User,
   Clock,
-  Briefcase
+  Briefcase,
+  Calendar,
+  Mail,
+  Send,
+  Loader2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function CandidateScorecardModal({ candidate, onClose }) {
-  const { updateCandidateStatus } = useRecruitment();
+  const { updateCandidateStatus, scheduleInterview, sendEmail } = useRecruitment();
   const [hrNotes, setHrNotes] = useState(candidate?.hrNotes || '');
-  const [activeTab, setActiveTab] = useState('scorecard'); // 'scorecard' | 'transcript' | 'integrity' | 'skillgap'
+  const [activeTab, setActiveTab] = useState('scorecard');
   const [actionSuccess, setActionSuccess] = useState('');
 
+  // Schedule & Email Form States
+  const [scheduledAt, setScheduledAt] = useState(candidate?.interviewScheduledAt || '2026-09-20 14:00');
+  const [scheduleNotes, setScheduleNotes] = useState('');
+  const [sendingEmailType, setSendingEmailType] = useState(null);
+  const [customEmailMsg, setCustomEmailMsg] = useState('');
+
   if (!candidate) return null;
+
+  const handleScheduleSubmit = async (e) => {
+    e.preventDefault();
+    if (!scheduledAt) return;
+    setSendingEmailType('schedule');
+    await scheduleInterview(candidate.id, scheduledAt, scheduleNotes);
+    setSendingEmailType(null);
+  };
+
+  const handleSendEmailTemplate = async (templateType) => {
+    setSendingEmailType(templateType);
+    await sendEmail(candidate.id, templateType, customEmailMsg);
+    setSendingEmailType(null);
+    setCustomEmailMsg('');
+  };
 
   const handleDecision = (decision) => {
     updateCandidateStatus(candidate.id, decision, hrNotes);
@@ -110,12 +135,13 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
         </div>
 
         {/* Tab navigation */}
-        <div className="flex border-b border-slate-800 bg-slate-950/40 px-6 space-x-6 text-xs font-semibold">
+        <div className="flex border-b border-slate-800 bg-slate-950/40 px-6 space-x-6 text-xs font-semibold overflow-x-auto">
           {[
-            { id: 'scorecard', label: 'AI Evaluation Scorecard', icon: Award },
-            { id: 'transcript', label: 'Interview Evidence & Transcript', icon: MessageSquare },
-            { id: 'integrity', label: 'Anti-Cheating & Audit Log', icon: ShieldAlert, badge: candidate.integrityEvents?.length },
-            { id: 'skillgap', label: 'Skill Gap & Hire-and-Develop', icon: TrendingUp }
+            { id: 'scorecard', label: 'AI Scorecard', icon: Award },
+            { id: 'transcript', label: 'Transcript & Evidence', icon: MessageSquare },
+            { id: 'integrity', label: 'Anti-Cheating Audit', icon: ShieldAlert, badge: candidate.integrityEvents?.length },
+            { id: 'skillgap', label: 'Skill Gap & Roadmap', icon: TrendingUp },
+            { id: 'schedule', label: 'Scheduling & Email Telemetry', icon: Calendar, badge: candidate.emailLogs?.length }
           ].map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -123,7 +149,7 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-3 flex items-center space-x-2 border-b-2 transition relative ${
+                className={`py-3 flex items-center space-x-2 border-b-2 transition whitespace-nowrap relative ${
                   active 
                     ? 'border-indigo-500 text-indigo-400' 
                     : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -349,6 +375,134 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB 5: Interview Scheduling & Email Audit */}
+          {activeTab === 'schedule' && (
+            <div className="space-y-6">
+              
+              {/* Scheduling Form */}
+              <form onSubmit={handleScheduleSubmit} className="p-5 rounded-2xl bg-indigo-950/20 border border-indigo-800/40 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-indigo-300 font-bold text-sm">
+                    <Calendar className="w-4 h-4 text-cyan-400" />
+                    <span>Set & Dispatch Scheduled Interview Slot</span>
+                  </div>
+                  {candidate.interviewScheduledAt && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700/50">
+                      Scheduled: {candidate.interviewScheduledAt}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Select Slot Date & Time *</label>
+                    <input
+                      type="text"
+                      value={scheduledAt}
+                      onChange={e => setScheduledAt(e.target.value)}
+                      placeholder="e.g. 2026-09-21 14:30 IST"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-400 font-semibold mb-1">Recruiter Notes / Instructions</label>
+                    <input
+                      type="text"
+                      value={scheduleNotes}
+                      onChange={e => setScheduleNotes(e.target.value)}
+                      placeholder="e.g. Prepare system design diagram"
+                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={sendingEmailType === 'schedule'}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-md shadow-indigo-600/30"
+                >
+                  {sendingEmailType === 'schedule' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  <span>Save Schedule & Dispatch Confirmation Email</span>
+                </button>
+              </form>
+
+              {/* 1-Click Action Emails */}
+              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Dispatch Official Notification Email Templates</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleSendEmailTemplate('interview_invitation')}
+                    disabled={sendingEmailType === 'interview_invitation'}
+                    className="p-2.5 rounded-xl bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-800/50 text-indigo-300 font-semibold transition text-left flex flex-col justify-between"
+                  >
+                    <span>📩 Send Interview Invite</span>
+                    <span className="text-[10px] text-slate-400 mt-1">Sends slot invite</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSendEmailTemplate('interview_reminder')}
+                    disabled={sendingEmailType === 'interview_reminder'}
+                    className="p-2.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/50 text-cyan-300 font-semibold transition text-left flex flex-col justify-between"
+                  >
+                    <span>⏰ Send Slot Reminder</span>
+                    <span className="text-[10px] text-slate-400 mt-1">24h reminder email</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSendEmailTemplate('offer_letter')}
+                    disabled={sendingEmailType === 'offer_letter'}
+                    className="p-2.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-800/50 text-emerald-300 font-semibold transition text-left flex flex-col justify-between"
+                  >
+                    <span>🎉 Send Offer Letter</span>
+                    <span className="text-[10px] text-slate-400 mt-1">Official job offer</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSendEmailTemplate('rejection_notice')}
+                    disabled={sendingEmailType === 'rejection_notice'}
+                    className="p-2.5 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/50 text-rose-300 font-semibold transition text-left flex flex-col justify-between"
+                  >
+                    <span>❌ Send Rejection Email</span>
+                    <span className="text-[10px] text-slate-400 mt-1">Respectful notice</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Email Audit Log History */}
+              <div className="space-y-3">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
+                  <Mail className="w-4 h-4 text-indigo-400" />
+                  <span>Dispatched Email Audit Log ({candidate.emailLogs?.length || 0})</span>
+                </span>
+
+                {(!candidate.emailLogs || candidate.emailLogs.length === 0) ? (
+                  <div className="p-6 bg-slate-900/40 rounded-xl border border-slate-800 text-center text-xs text-slate-500">
+                    No emails dispatched yet to {candidate.email}.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {candidate.emailLogs.map((eml, idx) => (
+                      <div key={idx} className="p-3.5 bg-slate-900/80 rounded-xl border border-slate-800 text-xs space-y-1">
+                        <div className="flex items-center justify-between font-bold text-white">
+                          <span className="text-indigo-300">{eml.subject}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">{eml.sent_at}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 font-mono whitespace-pre-wrap leading-relaxed line-clamp-3 bg-slate-950/60 p-2.5 rounded-lg border border-slate-900">
+                          {eml.body}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 

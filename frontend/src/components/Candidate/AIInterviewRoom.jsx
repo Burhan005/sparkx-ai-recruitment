@@ -243,12 +243,13 @@ export default function AIInterviewRoom() {
   };
 
   // 5. Submit Candidate Answer
-  const handleAnswerSubmit = (e) => {
+  const handleAnswerSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!candidateAnswer.trim()) return;
 
+    const answerText = candidateAnswer;
     const currentTimestamp = proctorRef.current ? proctorRef.current.getFormattedTimestamp() : '01:30';
-    const activePromptText = isFollowUpActive ? activeFollowUpPrompt : currentQ.prompt;
+    const activePromptText = isFollowUpActive ? activeFollowUpPrompt : (currentQ?.prompt || 'Interview Question');
 
     // Add candidate answer to transcript
     const updatedTranscript = [
@@ -256,7 +257,7 @@ export default function AIInterviewRoom() {
       {
         id: `cand-${Date.now()}`,
         speaker: 'candidate',
-        text: candidateAnswer,
+        text: answerText,
         timestamp: currentTimestamp,
         relatedQuestion: activePromptText
       }
@@ -284,30 +285,39 @@ export default function AIInterviewRoom() {
         setTranscript([...updatedTranscript, nextAIMessage]);
         speakAI(nextQ.prompt);
       } else {
-        // Complete interview
         finishInterview(updatedTranscript);
       }
       return;
     }
 
-    // Evaluate answer for Adaptive Cross-Questioning (Slide 8)
-    const adaptResult = evaluateAnswerAndAdapt(currentQ, candidateAnswer);
+    // Call FastAPI backend for Real-time NLP Analysis & Adaptive Probing
+    const adaptResult = await api.evaluateAdaptiveAnswer(
+      currentQ?.prompt || '',
+      answerText,
+      currentQ?.idealKeywords || [],
+      currentQ?.followUpVague || null,
+      currentQ?.followUpExpert || null
+    ) || evaluateAnswerAndAdapt(currentQ, answerText);
 
-    if (adaptResult.needsFollowUp) {
+    const needsFollowUp = adaptResult.needs_follow_up ?? adaptResult.needsFollowUp;
+    const followUpQuestion = adaptResult.follow_up_question ?? adaptResult.followUpQuestion;
+    const feedbackText = adaptResult.feedback || adaptResult.quality || '';
+
+    if (needsFollowUp && followUpQuestion) {
       // Trigger Adaptive Follow-Up
       setIsFollowUpActive(true);
-      setActiveFollowUpPrompt(adaptResult.followUpQuestion);
+      setActiveFollowUpPrompt(followUpQuestion);
 
       const aiFollowUpMessage = {
         id: `ai-followup-${Date.now()}`,
         speaker: 'ai',
         isAdaptive: true,
-        text: `[Adaptive Cross-Questioning]: ${adaptResult.followUpQuestion}`,
+        text: `[Adaptive AI Probe — ${feedbackText}]: ${followUpQuestion}`,
         timestamp: currentTimestamp
       };
 
       setTranscript([...updatedTranscript, aiFollowUpMessage]);
-      speakAI(adaptResult.followUpQuestion);
+      speakAI(followUpQuestion);
     } else {
       // Progress directly to next question
       if (currentQuestionIdx < questions.length - 1) {

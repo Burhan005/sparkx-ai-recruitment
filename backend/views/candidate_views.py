@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas import CandidateApply, CandidateResponse, CandidateStatusUpdate
+from schemas import CandidateApply, CandidateResponse, CandidateStatusUpdate, CandidateScheduleRequest, EmailSendRequest
 from controllers.candidate_controller import CandidateController
 
 router = APIRouter(prefix="/api/candidates", tags=["Candidates"])
@@ -34,3 +34,17 @@ def update_status(candidate_id: str, payload: CandidateStatusUpdate, db: Session
     if not success:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return {"message": f"Candidate {candidate_id} status updated to {payload.status}"}
+
+@router.post("/{candidate_id}/schedule", response_model=CandidateResponse)
+def schedule_interview(candidate_id: str, payload: CandidateScheduleRequest, db: Session = Depends(get_db)):
+    cand, err = CandidateController.schedule_interview(candidate_id, payload, db)
+    if err:
+        raise HTTPException(status_code=404, detail=err)
+    return cand
+
+@router.post("/{candidate_id}/send-email")
+def send_email(candidate_id: str, payload: EmailSendRequest, db: Session = Depends(get_db)):
+    email_event, err = CandidateController.send_email_notification(candidate_id, payload, db)
+    if err:
+        raise HTTPException(status_code=404, detail=err)
+    return {"status": "sent", "email": email_event}

@@ -39,6 +39,9 @@ export function normalizeCandidate(c) {
     resumeSummary:   c.resume_summary  ?? c.resumeSummary  ?? '',
     scores:          c.scores          ?? { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
     skills:          c.skills          ?? [],
+    interviewScheduledAt: c.interview_scheduled_at ?? c.interviewScheduledAt ?? null,
+    interviewStatus:      c.interview_status       ?? c.interviewStatus      ?? 'Applied',
+    emailLogs:            c.email_logs             ?? c.emailLogs            ?? [],
   };
 }
 
@@ -176,6 +179,59 @@ export const api = {
       });
       return res.ok ? await res.json() : null;
     } catch { return null; }
+  },
+
+  async scheduleInterview(candidateId, scheduledAt, notes = '') {
+    try {
+      const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/schedule`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduled_at: scheduledAt, notes }),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) throw new Error('Failed to schedule interview');
+      return normalizeCandidate(await res.json());
+    } catch (err) {
+      console.warn('[API] scheduleInterview failed:', err.message);
+      return null;
+    }
+  },
+
+  async sendEmail(candidateId, templateType, customMessage = '') {
+    try {
+      const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/send-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_type: templateType, custom_message: customMessage }),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) throw new Error('Failed to send email');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] sendEmail failed:', err.message);
+      return null;
+    }
+  },
+
+  async evaluateAdaptiveAnswer(questionPrompt, candidateAnswer, idealKeywords = [], followUpVague = null, followUpExpert = null) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/interview/adaptive-question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question_prompt: questionPrompt,
+          candidate_answer: candidateAnswer,
+          ideal_keywords: idealKeywords,
+          follow_up_vague: followUpVague,
+          follow_up_expert: followUpExpert,
+        }),
+        signal: AbortSignal.timeout(4000),
+      });
+      if (!res.ok) throw new Error('Adaptive evaluation failed');
+      return await res.json();
+    } catch {
+      return null;
+    }
   },
 
   // ─── Presets ──────────────────────────────────────────────────────────────

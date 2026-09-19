@@ -21,11 +21,11 @@ def seed(force=False):
             return
 
         if force:
-            db.query(CandidateModel).delete()
-            db.query(JobModel).delete()
-            db.query(UserModel).delete()
-            db.commit()
-            print("Cleared existing data...")
+            db.close()
+            Base.metadata.drop_all(bind=engine)
+            Base.metadata.create_all(bind=engine)
+            db = SessionLocal()
+            print("Cleared existing tables and recreated DB schema...")
 
         print("Seeding SparkX DB with SIH 2026 demo data & default accounts...")
 

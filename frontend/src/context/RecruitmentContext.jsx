@@ -170,6 +170,27 @@ export function RecruitmentProvider({ children }) {
     toastBus.emit(`${emoji} ${newStatus} — HR decision saved to database`, newStatus === 'Rejected' ? 'warning' : 'success');
   };
 
+  const scheduleInterview = async (candidateId, scheduledAt, notes = '') => {
+    const updatedCand = await api.scheduleInterview(candidateId, scheduledAt, notes);
+    if (updatedCand) {
+      setCandidates(prev => prev.map(c => c.id === candidateId ? updatedCand : c));
+      if (selectedCandidate?.id === candidateId) setSelectedCandidate(updatedCand);
+      toastBus.emit(`Interview scheduled for ${scheduledAt} — Confirmation email sent!`, 'success');
+      return updatedCand;
+    }
+  };
+
+  const sendEmail = async (candidateId, templateType, customMessage = '') => {
+    const result = await api.sendEmail(candidateId, templateType, customMessage);
+    if (result) {
+      // Re-fetch candidate to update email logs
+      const updated = await api.getCandidates();
+      if (updated) setCandidates(updated);
+      toastBus.emit(`Email notification sent to candidate!`, 'success');
+      return result;
+    }
+  };
+
   // ── Candidate Actions ──────────────────────────────────────────────────────
   const applyForJob = async ({ jobId, name, email, phone, experienceYears, education, skills, resumeSummary, fraudFlags = [] }) => {
     const targetJob = jobs.find(j => j.id === jobId) || jobs[0];
@@ -269,6 +290,7 @@ export function RecruitmentProvider({ children }) {
       selectedCandidate, setSelectedCandidate,
       activeJob, setActiveJobId,
       createJob, updateCandidateStatus, applyForJob,
+      scheduleInterview, sendEmail,
       currentInterviewSession, setCurrentInterviewSession,
       completeInterviewAndEvaluate,
       syncWithDatabase,

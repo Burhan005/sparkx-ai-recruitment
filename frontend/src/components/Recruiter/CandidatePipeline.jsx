@@ -19,7 +19,9 @@ import {
   Clock, 
   GraduationCap, 
   ArrowRight,
-  Eye
+  Eye,
+  Calendar,
+  Mail
 } from 'lucide-react';
 
 export default function CandidatePipeline() {
@@ -474,6 +476,14 @@ export default function CandidatePipeline() {
                           }`}>
                             {cand.finalDecision || cand.status}
                           </span>
+
+                          {/* Scheduled Interview badge if set */}
+                          {cand.interviewScheduledAt && (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30">
+                              <Calendar className="w-3 h-3" />
+                              <span>Slot: {cand.interviewScheduledAt}</span>
+                            </span>
+                          )}
                         </div>
 
                         <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-2">
