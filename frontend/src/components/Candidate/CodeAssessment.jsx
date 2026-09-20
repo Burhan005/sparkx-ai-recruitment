@@ -204,13 +204,17 @@ export default function CodeAssessment() {
 
     if (res?.success) {
       setSubmissionSuccess(true);
-      confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+      if ((res.scores?.overall || 0) >= 70) {
+        confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+      }
 
-      completeInterviewAndEvaluate({
+      await completeInterviewAndEvaluate({
         transcript: currentInterviewSession?.transcript || [],
         integrityScore: currentInterviewSession?.integrityScore || 100,
         integrityEvents: currentInterviewSession?.integrityEvents || [],
-        codeScore: res.scores?.overall || 90
+        codeScore: res.scores?.overall ?? 0,
+        candidateId: candidateId,
+        assessmentScores: res.scores
       });
 
       setTimeout(() => {

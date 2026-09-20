@@ -26,22 +26,34 @@ class AssessmentController:
         if not candidate:
             return None, "Candidate not found"
 
-        # If candidate already has an assigned assessment bundle, return it for consistency
-        existing_data = candidate.assessment_data or {}
-        if existing_data.get("bundle"):
-            return {
-                "candidate_id": candidate.id,
-                "job_id": candidate.job_id,
-                "bundle": existing_data["bundle"],
-                "saved_answers": existing_data.get("answers", {}),
-                "is_completed": existing_data.get("is_completed", False),
-                "category_scores": existing_data.get("category_scores", {})
-            }, None
-
         # Fetch the job to determine skills and allowed languages
         job = db.query(JobModel).filter(JobModel.id == (job_id or candidate.job_id)).first()
         job_skills = job.required_skills if job else candidate.skills
         job_languages = job.languages if (job and job.languages) else ["javascript", "python", "typescript", "java", "cpp"]
+
+        # Check if existing bundle has domain mismatch (e.g. React question on Cloud job)
+        existing_data = candidate.assessment_data or {}
+        existing_bundle = existing_data.get("bundle")
+        needs_recalibration = False
+
+        if existing_bundle:
+            bundle_mcq_ids = [q.get("id", "") for q in existing_bundle.get("technical_mcqs", [])]
+            is_cloud = any(k in s.lower() for s in (job_skills or []) for k in ["aws", "cloud", "docker", "docket", "kubernetes", "k8s", "devops"])
+            has_react_mcq = any("react" in qid or "cls" in qid or "web-perf" in qid for qid in bundle_mcq_ids)
+            # If candidate applied for Cloud but has React questions, or bundle has only 2 languages, recalibrate!
+            supported_langs = existing_bundle.get("hands_on", {}).get("supported_languages", [])
+            if (is_cloud and has_react_mcq) or len(supported_langs) < 3:
+                needs_recalibration = True
+
+        if existing_bundle and not needs_recalibration:
+            return {
+                "candidate_id": candidate.id,
+                "job_id": candidate.job_id,
+                "bundle": existing_bundle,
+                "saved_answers": existing_data.get("answers", {}),
+                "is_completed": existing_data.get("is_completed", False),
+                "category_scores": existing_data.get("category_scores", {})
+            }, None
 
         # Generate a candidate-specific randomized 4-category assessment bundle
         bundle = generate_job_assessment_bundle(
@@ -220,38 +232,54 @@ class AssessmentController:
 
         # 1. Grade Category 1: Technical MCQs (25 points)
         correct_mcqs = 0
-        total_mcqs = max(1, len(payload.technical_answers))
+        assigned_mcqs = candidate.assessment_data.get("bundle", {}).get("technical_mcqs", []) if candidate.assessment_data else []
+        total_mcqs = max(1, len(assigned_mcqs) or len(payload.technical_answers) or 3)
         for q_id, chosen in payload.technical_answers.items():
             mcq = next((m for m in TECHNICAL_MCQS if m["id"] == q_id), None)
-            if mcq and mcq["correct_option"].upper() == chosen.strip().upper():
+            if mcq and chosen and mcq["correct_option"].upper() == chosen.strip().upper():
                 correct_mcqs += 1
-        tech_score = int((correct_mcqs / total_mcqs) * 100)
+        tech_score = int((correct_mcqs / total_mcqs) * 100) if payload.technical_answers else 0
 
         # 2. Grade Category 2: Scenario (25 points)
-        scen_answers = list(payload.scenario_answers.values())
+        scen_answers = [a for a in payload.scenario_answers.values() if a and a.strip()]
         scen_text = " ".join(scen_answers).lower()
-        matched_rubric = sum(1 for word in ["cache", "pool", "queue", "connection", "index", "latency", "async", "lock", "scale", "worker", "retry"] if word in scen_text)
-        scenario_score = min(100, max(50, matched_rubric * 14 + (25 if len(scen_text) > 80 else 10)))
+        if len(scen_text.strip()) < 15:
+            scenario_score = 0
+        else:
+            cloud_and_sys_keywords = [
+                "cache", "pool", "queue", "connection", "index", "latency", "async", "lock", "scale", "worker", "retry",
+                "vpc", "subnet", "nat", "route", "iam", "role", "sts", "docker", "pod", "kubernetes", "liveness",
+                "readiness", "statefulset", "s3", "alb", "nlb", "hpa", "terraform", "metrics", "oomkilled", "failover"
+            ]
+            matched_rubric = sum(1 for word in cloud_and_sys_keywords if word in scen_text)
+            scenario_score = min(100, matched_rubric * 15 + min(25, int(len(scen_text) / 15)))
 
         # 3. Grade Category 3: Hands-on Coding (25 points)
         hands_on = payload.hands_on_submission or {}
         hands_results = hands_on.get("test_results") or []
+        hands_code = (hands_on.get("code") or "").strip()
         if hands_results:
             passed = sum(1 for r in hands_results if r.get("passed", False))
-            hands_score = int((passed / len(hands_results)) * 100)
+            hands_score = int((passed / max(1, len(hands_results))) * 100)
+        elif hands_code and len(hands_code) > 40:
+            has_impl = any(k in hands_code for k in ["return", "def ", "function", "class ", "for ", "if "])
+            hands_score = 40 if has_impl else 15
         else:
-            hands_score = 90 if hands_on.get("code") and len(hands_on.get("code")) > 40 else 60
+            hands_score = 0
 
         # 4. Grade Category 4: Troubleshooting (25 points)
         trouble = payload.troubleshooting_submission or {}
         trouble_results = trouble.get("test_results") or []
+        trouble_code = (trouble.get("code") or "").strip()
         if trouble_results:
             passed = sum(1 for r in trouble_results if r.get("passed", False))
-            trouble_score = int((passed / len(trouble_results)) * 100)
+            trouble_score = int((passed / max(1, len(trouble_results))) * 100)
+        elif trouble_code and len(trouble_code) > 40:
+            trouble_score = 40 if ("return" in trouble_code or "totals[" in trouble_code) else 15
         else:
-            trouble_score = 95 if trouble.get("code") and len(trouble.get("code")) > 40 else 60
+            trouble_score = 0
 
-        # Overall weighted score
+        # Overall weighted score (strictly zero if candidate submitted blank)
         overall = int(0.25 * tech_score + 0.25 * scenario_score + 0.25 * hands_score + 0.25 * trouble_score)
 
         # Category scores dictionary
@@ -287,16 +315,41 @@ class AssessmentController:
             "category_scores": category_scores
         }
 
-        # Update candidate scorecard scores
-        scores = candidate.scores or {}
-        scores["jobSkills"] = max(scores.get("jobSkills", 0), overall)
-        scores["technicalScore"] = overall
-        scores["overall"] = int(
-            0.4 * scores["technicalScore"] + 
-            0.3 * scores.get("jobSkills", overall) + 
-            0.3 * scores.get("communication", 85)
-        )
-        candidate.scores = scores
+        # Dynamic skill gap calculation based on real job requirements
+        job = db.query(JobModel).filter(JobModel.id == candidate.job_id).first()
+        job_skills = (job.required_skills if job else None) or candidate.skills or ["AWS", "Docker", "Kubernetes"]
+
+        if overall >= 80:
+            readiness = "Immediately Job-Ready"
+            strong_skills = job_skills[:3]
+            missing_skills = job_skills[3:]
+            recommendations = ["Demonstrated production mastery across core technical pillars. Ready for technical leadership."]
+        elif overall >= 50:
+            readiness = "Hire-and-Develop (Trainable within 30 days)"
+            strong_skills = [job_skills[0]] if job_skills else []
+            missing_skills = job_skills[1:] if len(job_skills) > 1 else job_skills
+            recommendations = [f"Hands-on architectural lab recommended for: {', '.join(missing_skills)}."]
+        else:
+            readiness = "Needs Foundational Preparation (Gap > 70%)"
+            strong_skills = []
+            missing_skills = job_skills
+            recommendations = [f"Complete core certification and hands-on lab in {s} before re-evaluating." for s in missing_skills]
+
+        candidate.skill_gaps = {
+            "readiness": readiness,
+            "strongSkills": strong_skills,
+            "missingSkills": missing_skills,
+            "recommendations": recommendations
+        }
+
+        # Update candidate scorecard scores honestly
+        candidate.scores = {
+            "jobSkills": overall,
+            "technicalScore": overall,
+            "communication": 0 if overall == 0 else (candidate.scores.get("communication", 70) if candidate.scores else 70),
+            "problemSolving": int(0.5 * hands_score + 0.5 * trouble_score),
+            "overall": overall
+        }
 
         # Update candidate status
         candidate.status = "Evaluated"

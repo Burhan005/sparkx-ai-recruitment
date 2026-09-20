@@ -137,6 +137,128 @@ TECHNICAL_MCQS: List[Dict[str, Any]] = [
         },
         "correct_option": "B",
         "explanation": "An idempotency key allows clients to safely retry requests without fear of accidentally processing the same operation twice (e.g. charging a card or submitting double applications)."
+    },
+
+    # Cloud, AWS, Containers & DevOps
+    {
+        "id": "mcq-aws-iam-least-privilege",
+        "category": "technical",
+        "skills": ["aws", "cloud", "iam", "security", "devops"],
+        "difficulty": "Mid-Level",
+        "question": "When running containerized microservices on AWS (e.g. on EC2 or EKS), what is the AWS best practice for granting temporary permissions to access S3 or DynamoDB?",
+        "options": {
+            "A": "Hardcode AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in the Docker container environment variables.",
+            "B": "Attach an IAM Role via EC2 Instance Profile or EKS IRSA (IAM Roles for Service Accounts) to dynamically retrieve short-lived STS credentials without storing long-lived keys.",
+            "C": "Store AWS root account credentials in a plain JSON config file mounted via an NFS share.",
+            "D": "Create a shared IAM User with AdministratorAccess and distribute its credentials across git submodules."
+        },
+        "correct_option": "B",
+        "explanation": "IAM Roles for Service Accounts (IRSA) and Instance Profiles use the AWS Security Token Service (STS) to issue temporary, rotating credentials, eliminating the high security risk of static long-lived access keys."
+    },
+    {
+        "id": "mcq-aws-vpc-architecture",
+        "category": "technical",
+        "skills": ["aws", "cloud", "networking", "vpc", "security"],
+        "difficulty": "Mid-Level",
+        "question": "In a production AWS VPC design, how should private backend microservices initiate outbound connections to external APIs while remaining unreachable from the public internet?",
+        "options": {
+            "A": "Attach an Internet Gateway directly to the private subnet routing table.",
+            "B": "Place a NAT Gateway in a public subnet with an Elastic IP, and route 0.0.0.0/0 traffic from the private subnet route table to this NAT Gateway.",
+            "C": "Assign public IPv4 addresses to every private backend container.",
+            "D": "Disable the VPC firewall and bridge all traffic onto AWS Direct Connect."
+        },
+        "correct_option": "B",
+        "explanation": "A NAT Gateway residing in a public subnet translates outbound traffic from private instances to its Elastic IP, allowing private workloads to pull updates or reach external APIs without accepting inbound internet connections."
+    },
+    {
+        "id": "mcq-docker-multistage",
+        "category": "technical",
+        "skills": ["docker", "docket", "containers", "devops", "cloud"],
+        "difficulty": "Mid-Level",
+        "question": "Why are Docker multi-stage builds considered essential for deploying production container images?",
+        "options": {
+            "A": "They allow running multiple isolated Linux operating systems inside a single container instance.",
+            "B": "They separate the build environment (compilers, SDKs, devDependencies) from the lean runtime image, minimizing image size and attack surface.",
+            "C": "They automatically encrypt all HTTP traffic between Docker containers using TLS.",
+            "D": "They bypass Docker daemon socket permissions by executing directly in host kernel space."
+        },
+        "correct_option": "B",
+        "explanation": "Multi-stage builds leave behind compilers, header files, and build tools in temporary intermediate stages, copying only the compiled artifacts into a minimal runtime image (e.g. Alpine or Distroless)."
+    },
+    {
+        "id": "mcq-k8s-probes",
+        "category": "technical",
+        "skills": ["kubernetes", "k8s", "cloud", "devops", "containers"],
+        "difficulty": "Senior",
+        "question": "What is the critical distinction between a Kubernetes 'Liveness Probe' and a 'Readiness Probe'?",
+        "options": {
+            "A": "Liveness probes trigger container restarts when an unrecoverable deadlock occurs, while failed Readiness probes temporarily remove the Pod from Service endpoints without restarting it.",
+            "B": "Readiness probes terminate the node immediately, while Liveness probes only send an email alert.",
+            "C": "Liveness probes are strictly evaluated during cluster initial boot, while Readiness probes only run during shutdown.",
+            "D": "They are completely identical and interchangeable aliases within the Kubernetes API spec."
+        },
+        "correct_option": "A",
+        "explanation": "Liveness probes detect deadlocks or fatal crashes and restart the container. Readiness probes detect whether the pod is ready to accept incoming network traffic, gracefully isolating overloaded or warming pods."
+    },
+    {
+        "id": "mcq-k8s-deployments-vs-statefulsets",
+        "category": "technical",
+        "skills": ["kubernetes", "k8s", "cloud", "database", "devops"],
+        "difficulty": "Senior",
+        "question": "When deploying a stateful clustered workload (like Kafka, Elasticsearch, or PostgreSQL) on Kubernetes, why is a StatefulSet preferred over a standard Deployment?",
+        "options": {
+            "A": "StatefulSets provide stable, unique network identifiers (ordinal pod names), dedicated PersistentVolume claims per replica, and ordered graceful deployment and scaling.",
+            "B": "Deployments do not support CPU or memory resource limits.",
+            "C": "StatefulSets run exclusively on AWS bare-metal instances without requiring kubelet.",
+            "D": "Deployments cannot attach any storage volumes whatsoever."
+        },
+        "correct_option": "A",
+        "explanation": "StatefulSets maintain sticky identity for each pod (pod-0, pod-1) and bind dedicated persistent storage volumes that persist across rescheduling, essential for distributed stateful systems."
+    },
+    {
+        "id": "mcq-aws-s3-consistency",
+        "category": "technical",
+        "skills": ["aws", "cloud", "storage", "s3", "system design"],
+        "difficulty": "Mid-Level",
+        "question": "What consistency model does Amazon S3 guarantee for PUT and DELETE requests of new and existing objects?",
+        "options": {
+            "A": "Eventual consistency with a mandatory 15-minute propagation delay across availability zones.",
+            "B": "Strong read-after-write consistency for PUTs and DELETEs of objects in all AWS Regions across all buckets.",
+            "C": "Read-uncommitted consistency requiring explicit conditional locks before each read.",
+            "D": "Strict linearizability across multi-cloud replication only."
+        },
+        "correct_option": "B",
+        "explanation": "Amazon S3 provides strong read-after-write consistency for PUTs and DELETEs of objects in all AWS regions automatically, without changes to performance or availability."
+    },
+    {
+        "id": "mcq-docker-caching",
+        "category": "technical",
+        "skills": ["docker", "docket", "devops", "ci/cd", "containers"],
+        "difficulty": "Mid-Level",
+        "question": "In a Dockerfile, why is it best practice to copy dependency manifest files (like package.json or requirements.txt) and run dependency installation BEFORE copying the rest of the application source code?",
+        "options": {
+            "A": "Because Docker cannot read source code if third-party packages are copied second.",
+            "B": "To leverage Docker's layer cache so that heavy dependency installations are skipped if package manifests have not changed, speeding up build times.",
+            "C": "To prevent source files from overwriting system kernel headers.",
+            "D": "To enable automatic git commit verification during container compilation."
+        },
+        "correct_option": "B",
+        "explanation": "Docker caches each build layer. Placing infrequently changing files (dependency manifests) before frequently changing files (source code) avoids invalidating the cache on every code change."
+    },
+    {
+        "id": "mcq-cloud-alb-nlb",
+        "category": "technical",
+        "skills": ["aws", "cloud", "networking", "devops", "system design"],
+        "difficulty": "Senior",
+        "question": "When architecting traffic routing on AWS, under which scenario should an engineer choose a Network Load Balancer (NLB) over an Application Load Balancer (ALB)?",
+        "options": {
+            "A": "When advanced HTTP/HTTPS path-based and host-header routing rules are required.",
+            "B": "When ultra-low latency, extreme millions-of-requests-per-second throughput at Layer 4 (TCP/UDP), and static IP allocations are required.",
+            "C": "When terminating WebSocket connections with custom HTTP response headers.",
+            "D": "When routing traffic directly to AWS Lambda serverless functions."
+        },
+        "correct_option": "B",
+        "explanation": "NLB operates at the transport layer (Layer 4) for extreme throughput, sub-millisecond latencies, and provides static Anycast IP addresses, whereas ALB operates at Layer 7 (HTTP/HTTPS)."
     }
 ]
 
@@ -183,6 +305,26 @@ SCENARIO_QUESTIONS: List[Dict[str, Any]] = [
         "prompt": "You need to migrate the 'applications' table (50 million rows) to a new schema that supports multi-tenant sharding and encrypted candidate resumes without taking the platform offline. Detail your deployment strategy, data migration pipeline, and rollback mechanisms.",
         "rubric_keywords": ["strangler fig", "dual-write", "shadow read", "feature flag", "backfill", "cdc", "reconciliation script", "zero downtime"],
         "guidance": "Explain dual-write phase, background historical backfill, shadow verification/reconciliation, and atomic cutover with feature flags."
+    },
+    {
+        "id": "sc-cloud-k8s-oom",
+        "category": "scenario",
+        "skills": ["aws", "kubernetes", "k8s", "cloud", "docker", "docket", "devops"],
+        "difficulty": "Senior",
+        "title": "Kubernetes CrashLoopBackOff & OOMKilled Emergency in Production",
+        "prompt": "Following a new microservice release on AWS EKS, 60% of candidate-facing pods enter 'CrashLoopBackOff' and 'OOMKilled' (Exit Code 137). API error rates spike to 35%. Describe your step-by-step incident triage: how you inspect pod events and container metrics, roll back or patch resource limits/requests, investigate memory leak vs container allocation, and prevent future occurrences using HPA and resource quotas.",
+        "rubric_keywords": ["kubectl describe", "oomkilled", "exit code 137", "requests and limits", "metrics-server", "rollback", "heap dump", "hpa", "memory leak"],
+        "guidance": "Focus on immediate triage (`kubectl describe pod`, `kubectl logs --previous`), rolling back via deployment revision, adjusting cgroup memory limits, and setting pod disruption budgets."
+    },
+    {
+        "id": "sc-aws-disaster-recovery",
+        "category": "scenario",
+        "skills": ["aws", "cloud", "system design", "networking", "devops"],
+        "difficulty": "Senior",
+        "title": "Architecting Active-Passive Disaster Recovery on AWS",
+        "prompt": "Your recruitment platform must achieve an RTO (Recovery Time Objective) under 5 minutes and an RPO (Recovery Point Objective) under 1 minute in the event of an entire AWS Region outage (e.g. us-east-1). Detail your architecture covering Route53 DNS health checks, Aurora Global Database or cross-region RDS read replicas, S3 Cross-Region Replication (CRR), and automated failover orchestration.",
+        "rubric_keywords": ["route 53", "dns failover", "rto", "rpo", "cross-region replication", "aurora global database", "health check", "terraform", "s3 crr"],
+        "guidance": "Detail data tier replication (Aurora Global DB / Cross-region read replicas), stateless app tier scaling in secondary region, and Route53 DNS health check failover."
     }
 ]
 
@@ -641,30 +783,64 @@ TROUBLESHOOTING_CHALLENGES: List[Dict[str, Any]] = [
 def generate_job_assessment_bundle(job_skills: List[str], languages: List[str] = None, seed_candidate_id: str = None) -> Dict[str, Any]:
     """
     Selects a randomized 4-category assessment bundle based on the job's skills and allowed languages.
-    If seed_candidate_id is given, randomization is deterministic per candidate to maintain consistency.
+    Uses strict domain isolation so Cloud Engineers get Cloud/DevOps/Containers questions,
+    Frontend Engineers get React/Web questions, and Backend Engineers get Systems/Database questions.
     """
     rng = random.Random(seed_candidate_id) if seed_candidate_id else random.Random()
     normalized_skills = [s.strip().lower() for s in (job_skills or [])]
 
-    # 1. Technical MCQs: Pick 3 questions matching job skills if possible, else sample from pool
-    matching_mcqs = [
-        q for q in TECHNICAL_MCQS 
-        if any(s in normalized_skills or any(ms in s for ms in normalized_skills) for s in q["skills"])
-    ]
-    if len(matching_mcqs) < 3:
-        remaining = [q for q in TECHNICAL_MCQS if q not in matching_mcqs]
-        pool = matching_mcqs + remaining
-    else:
-        pool = matching_mcqs
-    
-    selected_mcqs = rng.sample(pool, min(3, len(pool)))
+    # Detect Job Technical Domain
+    is_cloud_infra = any(k in s for s in normalized_skills for k in ["aws", "cloud", "docker", "docket", "kubernetes", "k8s", "devops", "infra", "linux", "terraform", "platform", "sre", "networking"])
+    is_frontend = any(k in s for s in normalized_skills for k in ["react", "frontend", "css", "html", "ui", "ux", "canvas", "web", "tailwind"])
+    is_backend = any(k in s for s in normalized_skills for k in ["python", "backend", "fastapi", "django", "sql", "postgres", "concurrency", "distributed"])
 
-    # 2. Scenario Question: Pick 1 matching scenario
-    matching_scenarios = [
-        q for q in SCENARIO_QUESTIONS
-        if any(s in normalized_skills for s in q["skills"])
-    ] or SCENARIO_QUESTIONS
-    selected_scenario = rng.choice(matching_scenarios)
+    # 1. Technical MCQs: Strict Domain Filtering
+    matching_mcqs = []
+    for q in TECHNICAL_MCQS:
+        q_skills = [qs.lower() for qs in q["skills"]]
+        has_direct = any(s in q_skills or any(qs in s for qs in q_skills) for s in normalized_skills)
+        if is_cloud_infra and any(k in q_skills for k in ["aws", "cloud", "docker", "docket", "kubernetes", "k8s", "devops", "networking"]):
+            matching_mcqs.append(q)
+        elif is_frontend and any(k in q_skills for k in ["react", "frontend", "javascript", "typescript", "performance"]):
+            matching_mcqs.append(q)
+        elif is_backend and not is_frontend and any(k in q_skills for k in ["python", "backend", "sql", "database", "concurrency", "system design"]):
+            matching_mcqs.append(q)
+        elif has_direct:
+            matching_mcqs.append(q)
+
+    # Deduplicate matching MCQs
+    seen_ids = set()
+    unique_matches = []
+    for m in matching_mcqs:
+        if m["id"] not in seen_ids:
+            seen_ids.add(m["id"])
+            unique_matches.append(m)
+
+    # If fewer than 3, backfill from compatible domain pool only (NEVER cross incompatible domains)
+    if len(unique_matches) < 3:
+        if is_cloud_infra:
+            fallback_pool = [q for q in TECHNICAL_MCQS if any(k in q["skills"] for k in ["aws", "cloud", "docker", "kubernetes", "system design", "api", "devops"])]
+        elif is_frontend:
+            fallback_pool = [q for q in TECHNICAL_MCQS if any(k in q["skills"] for k in ["react", "frontend", "javascript", "typescript", "performance"])]
+        else:
+            fallback_pool = [q for q in TECHNICAL_MCQS if not any(k in q["skills"] for k in ["react", "frontend"])]
+        
+        for q in fallback_pool:
+            if q["id"] not in seen_ids:
+                seen_ids.add(q["id"])
+                unique_matches.append(q)
+
+    selected_mcqs = rng.sample(unique_matches, min(3, len(unique_matches)))
+
+    # 2. Scenario Question: Domain-calibrated selection
+    if is_cloud_infra:
+        scenario_pool = [q for q in SCENARIO_QUESTIONS if any(k in q["skills"] for k in ["aws", "cloud", "kubernetes", "k8s", "docker", "devops"])]
+    elif is_frontend:
+        scenario_pool = [q for q in SCENARIO_QUESTIONS if any(k in q["skills"] for k in ["react", "frontend", "webrtc", "javascript"])]
+    else:
+        scenario_pool = [q for q in SCENARIO_QUESTIONS if any(k in q["skills"] for k in ["backend", "database", "system design", "cloud"])]
+    
+    selected_scenario = rng.choice(scenario_pool if scenario_pool else SCENARIO_QUESTIONS)
 
     # 3. Hands-on Coding: Pick 1 challenge
     selected_hands_on = rng.choice(HANDS_ON_CHALLENGES)
@@ -672,7 +848,15 @@ def generate_job_assessment_bundle(job_skills: List[str], languages: List[str] =
     # 4. Troubleshooting: Pick 1 bug fix
     selected_trouble = rng.choice(TROUBLESHOOTING_CHALLENGES)
 
-    allowed_langs = languages or ["javascript", "python", "typescript", "java", "cpp"]
+    # Programming Languages: Filter out spoken languages (e.g. English, Hindi) and default to all 5 technical languages
+    all_supported_langs = ["python", "javascript", "typescript", "java", "cpp"]
+    if languages:
+        valid_prog_langs = [l.lower() for l in languages if l.lower() in all_supported_langs]
+        allowed_langs = valid_prog_langs if valid_prog_langs else all_supported_langs
+    else:
+        allowed_langs = all_supported_langs
+
+    supported_langs = [l for l in selected_hands_on["supported_languages"] if l in allowed_langs] or all_supported_langs
 
     return {
         "technical_mcqs": [
@@ -696,7 +880,7 @@ def generate_job_assessment_bundle(job_skills: List[str], languages: List[str] =
             "title": selected_hands_on["title"],
             "instructions": selected_hands_on["instructions"],
             "difficulty": selected_hands_on["difficulty"],
-            "supported_languages": [l for l in selected_hands_on["supported_languages"] if l in [al.lower() for al in allowed_langs]] or ["javascript", "python"],
+            "supported_languages": supported_langs,
             "starter_code": selected_hands_on["starter_code"],
             "test_cases": selected_hands_on["test_cases"]
         },

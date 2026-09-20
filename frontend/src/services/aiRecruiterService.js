@@ -184,15 +184,15 @@ export function generateCandidateEvaluation({
   candidateName,
   resumeSkills = [],
   transcript = [],
-  integrityScore = 95,
+  integrityScore = 100,
   integrityEvents = [],
-  codeScore = 90
+  codeScore = 0
 }) {
   const candidateEntries = transcript.filter(t => t.speaker === 'candidate');
   const requiredSkills = job?.requiredSkills || [];
 
-  let technicalScore = 30;
-  let communicationScore = 40;
+  let technicalScore = 0;
+  let communicationScore = 0;
 
   if (candidateEntries.length > 0) {
     let totalScore = 0;

@@ -362,48 +362,87 @@ export function RecruitmentProvider({ children }) {
     return newCandidate;
   };
 
-  const completeInterviewAndEvaluate = async ({ transcript, integrityScore, integrityEvents, codeScore }) => {
-    const candId = currentInterviewSession.candidateId;
-    const targetCandidate = candidates.find(c => c.id === candId);
+  const completeInterviewAndEvaluate = async ({ transcript = [], integrityScore = 100, integrityEvents = [], codeScore = 0, candidateId, assessmentScores }) => {
+    const candId = candidateId || currentInterviewSession.candidateId || currentUser?.id;
+    let targetCandidate = candidates.find(c => c.id === candId) || candidates.find(c => c.email === currentUser?.email);
     const targetJob = jobs.find(j => j.id === (targetCandidate?.jobId || currentInterviewSession.jobId)) || jobs[0];
+
+    // Effective code score: strictly use the assessment overall score if provided
+    const effectiveCodeScore = typeof codeScore === 'number' ? codeScore : (assessmentScores?.overall ?? 0);
 
     // Authoritative dynamic evaluation from FastAPI backend ai_engine
     let evaluation = null;
-    if (candId) {
+    if (candId && transcript && transcript.length > 0) {
       evaluation = await api.evaluateInterview({
         candidate_id:      candId,
         job_id:            targetJob?.id,
         transcript,
         integrity_score:   integrityScore,
         integrity_events:  integrityEvents,
-        code_score:        codeScore,
+        code_score:        effectiveCodeScore,
       });
     }
 
-    // Fallback to dynamic text analysis if backend call fails
+    // Fallback to dynamic text analysis if backend interview call not triggered
     if (!evaluation) {
-      evaluation = generateCandidateEvaluation({
-        job: targetJob,
-        candidateName: targetCandidate?.name || currentInterviewSession.candidateName,
-        resumeSkills:  targetCandidate?.skills || ['React', 'JavaScript', 'Python'],
-        transcript, integrityScore, integrityEvents, codeScore,
-      });
+      const jobSkills = targetJob?.requiredSkills || ['AWS', 'Docker', 'Kubernetes'];
+      const overallScore = effectiveCodeScore;
+      let readiness = "Needs Foundational Preparation (Gap > 70%)";
+      let strongSkills = [];
+      let missingSkills = jobSkills;
+      let recommendations = jobSkills.map(s => `Complete hands-on certification in ${s} to build technical competency.`);
+
+      if (overallScore >= 80) {
+        readiness = "Immediately Job-Ready";
+        strongSkills = jobSkills.slice(0, 3);
+        missingSkills = jobSkills.slice(3);
+        recommendations = ["Demonstrated production mastery across core technical pillars. Ready for senior technical leadership."];
+      } else if (overallScore >= 50) {
+        readiness = "Hire-and-Develop (Trainable within 30 days)";
+        strongSkills = jobSkills.slice(0, 1);
+        missingSkills = jobSkills.slice(1);
+        recommendations = missingSkills.map(s => `Targeted architectural workshop in ${s}.`);
+      }
+
+      evaluation = {
+        scores: {
+          jobSkills: overallScore,
+          technicalScore: assessmentScores?.technical ?? overallScore,
+          communication: transcript.length > 0 ? 70 : 0,
+          problemSolving: Math.round(((assessmentScores?.hands_on ?? overallScore) * 0.5) + ((assessmentScores?.troubleshooting ?? overallScore) * 0.5)),
+          overall: overallScore
+        },
+        integrityScore: integrityScore ?? 100,
+        integrityRisk: 'Low',
+        skillGaps: {
+          readiness,
+          strongSkills,
+          missingSkills,
+          recommendations
+        }
+      };
     }
 
     const updatedData = {
+      ...(targetCandidate || {}),
+      id: candId || targetCandidate?.id,
+      name: targetCandidate?.name || currentUser?.name || 'Candidate',
+      jobId: targetJob?.id,
+      job: targetJob,
       ...evaluation,
+      coding_score: effectiveCodeScore,
       status: 'Evaluated',
       integrityEvents,
       integrityScore,
-      finalDecision: (evaluation.scores?.overall || 0) >= 80 && (evaluation.integrityRisk || 'Low') === 'Low' ? 'Shortlisted' : 'Under Review',
+      finalDecision: (evaluation.scores?.overall || 0) >= 80 ? 'Shortlisted' : 'Under Review',
     };
 
     if (candId) {
-      setCandidates(prev => prev.map(c => c.id === candId ? { ...c, ...updatedData } : c));
-      setSelectedCandidate({ ...targetCandidate, ...updatedData });
+      setCandidates(prev => prev.map(c => c.id === candId ? updatedData : c));
     }
+    setSelectedCandidate(updatedData);
 
-    toastBus.emit(`Interview complete — Score: ${evaluation.scores.overall}/100`, 'success');
+    toastBus.emit(`Assessment complete — Score: ${evaluation.scores.overall}/100`, evaluation.scores.overall >= 50 ? 'success' : 'info');
     return evaluation;
   };
 
