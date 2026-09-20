@@ -83,11 +83,11 @@ export default function Navbar() {
     { id: 'proctor',   label: 'Integrity Telemetry', icon: ShieldAlert, badge: 'Live HUD' },
   ];
   const candidateNavItems = [
-    { id: 'candidate',    label: 'Browse Openings', icon: UserCheck },
+    { id: 'candidate',    label: 'Browse Jobs', icon: UserCheck },
     { id: 'applications', label: 'My Applications', icon: FileText, badge: myApplications.length > 0 ? String(myApplications.length) : null },
-    { id: 'interview',    label: 'AI Interview Room', icon: Video, badge: 'Adaptive' },
-    { id: 'assessment',   label: 'Code Assessment', icon: Code2 },
-    { id: 'feedback',     label: 'Skill Gap Roadmap', icon: TrendingUp },
+    { id: 'interview',    label: 'AI Interview', icon: Video, badge: 'Adaptive' },
+    { id: 'assessment',   label: 'Code Challenge', icon: Code2 },
+    { id: 'feedback',     label: 'Skill Gap', icon: TrendingUp },
   ];
   const currentNavItems = userRole === 'recruiter' ? recruiterNavItems : candidateNavItems;
 
@@ -104,21 +104,21 @@ export default function Navbar() {
 
             {/* ─── Left: Brand Identity & Mode Badge ─── */}
             <div 
-              className="flex items-center space-x-3 cursor-pointer group select-none" 
+              className="flex items-center space-x-3 cursor-pointer group select-none shrink-0" 
               onClick={() => navigateTo(userRole === 'recruiter' ? 'recruiter' : 'candidate')}
             >
-              <div className="relative">
+              <div className="relative shrink-0">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 ring-1 ring-white/25 group-hover:scale-105 transition-all duration-300">
                   <Sparkles className="w-5 h-5 text-white animate-pulse" />
                 </div>
                 <div className="absolute -inset-1 rounded-2xl bg-indigo-500/20 blur-sm -z-10 group-hover:bg-indigo-500/40 transition" />
               </div>
-              <div>
-                <div className="flex items-center space-x-2">
+              <div className="shrink-0">
+                <div className="flex items-center space-x-2 whitespace-nowrap">
                   <span className="font-black text-lg tracking-tight text-slate-900 dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-white dark:via-slate-100 dark:to-indigo-200">
                     SparkX AI
                   </span>
-                  <span className={`text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full border ${
+                  <span className={`text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full border whitespace-nowrap ${
                     userRole === 'recruiter'
                       ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/25 shadow-sm'
                       : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25 shadow-sm'
@@ -134,7 +134,7 @@ export default function Navbar() {
                         e.stopPropagation();
                         setIsAIModalOpen(true);
                       }}
-                      className={`hidden lg:inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition hover:scale-105 active:scale-95 cursor-pointer ${
+                      className={`hidden xl:inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap ${
                         aiStatus.active
                           ? 'bg-emerald-500/10 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 dark:border-emerald-800/40'
                           : 'bg-amber-500/10 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-500/30 dark:border-amber-800/40 hover:border-amber-500/60'
@@ -147,14 +147,14 @@ export default function Navbar() {
                     </button>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium tracking-tight">
+                <p className="hidden xl:block text-[11px] text-slate-500 dark:text-slate-400 font-medium tracking-tight whitespace-nowrap">
                   Autonomous Talent Intelligence Suite
                 </p>
               </div>
             </div>
 
             {/* ─── Center: Desktop Navigation Tabs ─── */}
-            <nav className="hidden md:flex items-center space-x-1 bg-slate-100/90 dark:bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] shadow-inner">
+            <nav className="hidden lg:flex items-center space-x-1 bg-slate-100/90 dark:bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] shadow-inner shrink-0">
               {currentNavItems.map(item => {
                 const Icon = item.icon;
                 const isActive = currentView === item.id;
@@ -162,16 +162,16 @@ export default function Navbar() {
                   <button
                     key={item.id}
                     onClick={() => navigateTo(item.id)}
-                    className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 relative ${
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 relative whitespace-nowrap shrink-0 ${
                       isActive 
                         ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/35 ring-1 ring-white/20' 
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
                     }`}
                   >
-                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-                    <span>{item.label}</span>
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <span className="whitespace-nowrap">{item.label}</span>
                     {item.badge && (
-                      <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${
+                      <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0 ${
                         isActive 
                           ? 'bg-white/25 text-white' 
                           : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
@@ -185,7 +185,7 @@ export default function Navbar() {
             </nav>
 
             {/* ─── Right Action Controls ─── */}
-            <div className="flex items-center space-x-2 sm:space-x-2.5">
+            <div className="flex items-center space-x-2 sm:space-x-2.5 shrink-0">
 
               {/* Theme Toggle */}
               <button
@@ -344,7 +344,7 @@ export default function Navbar() {
                 id="sparkx-hamburger-btn"
                 type="button"
                 onClick={() => setIsMobileMenuOpen(p => !p)}
-                className="md:hidden p-2 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
+                className="lg:hidden p-2 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition"
                 aria-label="Toggle navigation menu"
               >
                 {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -359,7 +359,7 @@ export default function Navbar() {
         {isMobileMenuOpen && (
           <div 
             ref={mobileMenuRef}
-            className="md:hidden border-t border-slate-200 dark:border-white/[0.08] bg-white/95 dark:bg-[#06080E]/95 backdrop-blur-2xl px-4 py-4 space-y-3 shadow-xl animate-in slide-in-from-top-4 duration-200"
+            className="lg:hidden border-t border-slate-200 dark:border-white/[0.08] bg-white/95 dark:bg-[#06080E]/95 backdrop-blur-2xl px-4 py-4 space-y-3 shadow-xl animate-in slide-in-from-top-4 duration-200"
           >
             {/* Nav links */}
             <div className="space-y-1">
