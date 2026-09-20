@@ -11,6 +11,7 @@ class JobModel(Base):
 
     id = Column(String, primary_key=True, index=True)
     title = Column(String, nullable=False, index=True)
+    company_name = Column(String, default="SparkX Technologies")
     department = Column(String, nullable=False)
     location = Column(String, default="Remote")
     min_experience_years = Column(Integer, default=2)
@@ -33,6 +34,7 @@ class CandidateModel(Base):
 
     id = Column(String, primary_key=True, index=True)
     job_id = Column(String, ForeignKey("jobs.id"), nullable=False)
+    company_name = Column(String, default="SparkX Technologies")
     name = Column(String, nullable=False, index=True)
     email = Column(String, nullable=False, index=True)
     phone = Column(String, nullable=True)
@@ -43,6 +45,8 @@ class CandidateModel(Base):
     education = Column(String, nullable=False)
     skills = Column(JSON, default=list)
     resume_summary = Column(Text, nullable=True)
+    resume_filename = Column(String, nullable=True)
+    resume_text = Column(Text, nullable=True)
     fraud_flags = Column(JSON, default=list)
     
     # Telemetry & Integrity
@@ -91,6 +95,17 @@ class UserModel(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     role = Column(String, default="candidate") # "recruiter" or "candidate"
+    
+    # Candidate Profile Fields (Populated via Resume Upload & Onboarding)
+    phone = Column(String, nullable=True)
+    job_role = Column(String, nullable=True)
+    experience_years = Column(Float, default=0.0)
+    skills = Column(JSON, default=list)
+    education = Column(String, nullable=True)
+    resume_filename = Column(String, nullable=True)
+    resume_summary = Column(Text, nullable=True)
+    resume_text = Column(Text, nullable=True)
+    
     reset_token = Column(String, nullable=True)
     reset_token_expiry = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -7,17 +7,18 @@ import {
 } from 'lucide-react';
 
 export default function ResumeUploadModal({ job, onClose }) {
-  const { applyForJob, setCurrentView } = useRecruitment();
+  const { applyForJob, setCurrentView, currentUser } = useRecruitment();
 
-  // ── Form state (empty defaults — not hardcoded data) ────────────────────────
-  const [candidateName,  setCandidateName]  = useState('');
-  const [candidateEmail, setCandidateEmail] = useState('');
-  const [candidatePhone, setCandidatePhone] = useState('');
-  const [experienceYears,setExperienceYears]= useState('');
-  const [education,      setEducation]      = useState('');
-  const [skillsString,   setSkillsString]   = useState('');
-  const [resumeSummary,  setResumeSummary]  = useState('');
-  const [selectedFileName, setSelectedFileName] = useState('');
+  // ── Form state (Pre-filled with logged in candidate profile if available) ───
+  const [candidateName,  setCandidateName]  = useState(currentUser?.name || '');
+  const [candidateEmail, setCandidateEmail] = useState(currentUser?.email || '');
+  const [candidatePhone, setCandidatePhone] = useState(currentUser?.phone || '');
+  const [experienceYears,setExperienceYears]= useState(currentUser?.experience_years ? String(currentUser.experience_years) : (currentUser?.experienceYears ? String(currentUser.experienceYears) : ''));
+  const [education,      setEducation]      = useState(currentUser?.education || '');
+  const [skillsString,   setSkillsString]   = useState(Array.isArray(currentUser?.skills) ? currentUser.skills.join(', ') : '');
+  const [resumeSummary,  setResumeSummary]  = useState(currentUser?.resume_summary || currentUser?.resumeSummary || '');
+  const [selectedFileName, setSelectedFileName] = useState(currentUser?.resume_filename || currentUser?.resumeFilename || '');
+  const [resumeText,     setResumeText]     = useState(currentUser?.resume_text || currentUser?.resumeText || '');
 
   const [isScanning,  setIsScanning]  = useState(false);
   const [scanResult,  setScanResult]  = useState(null);
@@ -73,7 +74,15 @@ export default function ResumeUploadModal({ job, onClose }) {
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file) { setSelectedFileName(file.name); triggerScan(); }
+    if (file) { 
+      setSelectedFileName(file.name);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setResumeText(typeof ev.target.result === 'string' ? ev.target.result : '');
+      };
+      reader.readAsText(file);
+      triggerScan(); 
+    }
   };
 
   const handleSubmitApplication = async () => {
@@ -82,13 +91,16 @@ export default function ResumeUploadModal({ job, onClose }) {
     setIsSubmitting(true);
     const saved = await applyForJob({
       jobId: job.id,
+      companyName: job.companyName || 'SparkX Technologies',
       name: candidateName,
       email: candidateEmail,
       phone: candidatePhone || '+91 98000 00000',
-      experienceYears,
-      education,
+      experienceYears: Number(experienceYears || 0),
+      education: education || 'B.Tech / Technical Degree',
       skills,
       resumeSummary,
+      resumeFilename: selectedFileName || null,
+      resumeText: resumeText || null,
       fraudFlags: scanResult?.fraudFlags || [],
     });
     setIsSubmitting(false);

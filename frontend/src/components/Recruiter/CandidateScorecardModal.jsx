@@ -54,11 +54,11 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
     setCustomEmailMsg('');
   };
 
-  const handleDecision = (decision) => {
-    updateCandidateStatus(candidate.id, decision, hrNotes);
-    setActionSuccess(`Candidate ${decision}!`);
+  const handleDecision = async (decision) => {
+    await updateCandidateStatus(candidate.id, decision, hrNotes);
+    setActionSuccess(`Status updated to "${decision}"!`);
 
-    if (decision === 'Shortlisted' || decision === 'Offered') {
+    if (decision === 'Shortlisted' || decision === 'Selected' || decision === 'Offered') {
       confetti({
         particleCount: 80,
         spread: 70,
@@ -174,6 +174,7 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
         {/* Tab navigation */}
         <div className="flex border-b border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-slate-950/60 px-6 space-x-6 text-xs font-bold overflow-x-auto">
           {[
+            { id: 'profile', label: 'Profile & Resume', icon: FileText },
             { id: 'scorecard', label: 'AI Scorecard', icon: Award },
             { id: 'transcript', label: 'Transcript & Evidence', icon: MessageSquare },
             { id: 'integrity', label: 'Anti-Cheating Audit', icon: ShieldAlert, badge: candidate.integrityEvents?.length },
@@ -206,6 +207,173 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
 
         {/* Modal body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-700 dark:text-slate-200 text-sm">
+
+          {/* TAB 0: Profile & Resume */}
+          {activeTab === 'profile' && (
+            <div className="space-y-6">
+              {/* Candidate Overview Card */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      Verified Candidate Dossier
+                    </span>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
+                      {candidate.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Applied for <span className="font-semibold text-slate-700 dark:text-slate-300">{candidate.job?.title || candidate.jobRole || 'Software Engineer'}</span> at <span className="font-semibold text-slate-700 dark:text-slate-300">{candidate.companyName || 'SparkX Technologies'}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span className="px-3 py-1 rounded-xl text-xs font-black bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
+                      Status: {candidate.finalDecision || candidate.status || 'Under Review'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/80">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block mb-1">Email Address</span>
+                    <span className="font-mono text-slate-800 dark:text-slate-200 break-all">{candidate.email}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/80">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block mb-1">Phone Number</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{candidate.phone || 'Not provided'}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/80">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block mb-1">Total Experience</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{candidate.experienceYears} Years</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800/80">
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block mb-1">Education</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-200">{candidate.education || 'B.S. in Computer Science'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Skills Match vs Role Requirements */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Competency & Skills Breakdown
+                  </span>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    {candidate.matchScore}% Match Score
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block">Candidate Identified Skills:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {candidate.skills && candidate.skills.length > 0 ? (
+                      candidate.skills.map((skill, idx) => (
+                        <span key={idx} className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 text-xs font-medium border border-indigo-200 dark:border-indigo-800/60">
+                          {skill}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-400 italic">No skills listed</span>
+                    )}
+                  </div>
+                </div>
+
+                {candidate.job?.requiredSkills && (
+                  <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+                    <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block">Job's Required Skills:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {candidate.job.requiredSkills.map((reqSkill, idx) => {
+                        const hasSkill = candidate.skills?.some(s => s.toLowerCase() === reqSkill.toLowerCase());
+                        return (
+                          <span
+                            key={idx}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium border flex items-center space-x-1 ${
+                              hasSkill
+                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/60'
+                                : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                            <span>{hasSkill ? '✓' : '○'}</span>
+                            <span>{reqSkill}</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Resume Document & Parsed Content */}
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        {candidate.resumeFilename || `${candidate.name.replace(/\s+/g, '_')}_Resume.pdf`}
+                      </h4>
+                      <span className="text-[10px] text-slate-400">
+                        Submitted on {candidate.appliedDate} • Synced to database
+                      </span>
+                    </div>
+                  </div>
+
+                  {candidate.resumeText && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(candidate.resumeText);
+                          alert('Resume content copied to clipboard!');
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition flex items-center space-x-1"
+                    >
+                      <span>Copy Resume Text</span>
+                    </button>
+                  )}
+                </div>
+
+                {candidate.resumeSummary && (
+                  <div className="p-3.5 rounded-xl bg-white dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Parsed Executive Summary</span>
+                    <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+                      {candidate.resumeSummary}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Full Parsed Resume Content
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {candidate.resumeText ? `${candidate.resumeText.length} characters` : 'Auto-synthesized'}
+                    </span>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-950 text-slate-200 font-mono text-xs leading-relaxed max-h-72 overflow-y-auto whitespace-pre-wrap border border-slate-800 select-text">
+                    {candidate.resumeText || (
+`Candidate Name: ${candidate.name}
+Email: ${candidate.email}
+Phone: ${candidate.phone || 'N/A'}
+Target Job Role: ${candidate.jobRole || candidate.job?.title || 'Software Engineer'}
+Total Experience: ${candidate.experienceYears} Years
+Education: ${candidate.education || 'B.S. in Computer Science'}
+Skills: ${(candidate.skills || []).join(', ')}
+
+Profile Overview:
+${candidate.resumeSummary || 'Standard verified candidate profile submitted via SparkX recruitment portal.'}`
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* TAB 1: AI Scorecard */}
           {activeTab === 'scorecard' && (
@@ -593,41 +761,93 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
 
         </div>
 
-        {/* Human-in-the-loop Final Decision Bar (Slide 14 & 17) */}
-        <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4 backdrop-blur-md">
-          <div className="w-full sm:w-1/2">
+        {/* Human-in-the-loop Final Decision Bar (Unified 5 Statuses) */}
+        <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-900/80 border-t border-slate-200 dark:border-white/[0.08] flex flex-col lg:flex-row items-center justify-between gap-4 backdrop-blur-md">
+          <div className="w-full lg:w-1/3">
             <input
               type="text"
-              placeholder="Add recruiter evaluation notes or hiring committee feedback..."
+              placeholder="Add recruiter evaluation notes or committee feedback..."
               value={hrNotes}
               onChange={e => setHrNotes(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-xs bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition shadow-sm"
+              className="w-full px-3.5 py-2 text-xs bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition shadow-sm"
             />
           </div>
 
-          <div className="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-1">
+          <div className="flex items-center space-x-1.5 w-full lg:w-auto justify-end flex-wrap gap-1">
+            {actionSuccess && (
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 animate-pulse mr-2">
+                ✓ {actionSuccess}
+              </span>
+            )}
+
+            {/* 1. Under Review */}
             <button
-              onClick={() => handleDecision('Rejected')}
-              className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/70 text-rose-700 dark:text-rose-300 text-xs font-bold border border-rose-300 dark:border-rose-800/50 transition flex items-center space-x-1.5 shadow-sm"
+              type="button"
+              onClick={() => handleDecision('Under Review')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1 border shadow-sm ${
+                (candidate.finalDecision === 'Under Review' || candidate.status === 'Under Review')
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+              }`}
             >
-              <XCircle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
-              <span>Reject</span>
+              <Clock className="w-3.5 h-3.5" />
+              <span>Under Review</span>
             </button>
 
+            {/* 2. Interview */}
             <button
-              onClick={() => handleDecision('Offered')}
-              className="px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/70 text-emerald-700 dark:text-emerald-300 text-xs font-bold border border-emerald-300 dark:border-emerald-800/50 transition flex items-center space-x-1.5 shadow-sm"
+              type="button"
+              onClick={() => handleDecision('Interview')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1 border shadow-sm ${
+                (candidate.finalDecision === 'Interview' || candidate.status === 'Interview Scheduled')
+                  ? 'bg-cyan-600 text-white border-cyan-600'
+                  : 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+              }`}
             >
-              <Award className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Make Offer</span>
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Interview</span>
             </button>
 
+            {/* 3. Shortlisted */}
             <button
+              type="button"
               onClick={() => handleDecision('Shortlisted')}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-black shadow-lg shadow-indigo-600/35 transition flex items-center space-x-1.5"
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1 border shadow-sm ${
+                candidate.finalDecision === 'Shortlisted'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-indigo-500/25'
+                  : 'bg-white dark:bg-slate-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60'
+              }`}
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Shortlist Candidate</span>
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Shortlist</span>
+            </button>
+
+            {/* 4. Selected */}
+            <button
+              type="button"
+              onClick={() => handleDecision('Selected')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1 border shadow-sm ${
+                (candidate.finalDecision === 'Selected' || candidate.finalDecision === 'Offered')
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-emerald-500/25'
+                  : 'bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Select (Offer)</span>
+            </button>
+
+            {/* 5. Rejected */}
+            <button
+              type="button"
+              onClick={() => handleDecision('Rejected')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1 border shadow-sm ${
+                (candidate.finalDecision === 'Rejected' || candidate.status === 'Rejected')
+                  ? 'bg-rose-600 text-white border-rose-600'
+                  : 'bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60'
+              }`}
+            >
+              <XCircle className="w-3.5 h-3.5 text-rose-500" />
+              <span>Reject</span>
             </button>
           </div>
         </div>

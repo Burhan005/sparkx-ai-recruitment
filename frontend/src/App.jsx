@@ -8,6 +8,7 @@ import JobCatalog from './components/Candidate/JobCatalog';
 import AIInterviewRoom from './components/Candidate/AIInterviewRoom';
 import CodeAssessment from './components/Candidate/CodeAssessment';
 import SkillGapReport from './components/Candidate/SkillGapReport';
+import MyApplications from './components/Candidate/MyApplications';
 import ProctorLiveMonitor from './components/Proctor/ProctorLiveMonitor';
 import { SkeletonKPI, SkeletonCard, FadeInUp } from './components/ui/Primitives';
 import { Sparkles, ShieldCheck, Shield, User, WifiOff, RefreshCw, Terminal, Database } from 'lucide-react';
@@ -115,11 +116,12 @@ function AppContent() {
           </>
         ) : (
           <>
-            {currentView === 'candidate'  && <FadeInUp><JobCatalog /></FadeInUp>}
-            {currentView === 'interview'  && <FadeInUp><AIInterviewRoom /></FadeInUp>}
-            {currentView === 'assessment' && <FadeInUp><CodeAssessment /></FadeInUp>}
-            {currentView === 'feedback'   && <FadeInUp><SkillGapReport /></FadeInUp>}
-            {!['candidate','interview','assessment','feedback'].includes(currentView) && <FadeInUp><JobCatalog /></FadeInUp>}
+            {currentView === 'candidate'    && <FadeInUp><JobCatalog /></FadeInUp>}
+            {currentView === 'applications' && <FadeInUp><MyApplications /></FadeInUp>}
+            {currentView === 'interview'    && <FadeInUp><AIInterviewRoom /></FadeInUp>}
+            {currentView === 'assessment'   && <FadeInUp><CodeAssessment /></FadeInUp>}
+            {currentView === 'feedback'     && <FadeInUp><SkillGapReport /></FadeInUp>}
+            {!['candidate','applications','interview','assessment','feedback'].includes(currentView) && <FadeInUp><JobCatalog /></FadeInUp>}
           </>
         )}
       </main>

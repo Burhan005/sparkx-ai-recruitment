@@ -3,6 +3,7 @@ from typing import List, Optional, Dict, Any
 
 class JobCreate(BaseModel):
     title: str
+    company_name: Optional[str] = "SparkX Technologies"
     department: str
     location: str = "Remote"
     min_experience_years: int = 2
@@ -24,6 +25,7 @@ class JobResponse(JobCreate):
 
 class CandidateApply(BaseModel):
     job_id: str
+    company_name: Optional[str] = "SparkX Technologies"
     name: str
     email: str
     phone: Optional[str] = None
@@ -31,15 +33,18 @@ class CandidateApply(BaseModel):
     education: str
     skills: List[str]
     resume_summary: Optional[str] = None
+    resume_filename: Optional[str] = None
+    resume_text: Optional[str] = None
     fraud_flags: Optional[List[str]] = []
 
 class CandidateStatusUpdate(BaseModel):
-    status: str # Shortlisted | Rejected | Under Review | Evaluated
+    status: str # Shortlisted | Rejected | Under Review | Evaluated | Interview | Selected
     hr_notes: Optional[str] = ""
 
 class CandidateResponse(BaseModel):
     id: str
     job_id: str
+    company_name: Optional[str] = "SparkX Technologies"
     name: str
     email: str
     phone: Optional[str]
@@ -50,6 +55,8 @@ class CandidateResponse(BaseModel):
     education: str
     skills: List[str]
     resume_summary: Optional[str]
+    resume_filename: Optional[str] = None
+    resume_text: Optional[str] = None
     fraud_flags: List[str]
     integrity_score: int
     integrity_risk: str
@@ -131,17 +138,38 @@ class EmailSendRequest(BaseModel):
     template_type: str  # "interview_invitation" | "interview_reminder" | "offer_letter" | "rejection_notice"
     custom_message: Optional[str] = ""
 
-# ─── Auth Schemas ─────────────────────────────────────────────────────────────
+# ─── Auth & Profile Schemas ───────────────────────────────────────────────────
 class UserRegister(BaseModel):
     name: str
     email: str
     password: str
     role: str = "candidate"  # "recruiter" or "candidate"
     admin_code: Optional[str] = None  # Required if role == "recruiter"
+    
+    # Optional Candidate Profile Fields
+    phone: Optional[str] = None
+    job_role: Optional[str] = None
+    experience_years: Optional[float] = 0.0
+    skills: Optional[List[str]] = []
+    education: Optional[str] = None
+    resume_filename: Optional[str] = None
+    resume_summary: Optional[str] = None
+    resume_text: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    job_role: Optional[str] = None
+    experience_years: Optional[float] = None
+    skills: Optional[List[str]] = None
+    education: Optional[str] = None
+    resume_filename: Optional[str] = None
+    resume_summary: Optional[str] = None
+    resume_text: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: str
@@ -149,6 +177,14 @@ class UserResponse(BaseModel):
     email: str
     role: str
     token: str
+    phone: Optional[str] = None
+    job_role: Optional[str] = None
+    experience_years: Optional[float] = 0.0
+    skills: Optional[List[str]] = []
+    education: Optional[str] = None
+    resume_filename: Optional[str] = None
+    resume_summary: Optional[str] = None
+    resume_text: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -160,4 +196,23 @@ class ResetPasswordRequest(BaseModel):
     email: str
     reset_code: str
     new_password: str
+
+class CandidateApplicationItem(BaseModel):
+    id: str
+    job_id: str
+    job_title: str
+    company_name: str
+    department: str
+    location: str
+    applied_date: str
+    status: str
+    final_decision: str
+    match_score: int
+    experience_years: float
+    skills: List[str]
+    resume_filename: Optional[str] = None
+    resume_summary: Optional[str] = None
+    interview_scheduled_at: Optional[str] = None
+    interview_meeting_url: Optional[str] = None
+    interview_status: Optional[str] = "Applied"
 

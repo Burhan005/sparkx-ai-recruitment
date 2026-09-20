@@ -33,33 +33,63 @@ class CandidateController:
         score += 25 if payload.experience_years >= job.min_experience_years else 10
         match_score = min(98, max(35, score))
 
-        cand_id = f"cand-{uuid.uuid4().hex[:6]}"
+        comp_name = getattr(job, "company_name", "SparkX Technologies") or payload.company_name or "SparkX Technologies"
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
+        # Check if candidate has already applied for this job
+        existing = db.query(CandidateModel).filter(
+            CandidateModel.job_id == job.id,
+            CandidateModel.email == payload.email.strip().lower()
+        ).first()
+
+        if existing:
+            # Update existing application with latest resume/details
+            existing.name = payload.name
+            existing.phone = payload.phone or existing.phone
+            existing.skills = payload.skills
+            existing.experience_years = payload.experience_years
+            existing.education = payload.education
+            existing.match_score = match_score
+            existing.company_name = comp_name
+            if payload.resume_summary:
+                existing.resume_summary = payload.resume_summary
+            if payload.resume_filename:
+                existing.resume_filename = payload.resume_filename
+            if payload.resume_text:
+                existing.resume_text = payload.resume_text
+            db.commit()
+            db.refresh(existing)
+            return existing, None
+
+        cand_id = f"cand-{uuid.uuid4().hex[:6]}"
 
         # Initial automated confirmation email
         initial_email = {
             "id": f"eml-{uuid.uuid4().hex[:6]}",
             "type": "application_received",
-            "subject": f"Application Received — {job.title} at SparkX AI",
+            "subject": f"Application Received — {job.title} at {comp_name}",
             "sent_at": now_str,
             "recipient": payload.email,
-            "body": f"Dear {payload.name},\n\nThank you for applying for the position of {job.title}. Your resume has been parsed and matched against our core competency benchmarks (Match Score: {match_score}%).\n\nNext Step: Your profile is ready for your AI Video Interview session.\n\nBest regards,\nSparkX AI Talent Acquisition Team"
+            "body": f"Dear {payload.name},\n\nThank you for applying for the position of {job.title} at {comp_name}. Your resume has been parsed and matched against our core competency benchmarks (Match Score: {match_score}%).\n\nYour application is currently Under Review.\n\nBest regards,\nSparkX AI Talent Acquisition Team"
         }
 
         new_candidate = CandidateModel(
             id=cand_id,
             job_id=job.id,
+            company_name=comp_name,
             name=payload.name,
-            email=payload.email,
+            email=payload.email.strip().lower(),
             phone=payload.phone,
             match_score=match_score,
             experience_years=payload.experience_years,
             education=payload.education,
             skills=payload.skills,
             resume_summary=payload.resume_summary or "Candidate profile extracted.",
+            resume_filename=payload.resume_filename,
+            resume_text=payload.resume_text,
             fraud_flags=payload.fraud_flags or [],
             status="Screening",
-            final_decision="Pending Interview",
+            final_decision="Under Review",
             interview_status="Applied",
             email_logs=[initial_email]
         )
@@ -75,30 +105,31 @@ class CandidateController:
         if not candidate:
             return False
 
-        status_lower = payload.status.lower()
-        if status_lower in ["screening", "applied"]:
-            candidate.status = "Screening"
-            candidate.final_decision = "Pending Interview"
-        elif status_lower in ["scheduled", "interview scheduled"]:
+        status_lower = payload.status.strip().lower()
+        if status_lower in ["under review", "screening", "applied"]:
+            candidate.status = "Evaluated"
+            candidate.final_decision = "Under Review"
+            candidate.interview_status = "Applied"
+        elif status_lower in ["shortlisted"]:
+            candidate.status = "Evaluated"
+            candidate.final_decision = "Shortlisted"
+        elif status_lower in ["interview", "scheduled", "interview scheduled"]:
             candidate.status = "Interview Scheduled"
-            candidate.final_decision = "Pending Interview"
+            candidate.final_decision = "Interview"
+            candidate.interview_status = "Interview Scheduled"
             if not candidate.interview_scheduled_at:
                 candidate.interview_scheduled_at = "Upcoming Slot"
             if not candidate.interview_meeting_url:
                 short_id = candidate.id.replace("cand-", "")[:6]
                 candidate.interview_meeting_url = f"https://meet.google.com/spk-{short_id[:3]}-{short_id[3:] or 'rec'}"
-        elif status_lower in ["evaluated", "ai evaluated", "under review"]:
+        elif status_lower in ["selected", "offered", "offer"]:
             candidate.status = "Evaluated"
-            candidate.final_decision = "Under Review"
-        elif status_lower in ["shortlisted"]:
-            candidate.status = "Evaluated"
-            candidate.final_decision = "Shortlisted"
-        elif status_lower in ["offered", "offer"]:
-            candidate.status = "Evaluated"
-            candidate.final_decision = "Offered"
+            candidate.final_decision = "Selected"
+            candidate.interview_status = "Offer Sent"
         elif status_lower in ["rejected"]:
             candidate.status = "Rejected"
             candidate.final_decision = "Rejected"
+            candidate.interview_status = "Rejected"
         else:
             candidate.final_decision = payload.status
 
@@ -107,6 +138,43 @@ class CandidateController:
 
         db.commit()
         return True
+
+    @staticmethod
+    def get_candidate_applications(email: str, db: Session):
+        clean_email = email.strip().lower()
+        applications = db.query(CandidateModel).filter(CandidateModel.email.ilike(clean_email)).order_by(CandidateModel.created_at.desc()).all()
+        result = []
+        for app in applications:
+            job = app.job
+            comp_name = app.company_name or (job.company_name if job else "SparkX Technologies")
+            disp_status = app.final_decision or app.status or "Under Review"
+            if disp_status in ["Pending Interview", "Screening"]:
+                disp_status = "Under Review"
+            elif disp_status in ["Offered"]:
+                disp_status = "Selected"
+            elif disp_status in ["Interview Scheduled"]:
+                disp_status = "Interview"
+
+            result.append({
+                "id": app.id,
+                "job_id": app.job_id,
+                "job_title": job.title if job else "Technical Role",
+                "company_name": comp_name,
+                "department": job.department if job else "Engineering",
+                "location": job.location if job else "Remote",
+                "applied_date": app.applied_date,
+                "status": app.status,
+                "final_decision": disp_status,
+                "match_score": app.match_score,
+                "experience_years": app.experience_years,
+                "skills": app.skills or [],
+                "resume_filename": app.resume_filename,
+                "resume_summary": app.resume_summary,
+                "interview_scheduled_at": app.interview_scheduled_at,
+                "interview_meeting_url": app.interview_meeting_url,
+                "interview_status": app.interview_status or "Applied"
+            })
+        return result
 
     @staticmethod
     def schedule_interview(candidate_id: str, payload: CandidateScheduleRequest, db: Session):

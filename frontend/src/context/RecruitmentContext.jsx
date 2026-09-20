@@ -104,6 +104,34 @@ export function RecruitmentProvider({ children }) {
     codeScore: 90,
   });
 
+  // ── Candidate Applications State ───────────────────────────────────────────
+  const [myApplications, setMyApplications] = useState([]);
+
+  const refreshMyApplications = useCallback(async (email) => {
+    const targetEmail = email || currentUser?.email;
+    if (!targetEmail) return [];
+    try {
+      const apps = await api.getMyApplications(targetEmail);
+      setMyApplications(apps);
+      return apps;
+    } catch {
+      return [];
+    }
+  }, [currentUser?.email]);
+
+  const updateUserProfile = useCallback(async (profileData) => {
+    if (!currentUser?.id) return null;
+    const updated = await api.updateProfile(currentUser.id, profileData);
+    if (updated) {
+      const mergedUser = { ...currentUser, ...updated };
+      setCurrentUser(mergedUser);
+      localStorage.setItem('sparkx_user', JSON.stringify(mergedUser));
+      toastBus.emit('Profile & Resume updated successfully!', 'success');
+      return mergedUser;
+    }
+    return null;
+  }, [currentUser]);
+
   // ── DB Sync ────────────────────────────────────────────────────────────────
   const syncWithDatabase = useCallback(async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -121,6 +149,10 @@ export function RecruitmentProvider({ children }) {
       setJobs(safeJobs);
       setCandidates(safeCands);
       setActiveJobId(prev => prev || safeJobs[0]?.id || null);
+
+      if (currentUser?.email) {
+        refreshMyApplications(currentUser.email);
+      }
 
       if (!silent) {
         if (safeJobs.length === 0) {
@@ -182,24 +214,21 @@ export function RecruitmentProvider({ children }) {
     let scheduledAt = null;
     let meetingUrl = null;
 
-    if (newStatus === 'Screening' || newStatus === 'Applied') {
-      statusVal = 'Screening';
-      decisionVal = 'Pending Interview';
-    } else if (newStatus === 'Interview Scheduled' || newStatus === 'Scheduled') {
+    if (newStatus === 'Screening' || newStatus === 'Applied' || newStatus === 'Under Review') {
+      statusVal = 'Evaluated';
+      decisionVal = 'Under Review';
+    } else if (newStatus === 'Interview Scheduled' || newStatus === 'Scheduled' || newStatus === 'Interview') {
       statusVal = 'Interview Scheduled';
-      decisionVal = 'Pending Interview';
+      decisionVal = 'Interview';
       scheduledAt = 'Upcoming Slot';
       const shortId = (candidateId || '').replace('cand-', '').slice(0, 6);
       meetingUrl = `https://meet.google.com/spk-${shortId.slice(0, 3)}-${shortId.slice(3) || 'rec'}`;
-    } else if (newStatus === 'Evaluated' || newStatus === 'Under Review') {
-      statusVal = 'Evaluated';
-      decisionVal = 'Under Review';
     } else if (newStatus === 'Shortlisted') {
       statusVal = 'Evaluated';
       decisionVal = 'Shortlisted';
-    } else if (newStatus === 'Offered') {
+    } else if (newStatus === 'Offered' || newStatus === 'Selected') {
       statusVal = 'Evaluated';
-      decisionVal = 'Offered';
+      decisionVal = 'Selected';
     } else if (newStatus === 'Rejected') {
       statusVal = 'Rejected';
       decisionVal = 'Rejected';
@@ -217,6 +246,17 @@ export function RecruitmentProvider({ children }) {
       };
     }));
 
+    setMyApplications(prev => prev.map(app => {
+      if (app.id !== candidateId) return app;
+      return {
+        ...app,
+        status: statusVal,
+        finalDecision: decisionVal,
+        interviewScheduledAt: statusVal === 'Screening' ? null : (app.interviewScheduledAt || scheduledAt),
+        interviewMeetingUrl: statusVal === 'Screening' ? null : (app.interviewMeetingUrl || meetingUrl),
+      };
+    }));
+
     if (selectedCandidate?.id === candidateId) {
       setSelectedCandidate(p => ({
         ...p,
@@ -230,21 +270,24 @@ export function RecruitmentProvider({ children }) {
 
     const emojiMap = {
       Shortlisted: '🎉',
+      Selected: '🤝',
       Offered: '🤝',
       Rejected: '❌',
       'Under Review': '📋',
       Evaluated: '🤖',
+      Interview: '📅',
       'Interview Scheduled': '📅',
       Screening: '📋'
     };
     const emoji = emojiMap[decisionVal] || emojiMap[newStatus] || '📋';
-    toastBus.emit(`${emoji} Moved to ${newStatus} — saved to database!`, newStatus === 'Rejected' ? 'warning' : 'success');
+    toastBus.emit(`${emoji} Moved to ${decisionVal} — saved to database!`, decisionVal === 'Rejected' ? 'warning' : 'success');
   };
 
   const scheduleInterview = async (candidateId, scheduledAt, notes = '', meetingUrl = '') => {
     const updatedCand = await api.scheduleInterview(candidateId, scheduledAt, notes, meetingUrl);
     if (updatedCand) {
       setCandidates(prev => prev.map(c => c.id === candidateId ? updatedCand : c));
+      setMyApplications(prev => prev.map(a => a.id === candidateId ? { ...a, finalDecision: 'Interview', interviewScheduledAt: scheduledAt, interviewMeetingUrl: updatedCand.interviewMeetingUrl } : a));
       if (selectedCandidate?.id === candidateId) setSelectedCandidate(updatedCand);
       toastBus.emit(`Interview scheduled for ${scheduledAt} — Confirmation email sent!`, 'success');
       return updatedCand;
@@ -263,7 +306,7 @@ export function RecruitmentProvider({ children }) {
   };
 
   // ── Candidate Actions ──────────────────────────────────────────────────────
-  const applyForJob = async ({ jobId, name, email, phone, experienceYears, education, skills, resumeSummary, fraudFlags = [] }) => {
+  const applyForJob = async ({ jobId, name, email, phone, experienceYears, education, skills, resumeSummary, resumeFilename, resumeText, fraudFlags = [] }) => {
     const targetJob = jobs.find(j => j.id === jobId) || jobs[0];
     if (!targetJob) {
       toastBus.emit('No jobs found — is the backend running?', 'error');
@@ -271,7 +314,7 @@ export function RecruitmentProvider({ children }) {
     }
     // Client-side match preview score (backend recalculates authoritatively)
     const reqSkills = targetJob.requiredSkills || [];
-    const lowerSkills = skills.map(s => s.toLowerCase());
+    const lowerSkills = (skills || []).map(s => s.toLowerCase());
     const matchCount = reqSkills.filter(req => lowerSkills.some(s => s.includes(req.toLowerCase()) || req.toLowerCase().includes(s))).length;
     let matchPercentage = Math.round((matchCount / Math.max(1, reqSkills.length)) * 70);
     matchPercentage += Number(experienceYears) >= (targetJob.minExperienceYears || 2) ? 25 : 10;
@@ -280,17 +323,22 @@ export function RecruitmentProvider({ children }) {
     const localCand = {
       id: `cand-${Date.now()}`,
       jobId: targetJob.id,
+      companyName: targetJob.companyName || 'SparkX Technologies',
       name, email,
       phone: phone || '+91 98000 00000',
       appliedDate: new Date().toISOString().split('T')[0],
       status: 'Screening',
+      finalDecision: 'Under Review',
       matchScore: matchPercentage,
       experienceYears: Number(experienceYears),
-      education, skills, resumeSummary, fraudFlags,
+      education, skills, resumeSummary,
+      resumeFilename: resumeFilename || null,
+      resumeText: resumeText || null,
+      fraudFlags,
       integrityScore: 100, integrityRisk: 'Low', integrityEvents: [],
       scores: { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
       interviewSummary: 'Screening completed. Ready for Live AI Interview & Assessment.',
-      evidenceSnippets: [], skillGaps: null, hrNotes: '', finalDecision: 'Pending Interview',
+      evidenceSnippets: [], skillGaps: null, hrNotes: '',
     };
 
     const savedCand = await api.applyCandidate(localCand);
@@ -298,13 +346,19 @@ export function RecruitmentProvider({ children }) {
 
     setCandidates(prev => [newCandidate, ...prev.filter(c => c.id !== newCandidate.id)]);
     setJobs(prev => prev.map(j => j.id === targetJob.id ? { ...j, applicantsCount: (j.applicantsCount || 0) + 1 } : j));
+    
+    // Refresh applicant's list
+    if (email) {
+      refreshMyApplications(email);
+    }
+
     setCurrentInterviewSession({
       candidateId: newCandidate.id,
       candidateName: newCandidate.name,
       jobId: targetJob.id,
       transcript: [], integrityScore: 100, integrityRisk: 'Low', integrityEvents: [], codeScore: 85,
     });
-    toastBus.emit(`Application submitted — match score: ${matchPercentage}%`, 'success');
+    toastBus.emit(`Application submitted for ${targetJob.title} — status: Under Review!`, 'success');
     return newCandidate;
   };
 
@@ -370,6 +424,7 @@ export function RecruitmentProvider({ children }) {
       currentInterviewSession, setCurrentInterviewSession,
       completeInterviewAndEvaluate,
       syncWithDatabase,
+      myApplications, refreshMyApplications, updateUserProfile,
     }}>
       {children}
     </RecruitmentContext.Provider>

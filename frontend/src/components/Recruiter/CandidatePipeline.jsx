@@ -559,11 +559,10 @@ export default function CandidatePipeline() {
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start overflow-x-auto pb-4">
               {(() => {
                 const getCandidateStage = (c) => {
-                  if (c.finalDecision === 'Offered' || c.finalDecision === 'Rejected' || c.status === 'Rejected') return 'decided';
+                  if (c.finalDecision === 'Selected' || c.finalDecision === 'Offered' || c.finalDecision === 'Rejected' || c.status === 'Rejected') return 'decided';
                   if (c.finalDecision === 'Shortlisted') return 'shortlisted';
-                  if (c.status === 'Screening' || c.status === 'Applied') return 'screening';
-                  if (c.status === 'Interview Scheduled' || (c.interviewScheduledAt && c.status !== 'Evaluated')) return 'scheduled';
-                  if (c.status === 'Evaluated' || c.finalDecision === 'Under Review' || (c.scores && c.scores.overall > 0) || c.interviewSummary) return 'evaluated';
+                  if (c.finalDecision === 'Interview' || c.status === 'Interview Scheduled' || (c.interviewScheduledAt && c.status !== 'Evaluated')) return 'scheduled';
+                  if (c.finalDecision === 'Under Review' || c.status === 'Evaluated' || (c.scores && c.scores.overall > 0) || c.interviewSummary) return 'evaluated';
                   return 'screening';
                 };
 
@@ -573,17 +572,17 @@ export default function CandidatePipeline() {
                   if (!candId) return;
 
                   const stageToStatus = {
-                    screening: 'Screening',
-                    scheduled: 'Interview Scheduled',
+                    screening: 'Under Review',
+                    scheduled: 'Interview',
                     evaluated: 'Under Review',
                     shortlisted: 'Shortlisted',
-                    decided: 'Offered'
+                    decided: 'Selected'
                   };
 
-                  const targetStatus = stageToStatus[targetStageId] || 'Screening';
+                  const targetStatus = stageToStatus[targetStageId] || 'Under Review';
                   await updateCandidateStatus(candId, targetStatus);
 
-                  if (targetStageId === 'shortlisted' || targetStatus === 'Offered') {
+                  if (targetStageId === 'shortlisted' || targetStatus === 'Selected') {
                     confetti({
                       particleCount: 80,
                       spread: 70,
@@ -784,12 +783,11 @@ export default function CandidatePipeline() {
                                           Move to Stage
                                         </div>
                                         {[
-                                          { label: '📋 Screening', status: 'Screening' },
-                                          { label: '📅 Interview Scheduled', status: 'Interview Scheduled' },
-                                          { label: '🤖 AI Evaluated', status: 'Under Review' },
-                                          { label: '🌟 Shortlist', status: 'Shortlisted' },
-                                          { label: '🤝 Send Offer', status: 'Offered' },
-                                          { label: '❌ Reject', status: 'Rejected' },
+                                          { label: '📋 Under Review', status: 'Under Review' },
+                                          { label: '📅 Interview', status: 'Interview' },
+                                          { label: '🌟 Shortlisted', status: 'Shortlisted' },
+                                          { label: '🤝 Selected', status: 'Selected' },
+                                          { label: '❌ Rejected', status: 'Rejected' },
                                         ].map(item => (
                                           <button
                                             key={item.status}
@@ -797,7 +795,7 @@ export default function CandidatePipeline() {
                                             onClick={() => {
                                               updateCandidateStatus(cand.id, item.status);
                                               setOpenMoveMenuId(null);
-                                              if (item.status === 'Shortlisted' || item.status === 'Offered') {
+                                              if (item.status === 'Shortlisted' || item.status === 'Selected' || item.status === 'Offered') {
                                                 confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
                                               }
                                             }}

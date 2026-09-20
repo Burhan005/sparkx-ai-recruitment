@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { 
   Briefcase, UserCheck, Video, Code2, ShieldAlert, Sparkles,
   Sun, Moon, TrendingUp, LogOut, RefreshCw, Cpu, Menu, X,
-  ChevronDown, Shield, Database, CheckCircle2, AlertCircle
+  ChevronDown, Shield, Database, CheckCircle2, AlertCircle, FileText
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -18,7 +18,8 @@ export default function Navbar() {
     logout, 
     syncWithDatabase, 
     isDbConnected, 
-    currentUser 
+    currentUser,
+    myApplications = []
   } = useRecruitment();
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -82,10 +83,11 @@ export default function Navbar() {
     { id: 'proctor',   label: 'Integrity Telemetry', icon: ShieldAlert, badge: 'Live HUD' },
   ];
   const candidateNavItems = [
-    { id: 'candidate',  label: 'Browse Openings', icon: UserCheck },
-    { id: 'interview',  label: 'AI Interview Room', icon: Video, badge: 'Adaptive' },
-    { id: 'assessment', label: 'Code Assessment', icon: Code2 },
-    { id: 'feedback',   label: 'Skill Gap Roadmap', icon: TrendingUp },
+    { id: 'candidate',    label: 'Browse Openings', icon: UserCheck },
+    { id: 'applications', label: 'My Applications', icon: FileText, badge: myApplications.length > 0 ? String(myApplications.length) : null },
+    { id: 'interview',    label: 'AI Interview Room', icon: Video, badge: 'Adaptive' },
+    { id: 'assessment',   label: 'Code Assessment', icon: Code2 },
+    { id: 'feedback',     label: 'Skill Gap Roadmap', icon: TrendingUp },
   ];
   const currentNavItems = userRole === 'recruiter' ? recruiterNavItems : candidateNavItems;
 

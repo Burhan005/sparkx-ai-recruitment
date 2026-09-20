@@ -9,6 +9,7 @@ export function normalizeJob(j) {
   if (!j) return j;
   return {
     ...j,
+    companyName:       j.company_name       ?? j.companyName       ?? 'SparkX Technologies',
     requiredSkills:    j.required_skills    ?? j.requiredSkills    ?? [],
     minExperienceYears:j.min_experience_years != null ? j.min_experience_years : (j.minExperienceYears ?? 2),
     optionalCriteria:  j.optional_criteria  ?? j.optionalCriteria  ?? '',
@@ -24,6 +25,7 @@ export function normalizeCandidate(c) {
   return {
     ...c,
     jobId:           c.job_id          ?? c.jobId,
+    companyName:     c.company_name    ?? c.companyName    ?? 'SparkX Technologies',
     matchScore:      c.match_score     != null ? c.match_score     : (c.matchScore     ?? 0),
     experienceYears: c.experience_years != null ? c.experience_years : (c.experienceYears ?? 0),
     appliedDate:     c.applied_date    ?? c.appliedDate    ?? '',
@@ -37,6 +39,8 @@ export function normalizeCandidate(c) {
     evidenceSnippets:c.evidence_snippets ?? c.evidenceSnippets ?? [],
     skillGaps:       c.skill_gaps      ?? c.skillGaps      ?? null,
     resumeSummary:   c.resume_summary  ?? c.resumeSummary  ?? '',
+    resumeFilename:  c.resume_filename ?? c.resumeFilename ?? null,
+    resumeText:      c.resume_text     ?? c.resumeText     ?? null,
     scores:          c.scores          ?? { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
     skills:          c.skills          ?? [],
     interviewScheduledAt: c.interview_scheduled_at ?? c.interviewScheduledAt ?? null,
@@ -79,12 +83,27 @@ export const api = {
     }
   },
 
-  async register(name, email, password, role = 'candidate', adminCode = null) {
+  async register(name, email, password, role = 'candidate', adminCode = null, profileData = {}) {
     try {
+      const payload = {
+        name,
+        email,
+        password,
+        role,
+        admin_code: adminCode,
+        phone: profileData.phone || null,
+        job_role: profileData.jobRole || null,
+        experience_years: Number(profileData.experienceYears || 0),
+        skills: profileData.skills || [],
+        education: profileData.education || null,
+        resume_filename: profileData.resumeFilename || null,
+        resume_summary: profileData.resumeSummary || null,
+        resume_text: profileData.resumeText || null,
+      };
       const res = await fetch(`${API_BASE_URL}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, role, admin_code: adminCode }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(10000),
       });
       const data = await res.json();
@@ -98,6 +117,32 @@ export const api = {
         return { user: null, error: 'Server connection timed out. Please check if FastAPI is running.' };
       }
       return { user: null, error: 'Cannot reach backend server. Please verify FastAPI is running.' };
+    }
+  },
+
+  async updateProfile(userId, profileData) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/profile/${userId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: profileData.name,
+          phone: profileData.phone,
+          job_role: profileData.jobRole,
+          experience_years: profileData.experienceYears != null ? Number(profileData.experienceYears) : undefined,
+          skills: profileData.skills,
+          education: profileData.education,
+          resume_filename: profileData.resumeFilename,
+          resume_summary: profileData.resumeSummary,
+          resume_text: profileData.resumeText,
+        }),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) throw new Error('Profile update failed');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] updateProfile failed:', err.message);
+      return null;
     }
   },
 
@@ -206,6 +251,7 @@ export const api = {
     try {
       const payload = {
         job_id:          candData.jobId,
+        company_name:    candData.companyName || 'SparkX Technologies',
         name:            candData.name,
         email:           candData.email,
         phone:           candData.phone || '+91 98000 00000',
@@ -213,19 +259,54 @@ export const api = {
         education:       candData.education,
         skills:          candData.skills || [],
         resume_summary:  candData.resumeSummary || '',
+        resume_filename: candData.resumeFilename || null,
+        resume_text:     candData.resumeText || null,
         fraud_flags:     candData.fraudFlags || [],
       };
       const res = await fetch(`${API_BASE_URL}/candidates/apply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(6000),
       });
       if (!res.ok) throw new Error('Application failed');
       return normalizeCandidate(await res.json());
     } catch (err) {
       console.warn('[API] applyCandidate failed:', err.message);
       return null;
+    }
+  },
+
+  async getMyApplications(email) {
+    try {
+      if (!email) return [];
+      const res = await fetch(`${API_BASE_URL}/candidates/my-applications?email=${encodeURIComponent(email)}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error('Failed to fetch my applications');
+      const data = await res.json();
+      return Array.isArray(data) ? data.map(app => ({
+        id: app.id,
+        jobId: app.job_id,
+        jobTitle: app.job_title,
+        companyName: app.company_name || 'SparkX Technologies',
+        department: app.department,
+        location: app.location,
+        appliedDate: app.applied_date,
+        status: app.status,
+        finalDecision: app.final_decision,
+        matchScore: app.match_score,
+        experienceYears: app.experience_years,
+        skills: app.skills || [],
+        resumeFilename: app.resume_filename,
+        resumeSummary: app.resume_summary,
+        interviewScheduledAt: app.interview_scheduled_at,
+        interviewMeetingUrl: app.interview_meeting_url,
+        interviewStatus: app.interview_status || 'Applied',
+      })) : [];
+    } catch (err) {
+      console.warn('[API] getMyApplications failed:', err.message);
+      return [];
     }
   },
 

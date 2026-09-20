@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from models.db_models import UserModel
-from schemas import UserRegister, UserLogin, ForgotPasswordRequest, ResetPasswordRequest
+from schemas import UserRegister, UserLogin, ForgotPasswordRequest, ResetPasswordRequest, UserProfileUpdate
 from email_service import send_email
 
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "sparkx-production-secret-key-2026-auth")
@@ -89,7 +89,15 @@ class AuthController:
             name=payload.name.strip(),
             email=email_clean,
             password_hash=pw_hash,
-            role=target_role
+            role=target_role,
+            phone=payload.phone,
+            job_role=payload.job_role,
+            experience_years=payload.experience_years or 0.0,
+            skills=payload.skills or [],
+            education=payload.education,
+            resume_filename=payload.resume_filename,
+            resume_summary=payload.resume_summary,
+            resume_text=payload.resume_text
         )
 
         db.add(new_user)
@@ -102,7 +110,15 @@ class AuthController:
             "name": new_user.name,
             "email": new_user.email,
             "role": new_user.role,
-            "token": token
+            "token": token,
+            "phone": new_user.phone,
+            "job_role": new_user.job_role,
+            "experience_years": new_user.experience_years,
+            "skills": new_user.skills or [],
+            "education": new_user.education,
+            "resume_filename": new_user.resume_filename,
+            "resume_summary": new_user.resume_summary,
+            "resume_text": new_user.resume_text
         }, None
 
     @staticmethod
@@ -119,7 +135,80 @@ class AuthController:
             "name": user.name,
             "email": user.email,
             "role": user.role,
-            "token": token
+            "token": token,
+            "phone": user.phone,
+            "job_role": user.job_role,
+            "experience_years": user.experience_years,
+            "skills": user.skills or [],
+            "education": user.education,
+            "resume_filename": user.resume_filename,
+            "resume_summary": user.resume_summary,
+            "resume_text": user.resume_text
+        }, None
+
+    @staticmethod
+    def update_user_profile(user_id: str, payload: UserProfileUpdate, db: Session):
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if not user:
+            return None, "User not found"
+
+        if payload.name is not None:
+            user.name = payload.name.strip()
+        if payload.phone is not None:
+            user.phone = payload.phone.strip()
+        if payload.job_role is not None:
+            user.job_role = payload.job_role.strip()
+        if payload.experience_years is not None:
+            user.experience_years = float(payload.experience_years)
+        if payload.skills is not None:
+            user.skills = payload.skills
+        if payload.education is not None:
+            user.education = payload.education.strip()
+        if payload.resume_filename is not None:
+            user.resume_filename = payload.resume_filename
+        if payload.resume_summary is not None:
+            user.resume_summary = payload.resume_summary
+        if payload.resume_text is not None:
+            user.resume_text = payload.resume_text
+
+        db.commit()
+        db.refresh(user)
+
+        return {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "token": create_access_token(user.id, user.email, user.role),
+            "phone": user.phone,
+            "job_role": user.job_role,
+            "experience_years": user.experience_years,
+            "skills": user.skills or [],
+            "education": user.education,
+            "resume_filename": user.resume_filename,
+            "resume_summary": user.resume_summary,
+            "resume_text": user.resume_text
+        }, None
+
+    @staticmethod
+    def get_user_profile(user_id: str, db: Session):
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if not user:
+            return None, "User not found"
+        return {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "token": create_access_token(user.id, user.email, user.role),
+            "phone": user.phone,
+            "job_role": user.job_role,
+            "experience_years": user.experience_years,
+            "skills": user.skills or [],
+            "education": user.education,
+            "resume_filename": user.resume_filename,
+            "resume_summary": user.resume_summary,
+            "resume_text": user.resume_text
         }, None
 
     @staticmethod

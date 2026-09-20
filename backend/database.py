@@ -54,20 +54,44 @@ def ensure_schema_columns():
     from sqlalchemy import text
     with engine.connect() as conn:
         try:
-            # Check users table columns
             if str(engine.url).startswith("sqlite"):
-                cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
-                if "reset_token" not in cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR"))
+                # Users table columns
+                user_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
+                new_user_cols = {
+                    "reset_token": "VARCHAR",
+                    "reset_token_expiry": "TIMESTAMP",
+                    "phone": "VARCHAR",
+                    "job_role": "VARCHAR",
+                    "experience_years": "FLOAT DEFAULT 0.0",
+                    "skills": "JSON DEFAULT '[]'",
+                    "education": "VARCHAR",
+                    "resume_filename": "VARCHAR",
+                    "resume_summary": "TEXT",
+                    "resume_text": "TEXT"
+                }
+                for col, col_type in new_user_cols.items():
+                    if col not in user_cols:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
+                        conn.commit()
+
+                # Jobs table columns
+                job_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(jobs)")).fetchall()]
+                if "company_name" not in job_cols:
+                    conn.execute(text("ALTER TABLE jobs ADD COLUMN company_name VARCHAR DEFAULT 'SparkX Technologies'"))
                     conn.commit()
-                if "reset_token_expiry" not in cols:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN reset_token_expiry TIMESTAMP"))
-                    conn.commit()
-                # Check candidates table columns
+
+                # Candidates table columns
                 cand_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(candidates)")).fetchall()]
-                if "interview_meeting_url" not in cand_cols:
-                    conn.execute(text("ALTER TABLE candidates ADD COLUMN interview_meeting_url VARCHAR"))
-                    conn.commit()
+                new_cand_cols = {
+                    "interview_meeting_url": "VARCHAR",
+                    "company_name": "VARCHAR DEFAULT 'SparkX Technologies'",
+                    "resume_filename": "VARCHAR",
+                    "resume_text": "TEXT"
+                }
+                for col, col_type in new_cand_cols.items():
+                    if col not in cand_cols:
+                        conn.execute(text(f"ALTER TABLE candidates ADD COLUMN {col} {col_type}"))
+                        conn.commit()
         except Exception as e:
             logger.warning(f"Schema check notice: {e}")
 

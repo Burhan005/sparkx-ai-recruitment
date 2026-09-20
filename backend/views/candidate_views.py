@@ -5,7 +5,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas import CandidateApply, CandidateResponse, CandidateStatusUpdate, CandidateScheduleRequest, EmailSendRequest
+from schemas import CandidateApply, CandidateResponse, CandidateStatusUpdate, CandidateScheduleRequest, EmailSendRequest, CandidateApplicationItem
 from controllers.candidate_controller import CandidateController
 
 router = APIRouter(prefix="/api/candidates", tags=["Candidates"])
@@ -13,6 +13,10 @@ router = APIRouter(prefix="/api/candidates", tags=["Candidates"])
 @router.get("", response_model=List[CandidateResponse])
 def get_candidates(db: Session = Depends(get_db)):
     return CandidateController.get_all_candidates(db)
+
+@router.get("/my-applications", response_model=List[CandidateApplicationItem])
+def get_my_applications(email: str, db: Session = Depends(get_db)):
+    return CandidateController.get_candidate_applications(email, db)
 
 @router.get("/{candidate_id}", response_model=CandidateResponse)
 def get_candidate(candidate_id: str, db: Session = Depends(get_db)):

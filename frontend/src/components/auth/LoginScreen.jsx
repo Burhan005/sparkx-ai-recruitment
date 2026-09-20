@@ -4,13 +4,14 @@ import { api } from '../../services/api';
 import { 
   Sparkles, Shield, User, Eye, EyeOff, ArrowRight, Zap, 
   Brain, ShieldCheck, UserPlus, LogIn, AlertCircle, KeyRound,
-  CheckCircle2, ArrowLeft, Sun, Moon
+  CheckCircle2, ArrowLeft, Sun, Moon, Upload, FileText, Check, Loader2,
+  Briefcase, GraduationCap, Phone
 } from 'lucide-react';
 
 export default function LoginScreen({ onLogin }) {
   const { theme, toggleTheme } = useRecruitment();
   const [tab, setTab] = useState('signin'); // 'signin' | 'signup' | 'forgot'
-  const [role, setRole] = useState('recruiter'); // 'recruiter' | 'candidate'
+  const [role, setRole] = useState('candidate'); // 'recruiter' | 'candidate'
 
   // Form Fields
   const [name, setName] = useState('');
@@ -18,6 +19,18 @@ export default function LoginScreen({ onLogin }) {
   const [password, setPassword] = useState('');
   const [adminCode, setAdminCode] = useState('');
   const [showPw, setShowPw] = useState(false);
+
+  // Candidate Profile & Resume Upload Fields
+  const [phone, setPhone] = useState('');
+  const [jobRole, setJobRole] = useState('');
+  const [experienceYears, setExperienceYears] = useState('');
+  const [skillsString, setSkillsString] = useState('');
+  const [education, setEducation] = useState('');
+  const [resumeFileName, setResumeFileName] = useState('');
+  const [resumeSummary, setResumeSummary] = useState('');
+  const [resumeText, setResumeText] = useState('');
+  const [isParsingResume, setIsParsingResume] = useState(false);
+  const [resumeParsedSuccess, setResumeParsedSuccess] = useState(false);
 
   // Forgot Password Fields
   const [forgotStep, setForgotStep] = useState(1); // 1: enter email, 2: enter code & new password
@@ -52,6 +65,64 @@ export default function LoginScreen({ onLogin }) {
     setLoading(false);
   };
 
+  // ─── Handle Candidate Resume Parsing On The Fly ─────────────────────────────
+  const handleResumeUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setResumeFileName(file.name);
+    setIsParsingResume(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result || '';
+      setResumeText(typeof text === 'string' ? text : '');
+      
+      // Smart tech skills extraction
+      const commonSkills = [
+        'Python', 'FastAPI', 'React', 'JavaScript', 'TypeScript', 'Node.js',
+        'Next.js', 'PostgreSQL', 'SQL', 'MongoDB', 'PyTorch', 'TensorFlow',
+        'Machine Learning', 'LangChain', 'Docker', 'Kubernetes', 'AWS',
+        'System Design', 'Git', 'HTML', 'CSS', 'Tailwind CSS', 'C++', 'Java', 'Go'
+      ];
+      const foundSkills = commonSkills.filter(s => 
+        new RegExp(`\\b${s.replace('+', '\\+')}\\b`, 'i').test(text)
+      );
+      if (foundSkills.length > 0) {
+        setSkillsString(foundSkills.join(', '));
+      } else if (!skillsString) {
+        setSkillsString('Python, React, JavaScript, SQL');
+      }
+
+      // Guess experience
+      const expMatch = text.match(/(\d+)\+?\s*years?(?:\s+of)?\s+experience/i) || text.match(/experience[:\s]+(\d+)/i);
+      if (expMatch && expMatch[1]) {
+        setExperienceYears(expMatch[1]);
+      } else if (!experienceYears) {
+        setExperienceYears('3');
+      }
+
+      // Guess role
+      const roles = [
+        'Full Stack Engineer', 'Full-Stack Developer', 'AI Engineer', 'Machine Learning Engineer',
+        'Frontend Developer', 'Backend Developer', 'Software Engineer', 'DevOps Engineer', 'Data Scientist'
+      ];
+      const matchedRole = roles.find(r => new RegExp(r, 'i').test(text));
+      if (matchedRole) {
+        setJobRole(matchedRole);
+      } else if (!jobRole) {
+        setJobRole('Full Stack Engineer');
+      }
+
+      setResumeSummary(`Parsed from ${file.name}: Core skills in ${foundSkills.slice(0, 5).join(', ') || 'Software Development'}.`);
+      setIsParsingResume(false);
+      setResumeParsedSuccess(true);
+    };
+    reader.onerror = () => {
+      setIsParsingResume(false);
+    };
+    reader.readAsText(file);
+  };
+
   // ─── Handle Sign Up / Register (Saves user to DB via POST /api/auth/register) ───
   const handleSignUp = async (e) => {
     e.preventDefault();
@@ -72,7 +143,27 @@ export default function LoginScreen({ onLogin }) {
     }
 
     setLoading(true);
-    const { user, error: apiErr } = await api.register(name.trim(), email.trim(), password, role, adminCode.trim());
+
+    const skills = skillsString.split(',').map(s => s.trim()).filter(Boolean);
+    const profileData = role === 'candidate' ? {
+      phone: phone.trim() || null,
+      jobRole: jobRole.trim() || (skills.length > 0 ? 'Full-Stack Developer' : null),
+      experienceYears: Number(experienceYears || 0),
+      skills: skills.length > 0 ? skills : ['React', 'JavaScript', 'Python'],
+      education: education.trim() || 'B.Tech / Equivalent in CS or AI',
+      resumeFilename: resumeFileName || null,
+      resumeSummary: resumeSummary || (resumeFileName ? `Uploaded resume: ${resumeFileName}` : null),
+      resumeText: resumeText || null,
+    } : {};
+
+    const { user, error: apiErr } = await api.register(
+      name.trim(), 
+      email.trim(), 
+      password, 
+      role, 
+      adminCode.trim(), 
+      profileData
+    );
 
     if (apiErr) {
       setError(apiErr);
@@ -360,18 +451,6 @@ export default function LoginScreen({ onLogin }) {
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => setRole('recruiter')}
-                      className={`flex-1 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
-                        role === 'recruiter' 
-                          ? 'bg-purple-100 border-purple-400 text-purple-800 dark:bg-purple-950/80 dark:border-purple-600 dark:text-purple-300 shadow-sm' 
-                          : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                      }`}
-                    >
-                      <Shield className="w-3.5 h-3.5" />
-                      <span>Recruiter (Admin)</span>
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setRole('candidate')}
                       className={`flex-1 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
                         role === 'candidate' 
@@ -382,6 +461,124 @@ export default function LoginScreen({ onLogin }) {
                       <User className="w-3.5 h-3.5" />
                       <span>Candidate</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('recruiter')}
+                      className={`flex-1 p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 transition ${
+                        role === 'recruiter' 
+                          ? 'bg-purple-100 border-purple-400 text-purple-800 dark:bg-purple-950/80 dark:border-purple-600 dark:text-purple-300 shadow-sm' 
+                          : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      <span>Recruiter (Admin)</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Candidate Resume Upload Section */}
+              {tab === 'signup' && role === 'candidate' && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center space-x-1.5">
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Upload Resume & Auto-Fill Profile</span>
+                    </label>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">AI Match Enabled</span>
+                  </div>
+
+                  {/* Upload Dropzone */}
+                  <label className="border-2 border-dashed border-emerald-300 dark:border-emerald-700/60 hover:border-emerald-500 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition bg-white/70 dark:bg-slate-900/60 group">
+                    <input 
+                      type="file" 
+                      accept=".pdf,.docx,.txt,.doc" 
+                      onChange={handleResumeUpload} 
+                      className="hidden" 
+                    />
+                    {isParsingResume ? (
+                      <div className="flex items-center space-x-2 text-xs text-indigo-600 dark:text-indigo-400 py-1">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Parsing resume & skills...</span>
+                      </div>
+                    ) : resumeFileName ? (
+                      <div className="flex items-center space-x-2 text-xs text-emerald-700 dark:text-emerald-300 py-1">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        <span className="font-semibold truncate max-w-[200px]">{resumeFileName}</span>
+                        <span className="text-[10px] text-slate-400 underline ml-1">Change</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center text-center space-y-1 py-1">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition">
+                          <Upload className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Click or drop resume (.pdf, .docx, .txt)</span>
+                        <span className="text-[10px] text-slate-400">Extracts skills, experience & target role automatically</span>
+                      </div>
+                    )}
+                  </label>
+
+                  {/* Candidate Extracted Details Inputs */}
+                  <div className="space-y-2 pt-1">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Target Job Role</label>
+                        <input
+                          type="text"
+                          value={jobRole}
+                          onChange={e => setJobRole(e.target.value)}
+                          placeholder="e.g. AI / Full-Stack Engineer"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Experience (Yrs)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="40"
+                          step="0.5"
+                          value={experienceYears}
+                          onChange={e => setExperienceYears(e.target.value)}
+                          placeholder="e.g. 3"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Skills (comma separated)</label>
+                      <input
+                        type="text"
+                        value={skillsString}
+                        onChange={e => setSkillsString(e.target.value)}
+                        placeholder="e.g. React, Python, FastAPI, PostgreSQL"
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Education</label>
+                        <input
+                          type="text"
+                          value={education}
+                          onChange={e => setEducation(e.target.value)}
+                          placeholder="e.g. B.Tech / BS CS"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Phone Number</label>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={e => setPhone(e.target.value)}
+                          placeholder="+91 98765 43210"
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
