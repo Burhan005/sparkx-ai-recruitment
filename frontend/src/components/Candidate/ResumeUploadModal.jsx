@@ -166,34 +166,51 @@ export default function ResumeUploadModal({ job, onClose }) {
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
+                  <div className="w-5 h-5 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</div>
                   <div>
-                    <strong className="text-slate-700 dark:text-slate-300">Interview Scheduling:</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">When the recruiter schedules your interview, you will receive an email invitation with the Google Meet link and time slot.</p>
+                    <strong className="text-slate-700 dark:text-slate-300">Step 1: 4-Pillar Technical Assessment</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Complete your job-tailored Technical MCQs, Production Scenario, Hands-on coding, and Troubleshooting challenges.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
+                  <div className="w-5 h-5 rounded-full bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
                   <div>
-                    <strong className="text-slate-700 dark:text-slate-300">Live AI Assessment:</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Once scheduled by the recruiter, you can enter the AI Interview Room and complete your assessment.</p>
+                    <strong className="text-slate-700 dark:text-slate-300">Step 2: Live AI HR/Technical Interview</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Engage in adaptive conversational probing with live AI proctoring and real-time follow-up questions.</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2.5">
+                  <div className="w-5 h-5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
+                  <div>
+                    <strong className="text-slate-700 dark:text-slate-300">Step 3: Verified Performance Dossier</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Receive your verified skill gap report, readiness index, and recruiter scorecard.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Action Button */}
-            <div className="flex items-center justify-center pt-2">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  setCurrentView('assessment');
+                }}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
+              >
+                <span>Start Step 1: Technical Assessment</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   setCurrentView('candidate');
                 }}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition"
               >
-                <span>Return to Job Openings</span>
-                <ArrowRight className="w-4 h-4" />
+                Browse Job Openings
               </button>
             </div>
           </div>

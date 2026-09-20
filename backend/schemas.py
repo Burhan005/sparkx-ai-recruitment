@@ -133,7 +133,7 @@ class EvaluationRequest(BaseModel):
     transcript: List[Dict[str, Any]]
     integrity_score: int
     integrity_events: List[Dict[str, Any]]
-    code_score: int = 90
+    code_score: Optional[int] = 0
 
 # ─── Scheduling & Email Schemas ───────────────────────────────────────────────
 class CandidateScheduleRequest(BaseModel):
@@ -231,6 +231,7 @@ class CodeRunRequest(BaseModel):
     category: str = "hands_on"  # "hands_on" | "troubleshooting"
     language: str = "javascript" # "python" | "javascript" | "java" | "cpp" | "typescript"
     code: str
+    test_cases: Optional[List[Dict[str, Any]]] = None
 
 class CodeRunResponse(BaseModel):
     all_passed: bool

@@ -43,15 +43,11 @@ export default function AIInterviewRoom() {
   ) || null;
 
   // Gatekeeper:
-  // 1. Recruiter in test mode is allowed
-  // 2. Candidate is allowed ONLY if recruiter scheduled an interview or status is 'Interview Scheduled'
+  // 1. Recruiter in testing mode is allowed
+  // 2. Any applicant with an active job application or interview session is allowed
   const isRecruiterTesting = userRole === 'recruiter';
-  const isInterviewScheduled = Boolean(activeCandidate && (
-    activeCandidate.status === 'Interview Scheduled' || 
-    Boolean(activeCandidate.interviewScheduledAt) ||
-    activeCandidate.status === 'Evaluated'
-  ));
-  const canEnterInterview = isRecruiterTesting || isInterviewScheduled;
+  const hasApplication = Boolean(activeCandidate || currentInterviewSession?.candidateId);
+  const canEnterInterview = isRecruiterTesting || hasApplication;
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -419,7 +415,7 @@ export default function AIInterviewRoom() {
     }
   };
 
-  const finishInterview = (finalTranscript) => {
+  const finishInterview = async (finalTranscript) => {
     const finalEvents = proctorRef.current ? proctorRef.current.events : integrityEvents;
     const finalScore = proctorRef.current ? proctorRef.current.integrityScore : integrityScore;
 
@@ -431,7 +427,15 @@ export default function AIInterviewRoom() {
       integrityRisk: riskLevel
     }));
 
-    setCurrentView('assessment');
+    await completeInterviewAndEvaluate({
+      transcript: finalTranscript,
+      integrityScore: finalScore,
+      integrityEvents: finalEvents,
+      candidateId: activeCandidate?.id || currentInterviewSession?.candidateId,
+      codeScore: currentInterviewSession?.codeScore ?? (activeCandidate?.coding_score || 0)
+    });
+
+    setCurrentView('feedback');
   };
 
   // Demo cheat triggers for presentation

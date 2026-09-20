@@ -101,7 +101,7 @@ export function RecruitmentProvider({ children }) {
     integrityScore: 100,
     integrityRisk: 'Low',
     integrityEvents: [],
-    codeScore: 90,
+    codeScore: 0,
   });
 
   // ── Candidate Applications State ───────────────────────────────────────────
@@ -356,7 +356,7 @@ export function RecruitmentProvider({ children }) {
       candidateId: newCandidate.id,
       candidateName: newCandidate.name,
       jobId: targetJob.id,
-      transcript: [], integrityScore: 100, integrityRisk: 'Low', integrityEvents: [], codeScore: 85,
+      transcript: [], integrityScore: 100, integrityRisk: 'Low', integrityEvents: [], codeScore: 0,
     });
     toastBus.emit(`Application submitted for ${targetJob.title} — status: Under Review!`, 'success');
     return newCandidate;

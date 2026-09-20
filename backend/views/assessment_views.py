@@ -17,8 +17,8 @@ def get_assessment(candidate_id: str, job_id: str = None, db: Session = Depends(
     return res
 
 @router.post("/run-code", response_model=CodeRunResponse)
-def run_code(payload: CodeRunRequest):
-    return AssessmentController.run_code_sandbox(payload)
+def run_code(payload: CodeRunRequest, db: Session = Depends(get_db)):
+    return AssessmentController.run_code_sandbox(payload, db)
 
 @router.post("/{candidate_id}/submit", response_model=AssessmentSubmitResponse)
 def submit_assessment(candidate_id: str, payload: AssessmentSubmitRequest, db: Session = Depends(get_db)):

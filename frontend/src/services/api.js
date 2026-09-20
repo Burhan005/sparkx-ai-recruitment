@@ -479,7 +479,7 @@ export const api = {
       const url = `${API_BASE_URL}/assessment/${candidateId}${jobId ? `?job_id=${jobId}` : ''}`;
       const res = await fetch(url, {
         headers: getAuthHeaders(),
-        signal: AbortSignal.timeout(6000),
+        signal: AbortSignal.timeout(30000),
       });
       if (!res.ok) throw new Error(`Failed to load assessment: ${res.status}`);
       return await res.json();
@@ -495,7 +495,7 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(7000),
+        signal: AbortSignal.timeout(12000),
       });
       if (!res.ok) throw new Error(`Code execution failed: ${res.status}`);
       return await res.json();
@@ -518,7 +518,7 @@ export const api = {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(30000),
       });
       if (!res.ok) throw new Error(`Submission failed: ${res.status}`);
       return await res.json();

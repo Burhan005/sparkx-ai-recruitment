@@ -217,9 +217,13 @@ export default function CodeAssessment() {
         assessmentScores: res.scores
       });
 
+      const hasInterviewed = Boolean(
+        (currentInterviewSession?.transcript && currentInterviewSession.transcript.length > 0) ||
+        (activeCandidate?.interviewStatus === 'Interview Completed')
+      );
       setTimeout(() => {
-        setCurrentView('feedback');
-      }, 1400);
+        setCurrentView(hasInterviewed ? 'feedback' : 'interview');
+      }, 1600);
     }
   };
 

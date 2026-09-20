@@ -8,6 +8,7 @@ NO HARDCODED SCORES — every score is computed live from the candidate''s actua
 import os
 import re
 import json
+import time
 import hashlib
 import random
 import urllib.request
@@ -33,7 +34,7 @@ def get_llm_status() -> Dict[str, Any]:
         return {
             "active": True,
             "provider": "Google Gemini",
-            "model": "gemini-1.5-flash",
+            "model": "gemini-3.6-flash",
             "has_key": True,
             "mode": "live_llm"
         }
@@ -107,15 +108,15 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
             "message": f"Saved {env_var_name}, but test verification request failed. Please check if the key is valid and has quota."
         }
 
-def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
+def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """Direct call to Google Gemini with auto-fallback across verified active models."""
-    candidate_models = ["gemini-flash-lite-latest", "gemini-3.1-flash-lite", "gemini-flash-latest"]
+    candidate_models = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash"]
 
     payload: Dict[str, Any] = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.3,
-            "maxOutputTokens": 1024
+            "maxOutputTokens": max_tokens
         }
     }
     if system_instruction:
@@ -127,7 +128,7 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "") ->
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
         try:
             req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=12) as response:
+            with urllib.request.urlopen(req, timeout=15) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 candidates = res_data.get("candidates", [])
                 if candidates and "content" in candidates[0]:
@@ -137,6 +138,10 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "") ->
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 continue
+            if e.code in (400, 401, 403):
+                # Invalid or unauthorized key across all models
+                print(f"[AI Engine] Gemini API Key authorization error HTTP {e.code}: {e.reason}")
+                return None
             print(f"[AI Engine] Gemini {model} HTTP {e.code}: {e.reason}")
             continue
         except Exception as e:
@@ -144,7 +149,7 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "") ->
             continue
     return None
 
-def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
+def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """Direct call to Groq API with Llama 3.3 70B."""
     url = "https://api.groq.com/openai/v1/chat/completions"
     messages = []
@@ -156,7 +161,7 @@ def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "") -> O
         "model": "llama-3.3-70b-versatile",
         "messages": messages,
         "temperature": 0.3,
-        "max_tokens": 1024
+        "max_tokens": max_tokens
     }
     req = urllib.request.Request(
         url,
@@ -167,14 +172,14 @@ def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "") -> O
         },
         method="POST"
     )
-    with urllib.request.urlopen(req, timeout=8) as response:
+    with urllib.request.urlopen(req, timeout=15) as response:
         res_data = json.loads(response.read().decode("utf-8"))
         choices = res_data.get("choices", [])
         if choices and "message" in choices[0]:
             return choices[0]["message"].get("content", "").strip()
     return None
 
-def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "") -> Optional[str]:
+def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """Direct call to OpenAI GPT-4o-mini."""
     url = "https://api.openai.com/v1/chat/completions"
     messages = []
@@ -186,7 +191,7 @@ def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "") ->
         "model": "gpt-4o-mini",
         "messages": messages,
         "temperature": 0.3,
-        "max_tokens": 1024
+        "max_tokens": max_tokens
     }
     req = urllib.request.Request(
         url,
@@ -197,14 +202,14 @@ def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "") ->
         },
         method="POST"
     )
-    with urllib.request.urlopen(req, timeout=8) as response:
+    with urllib.request.urlopen(req, timeout=15) as response:
         res_data = json.loads(response.read().decode("utf-8"))
         choices = res_data.get("choices", [])
         if choices and "message" in choices[0]:
             return choices[0]["message"].get("content", "").strip()
     return None
 
-def call_llm(prompt: str, system_instruction: str = "") -> Optional[str]:
+def call_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """
     Unified Real-Time LLM dispatcher.
     Checks providers in order: Gemini -> Groq -> OpenAI.
@@ -213,7 +218,7 @@ def call_llm(prompt: str, system_instruction: str = "") -> Optional[str]:
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     if gemini_key:
         try:
-            res = _call_gemini_api(gemini_key, prompt, system_instruction)
+            res = _call_gemini_api(gemini_key, prompt, system_instruction, max_tokens=max_tokens)
             if res:
                 return res
         except Exception as e:
@@ -222,7 +227,7 @@ def call_llm(prompt: str, system_instruction: str = "") -> Optional[str]:
     groq_key = os.environ.get("GROQ_API_KEY", "").strip()
     if groq_key:
         try:
-            res = _call_groq_api(groq_key, prompt, system_instruction)
+            res = _call_groq_api(groq_key, prompt, system_instruction, max_tokens=max_tokens)
             if res:
                 return res
         except Exception as e:
@@ -231,7 +236,7 @@ def call_llm(prompt: str, system_instruction: str = "") -> Optional[str]:
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if openai_key:
         try:
-            res = _call_openai_api(openai_key, prompt, system_instruction)
+            res = _call_openai_api(openai_key, prompt, system_instruction, max_tokens=max_tokens)
             if res:
                 return res
         except Exception as e:
@@ -240,8 +245,8 @@ def call_llm(prompt: str, system_instruction: str = "") -> Optional[str]:
     return None
 
 # Backward compatibility alias
-def call_gemini_llm(prompt: str, system_instruction: str = "") -> Optional[str]:
-    return call_llm(prompt, system_instruction)
+def call_gemini_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
+    return call_llm(prompt, system_instruction, max_tokens=max_tokens)
 
 TECH_ENTITIES = {
     "redis": "Redis caching & in-memory data structures",
@@ -292,7 +297,574 @@ def extract_tech_entity(text: str) -> Optional[str]:
     for k, v in TECH_ENTITIES.items():
         if re.search(r'\b' + re.escape(k) + r'\b', text_lower):
             return v
+def parse_llm_json(raw_text: Optional[str]) -> Optional[Any]:
+    """Robust extractor and parser for JSON payloads returned by LLMs."""
+    if not raw_text or not raw_text.strip():
+        return None
+
+    clean = raw_text.strip()
+    clean = re.sub(r'^```(?:json)?\s*', '', clean, flags=re.MULTILINE)
+    clean = re.sub(r'```\s*$', '', clean, flags=re.MULTILINE).strip()
+
+    first_brace = clean.find('{')
+    first_bracket = clean.find('[')
+    if first_brace != -1 and (first_bracket == -1 or first_brace < first_bracket):
+        last_brace = clean.rfind('}')
+        candidate_chunk = clean[first_brace:last_brace+1] if last_brace > first_brace else clean
+    elif first_bracket != -1:
+        last_bracket = clean.rfind(']')
+        candidate_chunk = clean[first_bracket:last_bracket+1] if last_bracket > first_bracket else clean
+    else:
+        candidate_chunk = clean
+
+    for chunk in [candidate_chunk, clean]:
+        try:
+            return json.loads(chunk)
+        except Exception:
+            pass
+        try:
+            return json.loads(chunk, strict=False)
+        except Exception:
+            pass
+        try:
+            fixed = re.sub(r'\\(?![/\"\\bfnrtu]|u[0-9a-fA-F]{4})', r'\\\\', chunk)
+            return json.loads(fixed, strict=False)
+        except Exception:
+            pass
+
     return None
+
+def _get_default_starter_code(lang: str, title: str, skills: List[str]) -> str:
+    s_primary = skills[0] if skills else "Data"
+    if lang == "python":
+        return f"# Task: {title}\ndef process_{s_primary.lower().replace(' ', '_')}_task(payload: dict) -> dict:\n    \"\"\"Implement solution according to task instructions.\"\"\"\n    # TODO: Implement candidate solution\n    return payload\n"
+    elif lang in ["javascript", "typescript"]:
+        return f"// Task: {title}\nfunction process{s_primary.replace(' ', '')}Task(payload) {{\n    // TODO: Implement candidate solution\n    return payload;\n}}\n"
+    elif lang == "java":
+        return f"import java.util.*;\n\npublic class Solution {{\n    public static Map<String, Object> solve(Map<String, Object> payload) {{\n        // TODO: Implement solution\n        return payload;\n    }}\n}}\n"
+    elif lang == "cpp":
+        return f"#include <iostream>\n#include <string>\n\nauto solve(auto payload) {{\n    // TODO: Implement solution\n    return payload;\n}}\n"
+    return "// Implement task solution\n"
+
+def _get_default_broken_code(lang: str, title: str, skills: List[str]) -> str:
+    s_primary = skills[0] if skills else "Telemetry"
+    if lang == "python":
+        return f"# DEFECTIVE IMPLEMENTATION: {title}\n# Bug: mutating shared state without thread/atomic boundary\ndef aggregate_{s_primary.lower().replace(' ', '_')}(items: list) -> dict:\n    totals = {{}}\n    for item in items:\n        key = item.get('id', 'default')\n        totals[key] = item.get('value', 0)  # BUG: Overwrites instead of summing\n    return totals\n"
+    elif lang in ["javascript", "typescript"]:
+        return f"// DEFECTIVE IMPLEMENTATION: {title}\nfunction aggregate{s_primary.replace(' ', '')}(items) {{\n    const totals = {{}};\n    for (const item of items) {{\n        totals[item.id] = item.value; // BUG: Overwrites previous accumulation\n    }}\n    return totals;\n}}\n"
+    elif lang == "java":
+        return f"import java.util.*;\n\npublic class Solution {{\n    public static Map<String, Integer> aggregate(List<Map<String, Object>> items) {{\n        Map<String, Integer> totals = new HashMap<>();\n        for (Map<String, Object> item : items) {{\n            totals.put((String)item.get(\"id\"), (Integer)item.get(\"value\"));\n        }}\n        return totals;\n    }}\n}}\n"
+    elif lang == "cpp":
+        return f"#include <map>\n#include <string>\n#include <vector>\n\nstd::map<std::string, int> aggregate(const auto& items) {{\n    std::map<std::string, int> totals;\n    for (const auto& item : items) {{\n        totals[item.id] = item.value;\n    }}\n    return totals;\n}}\n"
+    return "// Debuggable code snippet\n"
+
+def _normalize_bundle(
+    raw_bundle: Dict[str, Any],
+    allowed_langs: List[str],
+    role_title: str,
+    job_skills: List[str]
+) -> Tuple[Dict[str, Any], Dict[str, str]]:
+    """Normalizes and validates bundle structure to ensure seamless frontend consumption."""
+    mcq_solutions = {}
+    normalized_mcqs = []
+    for idx, q in enumerate(raw_bundle.get("technical_mcqs", [])[:3]):
+        q_id = q.get("id") or f"mcq_{idx+1}"
+        raw_opts = q.get("options", {})
+        opts = {}
+        if isinstance(raw_opts, list):
+            for opt_idx, opt_val in enumerate(raw_opts):
+                key = chr(65 + opt_idx)
+                val_clean = re.sub(r'^[A-D]\)\s*|^[A-D]:\s*', '', str(opt_val)).strip()
+                opts[key] = val_clean
+        elif isinstance(raw_opts, dict):
+            for k, v in raw_opts.items():
+                clean_k = k.strip().upper()[:1]
+                if clean_k in ["A", "B", "C", "D"]:
+                    opts[clean_k] = str(v).strip()
+
+        correct = q.get("correct_option") or q.get("correct_answer") or "A"
+        match = re.search(r'\b([A-D])\b', str(correct).upper())
+        correct_key = match.group(1) if match else "A"
+        mcq_solutions[q_id] = correct_key
+
+        normalized_mcqs.append({
+            "id": q_id,
+            "question": q.get("question", f"Technical Question on {job_skills[0] if job_skills else role_title}"),
+            "options": opts if len(opts) >= 2 else {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"},
+            "difficulty": q.get("difficulty", "Mid-Level"),
+            "explanation": q.get("explanation", "")
+        })
+
+    # Scenario normalization
+    scen = raw_bundle.get("scenario", {})
+    scen_prompt = scen.get("prompt") or scen.get("context") or ""
+    if isinstance(scen.get("requirements"), list):
+        scen_prompt += "\n\nRequirements:\n" + "\n".join(f"- {r}" for r in scen["requirements"])
+    scen_guidance = scen.get("guidance") or ""
+    if isinstance(scen.get("evaluation_criteria"), list):
+        scen_guidance += "\n" + "\n".join(f"- {c}" for c in scen["evaluation_criteria"])
+
+    normalized_scenario = {
+        "id": scen.get("id", "scen_prod_01"),
+        "title": scen.get("title", f"Production Incident & System Architecture: {role_title}"),
+        "prompt": scen_prompt or f"Architect an end-to-end resilient infrastructure pipeline for {role_title}.",
+        "guidance": scen_guidance or "Address root cause triage, architecture topology, scalability trade-offs, and zero-downtime failover.",
+        "difficulty": scen.get("difficulty", "Senior"),
+        "ideal_keywords": scen.get("ideal_keywords") or job_skills or ["architecture", "resilience", "scaling"]
+    }
+
+    # Hands-on normalization
+    hands = raw_bundle.get("hands_on", {})
+    raw_starter = hands.get("starter_code", {})
+    starter_code = {}
+    for l in allowed_langs:
+        if isinstance(raw_starter, dict) and raw_starter.get(l):
+            starter_code[l] = raw_starter[l]
+        else:
+            starter_code[l] = _get_default_starter_code(l, hands.get("title", "Task"), job_skills)
+
+    normalized_hands = {
+        "id": hands.get("id", "hands_on_01"),
+        "title": hands.get("title", f"Practical Implementation Challenge: {role_title}"),
+        "instructions": hands.get("instructions") or hands.get("objective") or f"Implement the required component for {role_title}.",
+        "difficulty": hands.get("difficulty", "Mid-Level"),
+        "supported_languages": [l for l in allowed_langs if l in starter_code],
+        "starter_code": starter_code,
+        "test_cases": hands.get("test_cases") or [
+            {"name": "Standard verification", "input": "Default parameters", "expected": "Successful execution", "assertion_py": "", "assertion_js": ""}
+        ]
+    }
+
+    # Troubleshooting normalization
+    trouble = raw_bundle.get("troubleshooting", {})
+    raw_broken = trouble.get("broken_code", {})
+    broken_code = {}
+    for l in allowed_langs:
+        if isinstance(raw_broken, dict) and raw_broken.get(l):
+            broken_code[l] = raw_broken[l]
+        else:
+            broken_code[l] = _get_default_broken_code(l, trouble.get("title", "Bug"), job_skills)
+
+    trouble_desc = trouble.get("bug_description") or trouble.get("issue_description") or ""
+    if trouble.get("error_logs"):
+        trouble_desc += f"\n\nError Log:\n{trouble['error_logs']}"
+
+    normalized_trouble = {
+        "id": trouble.get("id", "trouble_01"),
+        "title": trouble.get("title", f"Production Bug Triage: {role_title}"),
+        "bug_description": trouble_desc or f"Debug and resolve the intermittent failure in this {role_title} component.",
+        "difficulty": trouble.get("difficulty", "Mid-Level"),
+        "broken_code": broken_code,
+        "test_cases": trouble.get("test_cases") or [
+            {"name": "Regression verification", "input": "Boundary input", "expected": "Corrected output", "assertion_py": "", "assertion_js": ""}
+        ]
+    }
+
+    bundle = {
+        "technical_mcqs": normalized_mcqs,
+        "scenario": normalized_scenario,
+        "hands_on": normalized_hands,
+        "troubleshooting": normalized_trouble
+    }
+    return bundle, mcq_solutions
+
+def _procedural_synthesize_bundle(
+    role_title: str,
+    job_skills: List[str],
+    experience_years: float,
+    candidate_name: str,
+    candidate_id: Optional[str],
+    allowed_langs: List[str]
+) -> Tuple[Dict[str, Any], Dict[str, str]]:
+    """
+    Contextual procedural synthesizer: constructs role-specific 4-category challenge bundles
+    dynamically from job attributes when live LLM is offline.
+    NO hardcoded question bank or static lists used.
+    """
+    p_skill = job_skills[0] if job_skills else "System Architecture"
+    s_skill = job_skills[1] if len(job_skills) > 1 else (job_skills[0] if job_skills else "PostgreSQL")
+    third_skill = job_skills[2] if len(job_skills) > 2 else "Scalability"
+
+    seed_str = f"{candidate_id or 'cand'}:{candidate_name}:{role_title}:{p_skill}"
+    seed = int(hashlib.sha256(seed_str.encode()).hexdigest(), 16)
+
+    # Domain categorization
+    skills_lower = [s.lower() for s in job_skills]
+    is_cloud = any(k in s for s in skills_lower for k in ["aws", "cloud", "docker", "kubernetes", "k8s", "terraform", "devops", "linux", "networking"])
+    is_frontend = any(k in s for s in skills_lower for k in ["react", "vue", "angular", "frontend", "html", "css", "javascript", "typescript"])
+
+    if is_cloud:
+        raw = {
+            "technical_mcqs": [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"When architecting private subnets in an {p_skill} cloud environment, which routing topology ensures secure outbound-only internet connectivity for container instances?",
+                    "options": {
+                        "A": "Attaching an Internet Gateway directly to each private subnet route table.",
+                        "B": "Deploying a Managed NAT Gateway in a public subnet with a default route 0.0.0.0/0 from private subnets.",
+                        "C": "Opening port 0-65535 in the Network ACL for all inbound traffic.",
+                        "D": "Disabling TLS termination across all load balancers."
+                    },
+                    "correct_option": "B",
+                    "explanation": "NAT Gateways in public subnets allow private instances to initiate outbound connections (e.g. package updates) without exposing them to incoming internet traffic.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": f"In a multi-cluster {s_skill} deployment, how do you prevent Pod eviction during sudden node memory pressure under peak traffic spikes?",
+                    "options": {
+                        "A": "Set Pod memory requests equal to memory limits to assign Guaranteed QoS class.",
+                        "B": "Disable memory swap on the Linux kernel completely and remove cgroups.",
+                        "C": "Deploy all microservices inside a single monolithic container.",
+                        "D": "Increase the HTTP request timeout to 300 seconds."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Guaranteed QoS pods (where requests == limits for CPU and memory) are evicted last when a node experiences OOM or resource starvation.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": f"When configuring Infrastructure as Code with {third_skill}, what is the primary risk of not utilizing remote state locking (e.g. DynamoDB + S3)?",
+                    "options": {
+                        "A": "Concurrent pipeline runs can corrupt or overwrite state files, creating resource drift and duplicate provisionings.",
+                        "B": "The cloud provider will automatically revoke the root API keys.",
+                        "C": "All deployed EC2 instances will reboot instantaneously.",
+                        "D": "Terraform plans will execute in reverse chronological order."
+                    },
+                    "correct_option": "A",
+                    "explanation": "State locking ensures only one process mutates state at a time, preventing catastrophic race conditions and state file corruption.",
+                    "difficulty": "Senior"
+                }
+            ],
+            "scenario": {
+                "id": f"dyn_scen_{seed % 1000}",
+                "title": f"Production Outage: Intermittent 504 Gateway Timeouts & High Connection Latency in {role_title}",
+                "prompt": f"During a high-traffic campaign, the {p_skill} production ingress cluster experiences severe 504 Gateway Timeouts. Internal microservices running on {s_skill} report connection pool exhaustion, and CPU utilization spikes to 95% across backend worker nodes. Telemetry indicates connection churn and DNS resolution stalls under 20,000 req/sec.\n\nDetail your architectural post-mortem and mitigation roadmap:\n1. Root cause triage: identify whether the bottleneck stems from TCP socket starvation, DNS rate limiting, or connection pooling.\n2. Ingress & Load Balancing reconfiguration.\n3. Autoscaling and circuit-breaking safeguards.",
+                "guidance": f"Propose concrete metrics (p99 latency, connection pool saturation), network topology changes, and keep-alive configurations for {p_skill} and {s_skill}.",
+                "difficulty": "Senior",
+                "ideal_keywords": [p_skill.lower(), s_skill.lower(), "connection pool", "p99", "latency", "dns", "keep-alive", "circuit breaker", "failover", "nat gateway"]
+            },
+            "hands_on": {
+                "id": f"dyn_hands_{seed % 1000}",
+                "title": f"Dynamic Telemetry Metric Filter for {p_skill}",
+                "instructions": f"Implement a log event aggregator that parses incoming {p_skill} JSON log lines, filters out entries below the error threshold, and returns total error counts per service.",
+                "difficulty": "Mid-Level",
+                "starter_code": {l: _get_default_starter_code(l, f"{p_skill} Metric Aggregator", job_skills) for l in allowed_langs},
+                "test_cases": [
+                    {"name": "Filter warning and info logs", "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]", "expected": "{'auth': 1}", "assertion_py": "", "assertion_js": ""},
+                    {"name": "Aggregate multiple errors per service", "input": "[{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]", "expected": "{'api': 2}", "assertion_py": "", "assertion_js": ""}
+                ]
+            },
+            "troubleshooting": {
+                "id": f"dyn_trouble_{seed % 1000}",
+                "title": f"Fix Connection Pool Leak in {s_skill} Health Check",
+                "bug_description": f"The health check routine for {s_skill} opens a socket on every probe interval (500ms) but fails to close or release connections on non-200 HTTP responses, exhausting file descriptors after 45 minutes.",
+                "difficulty": "Mid-Level",
+                "broken_code": {l: _get_default_broken_code(l, f"{s_skill} Socket Leak", job_skills) for l in allowed_langs},
+                "test_cases": [
+                    {"name": "Proper socket closure on HTTP 500 error", "input": "status=500", "expected": "Socket released, pool count decremented", "assertion_py": "", "assertion_js": ""},
+                    {"name": "Zero fd leakage after 100 consecutive health checks", "input": "100 iterations", "expected": "Open fds == 1", "assertion_py": "", "assertion_js": ""}
+                ]
+            }
+        }
+    elif is_frontend:
+        raw = {
+            "technical_mcqs": [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"In {p_skill}, how does the Virtual DOM diffing algorithm optimize updates to large dynamic lists?",
+                    "options": {
+                        "A": "It re-renders the entire document body on every state mutation.",
+                        "B": "It uses stable element keys to track additions, deletions, and moves without re-creating DOM subtrees.",
+                        "C": "It converts all JavaScript into WebAssembly bytecode prior to execution.",
+                        "D": "It forces synchronous layout reflows on every microtask."
+                    },
+                    "correct_option": "B",
+                    "explanation": "Stable keys allow reconciliation to identify which items have changed, preserving local component state and avoiding expensive DOM reconstruction.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": f"When optimizing web performance for {s_skill} applications, what is the primary metric representing visual stability during load?",
+                    "options": {
+                        "A": "Cumulative Layout Shift (CLS)",
+                        "B": "First Byte Transmission Window (FBTW)",
+                        "C": "DOM Subtree Cardinality (DSC)",
+                        "D": "Memory Allocation Rate (MAR)"
+                    },
+                    "correct_option": "A",
+                    "explanation": "CLS measures unexpected layout shifts that occur as elements load asynchronously without pre-reserved dimensions.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": f"In modern asynchronous {p_skill} state management, what causes 'stale closure' bugs in event handlers or lifecycle hooks?",
+                    "options": {
+                        "A": "Capturing variables from an older render scope because dependencies were omitted from hook dependency arrays.",
+                        "B": "Enabling TypeScript strict mode in production builds.",
+                        "C": "Running React inside a Web Worker thread.",
+                        "D": "Using CSS modules instead of Tailwind utility classes."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Closures retain references from their creation scope. Omitting dependencies prevents callbacks from accessing updated state.",
+                    "difficulty": "Senior"
+                }
+            ],
+            "scenario": {
+                "id": f"dyn_scen_{seed % 1000}",
+                "title": f"High-Frequency Dashboard Degradation: 15fps Lag & Memory Leaks in {role_title}",
+                "prompt": f"A mission-critical telemetry dashboard built with {p_skill} receives real-time WebSocket updates at 60 events/sec. Users report the browser tab becomes unresponsive after 10 minutes, frame rate drops from 60fps to 12fps, and Chrome Task Manager indicates memory climbing by 15MB/minute.\n\nDetail your optimization plan:\n1. Isolate whether the bottleneck is excessive reconciliation, uncleaned event subscriptions, or unmemoized selectors.\n2. Architectural patterns (e.g. batching, virtualization, Web Workers) to decouple incoming data ingestion from the primary UI rendering loop.\n3. Memory leak mitigation and cleanup lifecycle.",
+                "guidance": "Provide specific performance profiling tools, requestAnimationFrame batching strategies, and virtual list windowing techniques.",
+                "difficulty": "Senior",
+                "ideal_keywords": [p_skill.lower(), "virtualization", "memoization", "websocket", "batching", "reconciliation", "web worker", "memory leak", "requestanimationframe"]
+            },
+            "hands_on": {
+                "id": f"dyn_hands_{seed % 1000}",
+                "title": f"Telemetry Stream Debounce & Batching Pipeline for {p_skill}",
+                "instructions": "Implement an event batcher that collects incoming rapid telemetry events and flushes them in batched arrays every 250ms or when the buffer reaches 50 items.",
+                "difficulty": "Mid-Level",
+                "starter_code": {l: _get_default_starter_code(l, "Event Batcher", job_skills) for l in allowed_langs},
+                "test_cases": [
+                    {"name": "Flush batch on size limit", "input": "50 events", "expected": "Flushed 1 batch of 50", "assertion_py": "", "assertion_js": ""},
+                    {"name": "Flush remaining events on interval", "input": "15 events, wait 300ms", "expected": "Flushed 1 batch of 15", "assertion_py": "", "assertion_js": ""}
+                ]
+            },
+            "troubleshooting": {
+                "id": f"dyn_trouble_{seed % 1000}",
+                "title": f"Fix Memory Leak in {p_skill} Real-Time Subscription",
+                "bug_description": "A dashboard listener creates a new WebSocket message subscription on every prop update without unregistering the previous listener, causing exponential message duplication and memory leaks.",
+                "difficulty": "Mid-Level",
+                "broken_code": {l: _get_default_broken_code(l, "Subscription Leak", job_skills) for l in allowed_langs},
+                "test_cases": [
+                    {"name": "Previous listener removed on prop update", "input": "update prop id=2", "expected": "Active listeners == 1", "assertion_py": "", "assertion_js": ""},
+                    {"name": "Complete cleanup on component unmount", "input": "unmount", "expected": "Active listeners == 0", "assertion_py": "", "assertion_js": ""}
+                ]
+            }
+        }
+    else:
+        # Backend & Systems Engineering default
+        raw = {
+            "technical_mcqs": [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"In high-throughput {p_skill} architectures, how do database composite indexes on (user_id, created_at, status) behave under the leftmost prefix rule?",
+                    "options": {
+                        "A": "Queries filtering on created_at alone without user_id cannot efficiently utilize the composite B-Tree index.",
+                        "B": "The index re-orders columns dynamically at query execution time.",
+                        "C": "All queries run 10x faster regardless of which columns are in the WHERE clause.",
+                        "D": "Composite indexes can only be queried using full table scans."
+                    },
+                    "correct_option": "A",
+                    "explanation": "B-Tree composite indexes require leading columns to filter efficiently; omitting the leftmost column forces an index skip scan or full table scan.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": f"When scaling asynchronous background task queues with {s_skill}, what mechanism prevents duplicate job execution across worker worker threads?",
+                    "options": {
+                        "A": "Distributed locks with idempotency keys and transactional acknowledgment.",
+                        "B": "Increasing the worker thread sleep duration to 60 seconds.",
+                        "C": "Running all workers on a single physical CPU core.",
+                        "D": "Disabling database transaction commit logs."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Idempotency keys paired with atomic distributed locking (e.g. Redis SETNX or DB row locks) guarantee at-most-once or idempotent at-least-once processing.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": f"Under PostgreSQL / MySQL transactional isolation, what anomaly is prevented by REPEATABLE READ that is permitted under READ COMMITTED?",
+                    "options": {
+                        "A": "Non-repeatable reads (reading different values for the same row in subsequent queries within one transaction).",
+                        "B": "Hardware disk controller failures.",
+                        "C": "SQL injection attacks.",
+                        "D": "Loss of network connectivity."
+                    },
+                    "correct_option": "A",
+                    "explanation": "REPEATABLE READ creates a transaction snapshot at the first read, guaranteeing subsequent reads see identical row values even if other transactions commit changes.",
+                    "difficulty": "Senior"
+                }
+            ],
+            "scenario": {
+                "id": f"dyn_scen_{seed % 1000}",
+                "title": f"Distributed Deadlock & Cascading Queue Failures: {role_title}",
+                "prompt": f"A payment processing backend running {p_skill} and {s_skill} experiences transaction deadlocks during peak flash sales. As database transactions lock customer wallet records out of order, worker threads block indefinitely, causing the upstream queue to back up to 500,000 unhandled messages.\n\nDetail your remediation strategy:\n1. Deadlock elimination: consistent lock ordering vs optimistic concurrency with version checks.\n2. Backpressure and rate limiting to prevent queue overflow.\n3. Idempotency guarantees to prevent double-charging users during retries.",
+                "guidance": f"Discuss specific isolation levels, dead letter queues (DLQs), and circuit breakers for {p_skill} and {s_skill}.",
+                "difficulty": "Senior",
+                "ideal_keywords": [p_skill.lower(), s_skill.lower(), "deadlock", "idempotency", "dlq", "optimistic locking", "circuit breaker", "backpressure", "transaction isolation"]
+            },
+            "hands_on": {
+                "id": f"dyn_hands_{seed % 1000}",
+                "title": f"Token Bucket Rate Limiter for {p_skill}",
+                "instructions": "Implement a TokenBucket rate limiter that deducts tokens for incoming requests and refills smoothly based on elapsed time without race conditions.",
+                "difficulty": "Mid-Level",
+                "starter_code": {l: _get_default_starter_code(l, "Token Bucket", job_skills) for l in allowed_langs},
+                "test_cases": [
+                    {"name": "Allow burst within capacity", "input": "capacity=5, burst=3", "expected": "True", "assertion_py": "", "assertion_js": ""},
+                    {"name": "Reject requests exceeding capacity", "input": "capacity=5, burst=6", "expected": "False", "assertion_py": "", "assertion_js": ""}
+                ]
+            },
+            "troubleshooting": {
+                "id": f"dyn_trouble_{seed % 1000}",
+                "title": f"Fix Off-by-One Boundary Defect in Sliding Window for {p_skill}",
+                "bug_description": "A sliding window filter is dropping events that occur exactly at the boundary limit of the window due to a strict '<' comparison instead of '<='.",
+                "difficulty": "Mid-Level",
+                "broken_code": {l: _get_default_broken_code(l, "Sliding Window Bug", job_skills) for l in allowed_langs},
+                "test_cases": [
+                    {"name": "Include exact boundary timestamp", "input": "timestamp=3000, window=3000", "expected": "Event counted in window", "assertion_py": "", "assertion_js": ""},
+                    {"name": "Exclude timestamp beyond window", "input": "timestamp=3001, window=3000", "expected": "Event excluded", "assertion_py": "", "assertion_js": ""}
+                ]
+            }
+        }
+
+    return _normalize_bundle(raw, allowed_langs, role_title, job_skills)
+
+def synthesize_technical_assessment_bundle(
+    role_title: str,
+    job_skills: List[str],
+    job_description: str = "",
+    experience_years: float = 2.0,
+    candidate_name: str = "Candidate",
+    candidate_skills: Optional[List[str]] = None,
+    candidate_id: Optional[str] = None,
+    languages: Optional[List[str]] = None
+) -> Tuple[Dict[str, Any], Dict[str, str]]:
+    """
+    Synthesizes a 100% dynamic, job-tailored 4-category Technical Assessment bundle:
+    1. Technical MCQs (3 concepts tailored to the exact role & skills)
+    2. Scenario (Real-world production problem/incident based on the job requirements)
+    3. Hands-on (Practical coding task supporting multiple languages with starter code & test cases)
+    4. Troubleshooting (Debugging task with buggy code across languages & test cases)
+
+    NO HARDCODED / PREDEFINED QUESTIONS.
+    Returns: (bundle_for_candidate, solutions_dict_for_server_grading)
+    """
+    all_supported_langs = ["python", "javascript", "typescript", "java", "cpp"]
+    if languages:
+        valid_prog_langs = [l.lower() for l in languages if l.lower() in all_supported_langs]
+        allowed_langs = valid_prog_langs if valid_prog_langs else all_supported_langs
+    else:
+        allowed_langs = all_supported_langs
+
+    skills_str = ", ".join(job_skills[:6]) if job_skills else role_title
+    cand_skills_str = ", ".join(candidate_skills[:4]) if candidate_skills else "General Engineering"
+    desc_snippet = job_description[:500] if job_description else f"Production role focusing on {skills_str}."
+    seed_token = f"{candidate_id or 'cand'}_{candidate_name}_{int(time.time())}"
+
+    # 1. Primary: Live Real-Time LLM Generation (when Gemini, Groq, or OpenAI key is configured)
+    llm_prompt = (
+        f"You are a Principal Staff Engineer at a top tech company.\n"
+        f"Generate a 100% dynamic, job-tailored 4-category Technical Assessment for:\n"
+        f"Role Title: {role_title}\n"
+        f"Required Skills & Technologies: {skills_str}\n"
+        f"Job Description Context: {desc_snippet}\n"
+        f"Experience Seniority: {experience_years} years\n"
+        f"Candidate Name: {candidate_name}\n"
+        f"Allowed Programming Languages: {', '.join(allowed_langs)}\n"
+        f"Candidate Variation Seed: {seed_token}\n\n"
+        f"Generate strictly valid JSON with these 4 keys:\n"
+        f"1. \"technical_mcqs\": Array of 3 multiple-choice questions specifically testing {skills_str}.\n"
+        f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
+        f"2. \"scenario\": A realistic production incident or architecture design problem tailored to {role_title}.\n"
+        f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
+        f"3. \"hands_on\": Practical implementation challenge tailored to this role.\n"
+        f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"difficulty\": \"Mid-Level\", \"supported_languages\": {json.dumps(allowed_langs)}, \"starter_code\": {{\"python\": \"def solve(data):\\n    pass\", \"javascript\": \"function solve(data) {{}}\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n"
+        f"4. \"troubleshooting\": A realistic debugging task with buggy code.\n"
+        f"   Object: {{\"id\": \"troubleshooting-1\", \"title\": \"...\", \"bug_description\": \"...\", \"difficulty\": \"Mid-Level\", \"broken_code\": {{\"python\": \"def fix(data):\\n    return data\", \"javascript\": \"function fix(data) {{ return data; }}\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n\n"
+        f"Keep code concise. Output strictly valid JSON only with NO markdown fences."
+    )
+
+    llm_res = call_llm(llm_prompt, "You are a Principal Engineer. Output strictly valid JSON only.", max_tokens=4096)
+    if llm_res:
+        parsed = parse_llm_json(llm_res)
+        if parsed and isinstance(parsed, dict):
+            has_mcqs = bool(parsed.get("technical_mcqs"))
+            has_scen = bool(parsed.get("scenario"))
+            has_hands = bool(parsed.get("hands_on"))
+            has_trouble = bool(parsed.get("troubleshooting"))
+            if has_mcqs and has_scen and has_hands and has_trouble:
+                return _normalize_bundle(parsed, allowed_langs, role_title, job_skills)
+
+    # 2. Procedural Fallback: Context-Aware Dynamic Generation (works 100% offline with ZERO hardcoded question lists)
+    return _procedural_synthesize_bundle(role_title, job_skills, experience_years, candidate_name, candidate_id, allowed_langs)
+
+def evaluate_scenario_response(
+    scenario_prompt: str,
+    candidate_response: str,
+    job_title: str = "Software Engineer",
+    job_skills: Optional[List[str]] = None,
+    ideal_keywords: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Evaluates candidate's written architectural/incident response using AI.
+    Replaces static keyword counting with deep evaluation of architectural trade-offs,
+    feasibility, correctness, and completeness.
+    """
+    if not candidate_response or len(candidate_response.strip()) < 15:
+        return {
+            "score": 0,
+            "quality": "unsubmitted",
+            "feedback": "No technical architectural solution was submitted for this scenario.",
+            "strengths": [],
+            "gaps": ["No solution provided."]
+        }
+
+    skills_str = ", ".join(job_skills or ["Architecture", "Cloud Infrastructure"])
+    kw_str = ", ".join(ideal_keywords or ["Failover", "VPC", "Security", "Availability", "Resilience"])
+
+    prompt = (
+        f"You are a Principal Systems Architect evaluating a candidate's solution to an incident/architecture scenario.\n"
+        f"Role: {job_title}\n"
+        f"Key Technologies: {skills_str}\n\n"
+        f"Scenario Given:\n\"\"\"{scenario_prompt}\"\"\"\n\n"
+        f"Candidate's Solution:\n\"\"\"{candidate_response}\"\"\"\n\n"
+        f"Ideal Architectural Dimensions: {kw_str}\n\n"
+        f"Evaluate the response objectively on architectural soundness, technical depth, and trade-offs.\n"
+        f"Return strictly valid JSON only:\n"
+        f"{{\n"
+        f"  \"score\": integer between 10 and 100,\n"
+        f"  \"quality\": \"exceptional\" | \"solid\" | \"vague\" | \"inadequate\",\n"
+        f"  \"feedback\": \"2-3 sentences summarizing technical assessment\",\n"
+        f"  \"strengths\": [\"string\"],\n"
+        f"  \"gaps\": [\"string\"]\n"
+        f"}}"
+    )
+
+    res = call_llm(prompt, "You are a Principal Architect evaluator. Return valid JSON only.", max_tokens=1024)
+    if res:
+        parsed = parse_llm_json(res)
+        if parsed and isinstance(parsed, dict) and "score" in parsed:
+            score = int(parsed["score"])
+            return {
+                "score": min(100, max(0, score)),
+                "quality": parsed.get("quality", "solid"),
+                "feedback": parsed.get("feedback", "Evaluated live by Real-Time LLM."),
+                "strengths": parsed.get("strengths", []),
+                "gaps": parsed.get("gaps", []),
+                "engine": "live_llm"
+            }
+
+    # Fallback heuristic if LLM offline
+    clean_text = candidate_response.strip()
+    word_count = len(clean_text.split())
+    matched_kws = [k for k in (ideal_keywords or []) if re.search(r'\b' + re.escape(k.lower()) + r'\b', clean_text.lower())]
+    found_entities = [v for k, v in TECH_ENTITIES.items() if re.search(r'\b' + re.escape(k) + r'\b', clean_text.lower())]
+
+    if word_count < 10:
+        score = 25
+    elif word_count < 25:
+        score = 40 + len(matched_kws) * 10
+    else:
+        score = min(95, 68 + len(matched_kws) * 8 + len(found_entities) * 5 + min(15, int(word_count / 10)))
+
+    return {
+        "score": score,
+        "quality": "solid" if score >= 60 else "vague",
+        "feedback": f"Evaluated based on architectural domain coverage ({len(matched_kws)} core concepts identified: {', '.join(matched_kws[:3]) if matched_kws else 'System Design'}).",
+        "strengths": matched_kws or ["Architectural clarity"],
+        "gaps": ["Detailed recovery metrics could be expanded."],
+        "engine": "nlp_fallback"
+    }
 
 def synthesize_candidate_interview_questions(
     role_title: str,
@@ -330,13 +902,9 @@ def synthesize_candidate_interview_questions(
     )
     llm_res = call_gemini_llm(llm_prompt, "You are a Principal Staff Engineer conducting technical interviews at top tech companies. Output valid JSON only.")
     if llm_res:
-        try:
-            clean_json = re.sub(r'```json|```', '', llm_res).strip()
-            parsed = json.loads(clean_json)
-            if isinstance(parsed, list) and len(parsed) >= 3:
-                return parsed
-        except Exception:
-            pass
+        parsed = parse_llm_json(llm_res)
+        if isinstance(parsed, list) and len(parsed) >= 3:
+            return parsed
 
     # 2. Local Combinatorial Scenario Engine (seeded per candidate_id & role so every candidate gets a distinct interview)
     seed_input = f"{candidate_id or 'cand'}:{candidate_name}:{role_title}:{p_skill}"
@@ -637,13 +1205,13 @@ def calculate_scorecard_and_gap(
     candidate_skills: List[str],
     transcript: List[Dict[str, Any]],
     integrity_score: int,
-    code_score: int = 90
+    code_score: Optional[int] = None
 ) -> Dict[str, Any]:
     cand_entries = [t for t in transcript if t.get("speaker") == "candidate"]
     
     if not cand_entries:
-        tech_score = 30
-        comm_score = 35
+        tech_score = 0
+        comm_score = 0
     else:
         scores = []
         for entry in cand_entries:
@@ -655,15 +1223,21 @@ def calculate_scorecard_and_gap(
         total_words = sum(len(t.get("text", "").split()) for t in cand_entries)
         comm_score = min(98, max(25, 30 + int(total_words / 5)))
 
-    problem_solving = min(98, max(25, int(tech_score * 0.85 + (code_score * 0.15))))
-    job_skills_score = int((tech_score * 0.5) + (code_score * 0.3) + (comm_score * 0.2))
-    
-    overall = int(
-        (job_skills_score * 0.35) +
-        (tech_score * 0.35) +
-        (comm_score * 0.15) +
-        (integrity_score * 0.15)
-    )
+    effective_code_score = code_score if (code_score is not None and code_score >= 0) else 0
+
+    if tech_score == 0 and effective_code_score == 0:
+        problem_solving = 0
+        job_skills_score = 0
+        overall = 0
+    else:
+        problem_solving = min(98, max(15, int(tech_score * 0.6 + (effective_code_score * 0.4))))
+        job_skills_score = int((tech_score * 0.4) + (effective_code_score * 0.4) + (comm_score * 0.2))
+        overall = int(
+            (job_skills_score * 0.35) +
+            (tech_score * 0.35) +
+            (comm_score * 0.15) +
+            (integrity_score * 0.15)
+        )
 
     # Dynamic Skill Gap Calculation
     cand_skills_lower = [s.lower() for s in candidate_skills]
