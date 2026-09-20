@@ -25,8 +25,8 @@ class AssessmentController:
         if not candidate:
             return None, "Candidate not found"
 
-        # Fetch job parameters
-        job = db.query(JobModel).filter(JobModel.id == (job_id or candidate.job_id)).first()
+        target_job_id = job_id or candidate.job_id
+        job = db.query(JobModel).filter(JobModel.id == target_job_id).first()
         job_title = job.title if job else "Software Engineer"
         job_skills = (job.required_skills if job else None) or candidate.skills or ["Software Architecture"]
         job_desc = job.description if job else ""
@@ -37,12 +37,13 @@ class AssessmentController:
         existing_data = candidate.assessment_data or {}
         existing_bundle = existing_data.get("bundle")
         generated_by = existing_data.get("generated_by")
+        cached_job_id = existing_data.get("job_id")
 
-        # Reuse existing dynamic bundle if already generated for this candidate
-        if existing_bundle and generated_by == "ai_engine":
+        # Reuse existing dynamic bundle ONLY if generated for this exact job
+        if existing_bundle and generated_by == "ai_engine" and (not target_job_id or cached_job_id == target_job_id):
             return {
                 "candidate_id": candidate.id,
-                "job_id": candidate.job_id,
+                "job_id": target_job_id,
                 "bundle": existing_bundle,
                 "saved_answers": existing_data.get("answers", {}),
                 "is_completed": existing_data.get("is_completed", False),
@@ -62,6 +63,7 @@ class AssessmentController:
         )
 
         candidate.assessment_data = {
+            "job_id": target_job_id,
             "bundle": bundle,
             "mcq_solutions": mcq_solutions,
             "generated_by": "ai_engine",

@@ -75,7 +75,8 @@ export default function CodeAssessment() {
     async function loadAssessment() {
       setIsLoading(true);
       try {
-        const data = await api.getAssessment(candidateId, activeJob?.id);
+        const targetJobId = activeJob?.id || currentInterviewSession?.jobId || candidates.find(c => c.id === candidateId)?.jobId;
+        const data = await api.getAssessment(candidateId, targetJobId);
         if (isMounted && data?.bundle) {
           setAssessmentBundle(data.bundle);
 
