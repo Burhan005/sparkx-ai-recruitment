@@ -16,6 +16,8 @@ export default function JobCreatorModal({ isOpen, onClose }) {
     education: "Bachelor's or Master's in Computer Science or related field",
     description: '',
     requiredSkills: '',
+    languages: ['Python', 'JavaScript', 'TypeScript'],
+    codingDifficulty: 'Mid-Level',
     status: 'Active'
   });
 
@@ -24,6 +26,16 @@ export default function JobCreatorModal({ isOpen, onClose }) {
   const [isSuccess, setIsSuccess] = useState(false);
 
   if (!isOpen) return null;
+
+  const toggleLanguage = (lang) => {
+    setFormData(prev => {
+      const current = prev.languages || [];
+      const updated = current.includes(lang)
+        ? (current.length > 1 ? current.filter(l => l !== lang) : current)
+        : [...current, lang];
+      return { ...prev, languages: updated };
+    });
+  };
 
   const handleGenerateAIQuestions = () => {
     setIsGenerating(true);
@@ -68,6 +80,8 @@ export default function JobCreatorModal({ isOpen, onClose }) {
       education: formData.education,
       description: formData.description || `We are looking for an experienced ${formData.title} to join our high-impact team.`,
       requiredSkills: skillsArray.length ? skillsArray : ['System Architecture', 'Algorithms', 'Debugging'],
+      languages: formData.languages,
+      codingDifficulty: formData.codingDifficulty,
       status: 'Active'
     };
 
@@ -165,6 +179,58 @@ export default function JobCreatorModal({ isOpen, onClose }) {
               placeholder="e.g. Python, FastAPI, React, PyTorch"
               required
             />
+          </div>
+
+          {/* Programming Languages & Assessment Difficulty */}
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06] space-y-3 shadow-inner">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Supported Programming Languages for Coding Assessment *
+              </label>
+              <p className="text-[11px] text-slate-500 mb-2">Candidates can select any of these allowed languages to complete their technical tasks.</p>
+              <div className="flex flex-wrap gap-2">
+                {['Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go'].map(lang => {
+                  const isChecked = (formData.languages || []).includes(lang);
+                  return (
+                    <button
+                      key={lang}
+                      type="button"
+                      onClick={() => toggleLanguage(lang)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border flex items-center space-x-1.5 ${
+                        isChecked
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-indigo-400'
+                      }`}
+                    >
+                      <span>{isChecked ? '✓' : '+'}</span>
+                      <span>{lang}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Coding Assessment Difficulty:
+              </label>
+              <div className="flex items-center space-x-1.5">
+                {['Junior', 'Mid-Level', 'Senior'].map(lvl => (
+                  <button
+                    key={lvl}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, codingDifficulty: lvl })}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition border ${
+                      formData.codingDifficulty === lvl
+                        ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500'
+                    }`}
+                  >
+                    {lvl}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div>

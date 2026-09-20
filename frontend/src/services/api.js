@@ -14,6 +14,8 @@ export function normalizeJob(j) {
     minExperienceYears:j.min_experience_years != null ? j.min_experience_years : (j.minExperienceYears ?? 2),
     optionalCriteria:  j.optional_criteria  ?? j.optionalCriteria  ?? '',
     codingAssessment:  j.coding_assessment  ?? j.codingAssessment  ?? null,
+    codingDifficulty:  j.coding_difficulty  ?? j.codingDifficulty  ?? 'Mid-Level',
+    assessmentPool:    j.assessment_pool    ?? j.assessmentPool    ?? {},
     applicantsCount:   j.applicants_count   != null ? j.applicants_count : (j.applicantsCount ?? 0),
     questions:         j.questions          ?? [],
     status:            j.status             ?? 'Active',
@@ -41,6 +43,11 @@ export function normalizeCandidate(c) {
     resumeSummary:   c.resume_summary  ?? c.resumeSummary  ?? '',
     resumeFilename:  c.resume_filename ?? c.resumeFilename ?? null,
     resumeText:      c.resume_text     ?? c.resumeText     ?? null,
+    assessmentData:  c.assessment_data ?? c.assessmentData ?? {},
+    codingLanguage:  c.coding_language ?? c.codingLanguage ?? null,
+    codingScore:     c.coding_score    != null ? c.coding_score : (c.codingScore ?? 0),
+    codingSubmission:c.coding_submission ?? c.codingSubmission ?? null,
+    codingResults:   c.coding_results  ?? c.codingResults  ?? {},
     scores:          c.scores          ?? { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
     skills:          c.skills          ?? [],
     interviewScheduledAt: c.interview_scheduled_at ?? c.interviewScheduledAt ?? null,
@@ -465,4 +472,61 @@ export const api = {
       return res.ok ? await res.json() : null;
     } catch { return null; }
   },
+
+  // ─── 4-Category Technical Assessment API ─────────────────────────────────
+  async getAssessment(candidateId, jobId) {
+    try {
+      const url = `${API_BASE_URL}/assessment/${candidateId}${jobId ? `?job_id=${jobId}` : ''}`;
+      const res = await fetch(url, {
+        headers: getAuthHeaders(),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) throw new Error(`Failed to load assessment: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getAssessment error:', err);
+      return null;
+    }
+  },
+
+  async runCodeSandbox(payload) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/assessment/run-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(7000),
+      });
+      if (!res.ok) throw new Error(`Code execution failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('runCodeSandbox error:', err);
+      return {
+        all_passed: false,
+        passed_count: 0,
+        total_count: 1,
+        test_results: [{ name: 'Execution Timeout / Error', passed: false, error: err.message, duration: '0ms' }],
+        console_output: `> Sandbox Error: ${err.message}`,
+        execution_ms: 0,
+      };
+    }
+  },
+
+  async submitAssessment(candidateId, payload) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/assessment/${candidateId}/submit`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`Submission failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('submitAssessment error:', err);
+      return null;
+    }
+  },
 };
+
+export default api;

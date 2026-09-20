@@ -14,6 +14,7 @@ from views.candidate_views import router as candidate_router
 from views.interview_views import router as interview_router
 from views.preset_views import router as preset_router
 from views.auth_views import router as auth_router
+from views.assessment_views import router as assessment_router
 
 # (M) Create all DB tables & ensure schema columns
 Base.metadata.create_all(bind=engine)
@@ -58,6 +59,7 @@ app.include_router(job_router)
 app.include_router(candidate_router)
 app.include_router(interview_router)
 app.include_router(preset_router)
+app.include_router(assessment_router)
 
 @app.get("/api/health")
 def health_check():

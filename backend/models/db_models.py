@@ -23,6 +23,8 @@ class JobModel(Base):
     description = Column(Text, nullable=False)
     questions = Column(JSON, default=list)
     coding_assessment = Column(JSON, default=dict)
+    coding_difficulty = Column(String, default="Mid-Level")
+    assessment_pool = Column(JSON, default=dict)
     status = Column(String, default="Active")
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -49,6 +51,13 @@ class CandidateModel(Base):
     resume_text = Column(Text, nullable=True)
     fraud_flags = Column(JSON, default=list)
     
+    # 4-Category Technical Assessment Data & Code Submissions
+    assessment_data = Column(JSON, default=dict)
+    coding_language = Column(String, nullable=True)
+    coding_score = Column(Integer, default=0)
+    coding_submission = Column(Text, nullable=True)
+    coding_results = Column(JSON, default=dict)
+
     # Telemetry & Integrity
     integrity_score = Column(Integer, default=100)
     integrity_risk = Column(String, default="Low")

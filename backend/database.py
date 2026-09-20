@@ -76,9 +76,15 @@ def ensure_schema_columns():
 
                 # Jobs table columns
                 job_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(jobs)")).fetchall()]
-                if "company_name" not in job_cols:
-                    conn.execute(text("ALTER TABLE jobs ADD COLUMN company_name VARCHAR DEFAULT 'SparkX Technologies'"))
-                    conn.commit()
+                new_job_cols = {
+                    "company_name": "VARCHAR DEFAULT 'SparkX Technologies'",
+                    "coding_difficulty": "VARCHAR DEFAULT 'Mid-Level'",
+                    "assessment_pool": "JSON DEFAULT '{}'"
+                }
+                for col, col_type in new_job_cols.items():
+                    if col not in job_cols:
+                        conn.execute(text(f"ALTER TABLE jobs ADD COLUMN {col} {col_type}"))
+                        conn.commit()
 
                 # Candidates table columns
                 cand_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(candidates)")).fetchall()]
@@ -86,7 +92,12 @@ def ensure_schema_columns():
                     "interview_meeting_url": "VARCHAR",
                     "company_name": "VARCHAR DEFAULT 'SparkX Technologies'",
                     "resume_filename": "VARCHAR",
-                    "resume_text": "TEXT"
+                    "resume_text": "TEXT",
+                    "assessment_data": "JSON DEFAULT '{}'",
+                    "coding_language": "VARCHAR",
+                    "coding_score": "INTEGER DEFAULT 0",
+                    "coding_submission": "TEXT",
+                    "coding_results": "JSON DEFAULT '{}'"
                 }
                 for col, col_type in new_cand_cols.items():
                     if col not in cand_cols:

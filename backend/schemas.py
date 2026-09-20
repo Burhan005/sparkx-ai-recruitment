@@ -14,6 +14,8 @@ class JobCreate(BaseModel):
     description: str
     questions: Optional[List[Dict[str, Any]]] = None
     coding_assessment: Optional[Dict[str, Any]] = None
+    coding_difficulty: Optional[str] = "Mid-Level"
+    assessment_pool: Optional[Dict[str, Any]] = None
 
 class JobResponse(JobCreate):
     id: str
@@ -71,6 +73,11 @@ class CandidateResponse(BaseModel):
     interview_meeting_url: Optional[str] = None
     interview_status: Optional[str] = "Applied"
     email_logs: Optional[List[Dict[str, Any]]] = []
+    assessment_data: Optional[Dict[str, Any]] = None
+    coding_language: Optional[str] = None
+    coding_score: Optional[int] = 0
+    coding_submission: Optional[str] = None
+    coding_results: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True
@@ -215,4 +222,37 @@ class CandidateApplicationItem(BaseModel):
     interview_scheduled_at: Optional[str] = None
     interview_meeting_url: Optional[str] = None
     interview_status: Optional[str] = "Applied"
+
+# ─── 4-Category Technical Assessment Schemas ─────────────────────────────────
+class CodeRunRequest(BaseModel):
+    candidate_id: Optional[str] = None
+    job_id: Optional[str] = None
+    task_id: str
+    category: str = "hands_on"  # "hands_on" | "troubleshooting"
+    language: str = "javascript" # "python" | "javascript" | "java" | "cpp" | "typescript"
+    code: str
+
+class CodeRunResponse(BaseModel):
+    all_passed: bool
+    passed_count: int
+    total_count: int
+    test_results: List[Dict[str, Any]]
+    console_output: str
+    execution_ms: float
+
+class AssessmentSubmitRequest(BaseModel):
+    candidate_id: str
+    job_id: str
+    technical_answers: Dict[str, str] = {} # question_id -> chosen option (e.g. 'A')
+    scenario_answers: Dict[str, str] = {}  # question_id -> written solution text
+    hands_on_submission: Optional[Dict[str, Any]] = None # task_id, language, code, test_results
+    troubleshooting_submission: Optional[Dict[str, Any]] = None # task_id, language, code, test_results
+
+class AssessmentSubmitResponse(BaseModel):
+    success: bool
+    candidate_id: str
+    scores: Dict[str, Any]
+    status: str
+    final_decision: str
+    feedback_summary: str
 
