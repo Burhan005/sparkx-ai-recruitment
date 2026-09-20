@@ -185,21 +185,6 @@ export default function Navbar() {
             {/* ─── Right Action Controls ─── */}
             <div className="flex items-center space-x-2 sm:space-x-2.5">
 
-              {/* DB Live / Sync Button */}
-              <button
-                onClick={handleSync}
-                title={isDbConnected ? 'DB Live & Synchronized — Click to refresh' : 'DB Offline — Click to retry connection'}
-                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition hover:scale-105 active:scale-95 shadow-sm ${
-                  isDbConnected
-                    ? 'border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
-                    : 'border-rose-500/30 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400'
-                }`}
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span className={`w-1.5 h-1.5 rounded-full ${isDbConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-                <span className="hidden xl:inline text-[11px]">{isDbConnected ? 'DB Live' : 'Offline'}</span>
-              </button>
-
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
@@ -283,20 +268,25 @@ export default function Navbar() {
                       </div>
                     </div>
 
-                    {/* Quick System Telemetry Status */}
-                    <div className="p-2 text-[11px] space-y-1.5 border-b border-slate-100 dark:border-white/[0.06] pb-2 mb-2">
-                      <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-                        <span className="flex items-center space-x-1.5">
-                          <Database className="w-3.5 h-3.5 text-slate-400" />
-                          <span>Database Status</span>
-                        </span>
-                        <span className={`font-bold flex items-center space-x-1 ${isDbConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${isDbConnected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                          <span>{isDbConnected ? 'Online' : 'Offline'}</span>
-                        </span>
-                      </div>
+                    {/* Recruiter System Telemetry (Hidden completely from candidate view) */}
+                    {userRole === 'recruiter' && (
+                      <div className="p-2 text-[11px] space-y-1.5 border-b border-slate-100 dark:border-white/[0.06] pb-2 mb-2">
+                        <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+                          <span className="flex items-center space-x-1.5">
+                            <Database className="w-3.5 h-3.5 text-slate-400" />
+                            <span>Database Status</span>
+                          </span>
+                          <button
+                            onClick={handleSync}
+                            title="Click to verify & sync database connection"
+                            className={`font-bold flex items-center space-x-1 hover:opacity-80 transition cursor-pointer ${isDbConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isDbConnected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span>{isDbConnected ? 'Online' : 'Offline'}</span>
+                            <RefreshCw className={`w-2.5 h-2.5 ml-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
 
-                      {userRole === 'recruiter' && (
                         <div 
                           className="flex items-center justify-between text-slate-600 dark:text-slate-300 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition"
                           onClick={() => {
@@ -312,8 +302,8 @@ export default function Navbar() {
                             {aiStatus.provider || 'Local NLP'}
                           </span>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Dropdown Actions */}
                     <div className="space-y-1">
@@ -403,15 +393,22 @@ export default function Navbar() {
 
             {/* Mobile Footer Status & Quick Actions */}
             <div className="pt-2 border-t border-slate-200 dark:border-white/[0.08] space-y-2">
-              <div className="flex items-center justify-between text-xs px-1 text-slate-500 dark:text-slate-400">
-                <span className="flex items-center space-x-1.5">
-                  <Database className="w-3.5 h-3.5" />
-                  <span>Database:</span>
-                </span>
-                <span className={`font-bold ${isDbConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
-                  {isDbConnected ? 'Online & Live' : 'Offline'}
-                </span>
-              </div>
+              {userRole === 'recruiter' && (
+                <div className="flex items-center justify-between text-xs px-1 text-slate-500 dark:text-slate-400">
+                  <span className="flex items-center space-x-1.5">
+                    <Database className="w-3.5 h-3.5" />
+                    <span>Database:</span>
+                  </span>
+                  <button
+                    onClick={handleSync}
+                    className={`font-bold flex items-center space-x-1 hover:opacity-80 transition cursor-pointer ${isDbConnected ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isDbConnected ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    <span>{isDbConnected ? 'Online & Live' : 'Offline'}</span>
+                    <RefreshCw className={`w-2.5 h-2.5 ml-1 ${isSyncing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              )}
 
               {userRole === 'recruiter' && (
                 <button

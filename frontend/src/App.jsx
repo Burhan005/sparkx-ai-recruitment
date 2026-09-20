@@ -80,17 +80,6 @@ function OfflineScreen({ error, onRetry }) {
   );
 }
 
-// ─── DB Live indicator pill ────────────────────────────────────────────────────
-function DbIndicator() {
-  const { isDbConnected, syncWithDatabase } = useRecruitment();
-  return (
-    <button onClick={() => syncWithDatabase(false)} title={isDbConnected ? 'DB connected — click to refresh' : 'DB offline — click to retry'}
-      className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${isDbConnected ? 'bg-emerald-950/60 border-emerald-700/40 text-emerald-400 hover:bg-emerald-900/60' : 'bg-rose-950/60 border-rose-700/40 text-rose-400 hover:bg-rose-900/60'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${isDbConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
-      <span>{isDbConnected ? 'DB Live' : 'Offline'}</span>
-    </button>
-  );
-}
 
 // ─── Main routed content ──────────────────────────────────────────────────────
 function AppContent() {
