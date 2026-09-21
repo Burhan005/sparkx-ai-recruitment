@@ -345,6 +345,59 @@ def parse_llm_json(raw_text: Optional[str]) -> Optional[Any]:
 
     return None
 
+# Supported SQL Database Runtimes & Versions
+DB_RUNTIMES = {
+    "postgresql": {
+        "engine": "PostgreSQL",
+        "family": "sql",
+        "versions": ["17 (Latest Supported)", "16", "15"],
+        "default_version": "16",
+        "doc": "ACID-compliant object-relational database with JSONB, window functions, CTEs, and partitioning."
+    },
+    "mysql": {
+        "engine": "MySQL",
+        "family": "sql",
+        "versions": ["8.4 (LTS)", "8.0", "9.1 (Latest Supported)"],
+        "default_version": "8.0",
+        "doc": "Enterprise open-source relational database powered by InnoDB multi-version concurrency control."
+    },
+    "sqlserver": {
+        "engine": "Microsoft SQL Server",
+        "family": "sql",
+        "versions": ["2022 (Latest Supported)", "2019", "2022 CU14"],
+        "default_version": "2022",
+        "doc": "Enterprise T-SQL relational database with in-memory OLTP, columnstore indexes, and analytical queries."
+    },
+    "oracle": {
+        "engine": "Oracle Database",
+        "family": "sql",
+        "versions": ["23ai (Latest Supported)", "21c", "19c"],
+        "default_version": "23ai",
+        "doc": "Enterprise multi-model relational database with PL/SQL, JSON-Relational Duality, and AI Vector Search."
+    },
+    "sqlite": {
+        "engine": "SQLite",
+        "family": "sql",
+        "versions": ["3.x (3.45)"],
+        "default_version": "3.x (3.45)",
+        "doc": "Serverless, zero-configuration in-memory embedded relational SQL engine with full ACID transactions."
+    },
+    "mariadb": {
+        "engine": "MariaDB",
+        "family": "sql",
+        "versions": ["11.x (Latest Supported)", "10.x"],
+        "default_version": "11.x",
+        "doc": "High-performance drop-in community relational database with Aria, ColumnStore, and Spider storage engines."
+    },
+    "mongodb": {
+        "engine": "MongoDB",
+        "family": "nosql",
+        "versions": ["7.0 (Latest Supported)", "6.0"],
+        "default_version": "7.0",
+        "doc": "Document-oriented NoSQL database with dynamic BSON schema modeling and distributed aggregation pipelines."
+    }
+}
+
 def classify_job_domain(role_title: str, job_skills: List[str], job_description: str = "") -> Tuple[bool, str, List[str]]:
     """
     Classifies job into:
@@ -354,20 +407,46 @@ def classify_job_domain(role_title: str, job_skills: List[str], job_description:
     """
     combined = f"{role_title} {' '.join(job_skills)} {job_description}".lower()
 
-    # Explicit technology extraction from job skills/description
+    # Explicit technology extraction from job skills/description across all 15 language families
     known_tech_map = {
-        "python": "python",
-        "javascript": "javascript",
-        "typescript": "typescript",
-        "java": "java",
+        "c": "c",
         "c++": "cpp",
         "cpp": "cpp",
         "c#": "csharp",
         "csharp": "csharp",
+        "dotnet": "csharp",
+        ".net": "csharp",
+        "vb": "vb",
+        "vb.net": "vb",
+        "visual basic": "vb",
+        "java": "java",
+        "python": "python",
+        "javascript": "javascript",
+        "js": "javascript",
+        "node": "javascript",
+        "nodejs": "javascript",
+        "typescript": "typescript",
+        "ts": "typescript",
         "golang": "go",
         "go": "go",
         "rust": "rust",
+        "php": "php",
+        "ruby": "ruby",
+        "rails": "ruby",
+        "kotlin": "kotlin",
+        "swift": "swift",
         "sql": "sql",
+        "postgresql": "sql",
+        "postgres": "sql",
+        "mysql": "sql",
+        "sqlite": "sql",
+        "sql server": "sql",
+        "mssql": "sql",
+        "oracle": "sql",
+        "mariadb": "sql",
+        "mongodb": "mongodb",
+        "nosql": "mongodb",
+        "mongo": "mongodb",
         "bash": "bash",
         "shell": "bash",
         "terraform": "terraform",
@@ -375,7 +454,6 @@ def classify_job_domain(role_title: str, job_skills: List[str], job_description:
         "kubernetes": "kubernetes",
         "aws cli": "bash",
         "react": "javascript",
-        "node": "javascript",
         "fastapi": "python",
         "django": "python"
     }
@@ -391,7 +469,7 @@ def classify_job_domain(role_title: str, job_skills: List[str], job_description:
     is_explicit_tech = any(re.search(r'\b' + re.escape(t) + r'\b', title_lower) for t in [
         "developer", "engineer", "architect", "programmer", "devops", "cloud", "sre",
         "full stack", "backend", "frontend", "data scientist", "machine learning", "ai",
-        "software", "infrastructure", "systems", "dba", "qa automation", "coder"
+        "software", "infrastructure", "systems", "dba", "qa automation", "coder", "database"
     ]) or bool(detected_tech)
 
     # Check non-technical domains ONLY if NOT an explicit technical engineering role
@@ -411,7 +489,7 @@ def classify_job_domain(role_title: str, job_skills: List[str], job_description:
     is_tech = is_explicit_tech or any(re.search(r'\b' + re.escape(k) + r'\b', combined) for k in [
         "developer", "engineer", "architect", "programmer", "devops", "cloud", "sre",
         "full stack", "backend", "frontend", "data scientist", "machine learning", "ai",
-        "software", "infrastructure", "systems", "dba", "qa automation"
+        "software", "infrastructure", "systems", "dba", "qa automation", "database"
     ]) or bool(detected_tech)
 
     if is_tech:
@@ -422,39 +500,910 @@ def classify_job_domain(role_title: str, job_skills: List[str], job_description:
 
 def _get_default_starter_code(lang: str, title: str, skills: List[str]) -> str:
     s_primary = skills[0] if skills else "Task"
-    if lang == "python":
-        return f"# Task: {title}\n# Function signature: solve(data)\ndef solve(data):\n    \"\"\"\n    Process the input dataset according to specifications.\n    \"\"\"\n    # TODO: Implement candidate solution\n    return data\n"
-    elif lang in ["javascript", "typescript"]:
-        return f"// Task: {title}\n// Function signature: solve(data)\nfunction solve(data) {{\n    // TODO: Implement candidate solution\n    return data;\n}}\n"
-    elif lang == "java":
-        return f"import java.util.*;\n\npublic class Solution {{\n    public static Object solve(Object data) {{\n        // TODO: Implement solution\n        return data;\n    }}\n}}\n"
-    elif lang == "cpp":
-        return f"#include <iostream>\n#include <string>\n\nauto solve(auto data) {{\n    // TODO: Implement solution\n    return data;\n}}\n"
-    elif lang == "sql":
-        return f"-- Task: {title}\n-- Write query to satisfy task requirements\nSELECT \n    id,\n    name\nFROM \n    records;\n"
-    elif lang in ["bash", "shell"]:
-        return f"#!/usr/bin/env bash\n# Task: {title}\nset -euo pipefail\n\nsolve() {{\n    echo \"Processing $1\"\n}}\n"
-    elif lang == "terraform":
-        return f"# Task: {title}\nresource \"aws_s3_bucket\" \"app_logs\" {{\n  # Configure resources\n}}\n"
-    return "// Implement task solution\nfunction solve(data) { return data; }\n"
+    l = lang.lower()
+    if l == "python":
+        return f"# Task: {title}\n# Function signature: solve(data)\ndef solve(data):\n    \"\"\"\n    Process the input dataset according to specifications.\n    \"\"\"\n    # TODO: Implement candidate solution logic\n    return None\n"
+    elif l in ["javascript", "node", "nodejs"]:
+        return f"// Task: {title}\n// Function signature: solve(data)\nfunction solve(data) {{\n    // TODO: Implement candidate solution logic\n    return null;\n}}\n"
+    elif l in ["typescript", "ts"]:
+        return f"// Task: {title}\n// Function signature: solve(data: any): any\nfunction solve(data: any): any {{\n    // TODO: Implement candidate solution logic\n    return null;\n}}\n"
+    elif l == "java":
+        return f"import java.util.*;\n\npublic class Solution {{\n    public static Object solve(Object data) {{\n        // TODO: Implement candidate solution logic\n        return null;\n    }}\n}}\n"
+    elif l in ["cpp", "c++"]:
+        return f"#include <iostream>\n#include <vector>\n#include <string>\n\n// Task: {title}\nauto solve(auto data) {{\n    // TODO: Implement candidate solution logic\n    return nullptr;\n}}\n"
+    elif l == "c":
+        return f"#include <stdio.h>\n#include <stdlib.h>\n\n// Task: {title}\n// Function signature: int solve(int input)\nint solve(int input) {{\n    // TODO: Implement candidate solution logic\n    return -1;\n}}\n"
+    elif l in ["csharp", "c#", "dotnet"]:
+        return f"using System;\nusing System.Collections.Generic;\n\npublic class Solution {{\n    public static object Solve(object data) {{\n        // TODO: Implement candidate solution logic\n        return null;\n    }}\n}}\n"
+    elif l in ["vb", "vb.net"]:
+        return f"Imports System\nImports System.Collections.Generic\n\nPublic Class Solution\n    Public Shared Function Solve(data As Object) As Object\n        ' TODO: Implement candidate solution logic\n        Return Nothing\n    End Function\nEnd Class\n"
+    elif l in ["go", "golang"]:
+        return f"package main\n\n// Task: {title}\nfunc Solve(data interface{{}}) interface{{}} {{\n    // TODO: Implement candidate solution logic\n    return nil\n}}\n"
+    elif l == "rust":
+        return f"// Task: {title}\npub fn solve(data: &str) -> String {{\n    // TODO: Implement candidate solution logic\n    String::new()\n}}\n"
+    elif l == "php":
+        return f"<?php\n// Task: {title}\nfunction solve($data) {{\n    // TODO: Implement candidate solution logic\n    return null;\n}}\n"
+    elif l == "ruby":
+        return f"# Task: {title}\ndef solve(data)\n  # TODO: Implement candidate solution logic\n  nil\nend\n"
+    elif l == "kotlin":
+        return f"// Task: {title}\nfun solve(data: Any?): Any? {{\n    // TODO: Implement candidate solution logic\n    return null\n}}\n"
+    elif l == "swift":
+        return f"// Task: {title}\nfunc solve(_ data: Any) -> Any? {{\n    // TODO: Implement candidate solution logic\n    return nil\n}}\n"
+    elif l == "sql":
+        return f"-- Task: {title}\n-- Write query to satisfy task requirements\n-- Active Database Engine: SQLite / PostgreSQL / MySQL / SQL Server / Oracle / MariaDB\nSELECT \n    id,\n    name\nFROM \n    records;\n"
+    elif l in ["mongodb", "nosql", "mongo"]:
+        return f"// Task: {title} (MongoDB Aggregation Pipeline)\ndb.records.aggregate([\n    // TODO: Build aggregation pipeline stages\n    {{ $match: {{ status: \"active\" }} }},\n    {{ $group: {{ _id: \"$category\", total: {{ $sum: 1 }} }} }}\n]);\n"
+    elif l in ["bash", "shell"]:
+        return f"#!/usr/bin/env bash\n# Task: {title}\nset -euo pipefail\n\nsolve() {{\n    # TODO: Implement candidate solution logic\n    echo \"Processing $1\"\n}}\n"
+    elif l == "terraform":
+        return f"# Task: {title}\nresource \"aws_s3_bucket\" \"app_logs\" {{\n  # TODO: Configure resources\n}}\n"
+    return "// Implement task solution\nfunction solve(data) { return null; }\n"
 
 def _get_default_broken_code(lang: str, title: str, skills: List[str]) -> str:
     s_primary = skills[0] if skills else "Telemetry"
-    if lang == "python":
-        return f"# DEFECTIVE IMPLEMENTATION: {title}\n# Function signature: fix(data)\ndef fix(data):\n    # Defect: mutating shared state or unhandled boundary\n    if data == 'error':\n        return 'released'\n    return data\n"
-    elif lang in ["javascript", "typescript"]:
-        return f"// DEFECTIVE IMPLEMENTATION: {title}\n// Function signature: fix(data)\nfunction fix(data) {{\n    // Defect: unhandled error state\n    if (data === 'error') {{\n        return 'released';\n    }}\n    return data;\n}}\n"
-    elif lang == "java":
-        return f"import java.util.*;\n\npublic class Solution {{\n    public static Object fix(Object data) {{\n        if (\"error\".equals(data)) return \"released\";\n        return data;\n    }}\n}}\n"
-    elif lang == "cpp":
-        return f"#include <iostream>\n#include <string>\n\nauto fix(auto data) {{\n    if (data == \"error\") return \"released\";\n    return data;\n}}\n"
-    elif lang == "sql":
-        return f"-- DEFECTIVE QUERY: {title}\n-- Bug: Missing join condition creates Cartesian product\nSELECT o.id, c.name FROM orders o, customers c WHERE o.total > 100;\n"
-    elif lang in ["bash", "shell"]:
-        return f"#!/usr/bin/env bash\n# DEFECTIVE SCRIPT: {title}\nfix() {{\n    if [ \"$1\" = \"error\" ]; then echo \"released\"; else echo \"$1\"; fi\n}}\n"
-    elif lang == "terraform":
+    l = lang.lower()
+    if l == "python":
+        return f"# DEFECTIVE IMPLEMENTATION: {title}\n# Function signature: fix(data)\ndef fix(data):\n    # Defect: socket hangs on error and fails to release resource\n    if data == 'error':\n        return 'connection_hang'  # BUG: Should return 'released'\n    return data\n"
+    elif l in ["javascript", "node", "nodejs"]:
+        return f"// DEFECTIVE IMPLEMENTATION: {title}\n// Function signature: fix(data)\nfunction fix(data) {{\n    // Defect: unhandled error state causes connection hang\n    if (data === 'error') {{\n        return 'connection_hang'; // BUG: Should return 'released'\n    }}\n    return data;\n}}\n"
+    elif l in ["typescript", "ts"]:
+        return f"// DEFECTIVE IMPLEMENTATION: {title}\n// Function signature: fix(data: any): any\nfunction fix(data: any): any {{\n    // Defect: unhandled error state causes connection hang\n    if (data === 'error') {{\n        return 'connection_hang'; // BUG: Should return 'released'\n    }}\n    return data;\n}}\n"
+    elif l == "java":
+        return f"import java.util.*;\n\npublic class Solution {{\n    public static Object fix(Object data) {{\n        if (\"error\".equals(data)) return \"connection_hang\"; // BUG: Should return \"released\"\n        return data;\n    }}\n}}\n"
+    elif l in ["cpp", "c++"]:
+        return f"#include <iostream>\n#include <string>\n\nauto fix(auto data) {{\n    if (data == \"error\") return \"connection_hang\"; // BUG: Should return \"released\"\n    return data;\n}}\n"
+    elif l == "c":
+        return f"#include <stdio.h>\n#include <string.h>\n\nconst char* fix(const char* data) {{\n    if (strcmp(data, \"error\") == 0) return \"connection_hang\"; // BUG: Should return \"released\"\n    return data;\n}}\n"
+    elif l in ["csharp", "c#", "dotnet"]:
+        return f"using System;\n\npublic class Solution {{\n    public static object Fix(object data) {{\n        if (data != null && data.ToString() == \"error\") return \"connection_hang\"; // BUG: Should return \"released\"\n        return data;\n    }}\n}}\n"
+    elif l in ["vb", "vb.net"]:
+        return f"Imports System\n\nPublic Class Solution\n    Public Shared Function Fix(data As Object) As Object\n        If data IsNot Nothing AndAlso data.ToString() = \"error\" Then\n            Return \"connection_hang\" ' BUG: Should return \"released\"\n        End If\n        Return data\n    End Function\nEnd Class\n"
+    elif l in ["go", "golang"]:
+        return f"package main\n\nfunc Fix(data string) string {{\n    if data == \"error\" {{\n        return \"connection_hang\" // BUG: Should return \"released\"\n    }}\n    return data\n}}\n"
+    elif l == "rust":
+        return f"pub fn fix(data: &str) -> String {{\n    if data == \"error\" {{\n        \"connection_hang\".to_string() // BUG: Should return \"released\"\n    }} else {{\n        data.to_string()\n    }}\n}}\n"
+    elif l == "php":
+        return f"<?php\nfunction fix($data) {{\n    if ($data === 'error') {{\n        return 'connection_hang'; // BUG: Should return 'released'\n    }}\n    return $data;\n}}\n"
+    elif l == "ruby":
+        return f"def fix(data)\n  if data == 'error'\n    return 'connection_hang' # BUG: Should return 'released'\n  end\n  data\nend\n"
+    elif l == "kotlin":
+        return f"fun fix(data: Any?): Any? {{\n    if (data == \"error\") return \"connection_hang\" // BUG: Should return \"released\"\n    return data\n}}\n"
+    elif l == "swift":
+        return f"func fix(_ data: String) -> String {{\n    if data == \"error\" {{ return \"connection_hang\" }} // BUG: Should return \"released\"\n    return data\n}}\n"
+    elif l == "sql":
+        return f"-- DEFECTIVE QUERY: {title}\n-- Bug: Missing WHERE condition returns all records instead of filtered active records\nSELECT o.id, c.name FROM orders o, customers c;\n"
+    elif l in ["mongodb", "nosql", "mongo"]:
+        return f"// DEFECTIVE PIPELINE: {title}\n// Bug: Missing match stage processes unindexed raw collection\ndb.orders.aggregate([{{ $group: {{ _id: \"$status\", count: {{ $sum: 1 }} }} }}]);\n"
+    elif l in ["bash", "shell"]:
+        return f"#!/usr/bin/env bash\n# DEFECTIVE SCRIPT: {title}\nfix() {{\n    if [ \"$1\" = \"error\" ]; then echo \"connection_hang\"; else echo \"$1\"; fi\n}}\n"
+    elif l == "terraform":
         return f"# DEFECTIVE CONFIGURATION: {title}\nresource \"aws_security_group_rule\" \"open_ingress\" {{\n  cidr_blocks = [\"0.0.0.0/0\"] # BUG: Insecure open ingress\n}}\n"
-    return "// Debuggable code snippet\nfunction fix(data) { return data === 'error' ? 'released' : data; }\n"
+    return "// Debuggable code snippet\nfunction fix(data) { return data === 'error' ? 'connection_hang' : data; }\n"
+
+def _generate_10_dynamic_mcqs(role_title: str, job_skills: List[str], domain_category: str, seed: int) -> List[Dict[str, Any]]:
+    """
+    Generates 10 dynamic, substantive, role-tailored technical or domain MCQs.
+    Calibrated across 10 architectural and competency dimensions with NO hardcoded static banks.
+    """
+    p_skill = job_skills[0] if job_skills else role_title
+    s_skill = job_skills[1] if len(job_skills) > 1 else (job_skills[0] if job_skills else "Core Domain")
+    s_tertiary = job_skills[2] if len(job_skills) > 2 else "Best Practices"
+
+    # 1. FINANCE & ACCOUNTING (10 Competencies)
+    if domain_category == "finance":
+        return [
+            {
+                "id": f"dyn_mcq_{seed % 1000}_1",
+                "question": f"Under ASC 606 revenue recognition for multi-year {p_skill} contracts, when should revenue be recognized?",
+                "options": {
+                    "A": "When cash is received in the operating bank account.",
+                    "B": "When performance obligations are satisfied by transferring control of goods or services to the customer.",
+                    "C": "Evenly on the first day of each calendar month regardless of milestone completion.",
+                    "D": "Only when the entire contract term has completed."
+                },
+                "correct_option": "B",
+                "explanation": "ASC 606 requires revenue recognition upon satisfaction of performance obligations through transfer of control.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_2",
+                "question": f"During bank reconciliation for {s_skill}, how is a returned customer NSF (Non-Sufficient Funds) check accounted for?",
+                "options": {
+                    "A": "Deduct from the bank balance as an outstanding check.",
+                    "B": "Deduct from the book balance and reinstate Accounts Receivable for the customer.",
+                    "C": "Credit Cash and credit Sales Revenue directly.",
+                    "D": "No entry is needed if the client promises to re-deposit within 30 days."
+                },
+                "correct_option": "B",
+                "explanation": "Because the cash was previously added to books on initial deposit, when it bounces, book balance is credited and customer receivable reinstated.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_3",
+                "question": "Under the fundamental accounting equation, if company assets increase by $45,000 and liabilities increase by $15,000, what is the impact on Owner's Equity?",
+                "options": {
+                    "A": "Owner's Equity increases by $30,000.",
+                    "B": "Owner's Equity decreases by $30,000.",
+                    "C": "Owner's Equity increases by $60,000.",
+                    "D": "Owner's Equity remains unchanged."
+                },
+                "correct_option": "A",
+                "explanation": "Assets = Liabilities + Equity. If Assets change by +$45,000 and Liabilities by +$15,000, Equity must increase by $30,000.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_4",
+                "question": f"How should an advance payment of $120,000 received for 12 months of future {p_skill} consulting services be recorded initially?",
+                "options": {
+                    "A": "Credit Revenue $120,000 immediately.",
+                    "B": "Debit Cash $120,000 and Credit Deferred/Unearned Revenue (Liability) $120,000.",
+                    "C": "Credit Accounts Payable $120,000.",
+                    "D": "Record as a memorandum entry until service delivery concludes."
+                },
+                "correct_option": "B",
+                "explanation": "Unearned revenue represents an obligation to perform future services and must be classified as a liability until earned.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_5",
+                "question": f"Under Sarbanes-Oxley (SOX) Section 404 internal controls, which segregation of duties is mandatory for {s_skill} disbursements?",
+                "options": {
+                    "A": "The person creating vendor master records cannot approve invoices or release outgoing bank wires.",
+                    "B": "All employees can approve expenditures up to $50,000.",
+                    "C": "Accounts payable clerks must report directly to sales directors.",
+                    "D": "Bank reconciliations must be prepared by the individual signing vendor checks."
+                },
+                "correct_option": "A",
+                "explanation": "Separating vendor creation from invoice approval and disbursement execution prevents unauthorized disbursements and fraudulent vendor creation.",
+                "difficulty": "Senior"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_6",
+                "question": f"When evaluating Capital Expenditures (CapEx) versus Operating Expenses (OpEx) for {p_skill} equipment, what is the primary capitalization threshold criterion?",
+                "options": {
+                    "A": "The expenditure must provide economic benefits extending beyond the current operating fiscal year.",
+                    "B": "Any invoice over $100 must be capitalized.",
+                    "C": "All software licenses must be expensed regardless of duration.",
+                    "D": "CapEx is chosen only when corporate tax rates increase."
+                },
+                "correct_option": "A",
+                "explanation": "Assets providing economic benefits across multiple accounting periods must be capitalized and depreciated/amortized over useful life.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_7",
+                "question": "In periods of sustained inflation, which inventory valuation method results in the highest reported Gross Profit and highest ending inventory valuation?",
+                "options": {
+                    "A": "FIFO (First-In, First-Out)",
+                    "B": "LIFO (Last-In, First-Out)",
+                    "C": "Weighted-Average Cost Method",
+                    "D": "Specific Identification of damaged units"
+                },
+                "correct_option": "A",
+                "explanation": "Under FIFO, older and cheaper costs flow to COGS while higher recent costs remain in ending inventory, maximizing net income.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_8",
+                "question": "Which current asset is excluded when calculating the Quick Ratio (Acid-Test Ratio) from the standard Current Ratio formula?",
+                "options": {
+                    "A": "Inventory and prepaid expenses, because they cannot be converted into cash immediately.",
+                    "B": "Cash and cash equivalents.",
+                    "C": "Marketable short-term securities.",
+                    "D": "Trade accounts receivable."
+                },
+                "correct_option": "A",
+                "explanation": "Quick Ratio = (Cash + Marketable Securities + Receivables) / Current Liabilities. Inventory is excluded due to lower liquidity.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_9",
+                "question": f"Under ASC 830 (Foreign Currency Matters), where are balance sheet translation gains/losses recorded when consolidating an international subsidiary for {s_skill}?",
+                "options": {
+                    "A": "Other Comprehensive Income (OCI) within Cumulative Translation Adjustment (CTA) in Stockholders' Equity.",
+                    "B": "Operating Net Income in the Consolidated Income Statement immediately.",
+                    "C": "As an offset against accounts receivable in current assets.",
+                    "D": "Foreign currency translation adjustments are not recorded under GAAP."
+                },
+                "correct_option": "A",
+                "explanation": "Functional currency translation gains/losses bypass the income statement and accumulate in OCI / CTA under stockholders' equity.",
+                "difficulty": "Senior"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_10",
+                "question": f"Under ASC 350, when must goodwill acquired through an acquisition of a {p_skill} reporting unit be tested for impairment?",
+                "options": {
+                    "A": "At least annually, or more frequently if triggering events indicate that unit fair value is below carrying value.",
+                    "B": "Every 5 years upon mandatory management audit.",
+                    "C": "Only when the acquired company is formally dissolved.",
+                    "D": "Goodwill is amortized straight-line over 10 years without impairment testing."
+                },
+                "correct_option": "A",
+                "explanation": "Goodwill cannot be amortized under public GAAP; it must be assessed at least annually or upon triggering events for impairment.",
+                "difficulty": "Senior"
+            }
+        ]
+
+    # 2. HUMAN RESOURCES & TALENT (10 Competencies)
+    elif domain_category == "hr":
+        return [
+            {
+                "id": f"dyn_mcq_{seed % 1000}_1",
+                "question": f"Under the Fair Labor Standards Act (FLSA), which 3 criteria must all be satisfied to classify an employee in {p_skill} as exempt?",
+                "options": {
+                    "A": "Salary basis test, minimum salary threshold test, and specific duties test (executive, administrative, or professional).",
+                    "B": "Working 40+ hours per week, having a manager job title, and signing a waiver.",
+                    "C": "Receiving discretionary quarterly bonuses and having 3+ years tenure.",
+                    "D": "Filing as a 1099 independent contractor with state revenue authorities."
+                },
+                "correct_option": "A",
+                "explanation": "FLSA exemption strictly mandates meeting the salary basis, salary level threshold, and primary duties tests.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_2",
+                "question": f"Under the Older Workers Benefit Protection Act (OWBPA), what consideration and revocation periods are required for group layoffs involving employees age 40+ in {s_skill}?",
+                "options": {
+                    "A": "45 days consideration window, plus a mandatory 7-day revocation period following execution.",
+                    "B": "14 days consideration with zero revocation once executed.",
+                    "C": "72 hours notice before termination without written agreement requirements.",
+                    "D": "OWBPA applies only to organizations with 5,000+ employees."
+                },
+                "correct_option": "A",
+                "explanation": "In group workforce reductions, OWBPA mandates 45 days for employees aged 40+ to consider severance waivers, followed by 7 days to revoke.",
+                "difficulty": "Senior"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_3",
+                "question": f"When calculating talent acquisition metrics for {p_skill} recruiting, what does the Selection Ratio measure?",
+                "options": {
+                    "A": "Total number of hired candidates divided by the total number of applicants.",
+                    "B": "Percentage of job offers rejected by finalists.",
+                    "C": "Ratio of internal transfers to external hires.",
+                    "D": "Average cost per hire divided by target salary."
+                },
+                "correct_option": "A",
+                "explanation": "Selection Ratio = Hires / Applicants. A lower selection ratio indicates higher hiring selectivity.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_4",
+                "question": "Under the Americans with Disabilities Act (ADA), what is an employer's primary obligation upon receiving an accommodation request?",
+                "options": {
+                    "A": "Engage in an interactive dialogue process to identify effective reasonable accommodations that do not impose undue hardship.",
+                    "B": "Immediately grant the exact accommodation requested without doctor certification.",
+                    "C": "Place the employee on unpaid medical leave until fully recovered.",
+                    "D": "Offer a financial severance settlement to terminate employment."
+                },
+                "correct_option": "A",
+                "explanation": "The ADA requires employers to participate in a timely, good-faith interactive process to explore reasonable accommodations.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_5",
+                "question": f"Under the Family and Medical Leave Act (FMLA), how much job-protected leave is an eligible {s_skill} employee entitled to take in a 12-month period?",
+                "options": {
+                    "A": "Up to 12 workweeks of unpaid, job-protected leave with group health insurance continuation.",
+                    "B": "6 months of 100% paid leave funded by federal tax credits.",
+                    "C": "30 days of leave subject to manager approval.",
+                    "D": "FMLA provides unlimited leave as long as physician notes are submitted monthly."
+                },
+                "correct_option": "A",
+                "explanation": "Eligible employees are entitled to up to 12 weeks of unpaid, job-protected leave per year for qualifying medical/family reasons.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_6",
+                "question": f"When drafting an enforceable Performance Improvement Plan (PIP) for {p_skill}, which element is critical to defensibility?",
+                "options": {
+                    "A": "Specific, measurable benchmarks (SMART), clear timelines, scheduled support check-ins, and explicit consequences of non-attainment.",
+                    "B": "Subjective manager opinions on attitude and cultural enthusiasm.",
+                    "C": "Requiring immediate resignation if daily quotas are missed in week one.",
+                    "D": "Keeping the PIP confidential from the employee until final termination."
+                },
+                "correct_option": "A",
+                "explanation": "A legally sound PIP must establish objective criteria, concrete milestones, documented support, and clear potential outcomes.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_7",
+                "question": "In employment law, what primary factors determine the legal enforceability of an employee non-compete covenant?",
+                "options": {
+                    "A": "Reasonable geographic scope, limited time duration, and protection of legitimate business interests (e.g. trade secrets).",
+                    "B": "Whether the employee signed under peer pressure.",
+                    "C": "Mandatory 10-year nationwide restriction across all industries.",
+                    "D": "Approval by the state department of labor."
+                },
+                "correct_option": "A",
+                "explanation": "Courts enforce restrictive covenants only when narrowly tailored in time, geography, and legitimate business interest.",
+                "difficulty": "Senior"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_8",
+                "question": f"In compensation benchmarking for {p_skill}, what does a compa-ratio of 1.15 signify?",
+                "options": {
+                    "A": "The employee is paid 15% above the market midpoint for their salary grade.",
+                    "B": "The employee is paid 15% below the minimum entry rate.",
+                    "C": "The employee receives a 15% guaranteed annual bonus.",
+                    "D": "The salary band has a 15% spread between minimum and maximum."
+                },
+                "correct_option": "A",
+                "explanation": "Compa-Ratio = Actual Salary / Salary Band Midpoint. A value of 1.15 indicates compensation at 115% of the midpoint.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_9",
+                "question": "Which interviewing methodology is recognized by industrial psychologists as most effective for minimizing cognitive interviewer bias?",
+                "options": {
+                    "A": "Structured behavioral interviewing using standardized question rubrics and the STAR model across all candidates.",
+                    "B": "Unstructured conversational interviews exploring personal hobbies.",
+                    "C": "Stress interviews with intentional hostility to test pressure tolerance.",
+                    "D": "Allowing each interviewer to formulate unique questions spontaneously."
+                },
+                "correct_option": "A",
+                "explanation": "Structured interviews with validated rubrics and behavioral questions significantly reduce bias and predict job performance.",
+                "difficulty": "Mid-Level"
+            },
+            {
+                "id": f"dyn_mcq_{seed % 1000}_10",
+                "question": f"Under the Worker Adjustment and Retraining Notification (WARN) Act, what notice period is required for plant closings or mass layoffs involving 50+ workers in {s_skill}?",
+                "options": {
+                    "A": "60 calendar days written advance notice to employees and local government units.",
+                    "B": "14 business days notice via corporate intranet.",
+                    "C": "Notice is optional if severance is paid within 30 days.",
+                    "D": "90 calendar days notice exclusively for public companies."
+                },
+                "correct_option": "A",
+                "explanation": "The federal WARN Act mandates 60 days advance written notice for covered plant closings and mass layoffs.",
+                "difficulty": "Senior"
+            }
+        ]
+
+    # 3. TECHNICAL (10 Architectural & Engineering Dimensions)
+    else:
+        # Detect if database / SQL focused
+        is_sql_focus = any(k in [s.lower() for s in job_skills] + [role_title.lower()] for k in ["sql", "database", "postgres", "mysql", "dba", "data engineer"])
+        # Detect if frontend / web focused
+        is_web_focus = any(k in [s.lower() for s in job_skills] + [role_title.lower()] for k in ["react", "frontend", "vue", "angular", "css", "html", "web"])
+        # Detect if cloud / infra focused
+        is_cloud_focus = any(k in [s.lower() for s in job_skills] + [role_title.lower()] for k in ["cloud", "aws", "kubernetes", "k8s", "docker", "devops", "terraform", "infra"])
+
+        if is_sql_focus:
+            return [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": "Given a composite B-Tree index on (tenant_id, created_at, status), which query CANNOT efficiently utilize this index under the leftmost prefix rule?",
+                    "options": {
+                        "A": "SELECT * FROM events WHERE created_at >= '2026-01-01' AND status = 'Active'",
+                        "B": "SELECT * FROM events WHERE tenant_id = 't1' AND created_at >= '2026-01-01'",
+                        "C": "SELECT * FROM events WHERE tenant_id = 't1' AND status = 'Active'",
+                        "D": "SELECT * FROM events WHERE tenant_id = 't1' AND created_at = '2026-01-01' AND status = 'Active'"
+                    },
+                    "correct_option": "A",
+                    "explanation": "B-Tree composite indexes require leading columns. Omitting the leftmost column (tenant_id) forces a full table scan or index scan.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": "Under ANSI SQL transaction isolation, which transactional anomaly is prevented by REPEATABLE READ that is permitted under READ COMMITTED?",
+                    "options": {
+                        "A": "Non-repeatable read (fuzzy read), where re-reading a row returns values modified by a committed concurrent transaction.",
+                        "B": "Dirty read of uncommitted transactions.",
+                        "C": "Phantom reads across range inserts.",
+                        "D": "Deadlock timeouts."
+                    },
+                    "correct_option": "A",
+                    "explanation": "READ COMMITTED allows rows to change between queries in the same transaction. REPEATABLE READ locks rows or uses snapshot MVCC.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": f"In PostgreSQL and modern relational engines, what is the role of the Write-Ahead Log (WAL) in maintaining ACID durability for {p_skill}?",
+                    "options": {
+                        "A": "Changes are appended sequentially to WAL on non-volatile disk before data pages are flushed, enabling crash recovery.",
+                        "B": "WAL compresses table columns using zstandard before sending to read replicas.",
+                        "C": "WAL executes schema migrations asynchronously without table locks.",
+                        "D": "WAL stores database user passwords in encrypted format."
+                    },
+                    "correct_option": "A",
+                    "explanation": "WAL guarantees durability (D in ACID) by ensuring redo logs are committed to disk before dirty pages are written back to data files.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_4",
+                    "question": "How does Multi-Version Concurrency Control (MVCC) eliminate reader-writer blocking in high-concurrency relational databases?",
+                    "options": {
+                        "A": "Readers view an immutable snapshot of data as of their transaction start time, while writers append new row versions (xmin/xmax).",
+                        "B": "Readers acquire exclusive table locks that block writers until queries finish.",
+                        "C": "Writers block all read transactions until commit.",
+                        "D": "All tables are replicated into Redis in-memory cache."
+                    },
+                    "correct_option": "A",
+                    "explanation": "In MVCC, 'readers never block writers, and writers never block readers' because concurrent transactions inspect different row snapshots.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_5",
+                    "question": f"When executing a query with `EXPLAIN ANALYZE` on {s_skill}, why might the optimizer choose a Seq Scan (Full Table Scan) over an Index Scan?",
+                    "options": {
+                        "A": "The filter condition has low selectivity (e.g. matches 70%+ of rows), making sequential multi-block I/O faster than scattered index lookups.",
+                        "B": "Indexes can only be used on primary key columns.",
+                        "C": "The database server is low on RAM and disables all indexes.",
+                        "D": "Foreign keys automatically disable index scans."
+                    },
+                    "correct_option": "A",
+                    "explanation": "When a query retrieves a large fraction of table pages, sequential I/O reads full disk blocks faster than jumping back and forth via index pointers.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_6",
+                    "question": f"What is the difference between `DELETE FROM records` and `TRUNCATE TABLE records` in relational database systems?",
+                    "options": {
+                        "A": "TRUNCATE is a DDL operation that deallocates data pages instantly with minimal logging, whereas DELETE logs row-by-row deletions.",
+                        "B": "DELETE cannot be rolled back inside an ACID transaction.",
+                        "C": "TRUNCATE triggers row-level AFTER DELETE foreign key triggers.",
+                        "D": "TRUNCATE only works on temporary tables."
+                    },
+                    "correct_option": "A",
+                    "explanation": "TRUNCATE drops table extents directly, resetting high-water marks rapidly without writing individual row deletions to transaction logs.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_7",
+                    "question": "In database normalization, what distinguishes Third Normal Form (3NF) from Second Normal Form (2NF)?",
+                    "options": {
+                        "A": "3NF eliminates transitive dependencies (non-key columns must not depend on other non-key columns).",
+                        "B": "3NF eliminates partial functional dependencies on candidate keys.",
+                        "C": "3NF eliminates multi-valued array attributes.",
+                        "D": "3NF enforces all tables to have foreign keys."
+                    },
+                    "correct_option": "A",
+                    "explanation": "2NF eliminates partial dependencies; 3NF requires every non-key column to depend 'on the key, the whole key, and nothing but the key'.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_8",
+                    "question": f"When designing connection pooling for high-throughput {p_skill} applications (e.g. PgBouncer or HikariCP), what is the optimal pool sizing principle?",
+                    "options": {
+                        "A": "Pool size should generally equal (2 * CPU Cores) + effective spindle count to minimize CPU context switching under high load.",
+                        "B": "Allocate 1,000 connection threads per web client connection.",
+                        "C": "Disable connection pooling and open raw TCP sockets on every HTTP request.",
+                        "D": "Set maximum pool size to the maximum theoretical memory in gigabytes."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Excessive connections cause severe disk spindle contention and CPU thread context switching. Sizing near core count maximizes throughput.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_9",
+                    "question": "Which SQL window function ranks rows without creating gaps in ranking values when ties occur?",
+                    "options": {
+                        "A": "DENSE_RANK()",
+                        "B": "RANK()",
+                        "C": "ROW_NUMBER()",
+                        "D": "NTILE(4)"
+                    },
+                    "correct_option": "A",
+                    "explanation": "RANK() leaves gaps following ties (e.g. 1, 2, 2, 4), while DENSE_RANK() assigns consecutive rank numbers (e.g. 1, 2, 2, 3).",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_10",
+                    "question": f"In a distributed relational database architecture for {s_skill}, what is the two-phase commit (2PC) protocol used for?",
+                    "options": {
+                        "A": "Coordinating atomic commit or rollback across multiple distributed database nodes so all nodes commit or none do.",
+                        "B": "Caching SQL query plans in local memory.",
+                        "C": "Compressing backup dumps before uploading to cloud storage.",
+                        "D": "Preventing cross-site scripting in SQL injection attacks."
+                    },
+                    "correct_option": "A",
+                    "explanation": "2PC consists of a Prepare phase and a Commit phase, guaranteeing atomic distributed consensus across multiple transaction participants.",
+                    "difficulty": "Senior"
+                }
+            ]
+
+        elif is_web_focus:
+            return [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"In React and modern Virtual DOM frameworks for {p_skill}, how does the reconciliation algorithm optimize rendering of dynamic lists?",
+                    "options": {
+                        "A": "It uses stable element keys to track additions, deletions, and moves without re-creating DOM subtrees.",
+                        "B": "It re-renders the entire document body on every state mutation.",
+                        "C": "It converts all JavaScript into WebAssembly bytecode prior to execution.",
+                        "D": "It forces synchronous layout reflows on every microtask."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Stable keys allow reconciliation to match subtree children between renders, preserving local component state and avoiding DOM re-creation.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": "Which Core Web Vital metric measures visual stability and unexpected layout movement during page loading?",
+                    "options": {
+                        "A": "Cumulative Layout Shift (CLS)",
+                        "B": "Largest Contentful Paint (LCP)",
+                        "C": "Interaction to Next Paint (INP)",
+                        "D": "First Contentful Paint (FCP)"
+                    },
+                    "correct_option": "A",
+                    "explanation": "CLS measures unexpected layout shifts that occur when elements load asynchronously without pre-reserved aspect-ratio dimensions.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": "Which browser rendering phase is triggered when modifying element geometric properties like `width`, `height`, or `margin`?",
+                    "options": {
+                        "A": "Layout (Reflow), followed by Paint and Composite.",
+                        "B": "Composite layer transformation only without Reflow.",
+                        "C": "DNS Prefetching only.",
+                        "D": "Microtask serialization only."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Modifying geometry forces the browser to recalculate the document layout tree, causing expensive layout (reflow) and repaint operations.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_4",
+                    "question": f"In JavaScript event loops, what is the execution priority between Microtasks (e.g. `Promise.then`, `queueMicrotask`) and Macrotasks (e.g. `setTimeout`)?",
+                    "options": {
+                        "A": "The microtask queue is completely drained after each macrotask before the next macrotask is executed.",
+                        "B": "Macrotasks always execute before any microtask.",
+                        "C": "Microtasks and macrotasks execute concurrently on multiple threads.",
+                        "D": "Promises execute only during browser idle periods."
+                    },
+                    "correct_option": "A",
+                    "explanation": "After each macrotask completes, the JavaScript runtime drains the entire microtask queue before rendering or picking the next macrotask.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_5",
+                    "question": f"When optimizing large web bundles in {s_skill}, what is the purpose of Tree Shaking in modern bundlers (Vite/Webpack)?",
+                    "options": {
+                        "A": "Static dead-code elimination that removes unused ES module exports from the final distribution bundle.",
+                        "B": "Compressing HTML files into zip archives on the server.",
+                        "C": "Minifying CSS class names dynamically at runtime.",
+                        "D": "Encrypting JavaScript bytecode against reverse engineering."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Tree shaking relies on ES module static `import`/`export` syntax to identify and discard unreferenced modules from production bundles.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_6",
+                    "question": "What is the primary architectural benefit of Web Workers in complex web applications?",
+                    "options": {
+                        "A": "They execute CPU-intensive tasks on background OS threads without blocking the main browser UI thread.",
+                        "B": "They bypass Same-Origin Policy for cross-domain API requests.",
+                        "C": "They grant direct access to the native operating system filesystem.",
+                        "D": "They render React components 10x faster by manipulating window.document directly."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Web Workers run isolated scripts on real background threads, communicating via message passing and preventing UI frame drops.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_7",
+                    "question": f"How does setting `SameSite=Strict` on HTTP session cookies protect web applications using {p_skill}?",
+                    "options": {
+                        "A": "It prevents the browser from sending the cookie in cross-site requests, mitigating Cross-Site Request Forgery (CSRF).",
+                        "B": "It prevents client-side JavaScript from reading `document.cookie` (XSS mitigation).",
+                        "C": "It enforces TLS encryption on all network transfers.",
+                        "D": "It forces cookies to expire after 15 minutes."
+                    },
+                    "correct_option": "A",
+                    "explanation": "SameSite=Strict ensures cookies are sent only in first-party contexts, preventing attackers from forging authenticated requests via external links.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_8",
+                    "question": f"In client-side single page applications (SPAs), how do detached DOM nodes cause progressive memory leaks in {s_skill}?",
+                    "options": {
+                        "A": "Nodes removed from the document tree are still referenced by JavaScript closures or event listeners, preventing garbage collection.",
+                        "B": "The browser runs out of HTML tags.",
+                        "C": "CSS styles consume all available GPU memory.",
+                        "D": "DOM nodes are permanent and cannot be garbage collected in V8."
+                    },
+                    "correct_option": "A",
+                    "explanation": "When an element is removed from DOM but retained by an active listener or global variable, its entire DOM subtree cannot be freed.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_9",
+                    "question": "What is the difference between Server-Side Rendering (SSR) with Hydration and Static Site Generation (SSG)?",
+                    "options": {
+                        "A": "SSR renders HTML dynamically on every user request at the server, while SSG pre-renders HTML pages ahead of time at build time.",
+                        "B": "SSR does not support JavaScript interactivity.",
+                        "C": "SSG requires an active Node.js server for every single visitor.",
+                        "D": "Hydration is only used in mobile native applications."
+                    },
+                    "correct_option": "A",
+                    "explanation": "SSG produces static HTML files at build time suitable for CDN caching, whereas SSR generates fresh HTML on each incoming request.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_10",
+                    "question": f"When rendering high-frequency streaming data (e.g. 60 updates/sec financial tickers in {p_skill}), how should DOM updates be throttled?",
+                    "options": {
+                        "A": "Schedule updates using `requestAnimationFrame` to batch mutations with the monitor refresh cycle (16.6ms).",
+                        "B": "Synchronously update `document.innerHTML` on every WebSocket message arrival.",
+                        "C": "Reload the entire page on every 10th message.",
+                        "D": "Convert all DOM elements into inline SVG images."
+                    },
+                    "correct_option": "A",
+                    "explanation": "requestAnimationFrame synchronizes DOM writes with the browser render loop, preventing layout thrashing and unnecessary reflows.",
+                    "difficulty": "Senior"
+                }
+            ]
+
+        elif is_cloud_focus:
+            return [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"When configuring private subnets in an {p_skill} cloud VPC, which topology provides secure outbound internet connectivity for worker instances?",
+                    "options": {
+                        "A": "Deploying a Managed NAT Gateway in a public subnet with a default route (0.0.0.0/0) from private route tables.",
+                        "B": "Attaching an Internet Gateway directly to each private subnet route table.",
+                        "C": "Opening port 0-65535 in the Network ACL for all inbound traffic.",
+                        "D": "Assigning public IPv4 addresses directly to all backend container pods."
+                    },
+                    "correct_option": "A",
+                    "explanation": "NAT Gateways in public subnets translate private IP addresses for outbound traffic while blocking inbound connections from the public internet.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": f"In a multi-node Kubernetes cluster running {s_skill}, how do you ensure a critical DaemonSet or Pod is assigned Guaranteed Quality of Service (QoS)?",
+                    "options": {
+                        "A": "Set container CPU and Memory `requests` equal to `limits` for all containers in the Pod specification.",
+                        "B": "Set container requests to 0 and leave limits unbounded.",
+                        "C": "Deploy the Pod without cgroups isolation.",
+                        "D": "Grant root cluster-admin RBAC permissions to the pod service account."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Kubernetes grants Guaranteed QoS only when CPU and memory requests are explicitly defined and equal to their respective limits.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": "Which Kubernetes container security boundary prevents privilege escalation and restricts container breakout to the host kernel?",
+                    "options": {
+                        "A": "Configuring `securityContext` with `allowPrivilegeEscalation: false` and `readOnlyRootFilesystem: true`.",
+                        "B": "Granting root access to all worker container daemons.",
+                        "C": "Disabling TLS authentication between kubelet and API server.",
+                        "D": "Running all containers on shared privileged host networks."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Disallowing privilege escalation and mounting a read-only root filesystem prevents container escapes and root exploit persistence.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_4",
+                    "question": f"In Infrastructure as Code (Terraform) pipelines for {p_skill}, how is state file concurrency corruption prevented during CI/CD team runs?",
+                    "options": {
+                        "A": "Using a remote backend (such as S3 with DynamoDB state locking or Terraform Cloud remote state).",
+                        "B": "Committing `terraform.tfstate` directly into Git repository main branches.",
+                        "C": "Running `terraform apply` with `-lock=false` flag.",
+                        "D": "Deleting the `.terraform` folder before every build."
+                    },
+                    "correct_option": "A",
+                    "explanation": "State locking via DynamoDB or remote backends acquires an atomic lock prior to state modifications, preventing concurrent write collisions.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_5",
+                    "question": "How does Mutual TLS (mTLS) in a Service Mesh (Istio / Linkerd) achieve Zero Trust service-to-service communication?",
+                    "options": {
+                        "A": "Both client and server validate each other's cryptographic x509 certificates and encrypt the transport layer.",
+                        "B": "The client sends passwords in plain HTTP headers to the server proxy.",
+                        "C": "All traffic is routed through a single public IP proxy.",
+                        "D": "It disables network firewall rules completely."
+                    },
+                    "correct_option": "A",
+                    "explanation": "mTLS establishes bidirectional authentication where sidecar proxies verify peer workload identities and establish encrypted sessions.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_6",
+                    "question": f"In Kubernetes Horizontal Pod Autoscaler (HPA) for {s_skill}, what parameter prevents rapid pod scaling oscillation (flapping/thrashing)?",
+                    "options": {
+                        "A": "Configuring stabilization windows (cooldown delay) in the `behavior` scaleDown / scaleUp policy.",
+                        "B": "Setting maxReplicas equal to minReplicas.",
+                        "C": "Disabling node metrics-server probes.",
+                        "D": "Increasing pod memory limits to 128GB."
+                    },
+                    "correct_option": "A",
+                    "explanation": "HPA stabilization windows require traffic or metric drops to persist for a configured period (e.g. 300s) before reducing replica count.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_7",
+                    "question": "In Linux container runtime architecture, what is the role of `cgroups` (control groups) versus `namespaces`?",
+                    "options": {
+                        "A": "Namespaces isolate what a process can SEE (PID, NET, MNT); cgroups isolate how much resource a process can USE (CPU, Memory, I/O).",
+                        "B": "cgroups provide network encryption; namespaces provide file permissions.",
+                        "C": "Namespaces limit memory allocation; cgroups limit user logins.",
+                        "D": "They are synonymous terms for virtual machine hypervisors."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Namespaces provide virtualization boundaries (view isolation); cgroups enforce hardware resource utilization boundaries.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_8",
+                    "question": f"When configuring health probes in Kubernetes for {p_skill}, what is the risk of using an aggressive liveness probe with a short timeout?",
+                    "options": {
+                        "A": "Transient CPU latency spikes can cause failed probes, triggering cascading container kill-and-restart loops across the cluster.",
+                        "B": "Liveness probes increase database disk storage.",
+                        "C": "The API server disables ingress traffic permanently.",
+                        "D": "Pod IP addresses are permanently lost."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Overly aggressive liveness probes misinterpret temporary traffic surges as deadlocks, restarting healthy pods and exacerbating outages.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_9",
+                    "question": "Under the SRE error budget model, what operational action is mandated when a service exhausts its monthly 99.9% SLO error budget?",
+                    "options": {
+                        "A": "Freeze non-critical production feature deployments and redirect engineering effort to reliability, testing, and infrastructure fixes.",
+                        "B": "Delete past log records to reset the error metric.",
+                        "C": "Double the monthly subscription price for customers.",
+                        "D": "Lower the SLO target to 90% immediately."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Error budgets align product velocity with reliability. When budget is spent, releases pause to prioritize stability and post-mortem fixes.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_10",
+                    "question": f"In cloud observability, how do distributed tracing frameworks (OpenTelemetry) track a request across 10 microservices for {s_skill}?",
+                    "options": {
+                        "A": "By injecting and propagating a unified `traceparent` context header (Trace ID + Span ID) across all downstream HTTP/gRPC calls.",
+                        "B": "By synchronizing CPU hardware clock ticks across physical servers.",
+                        "C": "By writing all logs into a single central CSV file on the load balancer.",
+                        "D": "By running all microservices inside a single shared thread."
+                    },
+                    "correct_option": "A",
+                    "explanation": "W3C Trace Context standardizes the `traceparent` header, allowing distinct microservices to correlate spans into a unified end-to-end trace.",
+                    "difficulty": "Senior"
+                }
+            ]
+
+        else:
+            # GENERAL TECHNICAL / BACKEND & SYSTEMS ENGINEERING DEFAULT
+            return [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"In high-throughput {p_skill} architectures, how do database composite B-Tree indexes on (tenant_id, created_at, status) behave under the leftmost prefix rule?",
+                    "options": {
+                        "A": "Queries filtering on created_at alone without tenant_id cannot efficiently utilize the composite B-Tree index.",
+                        "B": "The index re-orders columns dynamically at query execution time.",
+                        "C": "All queries run 10x faster regardless of which columns are in the WHERE clause.",
+                        "D": "Composite indexes can only be queried using full table scans."
+                    },
+                    "correct_option": "A",
+                    "explanation": "B-Tree composite indexes require leading columns to filter efficiently; omitting the leftmost column forces a full scan.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": f"When scaling asynchronous background task queues with {s_skill}, what mechanism prevents duplicate job execution across distributed worker threads?",
+                    "options": {
+                        "A": "Distributed locks with idempotency keys and transactional acknowledgment.",
+                        "B": "Increasing the worker thread sleep duration to 60 seconds.",
+                        "C": "Running all workers on a single physical CPU core.",
+                        "D": "Disabling database transaction commit logs."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Idempotency keys paired with atomic distributed locking guarantee at-most-once or idempotent at-least-once processing.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": "Under relational transactional isolation, what anomaly is prevented by REPEATABLE READ that is permitted under READ COMMITTED?",
+                    "options": {
+                        "A": "Non-repeatable reads (re-reading a row returns values modified by a concurrent committed transaction).",
+                        "B": "Dirty reads of uncommitted changes.",
+                        "C": "Deadlocks across concurrent index updates.",
+                        "D": "TCP connection resets."
+                    },
+                    "correct_option": "A",
+                    "explanation": "REPEATABLE READ ensures that once a transaction reads a row, subsequent reads inside that transaction observe the exact same snapshot values.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_4",
+                    "question": f"How does the Cache-Aside pattern mitigate the 'Thundering Herd' (Cache Stampede) problem when a hot key expires in {p_skill}?",
+                    "options": {
+                        "A": "By utilizing mutual exclusion locks (mutex) or probabilistic early expiration (XFetch) so only one worker queries the database.",
+                        "B": "By disabling database read queries completely.",
+                        "C": "By setting cache TTL to 0 seconds permanently.",
+                        "D": "By deleting the cache keys on every user write."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Locking or early probabilistic refreshing ensures that only a single worker refreshes an expired cache entry, shielding the database.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_5",
+                    "question": f"In distributed systems, how does the Raft consensus algorithm handle a network partition that isolates the current Leader from a majority of nodes for {s_skill}?",
+                    "options": {
+                        "A": "The minority partition leader cannot achieve quorum and rejects writes; the majority partition elects a new Leader and continues.",
+                        "B": "Both partitions continue accepting writes, leading to permanent data divergence.",
+                        "C": "The entire cluster immediately halts all read operations.",
+                        "D": "The isolated leader shuts down all physical node hardware."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Raft requires majority quorum (N/2 + 1) for log commit and leader election, preventing split-brain writes during partitions.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_6",
+                    "question": "In TCP network protocol communication, what is the primary cause of TCP socket starvation during sudden traffic surges?",
+                    "options": {
+                        "A": "High connection churn leaving thousands of sockets in TIME_WAIT state, exhausting ephemeral port ranges.",
+                        "B": "Ethernet cables overheating.",
+                        "C": "Using IPv6 instead of IPv4.",
+                        "D": "Excessive browser cookie headers."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Opening and closing TCP connections rapidly leaves sockets lingering in TIME_WAIT (typically 60s), exhausting available ephemeral ports.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_7",
+                    "question": f"In memory management and runtime execution for {p_skill}, what is the primary performance difference between Stack and Heap memory allocation?",
+                    "options": {
+                        "A": "Stack allocation is contiguous and managed automatically via CPU pointer moves (O(1)); Heap allocation requires dynamic runtime search and garbage collection.",
+                        "B": "Heap allocation is always faster than stack allocation.",
+                        "C": "Stack memory can store gigabytes of variable-length objects.",
+                        "D": "Stack memory is shared across all concurrent OS processes."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Stack frames allocate and free memory instantaneously as functions enter and exit; heap allocation requires free-list lookups and garbage collection.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_8",
+                    "question": "According to the HTTP/1.1 and REST specifications (RFC 7231), which of the following HTTP methods is NOT idempotent?",
+                    "options": {
+                        "A": "POST",
+                        "B": "PUT",
+                        "C": "DELETE",
+                        "D": "GET"
+                    },
+                    "correct_option": "A",
+                    "explanation": "PUT, DELETE, and GET are idempotent because repeated identical requests produce the same end server state. POST creates new resources on each invocation.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_9",
+                    "question": f"When analyzing API latency distribution for {s_skill}, why is the 99th Percentile (P99) metric prioritized over the Mean (Average)?",
+                    "options": {
+                        "A": "Averages conceal catastrophic tail latency outliers; P99 reflects the real worst-case experience of 1 in every 100 production requests.",
+                        "B": "Mean latency is mathematically impossible to calculate in distributed systems.",
+                        "C": "P99 represents the minimum response time.",
+                        "D": "P99 only measures failed HTTP 500 error responses."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Because latency distributions are heavily right-skewed, averages mask extreme tail delays experienced by high-volume users.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_10",
+                    "question": f"In Linux systems programming for {p_skill}, why does `epoll` scale to 100,000 concurrent sockets with O(1) complexity while `select` degrades at O(N)?",
+                    "options": {
+                        "A": "epoll registers events in kernel memory using callbacks, returning only active ready sockets; select rescans the entire file descriptor set linearly.",
+                        "B": "epoll executes all socket I/O in user space.",
+                        "C": "select is restricted to UDP sockets only.",
+                        "D": "epoll bypasses the operating system kernel."
+                    },
+                    "correct_option": "A",
+                    "explanation": "epoll avoids linearly traversing all file descriptors on every poll by maintaining an event cache in the Linux kernel via ready lists.",
+                    "difficulty": "Senior"
+                }
+            ]
 
 def _normalize_bundle(
     raw_bundle: Dict[str, Any],
@@ -467,7 +1416,35 @@ def _normalize_bundle(
     """Normalizes and validates bundle structure to ensure seamless frontend consumption."""
     mcq_solutions = {}
     normalized_mcqs = []
-    for idx, q in enumerate(raw_bundle.get("technical_mcqs", [])[:3]):
+    
+    # Extract raw MCQs and supplement to guarantee exactly 10 questions
+    raw_mcqs = raw_bundle.get("technical_mcqs", [])
+    if not isinstance(raw_mcqs, list):
+        raw_mcqs = []
+
+    seed_str = f"{role_title}:{':'.join(job_skills)}"
+    seed = int(hashlib.sha256(seed_str.encode()).hexdigest(), 16)
+    dynamic_supplement = _generate_10_dynamic_mcqs(role_title, job_skills, domain_category, seed)
+
+    merged_mcqs = []
+    seen_questions = set()
+
+    for q in raw_mcqs:
+        q_text = str(q.get("question", "")).strip().lower()
+        if q_text and q_text not in seen_questions:
+            seen_questions.add(q_text)
+            merged_mcqs.append(q)
+
+    for q_supp in dynamic_supplement:
+        if len(merged_mcqs) >= 10:
+            break
+        q_text = str(q_supp.get("question", "")).strip().lower()
+        if q_text not in seen_questions:
+            seen_questions.add(q_text)
+            merged_mcqs.append(q_supp)
+
+    # Process all 10 MCQs
+    for idx, q in enumerate(merged_mcqs[:10]):
         q_id = q.get("id") or f"mcq_{idx+1}"
         raw_opts = q.get("options", {})
         opts = {}
@@ -528,6 +1505,38 @@ def _normalize_bundle(
         "1. Analysis & Executive Findings:\n\n2. Proposed Solution / Model:\n\n3. Action Steps & Risk Safeguards:"
     )
 
+    # SQL Schema & Table DDL definitions
+    sql_schema_ddl = hands.get("schema_ddl") or """-- Relational Schema: departments & employees
+CREATE TABLE departments (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    department_id INTEGER,
+    salary INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+INSERT INTO departments (id, name) VALUES (1, 'Engineering'), (2, 'Sales'), (3, 'Finance');
+
+INSERT INTO employees (id, name, department_id, salary, status) VALUES
+(101, 'Alice Chen', 1, 125000, 'Active'),
+(102, 'Bob Smith', 1, 95000, 'Active'),
+(103, 'Carol Danvers', 1, 140000, 'Active'),
+(104, 'David Miller', 2, 75000, 'Active'),
+(105, 'Emma Wilson', 2, 85000, 'Active'),
+(106, 'Frank Wright', 3, 90000, 'Terminated'),
+(107, 'Grace Hopper', 3, 115000, 'Active');
+"""
+    sql_expected_rows = hands.get("expected_rows") or [
+        {"department": "Engineering", "headcount": 3, "avg_salary": 120000.0},
+        {"department": "Sales", "headcount": 2, "avg_salary": 80000.0}
+    ]
+
     # Sample and Hidden Test Cases for Hands-on
     raw_hands_sample = hands.get("sample_test_cases") or []
     raw_hands_hidden = hands.get("hidden_test_cases") or []
@@ -538,28 +1547,49 @@ def _normalize_bundle(
         raw_hands_hidden = raw_hands_all[2:]
 
     if not raw_hands_sample and is_coding:
-        raw_hands_sample = [
-            {
-                "id": 1,
-                "name": "Sample Test 1: Standard Event Count",
-                "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]",
-                "expected": "{'auth': 1}",
-                "explanation": "Filters INFO entry and records 1 ERROR for 'auth'.",
-                "assertion_py": "assert solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]) == {'auth': 1}",
-                "assertion_js": "assert.deepStrictEqual(solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]), {'auth': 1});"
-            },
-            {
-                "id": 2,
-                "name": "Sample Test 2: Multiple Error Occurrences",
-                "input": "[{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]",
-                "expected": "{'api': 2}",
-                "explanation": "Aggregates multiple error occurrences for 'api' service.",
-                "assertion_py": "assert solve([{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]) == {'api': 2}",
-                "assertion_js": "assert.deepStrictEqual(solve([{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]), {'api': 2});"
-            }
-        ]
+        if "sql" in allowed_langs:
+            raw_hands_sample = [
+                {
+                    "id": 1,
+                    "name": "SQL Aggregation & Active Department Filter",
+                    "input": "Execute against departments & employees tables",
+                    "expected": json.dumps(sql_expected_rows),
+                    "assertion_sql": "SELECT department, headcount, avg_salary",
+                    "explanation": "Calculates headcount and average salary for active employees per department where average salary >= 80,000."
+                }
+            ]
+            raw_hands_hidden = [
+                {
+                    "id": 101,
+                    "name": "Hidden SQL Test: Exclude Terminated Employees",
+                    "input": "Terminated employee boundary validation",
+                    "expected": "Ensures Frank Wright (Terminated, Finance) is strictly excluded.",
+                    "assertion_sql": "SELECT COUNT(*) FROM employees WHERE status = 'Terminated'"
+                }
+            ]
+        else:
+            raw_hands_sample = [
+                {
+                    "id": 1,
+                    "name": "Sample Test 1: Standard Event Count",
+                    "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]",
+                    "expected": "{'auth': 1}",
+                    "explanation": "Filters INFO entry and records 1 ERROR for 'auth'.",
+                    "assertion_py": "assert solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]) == {'auth': 1}",
+                    "assertion_js": "assert.deepStrictEqual(solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]), {'auth': 1});"
+                },
+                {
+                    "id": 2,
+                    "name": "Sample Test 2: Multiple Error Occurrences",
+                    "input": "[{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]",
+                    "expected": "{'api': 2}",
+                    "explanation": "Aggregates multiple error occurrences for 'api' service.",
+                    "assertion_py": "assert solve([{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]), {'api': 2}",
+                    "assertion_js": "assert.deepStrictEqual(solve([{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]), {'api': 2});"
+                }
+            ]
 
-    if not raw_hands_hidden and is_coding:
+    if not raw_hands_hidden and is_coding and "sql" not in allowed_langs:
         raw_hands_hidden = [
             {
                 "id": 101,
@@ -586,17 +1616,12 @@ def _normalize_bundle(
             "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]",
             "output": "{'auth': 1}",
             "explanation": "Filters out INFO logs and aggregates 1 error for 'auth'."
-        },
-        {
-            "input": "[{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]",
-            "output": "{'api': 2}",
-            "explanation": "Aggregates multiple error occurrences for 'api' service."
         }
     ]
 
     hands_constraints = hands.get("constraints") or [
         "1 <= data.length <= 10^4",
-        "Valid input format guaranteed (List of Dict / Objects)",
+        "Valid input format guaranteed",
         "Time Limit: 2.0s",
         "Memory Limit: 256 MB"
     ]
@@ -606,7 +1631,9 @@ def _normalize_bundle(
         "javascript": "function solve(data) {\n    // Return object mapping service to error count\n    return {};\n}",
         "typescript": "function solve(data: any[]): Record<string, number> {\n    return {};\n}",
         "java": "public class Solution {\n    public static Map<String, Integer> solve(List<Map<String, Object>> data) {\n        return new HashMap<>();\n    }\n}",
-        "cpp": "std::map<std::string, int> solve(const auto& data) {\n    return {};\n}"
+        "cpp": "std::map<std::string, int> solve(const auto& data) {\n    return {};\n}",
+        "csharp": "public static Dictionary<string, int> Solve(List<Dictionary<string, object>> data) {\n    return new Dictionary<string, int>();\n}",
+        "sql": "-- Write SQL query satisfying aggregation requirements\nSELECT department, COUNT(*) as headcount, AVG(salary) as avg_salary FROM employees GROUP BY department;"
     }
 
     normalized_hands = {
@@ -619,6 +1646,8 @@ def _normalize_bundle(
         "supported_languages": [l for l in allowed_langs if l in starter_code] if is_coding else [],
         "starter_code": starter_code if is_coding else {},
         "deliverable_template": deliverable_template,
+        "schema_ddl": sql_schema_ddl if ("sql" in allowed_langs or is_coding) else "",
+        "expected_rows": sql_expected_rows if ("sql" in allowed_langs or is_coding) else [],
         "examples": hands_examples if is_coding else [],
         "constraints": hands_constraints if is_coding else [],
         "function_signature": hands_signatures if is_coding else {},
@@ -626,7 +1655,6 @@ def _normalize_bundle(
         "hidden_test_cases": raw_hands_hidden if is_coding else [],
         "test_cases": (raw_hands_sample + raw_hands_hidden) if is_coding else (hands.get("test_cases") or [])
     }
-
     # Troubleshooting normalization
     trouble = raw_bundle.get("troubleshooting", {})
     raw_broken = trouble.get("broken_code", {})
@@ -1213,7 +2241,10 @@ def synthesize_technical_assessment_bundle(
     # 1. Classify domain and detect required technologies
     is_coding, domain_category, detected_langs = classify_job_domain(role_title, job_skills, job_description)
 
-    all_supported_langs = ["python", "javascript", "typescript", "java", "cpp", "sql", "bash", "terraform"]
+    all_supported_langs = [
+        "python", "javascript", "typescript", "java", "c", "cpp", "csharp", "vb",
+        "go", "rust", "php", "ruby", "kotlin", "swift", "sql", "mongodb", "bash", "terraform"
+    ]
     if is_coding:
         if languages:
             valid_prog_langs = [l.lower() for l in languages if l.lower() in all_supported_langs]
@@ -1240,7 +2271,7 @@ def synthesize_technical_assessment_bundle(
             f"Allowed Programming Technologies: {', '.join(allowed_langs)}\n"
             f"Candidate Variation Seed: {seed_token}\n\n"
             f"Generate strictly valid JSON with these 4 keys:\n"
-            f"1. \"technical_mcqs\": Array of 3 multiple-choice questions specifically testing {skills_str}.\n"
+            f"1. \"technical_mcqs\": Array of 10 multiple-choice questions specifically testing {skills_str} (covering architecture, concurrency, database indexing, protocols, memory, Linux, cloud, and distributed systems).\n"
             f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
             f"2. \"scenario\": A realistic production incident or architecture design problem tailored to {role_title}.\n"
             f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
@@ -1263,7 +2294,7 @@ def synthesize_technical_assessment_bundle(
             f"CRITICAL REQUIREMENT: This is a NON-TECHNICAL / PROFESSIONAL role ({domain_category}).\n"
             f"DO NOT generate programming code, coding challenges, compilers, or developer tech like Python/AWS/SQL.\n"
             f"Generate strictly valid JSON with these 4 keys:\n"
-            f"1. \"technical_mcqs\": Array of 3 professional knowledge MCQs specifically testing {skills_str} principles, regulations, or standards.\n"
+            f"1. \"technical_mcqs\": Array of 10 professional knowledge MCQs specifically testing {skills_str} principles, regulations, or standards.\n"
             f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
             f"2. \"scenario\": A realistic workplace, business, or operational crisis tailored to {role_title}.\n"
             f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"

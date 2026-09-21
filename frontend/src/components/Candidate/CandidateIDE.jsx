@@ -21,18 +21,40 @@ import {
   Info,
   Check,
   Loader2,
-  Sliders
+  Sliders,
+  Database,
+  Table,
+  Copy
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const RUNTIME_METADATA = {
-  python: { label: 'Python', version: 'Python 3.11.8', monacoLang: 'python', engine: 'C-Python Sandbox' },
-  javascript: { label: 'JavaScript (Node.js)', version: 'Node.js v20.11.0', monacoLang: 'javascript', engine: 'V8 Isolated VM' },
-  typescript: { label: 'TypeScript', version: 'TypeScript 5.3.3', monacoLang: 'typescript', engine: 'Node.js / TSC' },
-  java: { label: 'Java', version: 'OpenJDK 17 LTS', monacoLang: 'java', engine: 'JVM' },
+  c: { label: 'C', version: 'GCC 11.4 (C17)', monacoLang: 'c', engine: 'Native GCC' },
   cpp: { label: 'C++', version: 'GCC 11.4 (C++20)', monacoLang: 'cpp', engine: 'Native GCC' },
-  sql: { label: 'SQL', version: 'SQLite 3.42 / ANSI', monacoLang: 'sql', engine: 'Relational Engine' }
+  csharp: { label: 'C#', version: '.NET 8.0 (C# 12)', monacoLang: 'csharp', engine: 'Roslyn / CLR' },
+  vb: { label: 'VB.NET', version: '.NET 8.0 (VB)', monacoLang: 'vb', engine: 'CLR Engine' },
+  java: { label: 'Java', version: 'OpenJDK 17 LTS', monacoLang: 'java', engine: 'JVM' },
+  python: { label: 'Python', version: 'Python 3.11.8', monacoLang: 'python', engine: 'C-Python Sandbox' },
+  javascript: { label: 'JavaScript (Node.js)', version: 'Node.js v20.11.0 LTS', monacoLang: 'javascript', engine: 'V8 Isolated VM' },
+  typescript: { label: 'TypeScript', version: 'TypeScript 5.3.3', monacoLang: 'typescript', engine: 'Node.js / TSC' },
+  go: { label: 'Go', version: 'Go 1.22 LTS', monacoLang: 'go', engine: 'Go Runtime' },
+  rust: { label: 'Rust', version: 'Rust 1.77 (Edition 2021)', monacoLang: 'rust', engine: 'LLVM Backend' },
+  php: { label: 'PHP', version: 'PHP 8.3 CLI', monacoLang: 'php', engine: 'Zend Engine' },
+  ruby: { label: 'Ruby', version: 'Ruby 3.3.0', monacoLang: 'ruby', engine: 'YARV VM' },
+  kotlin: { label: 'Kotlin', version: 'Kotlin 1.9.22', monacoLang: 'kotlin', engine: 'Kotlin / JVM' },
+  swift: { label: 'Swift', version: 'Swift 5.10', monacoLang: 'swift', engine: 'Swift LLVM' },
+  sql: { label: 'SQL (Relational Engine)', version: 'SQLite 3.50 Native Sandbox', monacoLang: 'sql', engine: 'Relational Database Engine' },
+  mongodb: { label: 'MongoDB (NoSQL)', version: 'MongoDB 7.0 / MQL', monacoLang: 'javascript', engine: 'Document Aggregation Pipeline' }
 };
+
+const DATABASE_ENGINES = [
+  { id: 'postgresql', name: 'PostgreSQL', versions: ['15', '16', '17 (Latest Supported)'], defaultVersion: '17 (Latest Supported)' },
+  { id: 'mysql', name: 'MySQL', versions: ['8.0', '8.4 (LTS)', '9.1 (Latest Supported)'], defaultVersion: '8.4 (LTS)' },
+  { id: 'sqlserver', name: 'Microsoft SQL Server', versions: ['2019', '2022', '2022 CU14 (Latest Supported)'], defaultVersion: '2022' },
+  { id: 'oracle', name: 'Oracle Database', versions: ['19c', '21c', '23ai (Latest Supported)'], defaultVersion: '23ai (Latest Supported)' },
+  { id: 'sqlite', name: 'SQLite', versions: ['3.45 (Latest Supported)', '3.x'], defaultVersion: '3.45 (Latest Supported)' },
+  { id: 'mariadb', name: 'MariaDB', versions: ['10.11 (LTS)', '11.4 (Latest Supported)'], defaultVersion: '11.4 (Latest Supported)' }
+];
 
 export default function CandidateIDE({
   taskId,
@@ -46,6 +68,7 @@ export default function CandidateIDE({
   starterCodes = {},
   code,
   language = 'python',
+  schemaDdl = '',
   sampleTestCases = [],
   onCodeChange,
   onLanguageChange,
@@ -59,6 +82,10 @@ export default function CandidateIDE({
   storageKeyPrefix = 'candidate_ide_draft'
 }) {
   const [activeConsoleTab, setActiveConsoleTab] = useState('tests'); // 'tests' | 'custom' | 'console'
+  const [activeProblemTab, setActiveProblemTab] = useState('problem'); // 'problem' | 'schema'
+  const [selectedDbEngine, setSelectedDbEngine] = useState('postgresql');
+  const [selectedDbVersion, setSelectedDbVersion] = useState('17 (Latest Supported)');
+  const [isCopiedSchema, setIsCopiedSchema] = useState(false);
   const [customInput, setCustomInput] = useState('');
   const [customResult, setCustomResult] = useState(null);
   const [isExecutingCustom, setIsExecutingCustom] = useState(false);
@@ -205,6 +232,45 @@ export default function CandidateIDE({
             </select>
           </div>
 
+          {/* Database Engine & Version Selector (When SQL is active) */}
+          {activeLangKey === 'sql' && (
+            <div className="flex items-center space-x-1.5 bg-slate-900 px-2.5 py-1 rounded-lg border border-indigo-500/30 text-xs text-indigo-300">
+              <Database className="w-3.5 h-3.5 text-cyan-400" />
+              <select
+                value={selectedDbEngine}
+                onChange={(e) => {
+                  const newDb = e.target.value;
+                  setSelectedDbEngine(newDb);
+                  const eng = DATABASE_ENGINES.find(d => d.id === newDb);
+                  if (eng) setSelectedDbVersion(eng.defaultVersion);
+                }}
+                disabled={isReadOnly}
+                className="bg-transparent text-xs font-bold focus:outline-none cursor-pointer text-slate-200"
+                title="Target Database Engine"
+              >
+                {DATABASE_ENGINES.map((db) => (
+                  <option key={db.id} value={db.id} className="bg-slate-900 text-slate-200">
+                    {db.name}
+                  </option>
+                ))}
+              </select>
+              <span className="text-slate-600 font-mono">/</span>
+              <select
+                value={selectedDbVersion}
+                onChange={(e) => setSelectedDbVersion(e.target.value)}
+                disabled={isReadOnly}
+                className="bg-transparent text-[11px] font-mono focus:outline-none cursor-pointer text-slate-300"
+                title="Database Version"
+              >
+                {(DATABASE_ENGINES.find(d => d.id === selectedDbEngine)?.versions || []).map((v) => (
+                  <option key={v} value={v} className="bg-slate-900 text-slate-200">
+                    v{v}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Theme Switcher */}
           <button
             type="button"
@@ -274,77 +340,157 @@ export default function CandidateIDE({
 
       {/* Main Split Layout: Left (Problem Statement) & Right (Monaco Editor + Console) */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* LEFT PANEL: Problem Specification */}
-        <div className="w-full md:w-[42%] lg:w-[38%] border-b md:border-b-0 md:border-r border-slate-800 bg-slate-950/60 p-5 overflow-y-auto space-y-5 text-slate-300 text-xs custom-scrollbar">
-          {/* Instructions */}
-          <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
-              <Info className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Problem Statement</span>
-            </h3>
-            <div className="text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-xs bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 shadow-inner">
-              {instructions}
+        {/* LEFT PANEL: Problem Specification & Schema Viewer */}
+        <div className="w-full md:w-[42%] lg:w-[38%] border-b md:border-b-0 md:border-r border-slate-800 bg-slate-950/60 flex flex-col overflow-hidden">
+          {/* Sub-tab Navigation when SQL or schemaDdl is present */}
+          {(activeLangKey === 'sql' || schemaDdl) && (
+            <div className="px-4 py-2 bg-slate-950 border-b border-slate-800 flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setActiveProblemTab('problem')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
+                  activeProblemTab === 'problem'
+                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Info className="w-3.5 h-3.5" />
+                <span>Problem Statement</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveProblemTab('schema')}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
+                  activeProblemTab === 'schema'
+                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Database className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Table Schema (DDL)</span>
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* Examples */}
-          {examples && examples.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Examples
-              </h3>
-              {examples.map((ex, idx) => (
-                <div
-                  key={idx}
-                  className="bg-slate-900/70 border border-slate-800 rounded-xl p-3 space-y-2"
-                >
-                  <div className="text-[10px] font-bold text-indigo-400 uppercase">Example {idx + 1}</div>
-                  <div className="space-y-1 font-mono text-[11px]">
-                    <div>
-                      <span className="text-slate-400 select-none">Input: </span>
-                      <span className="text-emerald-300">{ex.input}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 select-none">Output: </span>
-                      <span className="text-cyan-300">{ex.output}</span>
-                    </div>
-                  </div>
-                  {ex.explanation && (
-                    <div className="text-[11px] text-slate-400 italic pt-1 border-t border-slate-800/60 font-sans">
-                      {ex.explanation}
-                    </div>
-                  )}
+          {/* Tab 1: Problem Statement View */}
+          {activeProblemTab === 'problem' && (
+            <div className="flex-1 p-5 overflow-y-auto space-y-5 text-slate-300 text-xs custom-scrollbar">
+              {/* Instructions */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                  <Info className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Problem Statement</span>
+                </h3>
+                <div className="text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-xs bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 shadow-inner">
+                  {instructions}
                 </div>
-              ))}
+              </div>
+
+              {/* Examples */}
+              {examples && examples.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Examples
+                  </h3>
+                  {examples.map((ex, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-slate-900/70 border border-slate-800 rounded-xl p-3 space-y-2"
+                    >
+                      <div className="text-[10px] font-bold text-indigo-400 uppercase">Example {idx + 1}</div>
+                      <div className="space-y-1 font-mono text-[11px]">
+                        <div>
+                          <span className="text-slate-400 select-none">Input: </span>
+                          <span className="text-emerald-300">{ex.input}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 select-none">Output: </span>
+                          <span className="text-cyan-300">{ex.output}</span>
+                        </div>
+                      </div>
+                      {ex.explanation && (
+                        <div className="text-[11px] text-slate-400 italic pt-1 border-t border-slate-800/60 font-sans">
+                          {ex.explanation}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Constraints */}
+              {constraints && constraints.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Constraints & Limits
+                  </h3>
+                  <ul className="space-y-1.5 text-[11px] text-slate-300 font-mono">
+                    {constraints.map((c, idx) => (
+                      <li key={idx} className="flex items-center space-x-2 bg-slate-900/40 px-2.5 py-1 rounded-md border border-slate-800/50">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                        <span>{c}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Function Signature Specification */}
+              {functionSignatures && functionSignatures[activeLangKey] && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Required Signature ({currentRuntime.label})
+                  </h3>
+                  <pre className="p-3 bg-slate-900 rounded-xl border border-slate-800 font-mono text-[11px] text-indigo-300 overflow-x-auto">
+                    {functionSignatures[activeLangKey]}
+                  </pre>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Constraints */}
-          {constraints && constraints.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Constraints & Limits
-              </h3>
-              <ul className="space-y-1.5 text-[11px] text-slate-300 font-mono">
-                {constraints.map((c, idx) => (
-                  <li key={idx} className="flex items-center space-x-2 bg-slate-900/40 px-2.5 py-1 rounded-md border border-slate-800/50">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                    <span>{c}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Tab 2: Database Schema (DDL) View */}
+          {activeProblemTab === 'schema' && (
+            <div className="flex-1 p-5 overflow-y-auto space-y-4 text-slate-300 text-xs custom-scrollbar">
+              <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-800/40 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-cyan-400 font-bold text-xs">
+                    <Database className="w-4 h-4" />
+                    <span>Database Engine: {DATABASE_ENGINES.find(d => d.id === selectedDbEngine)?.name || 'PostgreSQL'}</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-900/40 text-cyan-300 border border-cyan-700/50">
+                    v{selectedDbVersion}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Tables and seed records are provisioned in an isolated in-memory sandbox. Write your query against the catalog structure below.
+                </p>
+              </div>
 
-          {/* Function Signature Specification */}
-          {functionSignatures && functionSignatures[activeLangKey] && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Required Signature ({currentRuntime.label})
-              </h3>
-              <pre className="p-3 bg-slate-900 rounded-xl border border-slate-800 font-mono text-[11px] text-indigo-300 overflow-x-auto">
-                {functionSignatures[activeLangKey]}
-              </pre>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                    <Table className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Schema DDL & Sample Data</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ddlText = schemaDdl || `-- Default Relational Schema\nCREATE TABLE departments (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL\n);\n\nCREATE TABLE employees (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL,\n    department_id INTEGER,\n    salary INTEGER NOT NULL,\n    status TEXT NOT NULL\n);`;
+                      navigator.clipboard.writeText(ddlText);
+                      setIsCopiedSchema(true);
+                      setTimeout(() => setIsCopiedSchema(false), 2000);
+                    }}
+                    className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold flex items-center space-x-1 border border-slate-700"
+                  >
+                    {isCopiedSchema ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                    <span>{isCopiedSchema ? 'Copied' : 'Copy DDL'}</span>
+                  </button>
+                </div>
+                <pre className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-800 font-mono text-[11px] text-cyan-200 overflow-x-auto leading-relaxed shadow-inner max-h-[380px]">
+                  {schemaDdl || `-- Relational Schema: departments & employees\nCREATE TABLE departments (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL\n);\n\nCREATE TABLE employees (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL,\n    department_id INTEGER,\n    salary INTEGER NOT NULL,\n    status TEXT NOT NULL,\n    FOREIGN KEY (department_id) REFERENCES departments(id)\n);\n\nINSERT INTO departments (id, name) VALUES\n(1, 'Engineering'), (2, 'Sales'), (3, 'Finance');\n\nINSERT INTO employees (id, name, department_id, salary, status) VALUES\n(101, 'Alice Chen', 1, 125000, 'Active'),\n(102, 'Bob Smith', 1, 95000, 'Active'),\n(103, 'Carol Danvers', 1, 140000, 'Active'),\n(104, 'David Miller', 2, 75000, 'Active'),\n(105, 'Emma Wilson', 2, 85000, 'Active'),\n(106, 'Frank Wright', 3, 90000, 'Terminated'),\n(107, 'Grace Hopper', 3, 115000, 'Active');`}
+                </pre>
+              </div>
             </div>
           )}
         </div>

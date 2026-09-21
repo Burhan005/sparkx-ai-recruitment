@@ -378,7 +378,7 @@ export default function CodeAssessment() {
       id: 'technical', 
       label: isTechRole ? '1. Technical MCQs' : '1. Core Knowledge', 
       icon: FileQuestion, 
-      count: assessmentBundle?.technical_mcqs?.length || 3 
+      count: assessmentBundle?.technical_mcqs?.length || 10 
     },
     { 
       id: 'scenario', 
@@ -1060,6 +1060,7 @@ export default function CodeAssessment() {
               consoleOutput={handsOnConsole}
               executionTelemetry={handsOnTelemetry}
               storageKeyPrefix={`hands_on_${candidateId}`}
+              schemaDdl={assessmentBundle.hands_on?.schema_ddl || ''}
             />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1215,6 +1216,7 @@ export default function CodeAssessment() {
               consoleOutput={troubleConsole}
               executionTelemetry={troubleTelemetry}
               storageKeyPrefix={`trouble_${candidateId}`}
+              schemaDdl={assessmentBundle.troubleshooting?.schema_ddl || ''}
             />
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
