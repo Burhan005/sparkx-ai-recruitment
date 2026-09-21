@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { api } from '../../services/api';
 import { 
@@ -7,7 +9,21 @@ import {
 } from 'lucide-react';
 
 export default function ResumeUploadModal({ job, onClose }) {
-  const { applyForJob, setCurrentView, currentUser } = useRecruitment();
+  const navigate = useNavigate();
+  const { applyForJob, currentUser } = useRecruitment();
+
+  useEffect(() => {
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = origOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
 
   // ── Form state (Pre-filled with logged in candidate profile if available) ───
   const [candidateName,  setCandidateName]  = useState(currentUser?.name || '');
@@ -44,44 +60,101 @@ export default function ResumeUploadModal({ job, onClose }) {
     setSkillsString(preset.skills.join(', '));
     setResumeSummary(preset.summary);
     setSelectedFileName(`${preset.name.replace(/[^a-zA-Z0-9]/g, '_')}_Resume.pdf`);
-    triggerScan(preset.skills, preset.experience, preset.name);
+    triggerScan(preset.skills, preset.experience, preset.name, '', preset.summary, preset.education);
   };
 
-  // ── AI Resume Scan Simulation ────────────────────────────────────────────────
-  const triggerScan = (skillsArr, expYears, name) => {
+  // ── AI Resume Scan via Authoritative Backend Matching ──────────────────────
+  const triggerScan = async (skillsArr, expYears, name, textContent, summaryContent, edu) => {
     setIsScanning(true);
     setScanResult(null);
-    setTimeout(() => {
-      const skills = skillsArr || skillsString.split(',').map(s => s.trim()).filter(Boolean);
-      const reqSkills = (job.requiredSkills || []).map(s => s.toLowerCase());
-      const lowerSkills = skills.map(s => s.toLowerCase());
-      const matches = reqSkills.filter(req => lowerSkills.some(s => s.includes(req) || req.includes(s))).length;
 
-      let score = Math.round((matches / Math.max(1, reqSkills.length)) * 70);
-      score += Number(expYears || experienceYears) >= (job.minExperienceYears || 2) ? 25 : 10;
-      score = Math.min(98, Math.max(38, score));
+    const skills = skillsArr || skillsString.split(',').map(s => s.trim()).filter(Boolean);
+    const years = Number(expYears !== undefined ? expYears : experienceYears || 0);
+    const text = textContent !== undefined ? textContent : resumeText;
+    const summary = summaryContent !== undefined ? summaryContent : resumeSummary;
+    const educationVal = edu !== undefined ? edu : education;
+    const candidateNameVal = name || candidateName;
 
-      // Fraud detection based on actual scan data, not hardcoded name matching
-      const claimedYears = Number(expYears || experienceYears || 0);
-      const fraudFlags = [];
-      if (claimedYears > 10 && skills.length < 3) fraudFlags.push('Experience claim inconsistent with demonstrated skill set.');
-      if (resumeSummary && resumeSummary.toLowerCase().includes('template')) fraudFlags.push('Resume text matches common template patterns.');
+    // Fraud detection based on actual data
+    const fraudFlags = [];
+    if (years > 10 && skills.length < 3) fraudFlags.push('Experience claim inconsistent with demonstrated skill set.');
+    if (summary && summary.toLowerCase().includes('template')) fraudFlags.push('Resume text matches common template patterns.');
 
-      setScanResult({ matchScore: score, skillsCount: skills.length, matchedSkillsCount: matches, fraudFlags });
+    try {
+      const matchRes = await api.matchJob(job.id, {
+        name: candidateNameVal,
+        experienceYears: years,
+        skills,
+        education: educationVal,
+        resumeSummary: summary,
+        resumeText: text,
+      });
+
+      if (matchRes) {
+        setScanResult({
+          skillsCount: skills.length,
+          matchedSkills: matchRes.matched_skills || [],
+          missingSkills: matchRes.missing_skills || [],
+          fraudFlags,
+        });
+      } else {
+        setScanResult({
+          skillsCount: skills.length,
+          matchedSkills: [],
+          missingSkills: job.requiredSkills || [],
+          fraudFlags,
+        });
+      }
+    } catch (err) {
+      console.warn('[ResumeUploadModal] match error:', err);
+    } finally {
       setIsScanning(false);
-    }, 1000);
+    }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) { 
-      setSelectedFileName(file.name);
+    if (!file) return;
+
+    setSelectedFileName(file.name);
+    setIsScanning(true);
+    setScanResult(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const parseRes = await api.parseResume(formData);
+      if (parseRes && parseRes.success && parseRes.data) {
+        const p = parseRes.data;
+        if (p.name) setCandidateName(p.name);
+        if (p.email) setCandidateEmail(p.email);
+        if (p.phone) setCandidatePhone(p.phone);
+        if (p.experience_years != null) setExperienceYears(String(p.experience_years));
+        if (p.education) setEducation(p.education);
+        if (p.skills && p.skills.length > 0) setSkillsString(p.skills.join(', '));
+        if (p.resume_summary) setResumeSummary(p.resume_summary);
+        if (p.resume_text) setResumeText(p.resume_text);
+
+        await triggerScan(p.skills, p.experience_years, p.name, p.resume_text, p.resume_summary, p.education);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const text = typeof ev.target.result === 'string' ? ev.target.result : '';
+          setResumeText(text);
+          triggerScan(null, null, null, text);
+        };
+        reader.readAsText(file);
+      }
+    } catch (err) {
+      console.warn('Resume file processing error:', err);
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setResumeText(typeof ev.target.result === 'string' ? ev.target.result : '');
+        const text = typeof ev.target.result === 'string' ? ev.target.result : '';
+        setResumeText(text);
+        triggerScan(null, null, null, text);
       };
       reader.readAsText(file);
-      triggerScan(); 
     }
   };
 
@@ -106,13 +179,15 @@ export default function ResumeUploadModal({ job, onClose }) {
     setIsSubmitting(false);
     setSubmittedCandidate(saved || {
       name: candidateName,
-      matchScore: scanResult?.matchScore || 85
     });
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative w-full max-w-3xl bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/[0.08] rounded-3xl shadow-2xl p-6 sm:p-8 text-slate-900 dark:text-slate-100 my-6">
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative w-full max-w-3xl bg-white dark:bg-[#0B0F19] border border-slate-200 dark:border-white/[0.08] rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 sm:p-8 text-slate-900 dark:text-slate-100 my-auto">
         
         {/* Iridescent top hairline */}
         <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400"></div>
@@ -147,7 +222,7 @@ export default function ResumeUploadModal({ job, onClose }) {
               </span>
               <h3 className="text-2xl font-black text-slate-900 dark:text-white">Application Received!</h3>
               <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-relaxed">
-                Thank you, <strong>{submittedCandidate.name}</strong>. Your profile has been submitted for <strong>{job.title}</strong> and matched with a <strong>{submittedCandidate.matchScore}%</strong> competency score.
+                Thank you, <strong>{submittedCandidate.name}</strong>. Your profile and resume have been submitted for <strong>{job.title}</strong> at <strong>{job.companyName || 'SparkX Technologies'}</strong>.
               </p>
             </div>
 
@@ -155,35 +230,35 @@ export default function ResumeUploadModal({ job, onClose }) {
             <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] text-left max-w-md mx-auto space-y-3 text-xs shadow-inner">
               <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-white/[0.06] pb-2">
                 <span className="font-semibold text-slate-800 dark:text-slate-200">Official Hiring Workflow</span>
-                <span className="text-blue-600 dark:text-blue-400 font-bold">Step 1 of 3</span>
+                <span className="text-blue-600 dark:text-blue-400 font-bold">Stage 1 of 4</span>
               </div>
               <div className="space-y-2.5 text-[11px]">
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</div>
+                  <div className="w-5 h-5 rounded-full bg-blue-500 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5 shadow-sm">1</div>
                   <div>
-                    <strong className="text-slate-900 dark:text-white">Application Screening:</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Your application has been received and is currently in the recruiter screening pipeline.</p>
+                    <strong className="text-slate-900 dark:text-white">Stage 1: Application Screening (Active)</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Your application and resume have been placed in the recruiter screening pipeline for qualification review.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">1</div>
+                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
                   <div>
-                    <strong className="text-slate-700 dark:text-slate-300">Step 1: 4-Pillar Technical Assessment</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Complete your job-tailored Technical MCQs, Production Scenario, Hands-on coding, and Troubleshooting challenges.</p>
+                    <strong className="text-slate-700 dark:text-slate-300">Stage 2: Recruiter Review & Scheduling (Next)</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">The recruiter screens your profile. When shortlisted, the recruiter will schedule your evaluation and send an official slot invite.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-purple-500/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
+                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
                   <div>
-                    <strong className="text-slate-700 dark:text-slate-300">Step 2: Live AI HR/Technical Interview</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Engage in adaptive conversational probing with live AI proctoring and real-time follow-up questions.</p>
+                    <strong className="text-slate-700 dark:text-slate-300">Stage 3: Role Assessment & AI Interview</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Unlocked once scheduled or invited by the recruiter. Complete your tailored assessment and live conversational interview.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
+                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">4</div>
                   <div>
-                    <strong className="text-slate-700 dark:text-slate-300">Step 3: Verified Performance Dossier</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Receive your verified skill gap report, readiness index, and recruiter scorecard.</p>
+                    <strong className="text-slate-700 dark:text-slate-300">Stage 4: Recruiter Committee Decision</strong>
+                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">The hiring committee reviews all signals to make final shortlisting, interview, or offer decisions.</p>
                   </div>
                 </div>
               </div>
@@ -195,22 +270,22 @@ export default function ResumeUploadModal({ job, onClose }) {
                 type="button"
                 onClick={() => {
                   onClose();
-                  setCurrentView('assessment');
+                  navigate('/my-applications');
                 }}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
               >
-                <span>Start Step 1: Technical Assessment</span>
+                <span>Go to My Applications</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
               <button
                 type="button"
                 onClick={() => {
                   onClose();
-                  setCurrentView('candidate');
+                  navigate('/jobs');
                 }}
                 className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition"
               >
-                Browse Job Openings
+                Browse More Job Openings
               </button>
             </div>
           </div>
@@ -266,25 +341,33 @@ export default function ResumeUploadModal({ job, onClose }) {
 
             {/* Scan Result */}
             {scanResult && (
-              <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] flex items-center justify-between shadow-md">
-                <div className="flex items-center space-x-3.5">
-                  <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-black text-sm shadow-sm">
-                    {scanResult.matchScore}%
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-                      <span>Candidate Match Score</span>
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] space-y-3 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3.5">
+                    <div className="w-11 h-11 rounded-2xl border flex items-center justify-center font-black text-sm shadow-sm bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="w-6 h-6" />
                     </div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">Matched {scanResult.matchedSkillsCount} / {job.requiredSkills?.length || 0} required skills</div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+                        <span>Profile & Resume Parsed</span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        {scanResult.skillsCount || 0} skills detected • Form fields pre-filled below
+                      </div>
+                    </div>
                   </div>
+                  {scanResult.fraudFlags?.length > 0 && (
+                    <span className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-3 py-1.5 rounded-full border border-rose-200 dark:border-rose-800/60 flex items-center space-x-1.5 shadow-sm">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      <span>{scanResult.fraudFlags.length} Flag{scanResult.fraudFlags.length > 1 ? 's' : ''} Detected</span>
+                    </span>
+                  )}
                 </div>
-                {scanResult.fraudFlags.length > 0 && (
-                  <span className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-3 py-1.5 rounded-full border border-rose-200 dark:border-rose-800/60 flex items-center space-x-1.5 shadow-sm">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>{scanResult.fraudFlags.length} Flag{scanResult.fraudFlags.length > 1 ? 's' : ''} Detected</span>
-                  </span>
-                )}
+
+                <div className="text-[11px] text-slate-600 dark:text-slate-400 bg-white/60 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200/60 dark:border-white/[0.04] flex items-center space-x-2">
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span>Resume data extracted. Review your profile details below and submit your application for recruiter screening.</span>
+                </div>
               </div>
             )}
 
@@ -331,6 +414,7 @@ export default function ResumeUploadModal({ job, onClose }) {
         )}
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

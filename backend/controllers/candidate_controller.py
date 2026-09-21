@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from models.db_models import CandidateModel, JobModel
 from schemas import CandidateApply, CandidateStatusUpdate, CandidateScheduleRequest, EmailSendRequest
 from email_service import send_email, create_ics_calendar_event, parse_slot_to_datetime
+from ai_engine import calculate_resume_job_match
 
 class CandidateController:
     @staticmethod
@@ -24,14 +25,30 @@ class CandidateController:
         if not job:
             return None, "Job not found"
 
-        # Automated screening & matching algorithm
-        req_skills = [s.lower() for s in (job.required_skills or [])]
-        cand_skills = [s.lower() for s in payload.skills]
-        matches = sum(1 for req in req_skills if any(req in cs or cs in req for cs in cand_skills))
-        
-        score = int((matches / max(1, len(req_skills))) * 70)
-        score += 25 if payload.experience_years >= job.min_experience_years else 10
-        match_score = min(98, max(35, score))
+        # Authoritative, context-aware resume-to-job matching analysis
+        job_data = {
+            "id": job.id,
+            "title": job.title,
+            "department": job.department,
+            "description": job.description,
+            "required_skills": job.required_skills or [],
+            "min_experience_years": job.min_experience_years or 0,
+            "education": job.education or "",
+            "optional_criteria": job.optional_criteria or ""
+        }
+        candidate_data = {
+            "name": payload.name,
+            "skills": payload.skills or [],
+            "experience_years": payload.experience_years or 0.0,
+            "job_role": getattr(payload, "job_role", "") or "",
+            "education": payload.education or "",
+            "resume_summary": payload.resume_summary or "",
+            "resume_text": payload.resume_text or ""
+        }
+
+        match_result = calculate_resume_job_match(job_data, candidate_data)
+        match_score = match_result.get("match_score", 0)
+        match_details = match_result
 
         comp_name = getattr(job, "company_name", "SparkX Technologies") or payload.company_name or "SparkX Technologies"
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -50,6 +67,7 @@ class CandidateController:
             existing.experience_years = payload.experience_years
             existing.education = payload.education
             existing.match_score = match_score
+            existing.match_details = match_details
             existing.company_name = comp_name
             if payload.resume_summary:
                 existing.resume_summary = payload.resume_summary
@@ -70,7 +88,7 @@ class CandidateController:
             "subject": f"Application Received — {job.title} at {comp_name}",
             "sent_at": now_str,
             "recipient": payload.email,
-            "body": f"Dear {payload.name},\n\nThank you for applying for the position of {job.title} at {comp_name}. Your resume has been parsed and matched against our core competency benchmarks (Match Score: {match_score}%).\n\nYour application is currently Under Review.\n\nBest regards,\nSparkX AI Talent Acquisition Team"
+            "body": f"Dear {payload.name},\n\nThank you for applying for the position of {job.title} at {comp_name}. Your application and resume have been received and placed in our recruiter screening pipeline.\n\nYour application is currently Under Review.\n\nBest regards,\nSparkX AI Talent Acquisition Team"
         }
 
         new_candidate = CandidateModel(
@@ -81,6 +99,7 @@ class CandidateController:
             email=payload.email.strip().lower(),
             phone=payload.phone,
             match_score=match_score,
+            match_details=match_details,
             experience_years=payload.experience_years,
             education=payload.education,
             skills=payload.skills,
@@ -88,8 +107,8 @@ class CandidateController:
             resume_filename=payload.resume_filename,
             resume_text=payload.resume_text,
             fraud_flags=payload.fraud_flags or [],
-            status="Screening",
-            final_decision="Under Review",
+            status="Applied",
+            final_decision="Applied",
             interview_status="Applied",
             email_logs=[initial_email]
         )
@@ -105,36 +124,56 @@ class CandidateController:
         if not candidate:
             return False
 
-        status_lower = payload.status.strip().lower()
-        if status_lower in ["under review", "screening", "applied"]:
-            candidate.status = "Evaluated"
-            candidate.final_decision = "Under Review"
-            candidate.interview_status = "Applied"
-        elif status_lower in ["shortlisted"]:
-            candidate.status = "Evaluated"
-            candidate.final_decision = "Shortlisted"
-        elif status_lower in ["interview", "scheduled", "interview scheduled"]:
-            candidate.status = "Interview Scheduled"
-            candidate.final_decision = "Interview"
+        # Status normalization to the 6 shared standard statuses:
+        # "Applied", "Under Review", "Shortlisted", "Interview", "Selected", "Rejected"
+        raw_status = payload.status.strip().lower()
+        status_map = {
+            "applied": "Applied",
+            "screening": "Applied",
+            "under review": "Under Review",
+            "evaluated": "Under Review",
+            "shortlisted": "Shortlisted",
+            "interview": "Interview",
+            "interview scheduled": "Interview",
+            "scheduled": "Interview",
+            "selected": "Selected",
+            "offered": "Selected",
+            "offer": "Selected",
+            "rejected": "Rejected"
+        }
+        canonical_status = status_map.get(raw_status, payload.status.strip())
+
+        # ONE shared status reflected for both candidate and recruiter
+        candidate.status = canonical_status
+        candidate.final_decision = canonical_status
+
+        if canonical_status == "Interview":
             candidate.interview_status = "Interview Scheduled"
             if not candidate.interview_scheduled_at:
                 candidate.interview_scheduled_at = "Upcoming Slot"
             if not candidate.interview_meeting_url:
                 short_id = candidate.id.replace("cand-", "")[:6]
                 candidate.interview_meeting_url = f"https://meet.google.com/spk-{short_id[:3]}-{short_id[3:] or 'rec'}"
-        elif status_lower in ["selected", "offered", "offer"]:
-            candidate.status = "Evaluated"
-            candidate.final_decision = "Selected"
+        elif canonical_status == "Applied":
+            candidate.interview_status = "Applied"
+            candidate.interview_scheduled_at = None
+            candidate.interview_meeting_url = None
+        elif canonical_status == "Selected":
             candidate.interview_status = "Offer Sent"
-        elif status_lower in ["rejected"]:
-            candidate.status = "Rejected"
-            candidate.final_decision = "Rejected"
+        elif canonical_status == "Rejected":
             candidate.interview_status = "Rejected"
-        else:
-            candidate.final_decision = payload.status
 
-        if payload.hr_notes:
+        if payload.hr_notes is not None:
             candidate.hr_notes = payload.hr_notes
+
+        if payload.recruiter_score is not None:
+            candidate.recruiter_score = payload.recruiter_score
+
+        if payload.rejection_reason is not None:
+            candidate.rejection_reason = payload.rejection_reason
+
+        if payload.rejection_category is not None:
+            candidate.rejection_category = payload.rejection_category
 
         db.commit()
         return True
@@ -147,13 +186,11 @@ class CandidateController:
         for app in applications:
             job = app.job
             comp_name = app.company_name or (job.company_name if job else "SparkX Technologies")
-            disp_status = app.final_decision or app.status or "Under Review"
-            if disp_status in ["Pending Interview", "Screening"]:
-                disp_status = "Under Review"
-            elif disp_status in ["Offered"]:
-                disp_status = "Selected"
-            elif disp_status in ["Interview Scheduled"]:
-                disp_status = "Interview"
+            disp_status = app.status or app.final_decision or "Under Review"
+
+            assess_data = app.assessment_data or {}
+            is_assess_completed = bool(assess_data.get("is_completed") or (app.coding_score is not None and app.coding_score > 0) or (app.status and app.status not in ["Applied", "Screening"]))
+            assess_status = "Completed" if is_assess_completed else "Pending"
 
             result.append({
                 "id": app.id,
@@ -163,16 +200,23 @@ class CandidateController:
                 "department": job.department if job else "Engineering",
                 "location": job.location if job else "Remote",
                 "applied_date": app.applied_date,
-                "status": app.status,
+                "status": disp_status,
                 "final_decision": disp_status,
-                "match_score": app.match_score,
+                "match_score": None,
                 "experience_years": app.experience_years,
                 "skills": app.skills or [],
                 "resume_filename": app.resume_filename,
                 "resume_summary": app.resume_summary,
                 "interview_scheduled_at": app.interview_scheduled_at,
                 "interview_meeting_url": app.interview_meeting_url,
-                "interview_status": app.interview_status or "Applied"
+                "interview_status": app.interview_status or "Applied",
+                "assessment_status": assess_status,
+                "coding_score": None,
+                "recruiter_score": None,
+                "rejection_reason": app.rejection_reason,
+                "rejection_category": app.rejection_category,
+                "hr_notes": app.hr_notes,
+                "match_details": None
             })
         return result
 
@@ -466,3 +510,120 @@ class CandidateController:
         db.commit()
         db.refresh(candidate)
         return email_event, None
+
+    @staticmethod
+    def parse_resume_content(file_bytes: bytes = None, filename: str = None, raw_text: str = None):
+        import re
+        extracted_text = ""
+        if file_bytes:
+            fn = (filename or "").lower()
+            if fn.endswith(".pdf") or file_bytes.startswith(b"%PDF"):
+                try:
+                    import io
+                    import pypdf
+                    reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                    pages = [p.extract_text() for p in reader.pages if p.extract_text()]
+                    extracted_text = "\n".join(pages).strip()
+                except Exception as e:
+                    print(f"[CandidateController] PDF extract error: {e}")
+            if not extracted_text:
+                try:
+                    extracted_text = file_bytes.decode("utf-8", errors="ignore").strip()
+                except Exception:
+                    pass
+        elif raw_text:
+            extracted_text = raw_text.strip()
+
+        if not extracted_text:
+            return {"success": False, "error": "Could not extract text from resume"}
+
+        text = extracted_text
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+
+        # Email
+        email_match = re.search(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', text)
+        email = email_match.group(0) if email_match else ""
+
+        # Phone
+        phone_match = re.search(r'(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text)
+        phone = phone_match.group(0) if phone_match else ""
+
+        # Name
+        name = ""
+        name_line_match = re.search(r'^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\s*[-–—]\s*Resume', text, re.MULTILINE)
+        if name_line_match:
+            name = name_line_match.group(1)
+        else:
+            for l in lines[:4]:
+                if "@" not in l and "http" not in l and len(l.split()) in (2, 3) and not any(ch.isdigit() for ch in l):
+                    name = l
+                    break
+            if not name and email:
+                name = email.split("@")[0].replace(".", " ").replace("_", " ").title()
+
+        # Experience
+        current_year = 2026
+        ranges = re.findall(r'\b(20\d\d)\s*[-–—to]+\s*(present|current|now|20\d\d)\b', text.lower())
+        total_exp = 0.0
+        for s_yr, e_yr in ranges:
+            start = int(s_yr)
+            end = current_year if e_yr in ("present", "current", "now") else int(e_yr)
+            if end >= start:
+                total_exp += (end - start)
+        if total_exp == 0.0:
+            exp_m = re.search(r'(\d+)\+?\s*years?', text.lower())
+            if exp_m:
+                total_exp = float(exp_m.group(1))
+
+        # Education
+        edu_list = []
+        edu_terms = [
+            "Master of Accounting", "Bachelor of Science in Finance", "Certified Public Accountant (CPA)",
+            "CPA", "Master of Business Administration (MBA)", "B.Tech in Computer Science",
+            "M.Tech", "B.S. in Computer Science", "B.Com", "M.Com", "Bachelor", "Master", "PhD"
+        ]
+        for term in edu_terms:
+            if re.search(r'\b' + re.escape(term) + r'\b', text, re.I):
+                if term not in edu_list:
+                    edu_list.append(term)
+        education = ", ".join(edu_list[:3]) if edu_list else "Bachelor's Degree"
+
+        # Role
+        role = ""
+        role_match = re.search(r'(?:Senior|Lead|Principal|Staff|Associate)?\s*(?:Financial Controller & Tax Auditor|Financial Controller|Tax Auditor|Cloud Engineer|Software Engineer|Full-Stack Engineer|Data Scientist|Accountant)', text, re.I)
+        if role_match:
+            role = role_match.group(0).strip()
+
+        # Skills
+        skills = []
+        competency_section = re.search(r'(?:Core Competencies|Skills|Technical Skills)\s*([\s\S]*?)(?:Professional Experience|Experience|Education|$)', text, re.I)
+        if competency_section:
+            raw_skills = competency_section.group(1)
+            for line in raw_skills.splitlines():
+                line = line.strip().strip("•-*")
+                if line and len(line) < 40 and not line.lower().startswith("professional"):
+                    parts = re.split(r'[/,;]', line)
+                    for p in parts:
+                        clean_p = p.strip()
+                        if clean_p and len(clean_p) > 1 and clean_p not in skills:
+                            skills.append(clean_p)
+
+        summary = ""
+        sum_match = re.search(r'(?:Strategic|Experienced|Certified|Senior|Dedicated)[\s\S]*?\.\s*(?=[A-Z][a-z]+ [A-Z]|\n\n)', text)
+        if sum_match:
+            summary = sum_match.group(0).strip().replace("\n", " ")
+
+        return {
+            "success": True,
+            "data": {
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "experience_years": round(total_exp, 1),
+                "education": education,
+                "job_role": role,
+                "skills": skills,
+                "resume_summary": summary[:400] if summary else text[:300],
+                "resume_text": text
+            }
+        }

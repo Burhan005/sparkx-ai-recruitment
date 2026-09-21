@@ -1,4 +1,4 @@
-﻿# Node / Frontend
+# Node / Frontend
 node_modules/
 frontend/node_modules/
 dist/
@@ -39,3 +39,4 @@ backend/*.db
 .idea
 .DS_Store
 Thumbs.db
+scratch/

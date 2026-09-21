@@ -1,5 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { api } from '../../services/api';
 import ResumeUploadModal from './ResumeUploadModal';
 import { FadeInUp } from '../ui/Primitives';
 import { 
@@ -19,16 +21,38 @@ import {
 } from 'lucide-react';
 
 export default function JobCatalog() {
+  const navigate = useNavigate();
+  const { jobId } = useParams();
   const { jobs, setActiveJobId, currentUser } = useRecruitment();
   const [selectedJobForApply, setSelectedJobForApply] = useState(null);
   const [filterScope, setFilterScope] = useState('ALL'); // 'ALL' | 'BEST_MATCH'
+  const [backendMatches, setBackendMatches] = useState({});
+  const [isMatchingLoading, setIsMatchingLoading] = useState(false);
+
+  // Sync route jobId param to modal
+  useEffect(() => {
+    if (jobId && jobs.length > 0) {
+      const target = jobs.find(j => String(j.id) === String(jobId));
+      if (target) {
+        setActiveJobId(target.id);
+        setSelectedJobForApply(target);
+      }
+    }
+  }, [jobId, jobs, setActiveJobId]);
 
   const handleApplyClick = (job) => {
     setActiveJobId(job.id);
-    setSelectedJobForApply(job);
+    navigate(`/jobs/${job.id}/apply`);
   };
 
-  // ── Candidate Profile Match Scoring & Dynamic Ranking ──────────────────────
+  const handleCloseModal = () => {
+    setSelectedJobForApply(null);
+    if (jobId) {
+      navigate('/jobs');
+    }
+  };
+
+  // ── Candidate Profile Attributes ───────────────────────────────────────────
   const candidateSkills = useMemo(() => {
     return (currentUser?.skills || []).map(s => String(s).toLowerCase().trim());
   }, [currentUser?.skills]);
@@ -36,42 +60,94 @@ export default function JobCatalog() {
   const candidateExp = Number(currentUser?.experience_years || currentUser?.experienceYears || 0);
   const candidateRole = (currentUser?.job_role || currentUser?.jobRole || '').toLowerCase();
 
+  const hasCandidateProfile = useMemo(() => {
+    return Boolean(
+      (currentUser?.skills && currentUser.skills.length > 0) ||
+      currentUser?.job_role || currentUser?.jobRole ||
+      currentUser?.resume_text || currentUser?.resumeText ||
+      currentUser?.experience_years || currentUser?.experienceYears
+    );
+  }, [currentUser]);
+
+  // ── Authoritative Backend Batch Matching ───────────────────────────────────
+  useEffect(() => {
+    let isMounted = true;
+    if (!hasCandidateProfile || jobs.length === 0) {
+      setBackendMatches({});
+      return;
+    }
+    setIsMatchingLoading(true);
+    api.batchMatchJobs({
+      name: currentUser?.name || '',
+      jobRole: currentUser?.job_role || currentUser?.jobRole || '',
+      experienceYears: Number(currentUser?.experience_years ?? currentUser?.experienceYears ?? 0),
+      skills: currentUser?.skills || [],
+      education: currentUser?.education || '',
+      resumeSummary: currentUser?.resume_summary || currentUser?.resumeSummary || '',
+      resumeText: currentUser?.resume_text || currentUser?.resumeText || '',
+    }).then(res => {
+      if (isMounted && res?.matches) {
+        setBackendMatches(res.matches);
+      }
+    }).catch(err => {
+      console.warn('[JobCatalog] batchMatchJobs error:', err);
+    }).finally(() => {
+      if (isMounted) setIsMatchingLoading(false);
+    });
+    return () => { isMounted = false; };
+  }, [hasCandidateProfile, currentUser?.id, currentUser?.skills, currentUser?.jobRole, currentUser?.experienceYears, jobs.length]);
+
+  // ── Rank Jobs by Authoritative Match Scores ─────────────────────────────────
   const rankedJobs = useMemo(() => {
     return jobs.map(job => {
-      const reqSkills = (job.requiredSkills || []).map(s => String(s).toLowerCase());
-      const matched = (job.requiredSkills || []).filter(req => 
-        candidateSkills.some(cs => cs.includes(req.toLowerCase()) || req.toLowerCase().includes(cs))
-      );
+      let score = null;
+      let matchedSkills = [];
+      let missingSkills = [];
+      let explanation = '';
 
-      let score = 0;
-      if (candidateSkills.length > 0) {
-        score = Math.round((matched.length / Math.max(1, reqSkills.length)) * 65);
-        score += candidateExp >= (job.minExperienceYears || 2) ? 25 : 10;
-        if (candidateRole && (job.title.toLowerCase().includes(candidateRole) || candidateRole.includes(job.title.toLowerCase()))) {
-          score += 10;
+      if (backendMatches && backendMatches[job.id]) {
+        const bm = backendMatches[job.id];
+        score = bm.match_score ?? 0;
+        matchedSkills = bm.matched_skills || [];
+        missingSkills = bm.missing_skills || [];
+        explanation = bm.explanation || '';
+      } else if (hasCandidateProfile) {
+        // Transitional non-inflated estimation without artificial score floors
+        const reqSkills = (job.requiredSkills || []).map(s => String(s).toLowerCase());
+        const matched = (job.requiredSkills || []).filter(req => 
+          candidateSkills.some(cs => cs.includes(req.toLowerCase()) || req.toLowerCase().includes(cs))
+        );
+        matchedSkills = matched;
+        const skillRatio = reqSkills.length > 0 ? (matched.length / reqSkills.length) : 0;
+        let est = Math.round(skillRatio * 60);
+        // Only grant experience if at least some skills align
+        if (skillRatio > 0.2 && candidateExp >= (job.minExperienceYears || 2)) {
+          est += 20;
         }
-        score = Math.min(99, Math.max(40, score));
-      } else {
-        score = 80; // Baseline neutral match if no profile skills yet
+        if (candidateRole && (job.title.toLowerCase().includes(candidateRole) || candidateRole.includes(job.title.toLowerCase()))) {
+          est += 20;
+        }
+        score = Math.min(100, Math.max(0, est));
       }
 
       return {
         ...job,
         matchScore: score,
-        matchedSkillsCount: matched.length,
-        hasStrongMatch: candidateSkills.length > 0 && score >= 75
+        matchedSkillsCount: matchedSkills.length,
+        matchExplanation: explanation,
+        hasStrongMatch: score !== null && score >= 75
       };
     }).sort((a, b) => {
-      if (candidateSkills.length > 0) {
-        return b.matchScore - a.matchScore; // Show highest match jobs FIRST
+      if (hasCandidateProfile) {
+        return (b.matchScore ?? -1) - (a.matchScore ?? -1); // Show highest match jobs FIRST
       }
       return 0;
     });
-  }, [jobs, candidateSkills, candidateExp, candidateRole]);
+  }, [jobs, backendMatches, hasCandidateProfile, candidateSkills, candidateExp, candidateRole]);
 
   const displayedJobs = useMemo(() => {
     if (filterScope === 'BEST_MATCH') {
-      return rankedJobs.filter(j => j.matchScore >= 75);
+      return rankedJobs.filter(j => j.matchScore !== null && j.matchScore >= 75);
     }
     return rankedJobs;
   }, [rankedJobs, filterScope]);
@@ -146,7 +222,7 @@ export default function JobCatalog() {
             >
               All Roles ({jobs.length})
             </button>
-            {candidateSkills.length > 0 && (
+            {hasCandidateProfile && (
               <button
                 onClick={() => setFilterScope('BEST_MATCH')}
                 className={`flex items-center space-x-1 px-3 py-1 rounded-xl text-xs font-bold transition ${
@@ -156,7 +232,7 @@ export default function JobCatalog() {
                 }`}
               >
                 <Flame className="w-3.5 h-3.5 text-amber-400" />
-                <span>Best Matches ({rankedJobs.filter(j => j.matchScore >= 75).length})</span>
+                <span>Best Matches ({rankedJobs.filter(j => j.matchScore !== null && j.matchScore >= 75).length})</span>
               </button>
             )}
           </div>
@@ -196,13 +272,18 @@ export default function JobCatalog() {
                     <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
                       {job.status}
                     </span>
-                    {candidateSkills.length > 0 && (
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border flex items-center space-x-1 ${
-                        job.matchScore >= 80 
-                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30' 
-                          : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800'
-                      }`}>
-                        <Flame className={`w-3 h-3 ${job.matchScore >= 80 ? 'text-amber-500 animate-pulse' : 'text-slate-400'}`} />
+                    {hasCandidateProfile && job.matchScore !== null && (
+                      <span 
+                        title={job.matchExplanation || ''}
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border flex items-center space-x-1 ${
+                          job.matchScore >= 75 
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' 
+                            : job.matchScore >= 40
+                            ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+                        }`}
+                      >
+                        <Flame className={`w-3 h-3 ${job.matchScore >= 75 ? 'text-emerald-500 animate-pulse' : job.matchScore >= 40 ? 'text-amber-500' : 'text-rose-400'}`} />
                         <span>{job.matchScore}% Match</span>
                       </span>
                     )}
@@ -269,7 +350,7 @@ export default function JobCatalog() {
       {selectedJobForApply && (
         <ResumeUploadModal
           job={selectedJobForApply}
-          onClose={() => setSelectedJobForApply(null)}
+          onClose={handleCloseModal}
         />
       )}
 

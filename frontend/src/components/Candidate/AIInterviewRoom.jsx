@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { evaluateAnswerAndAdapt } from '../../services/aiRecruiterService';
 import { ProctorMonitor } from '../../services/proctorService';
@@ -9,6 +10,9 @@ import {
   Mic, 
   MicOff, 
   Volume2, 
+  VolumeX,
+  Play,
+  Lightbulb,
   ShieldAlert, 
   ShieldCheck, 
   Sparkles, 
@@ -26,33 +30,66 @@ import {
 } from 'lucide-react';
 
 export default function AIInterviewRoom() {
+  const navigate = useNavigate();
+  const { candidateId: routeCandidateId } = useParams();
   const { 
     activeJob, 
     currentInterviewSession, 
     setCurrentInterviewSession, 
-    setCurrentView,
     candidates,
     currentUser,
-    userRole
+    userRole,
+    myApplications = []
   } = useRecruitment();
 
   // Find candidate in database to check interview scheduling status
-  const activeCandidate = candidates.find(c => 
-    c.id === currentInterviewSession?.candidateId || 
-    (currentUser && c.email?.toLowerCase() === currentUser.email?.toLowerCase())
-  ) || null;
+  const activeCandidate = (routeCandidateId && candidates.find(c => String(c.id) === String(routeCandidateId))) ||
+    candidates.find(c => 
+      c.id === currentInterviewSession?.candidateId || 
+      (currentUser && c.email?.toLowerCase() === currentUser.email?.toLowerCase())
+    ) || null;
+
+  const activeApp = (routeCandidateId && myApplications?.find(a => String(a.id) === String(routeCandidateId))) ||
+    myApplications?.find(a => 
+      a.jobId === activeJob?.id || (currentUser && a.email?.toLowerCase() === currentUser.email?.toLowerCase())
+    ) || (myApplications?.length > 0 ? myApplications[0] : null);
+
+  const candidateId = routeCandidateId ||
+    currentInterviewSession?.candidateId || 
+    activeCandidate?.id ||
+    activeApp?.id ||
+    candidates.find(c => c.email === currentUser?.email)?.id || 
+    currentUser?.id ||
+    null;
 
   // Gatekeeper:
   // 1. Recruiter in testing mode is allowed
-  // 2. Any applicant with an active job application or interview session is allowed
+  // 2. Candidate who has been scheduled or advanced by recruiter is allowed
   const isRecruiterTesting = userRole === 'recruiter';
-  const hasApplication = Boolean(activeCandidate || currentInterviewSession?.candidateId);
-  const canEnterInterview = isRecruiterTesting || hasApplication;
+  const isScheduled = Boolean(
+    activeCandidate?.interviewScheduledAt ||
+    activeCandidate?.interview_scheduled_at ||
+    activeCandidate?.interviewStatus === 'Interview Scheduled' ||
+    activeCandidate?.interview_status === 'Interview Scheduled' ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered'].includes(activeCandidate?.status) ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered'].includes(activeCandidate?.finalDecision) ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered'].includes(activeCandidate?.final_decision) ||
+    activeApp?.interviewScheduledAt ||
+    activeApp?.interview_scheduled_at ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered'].includes(activeApp?.status) ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered'].includes(activeApp?.finalDecision)
+  );
+  const canEnterInterview = isRecruiterTesting || isScheduled;
+
+  // Session lifecycle & audio preferences
+  const [hasStarted, setHasStarted] = useState(false);
+  const [isVoiceMuted, setIsVoiceMuted] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const proctorRef = useRef(null);
   const recognitionRef = useRef(null);
+  const streamRef = useRef(null);
 
   // States
   const [cameraActive, setCameraActive] = useState(false);
@@ -66,6 +103,11 @@ export default function AIInterviewRoom() {
 
   // Proctoring telemetry
   const [faceStatus, setFaceStatus] = useState('VERIFIED');
+  const faceStatusRef = useRef(faceStatus);
+  useEffect(() => {
+    faceStatusRef.current = faceStatus;
+  }, [faceStatus]);
+
   const [integrityScore, setIntegrityScore] = useState(100);
   const [integrityEvents, setIntegrityEvents] = useState([]);
   const [riskLevel, setRiskLevel] = useState('Low');
@@ -137,9 +179,24 @@ export default function AIInterviewRoom() {
     return () => { isMounted = false; };
   }, [canEnterInterview, activeJob?.id, activeCandidate?.id]);
 
-  // 1. Initialize Proctoring
+  // 0. Safety: Immediately silence and cancel all speech synthesis if access is restricted, session has not started, or voice is muted
   useEffect(() => {
-    if (!canEnterInterview) return;
+    if (!canEnterInterview || !hasStarted || isVoiceMuted) {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      setIsAISpeaking(false);
+    }
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [canEnterInterview, hasStarted, isVoiceMuted]);
+
+  // 1. Initialize Proctoring (Only when access is granted AND user has started session)
+  useEffect(() => {
+    if (!canEnterInterview || !hasStarted) return;
 
     proctorRef.current = new ProctorMonitor({
       onEvent: (ev, score, risk) => {
@@ -156,18 +213,18 @@ export default function AIInterviewRoom() {
 
     return () => {
       if (proctorRef.current) proctorRef.current.stop();
-      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel();
       if (recognitionRef.current) {
         try { recognitionRef.current.stop(); } catch (e) {}
       }
     };
-  }, [canEnterInterview]);
+  }, [canEnterInterview, hasStarted]);
 
-  // 2. Initialize Camera & Canvas Tracking
+  // 2. Initialize Camera & Canvas Tracking (Only when access is granted AND user has started session)
   useEffect(() => {
-    if (!canEnterInterview) return;
+    if (!canEnterInterview || !hasStarted) return;
 
-    let streamInstance = null;
+    let isMounted = true;
 
     async function startCamera() {
       try {
@@ -175,11 +232,18 @@ export default function AIInterviewRoom() {
           video: { width: 640, height: 480 },
           audio: false
         });
+        if (!isMounted) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play();
+          const playPromise = videoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+          }
           setCameraActive(true);
-          streamInstance = stream;
         }
       } catch (err) {
         console.warn('Camera access unavailable, falling back to simulated stream:', err.message);
@@ -198,8 +262,10 @@ export default function AIInterviewRoom() {
         const height = canvasRef.current.height;
         ctx.clearRect(0, 0, width, height);
 
+        const currentFace = faceStatusRef.current;
+
         // Draw HUD reticle / face box
-        ctx.strokeStyle = faceStatus === 'VERIFIED' ? '#10B981' : faceStatus === 'MULTIPLE_FACES' ? '#F43F5E' : '#F59E0B';
+        ctx.strokeStyle = currentFace === 'VERIFIED' ? '#10B981' : currentFace === 'MULTIPLE_FACES' ? '#F43F5E' : '#F59E0B';
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 6]);
         
@@ -231,21 +297,24 @@ export default function AIInterviewRoom() {
         // Target tag
         ctx.fillStyle = ctx.strokeStyle;
         ctx.font = '10px Inter, sans-serif';
-        ctx.fillText(faceStatus === 'VERIFIED' ? '● FACE TRACKED (ID: 01)' : `⚠️ ${faceStatus}`, boxX, boxY - 8);
+        ctx.fillText(currentFace === 'VERIFIED' ? '● FACE TRACKED (ID: 01)' : `⚠️ ${currentFace}`, boxX, boxY - 8);
       }
     }, 100);
 
     return () => {
+      isMounted = false;
       clearInterval(interval);
-      if (streamInstance) {
-        streamInstance.getTracks().forEach(t => t.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
       }
     };
-  }, [faceStatus]);
+  }, [canEnterInterview, hasStarted]);
 
-  // 3. Speech Synthesis (AI Speaks)
+  // 3. Speech Synthesis (AI Speaks) - Strictly guarded against restricted, unstarted, or muted states
   const speakAI = (text) => {
-    if (!('speechSynthesis' in window)) return;
+    if (!canEnterInterview || !hasStarted || isVoiceMuted) return;
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.rate = 1.0;
@@ -256,22 +325,30 @@ export default function AIInterviewRoom() {
     const preferredVoice = voices.find(v => v.lang.includes('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha')));
     if (preferredVoice) utterance.voice = preferredVoice;
 
-    utterance.onstart = () => setIsAISpeaking(true);
+    utterance.onstart = () => {
+      if (!canEnterInterview || !hasStarted || isVoiceMuted) {
+        window.speechSynthesis.cancel();
+        setIsAISpeaking(false);
+        return;
+      }
+      setIsAISpeaking(true);
+    };
     utterance.onend = () => setIsAISpeaking(false);
     utterance.onerror = () => setIsAISpeaking(false);
 
     window.speechSynthesis.speak(utterance);
   };
 
-  // Speak question on load or index advance
+  // Speak question on load or index advance only when session is actively started and unmuted
   useEffect(() => {
+    if (!canEnterInterview || !hasStarted || isVoiceMuted) return;
     if (currentQ?.prompt && !loadingQuestions) {
       const timer = setTimeout(() => {
         speakAI(currentQ.prompt);
       }, 800);
       return () => clearTimeout(timer);
     }
-  }, [currentQuestionIdx, currentQ?.prompt, loadingQuestions]);
+  }, [canEnterInterview, hasStarted, isVoiceMuted, currentQuestionIdx, currentQ?.prompt, loadingQuestions]);
 
   // 4. Speech Recognition Toggle (Candidate speaks)
   const toggleSpeechRecognition = () => {
@@ -416,6 +493,11 @@ export default function AIInterviewRoom() {
   };
 
   const finishInterview = async (finalTranscript) => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setIsAISpeaking(false);
+
     const finalEvents = proctorRef.current ? proctorRef.current.events : integrityEvents;
     const finalScore = proctorRef.current ? proctorRef.current.integrityScore : integrityScore;
 
@@ -435,7 +517,11 @@ export default function AIInterviewRoom() {
       codeScore: currentInterviewSession?.codeScore ?? (activeCandidate?.coding_score || 0)
     });
 
-    setCurrentView('feedback');
+    if (candidateId) {
+      navigate(`/skill-gap/${candidateId}`);
+    } else {
+      navigate('/skill-gap');
+    }
   };
 
   // Demo cheat triggers for presentation
@@ -501,8 +587,8 @@ export default function AIInterviewRoom() {
               <span className="font-semibold text-indigo-600 dark:text-indigo-400">{activeJob?.title || 'Applied Position'}</span>
             </div>
             <div className="flex justify-between text-slate-600 dark:text-slate-300">
-              <span>Resume Match:</span>
-              <span className="text-cyan-600 dark:text-cyan-400 font-bold">{activeCandidate.matchScore}% Match</span>
+              <span>Application Status:</span>
+              <span className="text-blue-600 dark:text-blue-400 font-bold">{activeCandidate.status || activeCandidate.finalDecision || 'Under Review'}</span>
             </div>
             <div className="flex justify-between text-slate-600 dark:text-slate-300">
               <span>Interview Status:</span>
@@ -513,14 +599,175 @@ export default function AIInterviewRoom() {
           </div>
         )}
 
-        {/* Action button */}
-        <div className="flex items-center justify-center pt-2">
+        {/* Action buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
           <button
-            onClick={() => setCurrentView('candidate')}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-500 hover:opacity-95 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
+            onClick={() => navigate('/my-applications')}
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
           >
-            <span>Return to Job Openings</span>
+            <span>View My Applications</span>
             <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => navigate('/jobs')}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition"
+          >
+            Browse Job Catalog
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INTERSTITIAL SCREEN: AI INTERVIEW BRIEFING & START SESSION BUTTON
+  // ─────────────────────────────────────────────────────────────────────────
+  if (!hasStarted) {
+    const candidateName = activeCandidate?.name || activeApp?.candidateName || currentUser?.name || 'Candidate';
+    const jobTitle = activeJob?.title || 'Applied Position';
+    const scheduledSlot = activeCandidate?.interviewScheduledAt || activeApp?.interviewScheduledAt || 'Confirmed by Recruiter';
+
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 pb-12 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95">
+        {/* Hero Card */}
+        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-white/[0.08] shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center space-x-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Interview Access Authorized</span>
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{activeJob?.companyName || 'SparkX Technologies'}</span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs text-slate-500">{activeJob?.department || 'Engineering'}</span>
+            </div>
+
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                AI Technical & Conversational Interview
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                Welcome, <strong>{candidateName}</strong>! Your application for <strong>{jobTitle}</strong> has been reviewed and approved for the live AI interview session.
+              </p>
+            </div>
+
+            {/* Quick Specs Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+                <div className="flex items-center space-x-1.5 text-indigo-500 mb-1">
+                  <Calendar className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Scheduled Slot</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{scheduledSlot}</div>
+                <div className="text-[10px] text-slate-400">Recruiter confirmed</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+                <div className="flex items-center space-x-1.5 text-purple-500 mb-1">
+                  <Bot className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Interaction</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white">Voice & Text</div>
+                <div className="text-[10px] text-slate-400">Adaptive AI probing</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+                <div className="flex items-center space-x-1.5 text-emerald-500 mb-1">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Proctoring</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white">Active Biometrics</div>
+                <div className="text-[10px] text-slate-400">Gaze & focus track</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+                <div className="flex items-center space-x-1.5 text-amber-500 mb-1">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Questions</span>
+                </div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white">{questions.length} Questions</div>
+                <div className="text-[10px] text-slate-400">Job-tailored</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Preparation Guidelines & Voice Preference */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/[0.08] space-y-2.5 shadow-md">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center space-x-1.5">
+              <Bot className="w-4 h-4" />
+              <span>How the AI Interview Works</span>
+            </h3>
+            <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-2 leading-relaxed">
+              <li className="flex items-start space-x-2">
+                <span className="text-indigo-500 font-bold">•</span>
+                <span>The AI interviewer presents questions tailored specifically to your profile and the <strong>{jobTitle}</strong> role.</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-indigo-500 font-bold">•</span>
+                <span>You can respond using <strong>voice dictation (Microphone)</strong> or by <strong>typing your answers</strong> directly.</span>
+              </li>
+              <li className="flex items-start space-x-2">
+                <span className="text-indigo-500 font-bold">•</span>
+                <span>The AI may initiate adaptive follow-up inquiries if your response requires deeper technical clarification.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/[0.08] space-y-3 shadow-md flex flex-col justify-between">
+            <div className="space-y-2.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+                <Volume2 className="w-4 h-4 text-cyan-500" />
+                <span>Audio & Voice Readout Preferences</span>
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                Choose whether you would like the AI interviewer to read prompts aloud over your speakers or keep the session in quiet text-only mode.
+              </p>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
+                {isVoiceMuted ? <VolumeX className="w-4 h-4 text-amber-500" /> : <Volume2 className="w-4 h-4 text-emerald-500" />}
+                <span>{isVoiceMuted ? 'AI Voice: Muted' : 'AI Voice: Active'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVoiceMuted(prev => !prev)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition ${
+                  isVoiceMuted 
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' 
+                    : 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-500'
+                }`}
+              >
+                {isVoiceMuted ? 'Turn Sound On' : 'Mute Sound'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Readiness Instructions & Start Action Footer */}
+        <div className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
+          <div className="space-y-1 max-w-xl">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+              <Lightbulb className="w-4 h-4 text-amber-500" />
+              <span>Ready to Begin?</span>
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Clicking below will initialize your camera, start the proctoring monitor, and begin Question 1. You can pause or mute the AI voice at any time during the interview.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setHasStarted(true)}
+            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:opacity-95 text-white font-bold text-sm shadow-xl shadow-indigo-600/35 transition flex items-center justify-center space-x-3 group shrink-0"
+          >
+            <Play className="w-5 h-5 fill-current transition group-hover:scale-110" />
+            <span>Start AI Interview Session</span>
+            <ArrowRight className="w-4 h-4 transition group-hover:translate-x-1" />
           </button>
         </div>
       </div>
@@ -532,14 +779,14 @@ export default function AIInterviewRoom() {
       
       {/* Recruiter Confirmed Interview Banner */}
       {activeCandidate?.interviewScheduledAt && (
-        <div className="p-3.5 px-4 rounded-2xl bg-cyan-950/40 border border-cyan-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
+        <div className="p-3.5 px-4 rounded-2xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-500 dark:text-cyan-400 flex items-center justify-center shrink-0">
               <Calendar className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-cyan-300 font-bold">Interview Confirmed by Recruiter</span>
-              <p className="text-slate-400 text-[11px]">Scheduled Slot: <strong className="text-white">{activeCandidate.interviewScheduledAt}</strong></p>
+              <span className="text-cyan-800 dark:text-cyan-300 font-bold">Interview Confirmed by Recruiter</span>
+              <p className="text-slate-600 dark:text-slate-400 text-[11px]">Scheduled Slot: <strong className="text-slate-900 dark:text-white">{activeCandidate.interviewScheduledAt}</strong></p>
             </div>
           </div>
           {activeCandidate.interviewMeetingUrl && (
@@ -557,7 +804,7 @@ export default function AIInterviewRoom() {
       )}
 
       {/* Top Header Bar with Live Telemetry Badges */}
-      <div className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-white/[0.08] shadow-xl">
+      <div className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-200/80 dark:border-white/[0.08] shadow-xl">
         <div className="flex items-center space-x-3">
           <div className="relative flex items-center justify-center">
             <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping absolute"></span>
@@ -565,13 +812,13 @@ export default function AIInterviewRoom() {
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold text-white uppercase tracking-wider">Live AI Interview Session</span>
-              <span className="text-slate-600">•</span>
-              <span className="text-xs text-indigo-400 font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Live AI Interview Session</span>
+              <span className="text-slate-400 dark:text-slate-600">•</span>
+              <span className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
                 {activeJob.title}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5 font-normal">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
               Autonomous conversational interviewer with real-time biometric proctoring & integrity verification
             </p>
           </div>
@@ -581,8 +828,8 @@ export default function AIInterviewRoom() {
         <div className="flex items-center space-x-2.5 shrink-0">
           <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2 border transition-all ${
             tabFocused 
-              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25' 
-              : 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse'
+              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25' 
+              : 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 animate-pulse'
           }`}>
             <Eye className="w-3.5 h-3.5" />
             <span>{tabFocused ? 'Window Focus: Locked' : 'Tab Switched!'}</span>
@@ -590,10 +837,10 @@ export default function AIInterviewRoom() {
 
           <div className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2 border transition-all ${
             riskLevel === 'High'
-              ? 'bg-rose-500/15 text-rose-400 border-rose-500/30'
-              : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/25'
+              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30'
+              : 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/25'
           }`}>
-            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
             <span>Integrity: {integrityScore}/100</span>
           </div>
         </div>
@@ -652,47 +899,49 @@ export default function AIInterviewRoom() {
 
             {/* Bottom watermark */}
             <div className="absolute bottom-3.5 left-3.5 right-3.5 flex items-center justify-between text-[11px] text-slate-400 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10">
-              <span className="font-medium text-slate-300">Candidate: {currentInterviewSession.candidateName}</span>
+              <span className="font-medium text-slate-300">Candidate: {currentInterviewSession?.candidateName || activeCandidate?.name || currentUser?.name || 'Candidate'}</span>
               <span className="font-mono text-cyan-400 text-[10px]">FPS: 30 • 720p HD</span>
             </div>
           </div>
 
-          {/* Telemetry Simulator / Test Triggers */}
-          <div className="glass-card p-4 rounded-2xl border border-white/[0.08] space-y-3">
-            <div className="flex items-center justify-between text-xs font-bold">
-              <span className="flex items-center space-x-2 text-indigo-300">
-                <Zap className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Real-Time Telemetry Simulation</span>
-              </span>
-              <span className="text-[10px] text-slate-500 font-mono">Anti-Cheating HUD</span>
+          {/* Telemetry Simulator / Test Triggers (Recruiter Testing Mode Only) */}
+          {isRecruiterTesting && (
+            <div className="glass-card p-4 rounded-2xl border border-slate-200/80 dark:border-white/[0.08] space-y-3">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="flex items-center space-x-2 text-indigo-700 dark:text-indigo-300">
+                  <Zap className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
+                  <span>Recruiter Test Telemetry Simulator</span>
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Testing HUD</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => triggerCheatEvent('TAB_SWITCH')}
+                  className="p-2.5 rounded-xl bg-slate-100 hover:bg-amber-50 dark:bg-slate-900/80 dark:hover:bg-amber-950/40 text-[11px] font-semibold text-slate-700 hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-300 border border-slate-200 hover:border-amber-400 dark:border-slate-800 dark:hover:border-amber-500/50 transition text-center shadow-sm"
+                >
+                  Alt-Tab Switch
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerCheatEvent('MULTIPLE_FACES')}
+                  className="p-2.5 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-slate-900/80 dark:hover:bg-rose-950/40 text-[11px] font-semibold text-slate-700 hover:text-rose-700 dark:text-slate-300 dark:hover:text-rose-300 border border-slate-200 hover:border-rose-400 dark:border-slate-800 dark:hover:border-rose-500/50 transition text-center shadow-sm"
+                >
+                  Multiple Faces
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerCheatEvent('NO_FACE')}
+                  className="p-2.5 rounded-xl bg-slate-100 hover:bg-amber-50 dark:bg-slate-900/80 dark:hover:bg-amber-950/40 text-[11px] font-semibold text-slate-700 hover:text-amber-700 dark:text-slate-300 dark:hover:text-amber-300 border border-slate-200 hover:border-amber-400 dark:border-slate-800 dark:hover:border-amber-500/50 transition text-center shadow-sm"
+                >
+                  Face Displaced
+                </button>
+              </div>
             </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => triggerCheatEvent('TAB_SWITCH')}
-                className="p-2.5 rounded-xl bg-slate-900/80 hover:bg-amber-950/40 text-[11px] font-semibold text-slate-300 hover:text-amber-300 border border-slate-800 hover:border-amber-500/50 transition text-center shadow-sm"
-              >
-                Alt-Tab Switch
-              </button>
-
-              <button
-                type="button"
-                onClick={() => triggerCheatEvent('MULTIPLE_FACES')}
-                className="p-2.5 rounded-xl bg-slate-900/80 hover:bg-rose-950/40 text-[11px] font-semibold text-slate-300 hover:text-rose-300 border border-slate-800 hover:border-rose-500/50 transition text-center shadow-sm"
-              >
-                Multiple Faces
-              </button>
-
-              <button
-                type="button"
-                onClick={() => triggerCheatEvent('NO_FACE')}
-                className="p-2.5 rounded-xl bg-slate-900/80 hover:bg-amber-950/40 text-[11px] font-semibold text-slate-300 hover:text-amber-300 border border-slate-800 hover:border-amber-500/50 transition text-center shadow-sm"
-              >
-                Face Displaced
-              </button>
-            </div>
-          </div>
+          )}
 
         </div>
 
@@ -700,7 +949,7 @@ export default function AIInterviewRoom() {
         <div className="lg:col-span-7 space-y-4 flex flex-col justify-between">
           
           {/* AI Interviewer Avatar & Live Question Banner */}
-          <div className="glass-card p-5 sm:p-6 rounded-3xl border border-white/[0.08] space-y-4 shadow-xl">
+          <div className="glass-card p-5 sm:p-6 rounded-3xl border border-slate-200/80 dark:border-white/[0.08] space-y-4 shadow-xl">
             
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3.5">
@@ -709,61 +958,86 @@ export default function AIInterviewRoom() {
                     <Bot className="w-6 h-6" />
                   </div>
                   {isAISpeaking && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-cyan-400 rounded-full border-2 border-[#06080E] animate-ping"></span>
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-cyan-400 rounded-full border-2 border-white dark:border-[#06080E] animate-ping"></span>
                   )}
                 </div>
 
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-white text-sm">SparkX Adaptive AI Interviewer</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">SparkX Adaptive AI Interviewer</span>
                     {isFollowUpActive && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 shadow-sm animate-pulse">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shadow-sm animate-pulse">
                         ⚡ Adaptive Cross-Questioning
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-400 flex items-center space-x-2 mt-0.5">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center space-x-2 mt-0.5">
                     <span>Question {currentQuestionIdx + 1} of {questions.length}</span>
                     <span>•</span>
-                    <span className="text-indigo-400 font-semibold">{currentQ?.type || 'Technical Scenario'}</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-semibold">{currentQ?.type || 'Technical Scenario'}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Audio Equalizer Waves */}
-              <div className="flex items-center space-x-1.5 h-9 px-3.5 rounded-xl bg-slate-900/90 border border-slate-800">
-                {isAISpeaking ? (
-                  <>
-                    <div className="w-1 bg-cyan-400 rounded-full audio-bar-1"></div>
-                    <div className="w-1 bg-indigo-400 rounded-full audio-bar-2"></div>
-                    <div className="w-1 bg-purple-400 rounded-full audio-bar-3"></div>
-                    <div className="w-1 bg-cyan-400 rounded-full audio-bar-4"></div>
-                    <div className="w-1 bg-indigo-400 rounded-full audio-bar-5"></div>
-                    <span className="text-[10px] text-cyan-300 font-bold ml-2">Speaking</span>
-                  </>
-                ) : (
-                  <span className="text-[11px] text-slate-500 flex items-center space-x-1.5">
-                    <Volume2 className="w-3.5 h-3.5" />
-                    <span>Listening</span>
-                  </span>
-                )}
+              {/* Audio Equalizer Waves & Voice Mute Toggle */}
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVoiceMuted(prev => {
+                      const next = !prev;
+                      if (next && typeof window !== 'undefined' && window.speechSynthesis) {
+                        window.speechSynthesis.cancel();
+                        setIsAISpeaking(false);
+                      }
+                      return next;
+                    });
+                  }}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition ${
+                    isVoiceMuted
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                  title={isVoiceMuted ? "Unmute AI Voice" : "Mute AI Voice"}
+                >
+                  {isVoiceMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">{isVoiceMuted ? 'Voice Muted' : 'Voice Active'}</span>
+                </button>
+
+                <div className="flex items-center space-x-1.5 h-9 px-3.5 rounded-xl bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800">
+                  {isAISpeaking ? (
+                    <>
+                      <div className="w-1 bg-cyan-400 rounded-full audio-bar-1"></div>
+                      <div className="w-1 bg-indigo-400 rounded-full audio-bar-2"></div>
+                      <div className="w-1 bg-purple-400 rounded-full audio-bar-3"></div>
+                      <div className="w-1 bg-cyan-400 rounded-full audio-bar-4"></div>
+                      <div className="w-1 bg-indigo-400 rounded-full audio-bar-5"></div>
+                      <span className="text-[10px] text-cyan-600 dark:text-cyan-300 font-bold ml-2">Speaking</span>
+                    </>
+                  ) : (
+                    <span className="text-[11px] text-slate-500 flex items-center space-x-1.5">
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span>{isVoiceMuted ? 'Muted' : 'Listening'}</span>
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* Current Active Question Display */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#06080E]/90 border border-indigo-500/20 shadow-inner relative overflow-hidden">
+            <div className="p-4 sm:p-5 rounded-2xl bg-indigo-50/70 dark:bg-[#06080E]/90 border border-indigo-200/80 dark:border-indigo-500/20 shadow-inner relative overflow-hidden">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 opacity-60"></div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
                   {isFollowUpActive ? "Technical Follow-Up" : `Question ${currentQuestionIdx + 1}`}
                 </span>
                 {loadingQuestions && (
-                  <span className="text-[10px] text-cyan-400 font-mono animate-pulse">
+                  <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono animate-pulse">
                     Preparing technical question...
                   </span>
                 )}
               </div>
-              <p className="text-sm sm:text-base font-semibold text-white mt-1.5 leading-relaxed">
+              <p className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white mt-1.5 leading-relaxed">
                 {isFollowUpActive ? activeFollowUpPrompt : (currentQ?.prompt || (loadingQuestions ? 'Preparing question...' : 'Loading scenario...'))}
               </p>
             </div>
@@ -771,10 +1045,10 @@ export default function AIInterviewRoom() {
           </div>
 
           {/* Live Transcript Chat Feed */}
-          <div className="glass-card p-4 rounded-3xl border border-white/[0.08] max-h-56 overflow-y-auto space-y-3">
-            <div className="flex items-center justify-between pb-1 border-b border-white/[0.05]">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Live Speech-to-Text Stream</span>
-              <span className="text-[10px] text-emerald-400 font-mono">NLP Pipeline Active</span>
+          <div className="glass-card p-4 rounded-3xl border border-slate-200/80 dark:border-white/[0.08] max-h-56 overflow-y-auto space-y-3">
+            <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-white/[0.05]">
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Live Speech-to-Text Stream</span>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">NLP Pipeline Active</span>
             </div>
             {transcript.map((msg) => (
               <div
@@ -782,21 +1056,21 @@ export default function AIInterviewRoom() {
                 className={`p-3.5 rounded-2xl text-xs space-y-1.5 ${
                   msg.speaker === 'ai'
                     ? msg.isAdaptive 
-                      ? 'bg-amber-950/30 border border-amber-800/40 text-amber-200' 
-                      : 'bg-slate-900/80 border border-slate-800 text-slate-200'
-                    : 'bg-indigo-950/50 border border-indigo-500/30 text-indigo-100 ml-6'
+                      ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200' 
+                      : 'bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200'
+                    : 'bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-500/30 text-indigo-950 dark:text-indigo-100 ml-6'
                 }`}
               >
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-semibold">
+                <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                   <span className="flex items-center space-x-1.5">
                     <span>{msg.speaker === 'ai' ? '🤖 SparkX AI' : '👤 You (Candidate)'}</span>
                     {msg.isAdaptive && (
-                      <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono text-[9px]">
+                      <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[9px] font-bold">
                         ADAPTIVE
                       </span>
                     )}
                   </span>
-                  <span className="font-mono text-slate-500">{msg.timestamp}</span>
+                  <span className="font-mono text-slate-400 dark:text-slate-500">{msg.timestamp}</span>
                 </div>
                 <p className="leading-relaxed text-xs sm:text-[13px]">{msg.text}</p>
               </div>
@@ -804,31 +1078,31 @@ export default function AIInterviewRoom() {
           </div>
 
           {/* Candidate Response Input & Presets */}
-          <div className="glass-card p-4 sm:p-5 rounded-3xl border border-white/[0.08] space-y-3 shadow-xl">
+          <div className="glass-card p-4 sm:p-5 rounded-3xl border border-slate-200/80 dark:border-white/[0.08] space-y-3 shadow-xl">
             
             {/* Quick Demo Answers to Test Adaptive Engine with 1-click (Recruiter Preview Only) */}
             {isRecruiterTesting && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 pb-1 border-b border-white/[0.04]">
-                <span className="font-semibold text-slate-400 text-[10px] uppercase tracking-wider">Recruiter Quick Test:</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400 pb-1 border-b border-slate-100 dark:border-white/[0.04]">
+                <span className="font-semibold text-slate-500 dark:text-slate-400 text-[10px] uppercase tracking-wider">Recruiter Quick Test:</span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setCandidateAnswer("I would use asynchronous FastAPI endpoints combined with streaming responses and an HNSW vector index in PostgreSQL for sub-50ms latency.")}
-                    className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition font-medium text-[10px]"
+                    className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition font-medium text-[10px]"
                   >
                     ⚡ Strong Answer
                   </button>
                   <button
                     type="button"
                     onClick={() => setCandidateAnswer("We basically use caching and databases to make it fast.")}
-                    className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition font-medium text-[10px]"
+                    className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition font-medium text-[10px]"
                   >
                     ❓ Vague Answer
                   </button>
                   <button
                     type="button"
                     onClick={() => setCandidateAnswer("I don't know much about this yet, haven't encountered it in production.")}
-                    className="px-2 py-0.5 rounded-lg bg-purple-500/10 text-purple-300 border border-purple-500/30 hover:bg-purple-500/20 transition font-medium text-[10px]"
+                    className="px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30 hover:bg-purple-100 dark:hover:bg-purple-500/20 transition font-medium text-[10px]"
                   >
                     🤷 "I don't know"
                   </button>
@@ -844,7 +1118,7 @@ export default function AIInterviewRoom() {
                 className={`p-3 rounded-2xl border transition flex items-center justify-center shrink-0 ${
                   isMicListening
                     ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/40 animate-pulse'
-                    : 'bg-slate-900/90 text-slate-400 border-slate-700/80 hover:text-white hover:border-indigo-500'
+                    : 'bg-slate-100 dark:bg-slate-900/90 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700/80 hover:text-slate-900 dark:hover:text-white hover:border-indigo-500'
                 }`}
                 title={isMicListening ? "Click to Stop Mic" : "Click to Speak"}
               >
@@ -856,7 +1130,7 @@ export default function AIInterviewRoom() {
                 placeholder={isMicListening ? "Listening to your voice... Speak now!" : "Type or speak your answer..."}
                 value={candidateAnswer}
                 onChange={e => setCandidateAnswer(e.target.value)}
-                className="flex-1 px-4 py-3 bg-[#06080E] border border-slate-700/80 rounded-2xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition shadow-inner"
+                className="flex-1 px-4 py-3 bg-slate-50 dark:bg-[#06080E] border border-slate-300 dark:border-slate-700/80 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition shadow-inner"
               />
 
               <button
@@ -874,8 +1148,14 @@ export default function AIInterviewRoom() {
               <span>Real-time NLP evaluates completeness and triggers deep queries.</span>
               <button
                 type="button"
-                onClick={() => finishInterview(transcript)}
-                className="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center space-x-1 transition"
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                  }
+                  setIsAISpeaking(false);
+                  finishInterview(transcript);
+                }}
+                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold flex items-center space-x-1 transition"
               >
                 <span>Proceed to Live Coding Assessment</span>
                 <ArrowRight className="w-3.5 h-3.5" />

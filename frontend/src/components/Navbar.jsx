@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useRecruitment } from '../context/RecruitmentContext';
 import AIConfigModal from './AIConfigModal';
 import { api } from '../services/api';
@@ -9,9 +10,10 @@ import {
 } from 'lucide-react';
 
 export default function Navbar() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const { 
-    currentView, 
-    setCurrentView, 
     theme, 
     toggleTheme, 
     userRole, 
@@ -19,7 +21,8 @@ export default function Navbar() {
     syncWithDatabase, 
     isDbConnected, 
     currentUser,
-    myApplications = []
+    myApplications = [],
+    activeJob
   } = useRecruitment();
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -79,33 +82,56 @@ export default function Navbar() {
   };
 
   const recruiterNavItems = [
-    { id: 'recruiter', label: 'Recruiter Hub', icon: Briefcase },
-    { id: 'proctor',   label: 'Integrity Telemetry', icon: ShieldAlert, badge: 'Live HUD' },
+    { path: '/recruiter', label: 'Recruiter Hub', icon: Briefcase },
+    { path: '/recruiter/proctor', label: 'Integrity Telemetry', icon: ShieldAlert, badge: 'Live HUD' },
   ];
+  const isNonTech = Boolean(activeJob && (
+    /finance|account|tax|audit|cpa|controller|treasur|bookkeep/i.test(activeJob.title || '') ||
+    /finance|account/i.test(activeJob.department || '') ||
+    /hr|human\s*resource|recruiter|talent|people/i.test(activeJob.title || '') ||
+    /hr|human\s*resource/i.test(activeJob.department || '') ||
+    /market|seo|content|copywrit|growth|brand/i.test(activeJob.title || '') ||
+    /market/i.test(activeJob.department || '') ||
+    /sales|business\s*dev|account\s*exec/i.test(activeJob.title || '') ||
+    /sales/i.test(activeJob.department || '') ||
+    /legal|compliance|counsel/i.test(activeJob.title || '') ||
+    /operat|logistics|supply\s*chain/i.test(activeJob.title || '')
+  ));
+
   const candidateNavItems = [
-    { id: 'candidate',    label: 'Browse Jobs', icon: UserCheck },
-    { id: 'applications', label: 'My Applications', icon: FileText, badge: myApplications.length > 0 ? String(myApplications.length) : null },
-    { id: 'interview',    label: 'AI Interview', icon: Video, badge: 'Adaptive' },
-    { id: 'assessment',   label: 'Code Challenge', icon: Code2 },
-    { id: 'feedback',     label: 'Skill Gap', icon: TrendingUp },
+    { path: '/jobs', label: 'Browse Jobs', icon: UserCheck },
+    { path: '/my-applications', label: 'My Applications', icon: FileText, badge: myApplications.length > 0 ? String(myApplications.length) : null },
+    { path: '/interview', label: 'AI Interview', icon: Video, badge: 'Adaptive' },
+    { path: '/assessment', label: isNonTech ? 'Assessment' : 'Code Challenge', icon: isNonTech ? FileText : Code2 },
+    { path: '/skill-gap', label: 'Skill Gap', icon: TrendingUp },
   ];
   const currentNavItems = userRole === 'recruiter' ? recruiterNavItems : candidateNavItems;
 
-  const navigateTo = (viewId) => {
-    setCurrentView(viewId);
+  const navigateTo = (path) => {
+    navigate(path);
     setIsMobileMenuOpen(false);
+  };
+
+  const isItemActive = (itemPath) => {
+    if (itemPath === '/recruiter') {
+      return location.pathname === '/recruiter' || location.pathname.startsWith('/recruiter/jobs') || location.pathname.startsWith('/recruiter/candidates');
+    }
+    if (itemPath === '/jobs') {
+      return location.pathname === '/jobs' || location.pathname.startsWith('/jobs/');
+    }
+    return location.pathname === itemPath || location.pathname.startsWith(itemPath + '/');
   };
 
   return (
     <>
       <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 dark:border-white/[0.08] bg-white/80 dark:bg-[#06080E]/85 backdrop-blur-2xl transition-all duration-300 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <div className="flex items-center justify-between h-16">
 
             {/* ─── Left: Brand Identity & Mode Badge ─── */}
             <div 
               className="flex items-center space-x-3 cursor-pointer group select-none shrink-0" 
-              onClick={() => navigateTo(userRole === 'recruiter' ? 'recruiter' : 'candidate')}
+              onClick={() => navigateTo(userRole === 'recruiter' ? '/recruiter' : '/jobs')}
             >
               <div className="relative shrink-0">
                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 ring-1 ring-white/25 group-hover:scale-105 transition-all duration-300">
@@ -157,11 +183,11 @@ export default function Navbar() {
             <nav className="hidden lg:flex items-center space-x-1 bg-slate-100/90 dark:bg-slate-900/80 backdrop-blur-md p-1.5 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] shadow-inner shrink-0">
               {currentNavItems.map(item => {
                 const Icon = item.icon;
-                const isActive = currentView === item.id;
+                const isActive = isItemActive(item.path);
                 return (
                   <button
-                    key={item.id}
-                    onClick={() => navigateTo(item.id)}
+                    key={item.path}
+                    onClick={() => navigateTo(item.path)}
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 relative whitespace-nowrap shrink-0 ${
                       isActive 
                         ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/35 ring-1 ring-white/20' 
@@ -327,6 +353,7 @@ export default function Navbar() {
                         onClick={() => {
                           setIsProfileOpen(false);
                           logout();
+                          navigate('/login');
                         }}
                         className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                       >
@@ -366,11 +393,11 @@ export default function Navbar() {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">Navigation</span>
               {currentNavItems.map(item => {
                 const Icon = item.icon;
-                const isActive = currentView === item.id;
+                const isActive = isItemActive(item.path);
                 return (
                   <button
-                    key={item.id}
-                    onClick={() => navigateTo(item.id)}
+                    key={item.path}
+                    onClick={() => navigateTo(item.path)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                       isActive
                         ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/30'
@@ -445,6 +472,7 @@ export default function Navbar() {
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     logout();
+                    navigate('/login');
                   }}
                   className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400"
                 >

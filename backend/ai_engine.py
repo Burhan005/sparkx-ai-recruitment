@@ -110,7 +110,7 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
 
 def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """Direct call to Google Gemini with auto-fallback across verified active models."""
-    candidate_models = ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.5-flash"]
+    candidate_models = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]
 
     payload: Dict[str, Any] = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -128,7 +128,7 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", ma
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
         try:
             req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=15) as response:
+            with urllib.request.urlopen(req, timeout=7) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 candidates = res_data.get("candidates", [])
                 if candidates and "content" in candidates[0]:
@@ -138,15 +138,18 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", ma
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 continue
-            if e.code in (400, 401, 403):
-                # Invalid or unauthorized key across all models
-                print(f"[AI Engine] Gemini API Key authorization error HTTP {e.code}: {e.reason}")
+            if e.code in (400, 401, 403, 429, 503):
+                # Invalid, quota exceeded, or service unavailable across all models
+                print(f"[AI Engine] Gemini API error HTTP {e.code}: {e.reason}")
                 return None
             print(f"[AI Engine] Gemini {model} HTTP {e.code}: {e.reason}")
             continue
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            print(f"[AI Engine] Gemini connection error: {e}")
+            return None
         except Exception as e:
             print(f"[AI Engine] Gemini {model} error: {e}")
-            continue
+            return None
     return None
 
 def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
@@ -163,20 +166,24 @@ def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "", max_
         "temperature": 0.3,
         "max_tokens": max_tokens
     }
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        },
-        method="POST"
-    )
-    with urllib.request.urlopen(req, timeout=15) as response:
-        res_data = json.loads(response.read().decode("utf-8"))
-        choices = res_data.get("choices", [])
-        if choices and "message" in choices[0]:
-            return choices[0]["message"].get("content", "").strip()
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=7) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            choices = res_data.get("choices", [])
+            if choices and "message" in choices[0]:
+                return choices[0]["message"].get("content", "").strip()
+    except Exception as e:
+        print(f"[AI Engine] Groq error: {e}")
+        return None
     return None
 
 def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
@@ -193,20 +200,24 @@ def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "", ma
         "temperature": 0.3,
         "max_tokens": max_tokens
     }
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        },
-        method="POST"
-    )
-    with urllib.request.urlopen(req, timeout=15) as response:
-        res_data = json.loads(response.read().decode("utf-8"))
-        choices = res_data.get("choices", [])
-        if choices and "message" in choices[0]:
-            return choices[0]["message"].get("content", "").strip()
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=7) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            choices = res_data.get("choices", [])
+            if choices and "message" in choices[0]:
+                return choices[0]["message"].get("content", "").strip()
+    except Exception as e:
+        print(f"[AI Engine] OpenAI error: {e}")
+        return None
     return None
 
 def call_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
@@ -334,35 +345,124 @@ def parse_llm_json(raw_text: Optional[str]) -> Optional[Any]:
 
     return None
 
+def classify_job_domain(role_title: str, job_skills: List[str], job_description: str = "") -> Tuple[bool, str, List[str]]:
+    """
+    Classifies job into:
+    - is_coding: bool (True for software, infra, data engineering; False for non-technical roles)
+    - domain: str ("finance", "hr", "marketing", "sales", "operations", "technical")
+    - dynamic_technologies: List[str] (derived technologies from actual job requirements)
+    """
+    combined = f"{role_title} {' '.join(job_skills)} {job_description}".lower()
+
+    # Explicit technology extraction from job skills/description
+    known_tech_map = {
+        "python": "python",
+        "javascript": "javascript",
+        "typescript": "typescript",
+        "java": "java",
+        "c++": "cpp",
+        "cpp": "cpp",
+        "c#": "csharp",
+        "csharp": "csharp",
+        "golang": "go",
+        "go": "go",
+        "rust": "rust",
+        "sql": "sql",
+        "bash": "bash",
+        "shell": "bash",
+        "terraform": "terraform",
+        "docker": "docker",
+        "kubernetes": "kubernetes",
+        "aws cli": "bash",
+        "react": "javascript",
+        "node": "javascript",
+        "fastapi": "python",
+        "django": "python"
+    }
+
+    detected_tech = []
+    for k, v in known_tech_map.items():
+        if re.search(r'\b' + re.escape(k) + r'\b', combined):
+            if v not in detected_tech:
+                detected_tech.append(v)
+
+    # Prioritize explicit technical engineering role titles
+    title_lower = (role_title or "").lower()
+    is_explicit_tech = any(re.search(r'\b' + re.escape(t) + r'\b', title_lower) for t in [
+        "developer", "engineer", "architect", "programmer", "devops", "cloud", "sre",
+        "full stack", "backend", "frontend", "data scientist", "machine learning", "ai",
+        "software", "infrastructure", "systems", "dba", "qa automation", "coder"
+    ]) or bool(detected_tech)
+
+    # Check non-technical domains ONLY if NOT an explicit technical engineering role
+    if not is_explicit_tech:
+        if any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["accountant", "accounting", "auditor", "bookkeeper", "tax", "cpa", "financial analyst", "controller", "finance", "ledger"]):
+            return False, "finance", []
+        elif any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["human resources", "hr manager", "recruiter", "talent acquisition", "people ops", "employee relations", "talent partner"]):
+            return False, "hr", []
+        elif any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["marketing", "seo", "content writer", "social media", "copywriter", "growth manager", "brand manager", "campaign"]):
+            return False, "marketing", []
+        elif any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["sales", "business development", "account executive", "bdr", "sdr", "sales director", "inside sales"]):
+            return False, "sales", []
+        elif any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["operations", "supply chain", "logistics", "procurement", "inventory manager", "warehouse manager"]):
+            return False, "operations", []
+
+    # Check technical indicators across combined text
+    is_tech = is_explicit_tech or any(re.search(r'\b' + re.escape(k) + r'\b', combined) for k in [
+        "developer", "engineer", "architect", "programmer", "devops", "cloud", "sre",
+        "full stack", "backend", "frontend", "data scientist", "machine learning", "ai",
+        "software", "infrastructure", "systems", "dba", "qa automation"
+    ]) or bool(detected_tech)
+
+    if is_tech:
+        langs = detected_tech if detected_tech else ["python", "javascript", "typescript", "java", "cpp"]
+        return True, "technical", langs
+
+    return False, "business", []
+
 def _get_default_starter_code(lang: str, title: str, skills: List[str]) -> str:
-    s_primary = skills[0] if skills else "Data"
+    s_primary = skills[0] if skills else "Task"
     if lang == "python":
-        return f"# Task: {title}\ndef process_{s_primary.lower().replace(' ', '_')}_task(payload: dict) -> dict:\n    \"\"\"Implement solution according to task instructions.\"\"\"\n    # TODO: Implement candidate solution\n    return payload\n"
+        return f"# Task: {title}\n# Function signature: solve(data)\ndef solve(data):\n    \"\"\"\n    Process the input dataset according to specifications.\n    \"\"\"\n    # TODO: Implement candidate solution\n    return data\n"
     elif lang in ["javascript", "typescript"]:
-        return f"// Task: {title}\nfunction process{s_primary.replace(' ', '')}Task(payload) {{\n    // TODO: Implement candidate solution\n    return payload;\n}}\n"
+        return f"// Task: {title}\n// Function signature: solve(data)\nfunction solve(data) {{\n    // TODO: Implement candidate solution\n    return data;\n}}\n"
     elif lang == "java":
-        return f"import java.util.*;\n\npublic class Solution {{\n    public static Map<String, Object> solve(Map<String, Object> payload) {{\n        // TODO: Implement solution\n        return payload;\n    }}\n}}\n"
+        return f"import java.util.*;\n\npublic class Solution {{\n    public static Object solve(Object data) {{\n        // TODO: Implement solution\n        return data;\n    }}\n}}\n"
     elif lang == "cpp":
-        return f"#include <iostream>\n#include <string>\n\nauto solve(auto payload) {{\n    // TODO: Implement solution\n    return payload;\n}}\n"
-    return "// Implement task solution\n"
+        return f"#include <iostream>\n#include <string>\n\nauto solve(auto data) {{\n    // TODO: Implement solution\n    return data;\n}}\n"
+    elif lang == "sql":
+        return f"-- Task: {title}\n-- Write query to satisfy task requirements\nSELECT \n    id,\n    name\nFROM \n    records;\n"
+    elif lang in ["bash", "shell"]:
+        return f"#!/usr/bin/env bash\n# Task: {title}\nset -euo pipefail\n\nsolve() {{\n    echo \"Processing $1\"\n}}\n"
+    elif lang == "terraform":
+        return f"# Task: {title}\nresource \"aws_s3_bucket\" \"app_logs\" {{\n  # Configure resources\n}}\n"
+    return "// Implement task solution\nfunction solve(data) { return data; }\n"
 
 def _get_default_broken_code(lang: str, title: str, skills: List[str]) -> str:
     s_primary = skills[0] if skills else "Telemetry"
     if lang == "python":
-        return f"# DEFECTIVE IMPLEMENTATION: {title}\n# Bug: mutating shared state without thread/atomic boundary\ndef aggregate_{s_primary.lower().replace(' ', '_')}(items: list) -> dict:\n    totals = {{}}\n    for item in items:\n        key = item.get('id', 'default')\n        totals[key] = item.get('value', 0)  # BUG: Overwrites instead of summing\n    return totals\n"
+        return f"# DEFECTIVE IMPLEMENTATION: {title}\n# Function signature: fix(data)\ndef fix(data):\n    # Defect: mutating shared state or unhandled boundary\n    if data == 'error':\n        return 'released'\n    return data\n"
     elif lang in ["javascript", "typescript"]:
-        return f"// DEFECTIVE IMPLEMENTATION: {title}\nfunction aggregate{s_primary.replace(' ', '')}(items) {{\n    const totals = {{}};\n    for (const item of items) {{\n        totals[item.id] = item.value; // BUG: Overwrites previous accumulation\n    }}\n    return totals;\n}}\n"
+        return f"// DEFECTIVE IMPLEMENTATION: {title}\n// Function signature: fix(data)\nfunction fix(data) {{\n    // Defect: unhandled error state\n    if (data === 'error') {{\n        return 'released';\n    }}\n    return data;\n}}\n"
     elif lang == "java":
-        return f"import java.util.*;\n\npublic class Solution {{\n    public static Map<String, Integer> aggregate(List<Map<String, Object>> items) {{\n        Map<String, Integer> totals = new HashMap<>();\n        for (Map<String, Object> item : items) {{\n            totals.put((String)item.get(\"id\"), (Integer)item.get(\"value\"));\n        }}\n        return totals;\n    }}\n}}\n"
+        return f"import java.util.*;\n\npublic class Solution {{\n    public static Object fix(Object data) {{\n        if (\"error\".equals(data)) return \"released\";\n        return data;\n    }}\n}}\n"
     elif lang == "cpp":
-        return f"#include <map>\n#include <string>\n#include <vector>\n\nstd::map<std::string, int> aggregate(const auto& items) {{\n    std::map<std::string, int> totals;\n    for (const auto& item : items) {{\n        totals[item.id] = item.value;\n    }}\n    return totals;\n}}\n"
-    return "// Debuggable code snippet\n"
+        return f"#include <iostream>\n#include <string>\n\nauto fix(auto data) {{\n    if (data == \"error\") return \"released\";\n    return data;\n}}\n"
+    elif lang == "sql":
+        return f"-- DEFECTIVE QUERY: {title}\n-- Bug: Missing join condition creates Cartesian product\nSELECT o.id, c.name FROM orders o, customers c WHERE o.total > 100;\n"
+    elif lang in ["bash", "shell"]:
+        return f"#!/usr/bin/env bash\n# DEFECTIVE SCRIPT: {title}\nfix() {{\n    if [ \"$1\" = \"error\" ]; then echo \"released\"; else echo \"$1\"; fi\n}}\n"
+    elif lang == "terraform":
+        return f"# DEFECTIVE CONFIGURATION: {title}\nresource \"aws_security_group_rule\" \"open_ingress\" {{\n  cidr_blocks = [\"0.0.0.0/0\"] # BUG: Insecure open ingress\n}}\n"
+    return "// Debuggable code snippet\nfunction fix(data) { return data === 'error' ? 'released' : data; }\n"
 
 def _normalize_bundle(
     raw_bundle: Dict[str, Any],
     allowed_langs: List[str],
     role_title: str,
-    job_skills: List[str]
+    job_skills: List[str],
+    is_coding: bool = True,
+    domain_category: str = "technical"
 ) -> Tuple[Dict[str, Any], Dict[str, str]]:
     """Normalizes and validates bundle structure to ensure seamless frontend consumption."""
     mcq_solutions = {}
@@ -389,7 +489,7 @@ def _normalize_bundle(
 
         normalized_mcqs.append({
             "id": q_id,
-            "question": q.get("question", f"Technical Question on {job_skills[0] if job_skills else role_title}"),
+            "question": q.get("question", f"Professional Knowledge Question on {job_skills[0] if job_skills else role_title}"),
             "options": opts if len(opts) >= 2 else {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"},
             "difficulty": q.get("difficulty", "Mid-Level"),
             "explanation": q.get("explanation", "")
@@ -406,65 +506,234 @@ def _normalize_bundle(
 
     normalized_scenario = {
         "id": scen.get("id", "scen_prod_01"),
-        "title": scen.get("title", f"Production Incident & System Architecture: {role_title}"),
-        "prompt": scen_prompt or f"Architect an end-to-end resilient infrastructure pipeline for {role_title}.",
-        "guidance": scen_guidance or "Address root cause triage, architecture topology, scalability trade-offs, and zero-downtime failover.",
+        "title": scen.get("title", f"Real-World Scenario: {role_title}"),
+        "prompt": scen_prompt or f"Formulate an operational solution for {role_title}.",
+        "guidance": scen_guidance or "Address root cause triage, core trade-offs, and implementation milestones.",
         "difficulty": scen.get("difficulty", "Senior"),
-        "ideal_keywords": scen.get("ideal_keywords") or job_skills or ["architecture", "resilience", "scaling"]
+        "ideal_keywords": scen.get("ideal_keywords") or job_skills or ["analysis", "strategy", "execution"]
     }
 
     # Hands-on normalization
     hands = raw_bundle.get("hands_on", {})
     raw_starter = hands.get("starter_code", {})
     starter_code = {}
-    for l in allowed_langs:
-        if isinstance(raw_starter, dict) and raw_starter.get(l):
-            starter_code[l] = raw_starter[l]
-        else:
-            starter_code[l] = _get_default_starter_code(l, hands.get("title", "Task"), job_skills)
+    if is_coding:
+        for l in allowed_langs:
+            if isinstance(raw_starter, dict) and raw_starter.get(l):
+                starter_code[l] = raw_starter[l]
+            else:
+                starter_code[l] = _get_default_starter_code(l, hands.get("title", "Task"), job_skills)
+
+    deliverable_template = hands.get("deliverable_template") or hands.get("starter_template") or (
+        "1. Analysis & Executive Findings:\n\n2. Proposed Solution / Model:\n\n3. Action Steps & Risk Safeguards:"
+    )
+
+    # Sample and Hidden Test Cases for Hands-on
+    raw_hands_sample = hands.get("sample_test_cases") or []
+    raw_hands_hidden = hands.get("hidden_test_cases") or []
+    raw_hands_all = hands.get("test_cases") or []
+
+    if not raw_hands_sample and raw_hands_all:
+        raw_hands_sample = raw_hands_all[:2]
+        raw_hands_hidden = raw_hands_all[2:]
+
+    if not raw_hands_sample and is_coding:
+        raw_hands_sample = [
+            {
+                "id": 1,
+                "name": "Sample Test 1: Standard Event Count",
+                "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]",
+                "expected": "{'auth': 1}",
+                "explanation": "Filters INFO entry and records 1 ERROR for 'auth'.",
+                "assertion_py": "assert solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]) == {'auth': 1}",
+                "assertion_js": "assert.deepStrictEqual(solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]), {'auth': 1});"
+            },
+            {
+                "id": 2,
+                "name": "Sample Test 2: Multiple Error Occurrences",
+                "input": "[{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]",
+                "expected": "{'api': 2}",
+                "explanation": "Aggregates multiple error occurrences for 'api' service.",
+                "assertion_py": "assert solve([{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]) == {'api': 2}",
+                "assertion_js": "assert.deepStrictEqual(solve([{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]), {'api': 2});"
+            }
+        ]
+
+    if not raw_hands_hidden and is_coding:
+        raw_hands_hidden = [
+            {
+                "id": 101,
+                "name": "Hidden Test 1: Empty Stream Boundary",
+                "input": "[]",
+                "expected": "{}",
+                "explanation": "Empty list should gracefully return empty map.",
+                "assertion_py": "assert solve([]) == {}",
+                "assertion_js": "assert.deepStrictEqual(solve([]), {});"
+            },
+            {
+                "id": 102,
+                "name": "Hidden Test 2: Boundary / Multi-Service Scale",
+                "input": "[{'level': 'ERROR', 'service': f'svc_{i%3}'} for i in range(30)]",
+                "expected": "{'svc_0': 10, 'svc_1': 10, 'svc_2': 10}",
+                "explanation": "Stress tests multi-service frequency distribution.",
+                "assertion_py": "assert solve([{'level': 'ERROR', 'service': f'svc_{i%3}'} for i in range(30)]) == {'svc_0': 10, 'svc_1': 10, 'svc_2': 10}",
+                "assertion_js": "const inp = Array.from({length: 30}, (_, i) => ({level: 'ERROR', service: `svc_${i%3}`})); assert.deepStrictEqual(solve(inp), {'svc_0': 10, 'svc_1': 10, 'svc_2': 10});"
+            }
+        ]
+
+    hands_examples = hands.get("examples") or [
+        {
+            "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]",
+            "output": "{'auth': 1}",
+            "explanation": "Filters out INFO logs and aggregates 1 error for 'auth'."
+        },
+        {
+            "input": "[{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]",
+            "output": "{'api': 2}",
+            "explanation": "Aggregates multiple error occurrences for 'api' service."
+        }
+    ]
+
+    hands_constraints = hands.get("constraints") or [
+        "1 <= data.length <= 10^4",
+        "Valid input format guaranteed (List of Dict / Objects)",
+        "Time Limit: 2.0s",
+        "Memory Limit: 256 MB"
+    ]
+
+    hands_signatures = hands.get("function_signature") or {
+        "python": "def solve(data):\n    \"\"\"Return dictionary mapping service to error count.\"\"\"\n    pass",
+        "javascript": "function solve(data) {\n    // Return object mapping service to error count\n    return {};\n}",
+        "typescript": "function solve(data: any[]): Record<string, number> {\n    return {};\n}",
+        "java": "public class Solution {\n    public static Map<String, Integer> solve(List<Map<String, Object>> data) {\n        return new HashMap<>();\n    }\n}",
+        "cpp": "std::map<std::string, int> solve(const auto& data) {\n    return {};\n}"
+    }
 
     normalized_hands = {
         "id": hands.get("id", "hands_on_01"),
-        "title": hands.get("title", f"Practical Implementation Challenge: {role_title}"),
-        "instructions": hands.get("instructions") or hands.get("objective") or f"Implement the required component for {role_title}.",
+        "title": hands.get("title", f"Practical Task: {role_title}"),
+        "instructions": hands.get("instructions") or hands.get("objective") or f"Complete the practical assignment for {role_title}.",
         "difficulty": hands.get("difficulty", "Mid-Level"),
-        "supported_languages": [l for l in allowed_langs if l in starter_code],
-        "starter_code": starter_code,
-        "test_cases": hands.get("test_cases") or [
-            {"name": "Standard verification", "input": "Default parameters", "expected": "Successful execution", "assertion_py": "", "assertion_js": ""}
-        ]
+        "is_coding": is_coding,
+        "task_type": "code" if is_coding else "practical",
+        "supported_languages": [l for l in allowed_langs if l in starter_code] if is_coding else [],
+        "starter_code": starter_code if is_coding else {},
+        "deliverable_template": deliverable_template,
+        "examples": hands_examples if is_coding else [],
+        "constraints": hands_constraints if is_coding else [],
+        "function_signature": hands_signatures if is_coding else {},
+        "sample_test_cases": raw_hands_sample if is_coding else [],
+        "hidden_test_cases": raw_hands_hidden if is_coding else [],
+        "test_cases": (raw_hands_sample + raw_hands_hidden) if is_coding else (hands.get("test_cases") or [])
     }
 
     # Troubleshooting normalization
     trouble = raw_bundle.get("troubleshooting", {})
     raw_broken = trouble.get("broken_code", {})
     broken_code = {}
-    for l in allowed_langs:
-        if isinstance(raw_broken, dict) and raw_broken.get(l):
-            broken_code[l] = raw_broken[l]
-        else:
-            broken_code[l] = _get_default_broken_code(l, trouble.get("title", "Bug"), job_skills)
+    if is_coding:
+        for l in allowed_langs:
+            if isinstance(raw_broken, dict) and raw_broken.get(l):
+                broken_code[l] = raw_broken[l]
+            else:
+                broken_code[l] = _get_default_broken_code(l, trouble.get("title", "Bug"), job_skills)
 
     trouble_desc = trouble.get("bug_description") or trouble.get("issue_description") or ""
     if trouble.get("error_logs"):
         trouble_desc += f"\n\nError Log:\n{trouble['error_logs']}"
 
+    anomaly_data = trouble.get("anomaly_data") or trouble_desc
+
+    raw_trouble_sample = trouble.get("sample_test_cases") or []
+    raw_trouble_hidden = trouble.get("hidden_test_cases") or []
+    raw_trouble_all = trouble.get("test_cases") or []
+
+    if not raw_trouble_sample and raw_trouble_all:
+        raw_trouble_sample = raw_trouble_all[:1]
+        raw_trouble_hidden = raw_trouble_all[1:]
+
+    if not raw_trouble_sample and is_coding:
+        raw_trouble_sample = [
+            {
+                "id": 1,
+                "name": "Sample Test 1: Release Resource on Error",
+                "input": "data='error'",
+                "expected": "'released'",
+                "explanation": "Resource / socket must be released when status indicates error.",
+                "assertion_py": "assert fix('error') == 'released'",
+                "assertion_js": "assert.strictEqual(fix('error'), 'released');"
+            }
+        ]
+
+    if not raw_trouble_hidden and is_coding:
+        raw_trouble_hidden = [
+            {
+                "id": 101,
+                "name": "Hidden Test 1: Success Status Pass-Through",
+                "input": "data='ok'",
+                "expected": "'ok'",
+                "explanation": "Non-error data should be passed through unmodified.",
+                "assertion_py": "assert fix('ok') == 'ok'",
+                "assertion_js": "assert.strictEqual(fix('ok'), 'ok');"
+            },
+            {
+                "id": 102,
+                "name": "Hidden Test 2: Unhandled None / Null Input",
+                "input": "data=None",
+                "expected": "None",
+                "explanation": "Null or empty input must not crash the routine.",
+                "assertion_py": "assert fix(None) is None",
+                "assertion_js": "assert.strictEqual(fix(null), null);"
+            }
+        ]
+
+    trouble_examples = trouble.get("examples") or [
+        {
+            "input": "data = 'error'",
+            "output": "'released'",
+            "explanation": "Failing condition should trigger clean release rather than connection hang."
+        }
+    ]
+
+    trouble_constraints = trouble.get("constraints") or [
+        "Maintain backwards-compatible function signature",
+        "Time Limit: 2.0s",
+        "Memory Limit: 256 MB"
+    ]
+
+    trouble_signatures = trouble.get("function_signature") or {
+        "python": "def fix(data):\n    \"\"\"Fix bug and return corrected response.\"\"\"\n    pass",
+        "javascript": "function fix(data) {\n    // Fix bug and return corrected response\n    return data;\n}",
+        "typescript": "function fix(data: any): any {\n    return data;\n}",
+        "java": "public class Solution {\n    public static Object fix(Object data) {\n        return data;\n    }\n}",
+        "cpp": "auto fix(auto data) {\n    return data;\n}"
+    }
+
     normalized_trouble = {
         "id": trouble.get("id", "trouble_01"),
-        "title": trouble.get("title", f"Production Bug Triage: {role_title}"),
-        "bug_description": trouble_desc or f"Debug and resolve the intermittent failure in this {role_title} component.",
+        "title": trouble.get("title", f"Troubleshooting Challenge: {role_title}"),
+        "bug_description": trouble_desc or f"Diagnose and resolve the operational defect in this {role_title} task.",
+        "anomaly_data": anomaly_data,
         "difficulty": trouble.get("difficulty", "Mid-Level"),
-        "broken_code": broken_code,
-        "test_cases": trouble.get("test_cases") or [
-            {"name": "Regression verification", "input": "Boundary input", "expected": "Corrected output", "assertion_py": "", "assertion_js": ""}
-        ]
+        "is_coding": is_coding,
+        "task_type": "code" if is_coding else "troubleshooting",
+        "broken_code": broken_code if is_coding else {},
+        "resolution_guidance": trouble.get("resolution_guidance") or "Identify the exact root cause, state the defect, and draft the correcting solution.",
+        "examples": trouble_examples if is_coding else [],
+        "constraints": trouble_constraints if is_coding else [],
+        "function_signature": trouble_signatures if is_coding else {},
+        "sample_test_cases": raw_trouble_sample if is_coding else [],
+        "hidden_test_cases": raw_trouble_hidden if is_coding else [],
+        "test_cases": (raw_trouble_sample + raw_trouble_hidden) if is_coding else (trouble.get("test_cases") or [])
     }
 
     bundle = {
         "technical_mcqs": normalized_mcqs,
         "scenario": normalized_scenario,
         "hands_on": normalized_hands,
-        "troubleshooting": normalized_trouble
+        "troubleshooting": normalized_trouble,
+        "is_coding": is_coding,
+        "domain_category": domain_category
     }
     return bundle, mcq_solutions
 
@@ -474,26 +743,230 @@ def _procedural_synthesize_bundle(
     experience_years: float,
     candidate_name: str,
     candidate_id: Optional[str],
-    allowed_langs: List[str]
+    allowed_langs: List[str],
+    is_coding: bool = True,
+    domain_category: str = "technical"
 ) -> Tuple[Dict[str, Any], Dict[str, str]]:
     """
     Contextual procedural synthesizer: constructs role-specific 4-category challenge bundles
-    dynamically from job attributes when live LLM is offline.
+    dynamically from job attributes across both technical and non-technical professions.
     NO hardcoded question bank or static lists used.
     """
-    p_skill = job_skills[0] if job_skills else "System Architecture"
-    s_skill = job_skills[1] if len(job_skills) > 1 else (job_skills[0] if job_skills else "PostgreSQL")
-    third_skill = job_skills[2] if len(job_skills) > 2 else "Scalability"
+    p_skill = job_skills[0] if job_skills else role_title
+    s_skill = job_skills[1] if len(job_skills) > 1 else (job_skills[0] if job_skills else "Core Practice")
 
     seed_str = f"{candidate_id or 'cand'}:{candidate_name}:{role_title}:{p_skill}"
     seed = int(hashlib.sha256(seed_str.encode()).hexdigest(), 16)
 
-    # Domain categorization
-    skills_lower = [s.lower() for s in job_skills]
-    is_cloud = any(k in s for s in skills_lower for k in ["aws", "cloud", "docker", "kubernetes", "k8s", "terraform", "devops", "linux", "networking"])
-    is_frontend = any(k in s for s in skills_lower for k in ["react", "vue", "angular", "frontend", "html", "css", "javascript", "typescript"])
+    # 1. NON-TECHNICAL: FINANCE & ACCOUNTING
+    if domain_category == "finance":
+        raw = {
+            "technical_mcqs": [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"In accrual accounting under GAAP/IFRS, when should revenue for {p_skill} contracts be recognized according to ASC 606?",
+                    "options": {
+                        "A": "When physical cash is deposited in the primary bank account.",
+                        "B": "When performance obligations are satisfied by transferring goods or services to the client.",
+                        "C": "At the conclusion of the fiscal quarter regardless of delivery.",
+                        "D": "Only upon initial contract execution prior to work commencing."
+                    },
+                    "correct_option": "B",
+                    "explanation": "ASC 606 mandates revenue recognition when the customer obtains control of the promised goods or services.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": f"When conducting a bank reconciliation for {s_skill}, how should a returned NSF (Non-Sufficient Funds) customer check be recorded?",
+                    "options": {
+                        "A": "Deduct from the bank statement balance as an outstanding check.",
+                        "B": "Deduct from the company book balance and re-establish Accounts Receivable.",
+                        "C": "Credit Cash and credit Sales Revenue directly.",
+                        "D": "No journal adjustment is required if reported within 30 days."
+                    },
+                    "correct_option": "B",
+                    "explanation": "An NSF check was previously recorded as a cash deposit; when it bounces, the book balance must be reduced and customer receivable reinstated.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": "Under the fundamental accounting equation, if company assets increase by $35,000 and total liabilities increase by $12,000, what is the net impact on Owner's Equity?",
+                    "options": {
+                        "A": "Owner's Equity increases by $23,000.",
+                        "B": "Owner's Equity decreases by $23,000.",
+                        "C": "Owner's Equity increases by $47,000.",
+                        "D": "Owner's Equity remains unchanged."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Assets = Liabilities + Equity. If Assets (+35,000) = Liabilities (+12,000) + Equity, Equity must increase by $23,000.",
+                    "difficulty": "Mid-Level"
+                }
+            ],
+            "scenario": {
+                "id": f"dyn_scen_{seed % 1000}",
+                "title": f"Year-End Audit Closing: Unrecorded Vendor Liability in {role_title}",
+                "prompt": f"During the final 48 hours of annual financial audit closing, your team discovers a $50,000 vendor invoice related to {p_skill} that was received in November but never accrued or recorded in Accounts Payable. The draft statements have already been presented to senior leadership.\n\nDetail your accounting remediation strategy:\n1. Journal adjustments: state the exact debit and credit entries with account classifications.\n2. Materiality assessment: evaluate whether this requires a prior-period adjustment or current-period correction.\n3. Internal control safeguards: specify approval workflow updates to prevent unrecorded liabilities.",
+                "guidance": "Reference GAAP/IFRS matching principle, accrual basis, and Sarbanes-Oxley (SOX) internal control documentation.",
+                "difficulty": "Senior",
+                "ideal_keywords": ["accrual", "accounts payable", "matching principle", "journal entry", "materiality", "internal controls", "gaap"]
+            },
+            "hands_on": {
+                "id": f"dyn_hands_{seed % 1000}",
+                "title": f"Month-End Bank Reconciliation & Adjusting Entries for {p_skill}",
+                "instructions": f"Perform a month-end bank reconciliation for a client account. The bank statement ending balance is $142,500, but General Ledger Cash shows $138,200. Identified differences:\n- Deposit in transit: $8,400\n- Outstanding checks: $14,100\n- Bank service charge: $150\n- NSF check returned: $1,250\n\nDeliverable:\n1. Compute adjusted cash balance for both Bank and Book.\n2. Draft the exact adjusting journal entries required in the General Ledger.",
+                "difficulty": "Mid-Level",
+                "deliverable_template": "1. Adjusted Cash Reconciliation:\n   - Bank Balance ($142,500) + Deposits in Transit ($8,400) - Outstanding Checks ($14,100) = $...\n   - Book Balance ($138,200) - Bank Charges ($150) - NSF Check ($1,250) = $...\n\n2. Adjusting Journal Entries:\n   - Debit: Accounts Receivable ($1,250)\n   - Debit: Bank Fee Expense ($150)\n   - Credit: Cash ($1,400)\n\n3. Verification Summary: ..."
+            },
+            "troubleshooting": {
+                "id": f"dyn_trouble_{seed % 1000}",
+                "title": f"Diagnose & Resolve $14,850 Trial Balance Discrepancy in {s_skill}",
+                "bug_description": f"The preliminary trial balance shows Total Debits of $482,750 and Total Credits of $497,600, creating an out-of-balance discrepancy of $14,850 in the {s_skill} ledger.",
+                "anomaly_data": "Trial Balance Out of Balance: Debits = $482,750 | Credits = $497,600 | Difference = $14,850 (Credits exceed Debits).",
+                "difficulty": "Mid-Level",
+                "resolution_guidance": "Notice that $14,850 is divisible by 9 ($14,850 / 9 = 1,650), which mathematically indicates a transposition error. Trace the defect and formulate the correcting journal entry."
+            }
+        }
 
-    if is_cloud:
+    # 2. NON-TECHNICAL: HUMAN RESOURCES & TALENT
+    elif domain_category == "hr":
+        raw = {
+            "technical_mcqs": [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"Under the Fair Labor Standards Act (FLSA), which three tests must all be satisfied to classify an employee as exempt from overtime for {p_skill} roles?",
+                    "options": {
+                        "A": "Salary basis test, minimum salary threshold, and specific executive, administrative, or professional job duties test.",
+                        "B": "Employee agreement, annual bonus qualification, and working over 40 hours per week.",
+                        "C": "Direct manager discretion, independent contractor designation, and hourly billing rate.",
+                        "D": "Exemption from state taxes, tenure exceeding 12 months, and job title containing 'Manager'."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Exemption requires meeting the salary basis, salary level, and primary duties tests under FLSA regulations.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": f"When administering a workforce reduction under the Older Workers Benefit Protection Act (OWBPA), what consideration period must be provided to affected employees age 40 and older in a group layoff?",
+                    "options": {
+                        "A": "At least 45 calendar days to consider the agreement, plus a 7-day revocation window following signature.",
+                        "B": "72 hours notice with immediate severance payout upon departure.",
+                        "C": "14 business days with no revocation rights once signed.",
+                        "D": "Notification is only required if the reduction exceeds 500 personnel."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Group layoffs require 45 days of consideration and a 7-day post-execution revocation window under OWBPA.",
+                    "difficulty": "Senior"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": f"In talent acquisition and workforce planning for {s_skill}, what does the 'Selection Ratio' represent?",
+                    "options": {
+                        "A": "Total number of hired candidates divided by the total number of applicants.",
+                        "B": "The ratio of full-time employees to independent contractors.",
+                        "C": "Annual employee turnover divided by average headcount.",
+                        "D": "The percentage of interviewers who approve a job offer."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Selection Ratio = Hired Candidates / Total Applicants. A lower ratio indicates higher selectivity.",
+                    "difficulty": "Mid-Level"
+                }
+            ],
+            "scenario": {
+                "id": f"dyn_scen_{seed % 1000}",
+                "title": f"Workplace Grievance & Retaliation Claim in {role_title}",
+                "prompt": f"An employee reports that their direct manager in {p_skill} created a hostile work environment and gave them an unwarranted negative performance review immediately after the employee requested medical leave accommodation under FMLA. The employee is threatening an EEOC complaint.\n\nDetail your HR action roadmap:\n1. Immediate interim protective actions to prevent workplace retaliation.\n2. Investigation protocol: witness interviews, evidence preservation, and objective fact-finding.\n3. Remediation, compliance documentation, and manager accountability.",
+                "guidance": "Address Title VII compliance, FMLA non-retaliation provisions, neutral documentation, and confidentiality protocols.",
+                "difficulty": "Senior",
+                "ideal_keywords": ["fmla", "retaliation", "investigation", "eeoc", "hostile work environment", "compliance", "documentation"]
+            },
+            "hands_on": {
+                "id": f"dyn_hands_{seed % 1000}",
+                "title": f"Construct a 30-Day Performance Improvement Plan (PIP) for {p_skill}",
+                "instructions": f"Draft a legally sound, constructive 30-day Performance Improvement Plan (PIP) for an employee in {p_skill} experiencing consistent performance shortfalls. Include:\n- Objective, quantifiable performance benchmarks (SMART criteria)\n- Weekly check-in schedule with supportive training resources\n- Clear statement of expectations and consequences of non-attainment.",
+                "difficulty": "Mid-Level",
+                "deliverable_template": "1. Performance Deficiencies Identified:\n   - Specific gaps in deliverables and timeliness...\n\n2. SMART Performance Expectations (30-Day Benchmarks):\n   - Target 1: ...\n   - Target 2: ...\n\n3. Weekly Support & Review Checkpoints:\n   - Week 1 Checkpoint: ...\n   - Week 2 Checkpoint: ...\n\n4. Acknowledgement & Legal Disclaimer: ..."
+            },
+            "troubleshooting": {
+                "id": f"dyn_trouble_{seed % 1000}",
+                "title": f"Audit Misclassified Independent Contractor Agreement in {s_skill}",
+                "bug_description": f"An internal compliance review reveals that 3 full-time contractors working on {s_skill} use company-issued equipment, follow fixed daily working hours set by managers, and perform core business functions, exposing the business to tax, wage, and benefits misclassification penalties.",
+                "anomaly_data": "Contractor Classification Risk: 1099 contractors subject to direct behavioral control, company equipment, and exclusive full-time engagement.",
+                "difficulty": "Mid-Level",
+                "resolution_guidance": "Apply the IRS/DOL common-law control factors. Formulate a compliant remediation plan to reclassify or restructure the engagement."
+            }
+        }
+
+    # 3. NON-TECHNICAL: MARKETING & GROWTH
+    elif domain_category == "marketing":
+        raw = {
+            "technical_mcqs": [
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_1",
+                    "question": f"In digital advertising for {p_skill}, how is Return on Ad Spend (ROAS) calculated?",
+                    "options": {
+                        "A": "Total Revenue generated from advertising divided by Total Ad Spend.",
+                        "B": "Total Ad Spend divided by Total Organic Impressions.",
+                        "C": "Customer Lifetime Value multiplied by Churn Rate.",
+                        "D": "Click-Through Rate divided by Cost Per Acquisition."
+                    },
+                    "correct_option": "A",
+                    "explanation": "ROAS = Revenue / Ad Spend. For example, $50,000 revenue from $10,000 spend yields a 5.0x ROAS.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_2",
+                    "question": f"When configuring technical SEO for {s_skill} campaigns, what is the primary function of the `rel='canonical'` link tag?",
+                    "options": {
+                        "A": "Tells search engines which master URL represents the authoritative page to prevent duplicate content dilution.",
+                        "B": "Increases server page load speed by caching image assets in browser memory.",
+                        "C": "Blocks web crawlers from indexing private administrative directories.",
+                        "D": "Redirects users automatically via an HTTP 301 response."
+                    },
+                    "correct_option": "A",
+                    "explanation": "Canonical tags resolve duplicate content issues by consolidating search ranking signals to one preferred URL.",
+                    "difficulty": "Mid-Level"
+                },
+                {
+                    "id": f"dyn_mcq_{seed % 1000}_3",
+                    "question": "How does a W-shaped multi-touch attribution model allocate conversion credit across a B2B buyer journey?",
+                    "options": {
+                        "A": "30% each to First Touch, Lead Creation, and Opportunity Creation; remaining 10% distributed among middle touches.",
+                        "B": "100% of conversion credit to the final touchpoint immediately before purchase.",
+                        "C": "Equal credit divided across every single website session regardless of impact.",
+                        "D": "Only paid media channels receive attribution credit."
+                    },
+                    "correct_option": "A",
+                    "explanation": "W-shaped attribution emphasizes the three key milestone transitions in a sales cycle.",
+                    "difficulty": "Senior"
+                }
+            ],
+            "scenario": {
+                "id": f"dyn_scen_{seed % 1000}",
+                "title": f"Sudden 45% Inbound Traffic & Lead Drop in {role_title}",
+                "prompt": f"Following a major brand refresh and website migration, inbound qualified leads and organic traffic for {p_skill} drop by 45% in 14 days, threatening quarterly sales pipeline.\n\nDetail your marketing triage & recovery roadmap:\n1. Audit checklist: 301 redirects, canonical tags, tracking pixel firing, and Google Search Console index status.\n2. Paid acquisition stop-gap strategy to protect lead velocity.\n3. Remediation roadmap to recover organic rankings and conversion rate.",
+                "guidance": "Cover technical SEO audit, paid media re-allocation, conversion rate optimization (CRO), and stakeholder communication.",
+                "difficulty": "Senior",
+                "ideal_keywords": ["seo", "conversion rate", "attribution", "redirects", "roas", "funnel", "analytics"]
+            },
+            "hands_on": {
+                "id": f"dyn_hands_{seed % 1000}",
+                "title": f"90-Day Omnichannel Growth & Budget Allocation for {p_skill}",
+                "instructions": f"Formulate a $150,000 quarterly growth marketing budget allocation across Paid Search, Paid Social, and Content/SEO targeting {p_skill}. Detail target CPA ($120), expected conversion rates, and creative messaging hooks.",
+                "difficulty": "Mid-Level",
+                "deliverable_template": "1. Budget Channel Split ($150,000 Total):\n   - Paid Search (Google Ads): $... (Expected MQLs: ...)\n   - Paid Social (LinkedIn/Meta): $... (Expected MQLs: ...)\n   - Content/SEO & Nurturing: $...\n\n2. Target Unit Economics:\n   - Blended CAC / CPA: $...\n   - Projected Lead Volume: ...\n\n3. Creative Messaging & Campaign Hooks: ..."
+            },
+            "troubleshooting": {
+                "id": f"dyn_trouble_{seed % 1000}",
+                "title": f"Diagnose Tracking Attribution Discrepancy between Ad Platform & CRM in {s_skill}",
+                "bug_description": f"The advertising platform reports 1,420 lead conversions last month for {s_skill}, but Salesforce CRM only recorded 680 leads from that campaign, creating a 52% data discrepancy.",
+                "anomaly_data": "Attribution Mismatch: Ad Platform = 1,420 Conversions | CRM = 680 Leads. Significant data drop-off detected.",
+                "difficulty": "Mid-Level",
+                "resolution_guidance": "Investigate cookie consent opt-outs, duplicate pixel firing on page refreshes, and UTM parameter stripping across redirect URLs."
+            }
+        }
+
+    # 4. TECHNICAL: CLOUD, DEVOPS & INFRASTRUCTURE
+    elif is_coding and any(k in [s.lower() for s in job_skills] for k in ["aws", "cloud", "docker", "kubernetes", "k8s", "terraform", "devops", "linux"]):
         raw = {
             "technical_mcqs": [
                 {
@@ -506,7 +979,7 @@ def _procedural_synthesize_bundle(
                         "D": "Disabling TLS termination across all load balancers."
                     },
                     "correct_option": "B",
-                    "explanation": "NAT Gateways in public subnets allow private instances to initiate outbound connections (e.g. package updates) without exposing them to incoming internet traffic.",
+                    "explanation": "NAT Gateways in public subnets allow private instances to initiate outbound connections without exposing them to incoming internet traffic.",
                     "difficulty": "Mid-Level"
                 },
                 {
@@ -519,40 +992,40 @@ def _procedural_synthesize_bundle(
                         "D": "Increase the HTTP request timeout to 300 seconds."
                     },
                     "correct_option": "A",
-                    "explanation": "Guaranteed QoS pods (where requests == limits for CPU and memory) are evicted last when a node experiences OOM or resource starvation.",
+                    "explanation": "Setting requests equal to limits grants Guaranteed QoS, ensuring pods are evicted last when nodes encounter memory pressure.",
                     "difficulty": "Senior"
                 },
                 {
                     "id": f"dyn_mcq_{seed % 1000}_3",
-                    "question": f"When configuring Infrastructure as Code with {third_skill}, what is the primary risk of not utilizing remote state locking (e.g. DynamoDB + S3)?",
+                    "question": "Which security boundary configuration prevents container breakout and restricts Linux kernel capability escalation inside Kubernetes pods?",
                     "options": {
-                        "A": "Concurrent pipeline runs can corrupt or overwrite state files, creating resource drift and duplicate provisionings.",
-                        "B": "The cloud provider will automatically revoke the root API keys.",
-                        "C": "All deployed EC2 instances will reboot instantaneously.",
-                        "D": "Terraform plans will execute in reverse chronological order."
+                        "A": "Configuring `securityContext` with `allowPrivilegeEscalation: false` and `readOnlyRootFilesystem: true`.",
+                        "B": "Granting root access to all worker container daemons.",
+                        "C": "Disabling TLS authentication between kubelet and API server.",
+                        "D": "Running all containers on shared privileged host networks."
                     },
                     "correct_option": "A",
-                    "explanation": "State locking ensures only one process mutates state at a time, preventing catastrophic race conditions and state file corruption.",
+                    "explanation": "Restricting privilege escalation and enforcing a read-only root filesystem prevents container escapes and root exploit persistence.",
                     "difficulty": "Senior"
                 }
             ],
             "scenario": {
                 "id": f"dyn_scen_{seed % 1000}",
-                "title": f"Production Outage: Intermittent 504 Gateway Timeouts & High Connection Latency in {role_title}",
-                "prompt": f"During a high-traffic campaign, the {p_skill} production ingress cluster experiences severe 504 Gateway Timeouts. Internal microservices running on {s_skill} report connection pool exhaustion, and CPU utilization spikes to 95% across backend worker nodes. Telemetry indicates connection churn and DNS resolution stalls under 20,000 req/sec.\n\nDetail your architectural post-mortem and mitigation roadmap:\n1. Root cause triage: identify whether the bottleneck stems from TCP socket starvation, DNS rate limiting, or connection pooling.\n2. Ingress & Load Balancing reconfiguration.\n3. Autoscaling and circuit-breaking safeguards.",
-                "guidance": f"Propose concrete metrics (p99 latency, connection pool saturation), network topology changes, and keep-alive configurations for {p_skill} and {s_skill}.",
+                "title": f"Production Outage: 504 Gateway Timeouts & High Latency in {role_title}",
+                "prompt": f"During a peak traffic surge, the production ingress cluster for {p_skill} experiences widespread 504 Gateway Timeouts. Backend services report connection pool exhaustion, and CPU utilization reaches 95% across worker nodes under 20,000 req/sec.\n\nDetail your architectural remediation roadmap:\n1. Root cause triage: TCP socket starvation vs connection churn.\n2. Ingress & Load Balancing reconfiguration.\n3. Autoscaling and circuit-breaking safeguards.",
+                "guidance": "Address connection pooling, ingress timeout tuning, Pod autoscaling (HPA), and circuit breakers.",
                 "difficulty": "Senior",
-                "ideal_keywords": [p_skill.lower(), s_skill.lower(), "connection pool", "p99", "latency", "dns", "keep-alive", "circuit breaker", "failover", "nat gateway"]
+                "ideal_keywords": ["ingress", "load balancer", "connection pool", "hpa", "circuit breaker", "timeouts", "autoscaling"]
             },
             "hands_on": {
                 "id": f"dyn_hands_{seed % 1000}",
                 "title": f"Dynamic Telemetry Metric Filter for {p_skill}",
-                "instructions": f"Implement a log event aggregator that parses incoming {p_skill} JSON log lines, filters out entries below the error threshold, and returns total error counts per service.",
+                "instructions": f"Implement an event filter and log aggregator that processes incoming JSON log streams for {p_skill}, filters entries below the error threshold, and returns total error counts per service.",
                 "difficulty": "Mid-Level",
-                "starter_code": {l: _get_default_starter_code(l, f"{p_skill} Metric Aggregator", job_skills) for l in allowed_langs},
+                "starter_code": {l: _get_default_starter_code(l, f"{p_skill} Log Aggregator", job_skills) for l in allowed_langs},
                 "test_cases": [
-                    {"name": "Filter warning and info logs", "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]", "expected": "{'auth': 1}", "assertion_py": "", "assertion_js": ""},
-                    {"name": "Aggregate multiple errors per service", "input": "[{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]", "expected": "{'api': 2}", "assertion_py": "", "assertion_js": ""}
+                    {"name": "Filter warning and info logs", "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]", "expected": "{'auth': 1}", "assertion_py": "assert solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]) == {'auth': 1}", "assertion_js": "assert.deepStrictEqual(solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]), {'auth': 1});"},
+                    {"name": "Aggregate multiple errors", "input": "[{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]", "expected": "{'api': 2}", "assertion_py": "assert solve([{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]) == {'api': 2}", "assertion_js": "assert.deepStrictEqual(solve([{'level': 'ERROR', 'service': 'api'}, {'level': 'ERROR', 'service': 'api'}]), {'api': 2});"}
                 ]
             },
             "troubleshooting": {
@@ -562,12 +1035,13 @@ def _procedural_synthesize_bundle(
                 "difficulty": "Mid-Level",
                 "broken_code": {l: _get_default_broken_code(l, f"{s_skill} Socket Leak", job_skills) for l in allowed_langs},
                 "test_cases": [
-                    {"name": "Proper socket closure on HTTP 500 error", "input": "status=500", "expected": "Socket released, pool count decremented", "assertion_py": "", "assertion_js": ""},
-                    {"name": "Zero fd leakage after 100 consecutive health checks", "input": "100 iterations", "expected": "Open fds == 1", "assertion_py": "", "assertion_js": ""}
+                    {"name": "Proper socket closure on error", "input": "status=500", "expected": "Socket released", "assertion_py": "assert fix('error') == 'released'", "assertion_js": "assert.strictEqual(fix('error'), 'released');"}
                 ]
             }
         }
-    elif is_frontend:
+
+    # 5. TECHNICAL: FRONTEND & WEB
+    elif is_coding and any(k in [s.lower() for s in job_skills] for k in ["react", "vue", "frontend", "javascript", "typescript", "html", "css"]):
         raw = {
             "technical_mcqs": [
                 {
@@ -580,7 +1054,7 @@ def _procedural_synthesize_bundle(
                         "D": "It forces synchronous layout reflows on every microtask."
                     },
                     "correct_option": "B",
-                    "explanation": "Stable keys allow reconciliation to identify which items have changed, preserving local component state and avoiding expensive DOM reconstruction.",
+                    "explanation": "Stable keys allow reconciliation to identify which items have changed, preserving local component state.",
                     "difficulty": "Mid-Level"
                 },
                 {
@@ -598,51 +1072,50 @@ def _procedural_synthesize_bundle(
                 },
                 {
                     "id": f"dyn_mcq_{seed % 1000}_3",
-                    "question": f"In modern asynchronous {p_skill} state management, what causes 'stale closure' bugs in event handlers or lifecycle hooks?",
+                    "question": "Which browser rendering phase is triggered when modifying element geometric properties like `width` or `margin`?",
                     "options": {
-                        "A": "Capturing variables from an older render scope because dependencies were omitted from hook dependency arrays.",
-                        "B": "Enabling TypeScript strict mode in production builds.",
-                        "C": "Running React inside a Web Worker thread.",
-                        "D": "Using CSS modules instead of Tailwind utility classes."
+                        "A": "Layout (Reflow), followed by Paint and Composite.",
+                        "B": "Only Composite layer transformation without Reflow.",
+                        "C": "DNS Prefetching.",
+                        "D": "Microtask serialization only."
                     },
                     "correct_option": "A",
-                    "explanation": "Closures retain references from their creation scope. Omitting dependencies prevents callbacks from accessing updated state.",
+                    "explanation": "Modifying geometry forces the browser to recalculate the document layout tree, causing expensive layout and paint phases.",
                     "difficulty": "Senior"
                 }
             ],
             "scenario": {
                 "id": f"dyn_scen_{seed % 1000}",
-                "title": f"High-Frequency Dashboard Degradation: 15fps Lag & Memory Leaks in {role_title}",
-                "prompt": f"A mission-critical telemetry dashboard built with {p_skill} receives real-time WebSocket updates at 60 events/sec. Users report the browser tab becomes unresponsive after 10 minutes, frame rate drops from 60fps to 12fps, and Chrome Task Manager indicates memory climbing by 15MB/minute.\n\nDetail your optimization plan:\n1. Isolate whether the bottleneck is excessive reconciliation, uncleaned event subscriptions, or unmemoized selectors.\n2. Architectural patterns (e.g. batching, virtualization, Web Workers) to decouple incoming data ingestion from the primary UI rendering loop.\n3. Memory leak mitigation and cleanup lifecycle.",
-                "guidance": "Provide specific performance profiling tools, requestAnimationFrame batching strategies, and virtual list windowing techniques.",
+                "title": f"Dashboard Degradation: 15fps Lag & Memory Leaks in {role_title}",
+                "prompt": f"A high-frequency financial monitoring dashboard built with {p_skill} drops from 60fps to 15fps after 20 minutes of user activity. Profiling indicates detached DOM trees and un-throttled WebSocket state dispatches.\n\nDetail your frontend architecture remediation:\n1. Re-render optimization and windowing/virtualization.\n2. WebSocket message debouncing and batching strategy.\n3. Memory leak isolation for detached DOM listeners.",
+                "guidance": "Address memoization, virtualized lists (e.g. react-window), requestAnimationFrame scheduling, and teardown lifecycles.",
                 "difficulty": "Senior",
-                "ideal_keywords": [p_skill.lower(), "virtualization", "memoization", "websocket", "batching", "reconciliation", "web worker", "memory leak", "requestanimationframe"]
+                "ideal_keywords": ["virtualization", "memoization", "websocket", "batching", "reflow", "memory leak", "requestanimationframe"]
             },
             "hands_on": {
                 "id": f"dyn_hands_{seed % 1000}",
                 "title": f"Telemetry Stream Debounce & Batching Pipeline for {p_skill}",
-                "instructions": "Implement an event batcher that collects incoming rapid telemetry events and flushes them in batched arrays every 250ms or when the buffer reaches 50 items.",
+                "instructions": f"Implement a batching pipeline that collects rapid high-frequency event payloads in {p_skill}, drops duplicate updates within a 50ms window, and flushes batched results.",
                 "difficulty": "Mid-Level",
-                "starter_code": {l: _get_default_starter_code(l, "Event Batcher", job_skills) for l in allowed_langs},
+                "starter_code": {l: _get_default_starter_code(l, f"{p_skill} Event Batcher", job_skills) for l in allowed_langs},
                 "test_cases": [
-                    {"name": "Flush batch on size limit", "input": "50 events", "expected": "Flushed 1 batch of 50", "assertion_py": "", "assertion_js": ""},
-                    {"name": "Flush remaining events on interval", "input": "15 events, wait 300ms", "expected": "Flushed 1 batch of 15", "assertion_py": "", "assertion_js": ""}
+                    {"name": "Batch rapid events", "input": "[1, 2, 3]", "expected": "[1, 2, 3]", "assertion_py": "assert len(solve([1,2,3])) == 3", "assertion_js": "assert.strictEqual(solve([1,2,3]).length, 3);"}
                 ]
             },
             "troubleshooting": {
                 "id": f"dyn_trouble_{seed % 1000}",
-                "title": f"Fix Memory Leak in {p_skill} Real-Time Subscription",
-                "bug_description": "A dashboard listener creates a new WebSocket message subscription on every prop update without unregistering the previous listener, causing exponential message duplication and memory leaks.",
+                "title": f"Fix Memory Leak in {s_skill} Real-Time Subscription",
+                "bug_description": f"A real-time component in {s_skill} attaches event listeners to window resize and telemetry streams but fails to unsubscribe on component unmount, retaining 50MB of closures on every navigation.",
                 "difficulty": "Mid-Level",
-                "broken_code": {l: _get_default_broken_code(l, "Subscription Leak", job_skills) for l in allowed_langs},
+                "broken_code": {l: _get_default_broken_code(l, f"{s_skill} Cleanup Defect", job_skills) for l in allowed_langs},
                 "test_cases": [
-                    {"name": "Previous listener removed on prop update", "input": "update prop id=2", "expected": "Active listeners == 1", "assertion_py": "", "assertion_js": ""},
-                    {"name": "Complete cleanup on component unmount", "input": "unmount", "expected": "Active listeners == 0", "assertion_py": "", "assertion_js": ""}
+                    {"name": "Unmount cleanup", "input": "unmount", "expected": "Listeners cleared", "assertion_py": "assert fix('unmount') == 'cleared'", "assertion_js": "assert.strictEqual(fix('unmount'), 'cleared');"}
                 ]
             }
         }
+
+    # 6. GENERAL TECHNICAL / BACKEND & SYSTEMS ENGINEERING DEFAULT
     else:
-        # Backend & Systems Engineering default
         raw = {
             "technical_mcqs": [
                 {
@@ -655,12 +1128,12 @@ def _procedural_synthesize_bundle(
                         "D": "Composite indexes can only be queried using full table scans."
                     },
                     "correct_option": "A",
-                    "explanation": "B-Tree composite indexes require leading columns to filter efficiently; omitting the leftmost column forces an index skip scan or full table scan.",
+                    "explanation": "B-Tree composite indexes require leading columns to filter efficiently; omitting the leftmost column forces a full scan.",
                     "difficulty": "Mid-Level"
                 },
                 {
                     "id": f"dyn_mcq_{seed % 1000}_2",
-                    "question": f"When scaling asynchronous background task queues with {s_skill}, what mechanism prevents duplicate job execution across worker worker threads?",
+                    "question": f"When scaling asynchronous background task queues with {s_skill}, what mechanism prevents duplicate job execution across worker threads?",
                     "options": {
                         "A": "Distributed locks with idempotency keys and transactional acknowledgment.",
                         "B": "Increasing the worker thread sleep duration to 60 seconds.",
@@ -668,12 +1141,12 @@ def _procedural_synthesize_bundle(
                         "D": "Disabling database transaction commit logs."
                     },
                     "correct_option": "A",
-                    "explanation": "Idempotency keys paired with atomic distributed locking (e.g. Redis SETNX or DB row locks) guarantee at-most-once or idempotent at-least-once processing.",
+                    "explanation": "Idempotency keys paired with atomic distributed locking guarantee at-most-once or idempotent at-least-once processing.",
                     "difficulty": "Senior"
                 },
                 {
                     "id": f"dyn_mcq_{seed % 1000}_3",
-                    "question": f"Under PostgreSQL / MySQL transactional isolation, what anomaly is prevented by REPEATABLE READ that is permitted under READ COMMITTED?",
+                    "question": "Under relational transactional isolation, what anomaly is prevented by REPEATABLE READ that is permitted under READ COMMITTED?",
                     "options": {
                         "A": "Non-repeatable reads (reading different values for the same row in subsequent queries within one transaction).",
                         "B": "Hardware disk controller failures.",
@@ -681,43 +1154,41 @@ def _procedural_synthesize_bundle(
                         "D": "Loss of network connectivity."
                     },
                     "correct_option": "A",
-                    "explanation": "REPEATABLE READ creates a transaction snapshot at the first read, guaranteeing subsequent reads see identical row values even if other transactions commit changes.",
+                    "explanation": "REPEATABLE READ creates a transaction snapshot at the first read, guaranteeing subsequent reads see identical row values.",
                     "difficulty": "Senior"
                 }
             ],
             "scenario": {
                 "id": f"dyn_scen_{seed % 1000}",
-                "title": f"Distributed Deadlock & Cascading Queue Failures: {role_title}",
-                "prompt": f"A payment processing backend running {p_skill} and {s_skill} experiences transaction deadlocks during peak flash sales. As database transactions lock customer wallet records out of order, worker threads block indefinitely, causing the upstream queue to back up to 500,000 unhandled messages.\n\nDetail your remediation strategy:\n1. Deadlock elimination: consistent lock ordering vs optimistic concurrency with version checks.\n2. Backpressure and rate limiting to prevent queue overflow.\n3. Idempotency guarantees to prevent double-charging users during retries.",
-                "guidance": f"Discuss specific isolation levels, dead letter queues (DLQs), and circuit breakers for {p_skill} and {s_skill}.",
+                "title": f"Distributed Deadlock & Cascading Queue Failures in {role_title}",
+                "prompt": f"A payment processing backend running {p_skill} and {s_skill} experiences transaction deadlocks during peak flash sales. Worker threads block indefinitely, causing the upstream queue to back up to 500,000 unhandled messages.\n\nDetail your remediation strategy:\n1. Deadlock elimination: consistent lock ordering vs optimistic concurrency.\n2. Backpressure and rate limiting to prevent queue overflow.\n3. Idempotency guarantees to prevent duplicate charges during retries.",
+                "guidance": "Discuss isolation levels, dead letter queues (DLQs), circuit breakers, and idempotency keys.",
                 "difficulty": "Senior",
-                "ideal_keywords": [p_skill.lower(), s_skill.lower(), "deadlock", "idempotency", "dlq", "optimistic locking", "circuit breaker", "backpressure", "transaction isolation"]
+                "ideal_keywords": ["deadlock", "idempotency", "dlq", "optimistic locking", "circuit breaker", "backpressure", "isolation"]
             },
             "hands_on": {
                 "id": f"dyn_hands_{seed % 1000}",
                 "title": f"Token Bucket Rate Limiter for {p_skill}",
-                "instructions": "Implement a TokenBucket rate limiter that deducts tokens for incoming requests and refills smoothly based on elapsed time without race conditions.",
+                "instructions": f"Implement a TokenBucket rate limiter for {p_skill} that deducts tokens for incoming requests and refills smoothly based on elapsed time without race conditions.",
                 "difficulty": "Mid-Level",
-                "starter_code": {l: _get_default_starter_code(l, "Token Bucket", job_skills) for l in allowed_langs},
+                "starter_code": {l: _get_default_starter_code(l, f"Token Bucket {p_skill}", job_skills) for l in allowed_langs},
                 "test_cases": [
-                    {"name": "Allow burst within capacity", "input": "capacity=5, burst=3", "expected": "True", "assertion_py": "", "assertion_js": ""},
-                    {"name": "Reject requests exceeding capacity", "input": "capacity=5, burst=6", "expected": "False", "assertion_py": "", "assertion_js": ""}
+                    {"name": "Allow burst within capacity", "input": "capacity=5, burst=3", "expected": "True", "assertion_py": "assert solve({'capacity': 5, 'burst': 3}) == True", "assertion_js": "assert.strictEqual(solve({capacity: 5, burst: 3}), true);"}
                 ]
             },
             "troubleshooting": {
                 "id": f"dyn_trouble_{seed % 1000}",
                 "title": f"Fix Off-by-One Boundary Defect in Sliding Window for {p_skill}",
-                "bug_description": "A sliding window filter is dropping events that occur exactly at the boundary limit of the window due to a strict '<' comparison instead of '<='.",
+                "bug_description": f"A sliding window filter for {p_skill} is dropping events that occur exactly at the boundary limit due to a strict '<' comparison instead of '<='.",
                 "difficulty": "Mid-Level",
-                "broken_code": {l: _get_default_broken_code(l, "Sliding Window Bug", job_skills) for l in allowed_langs},
+                "broken_code": {l: _get_default_broken_code(l, f"Sliding Window {p_skill}", job_skills) for l in allowed_langs},
                 "test_cases": [
-                    {"name": "Include exact boundary timestamp", "input": "timestamp=3000, window=3000", "expected": "Event counted in window", "assertion_py": "", "assertion_js": ""},
-                    {"name": "Exclude timestamp beyond window", "input": "timestamp=3001, window=3000", "expected": "Event excluded", "assertion_py": "", "assertion_js": ""}
+                    {"name": "Include exact boundary timestamp", "input": "timestamp=3000, window=3000", "expected": "Event counted", "assertion_py": "assert fix(3000, 3000) == True", "assertion_js": "assert.strictEqual(fix(3000, 3000), true);"}
                 ]
             }
         }
 
-    return _normalize_bundle(raw, allowed_langs, role_title, job_skills)
+    return _normalize_bundle(raw, allowed_langs, role_title, job_skills, is_coding=is_coding, domain_category=domain_category)
 
 def synthesize_technical_assessment_bundle(
     role_title: str,
@@ -732,49 +1203,78 @@ def synthesize_technical_assessment_bundle(
     """
     Synthesizes a 100% dynamic, job-tailored 4-category Technical Assessment bundle:
     1. Technical MCQs (3 concepts tailored to the exact role & skills)
-    2. Scenario (Real-world production problem/incident based on the job requirements)
-    3. Hands-on (Practical coding task supporting multiple languages with starter code & test cases)
-    4. Troubleshooting (Debugging task with buggy code across languages & test cases)
+    2. Scenario (Real-world incident/dilemma based on the job requirements)
+    3. Hands-on (Practical coding task for technical roles OR professional practical deliverable for non-technical roles)
+    4. Troubleshooting (Debugging task for technical roles OR anomaly diagnosis for non-technical roles)
 
     NO HARDCODED / PREDEFINED QUESTIONS.
     Returns: (bundle_for_candidate, solutions_dict_for_server_grading)
     """
-    all_supported_langs = ["python", "javascript", "typescript", "java", "cpp"]
-    if languages:
-        valid_prog_langs = [l.lower() for l in languages if l.lower() in all_supported_langs]
-        allowed_langs = valid_prog_langs if valid_prog_langs else all_supported_langs
+    # 1. Classify domain and detect required technologies
+    is_coding, domain_category, detected_langs = classify_job_domain(role_title, job_skills, job_description)
+
+    all_supported_langs = ["python", "javascript", "typescript", "java", "cpp", "sql", "bash", "terraform"]
+    if is_coding:
+        if languages:
+            valid_prog_langs = [l.lower() for l in languages if l.lower() in all_supported_langs]
+            allowed_langs = valid_prog_langs if valid_prog_langs else (detected_langs if detected_langs else ["python", "javascript"])
+        else:
+            allowed_langs = detected_langs if detected_langs else ["python", "javascript"]
     else:
-        allowed_langs = all_supported_langs
+        allowed_langs = []
 
     skills_str = ", ".join(job_skills[:6]) if job_skills else role_title
-    cand_skills_str = ", ".join(candidate_skills[:4]) if candidate_skills else "General Engineering"
-    desc_snippet = job_description[:500] if job_description else f"Production role focusing on {skills_str}."
+    desc_snippet = job_description[:500] if job_description else f"Professional role focusing on {skills_str}."
     seed_token = f"{candidate_id or 'cand'}_{candidate_name}_{int(time.time())}"
 
-    # 1. Primary: Live Real-Time LLM Generation (when Gemini, Groq, or OpenAI key is configured)
-    llm_prompt = (
-        f"You are a Principal Staff Engineer at a top tech company.\n"
-        f"Generate a 100% dynamic, job-tailored 4-category Technical Assessment for:\n"
-        f"Role Title: {role_title}\n"
-        f"Required Skills & Technologies: {skills_str}\n"
-        f"Job Description Context: {desc_snippet}\n"
-        f"Experience Seniority: {experience_years} years\n"
-        f"Candidate Name: {candidate_name}\n"
-        f"Allowed Programming Languages: {', '.join(allowed_langs)}\n"
-        f"Candidate Variation Seed: {seed_token}\n\n"
-        f"Generate strictly valid JSON with these 4 keys:\n"
-        f"1. \"technical_mcqs\": Array of 3 multiple-choice questions specifically testing {skills_str}.\n"
-        f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
-        f"2. \"scenario\": A realistic production incident or architecture design problem tailored to {role_title}.\n"
-        f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
-        f"3. \"hands_on\": Practical implementation challenge tailored to this role.\n"
-        f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"difficulty\": \"Mid-Level\", \"supported_languages\": {json.dumps(allowed_langs)}, \"starter_code\": {{\"python\": \"def solve(data):\\n    pass\", \"javascript\": \"function solve(data) {{}}\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n"
-        f"4. \"troubleshooting\": A realistic debugging task with buggy code.\n"
-        f"   Object: {{\"id\": \"troubleshooting-1\", \"title\": \"...\", \"bug_description\": \"...\", \"difficulty\": \"Mid-Level\", \"broken_code\": {{\"python\": \"def fix(data):\\n    return data\", \"javascript\": \"function fix(data) {{ return data; }}\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n\n"
-        f"Keep code concise. Output strictly valid JSON only with NO markdown fences."
-    )
+    # 2. Live LLM Dispatch
+    if is_coding:
+        llm_prompt = (
+            f"You are a Principal Staff Engineer.\n"
+            f"Generate a 100% dynamic, job-tailored 4-category Technical Assessment for:\n"
+            f"Role Title: {role_title}\n"
+            f"Required Skills & Technologies: {skills_str}\n"
+            f"Job Description Context: {desc_snippet}\n"
+            f"Experience Seniority: {experience_years} years\n"
+            f"Candidate Name: {candidate_name}\n"
+            f"Allowed Programming Technologies: {', '.join(allowed_langs)}\n"
+            f"Candidate Variation Seed: {seed_token}\n\n"
+            f"Generate strictly valid JSON with these 4 keys:\n"
+            f"1. \"technical_mcqs\": Array of 3 multiple-choice questions specifically testing {skills_str}.\n"
+            f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
+            f"2. \"scenario\": A realistic production incident or architecture design problem tailored to {role_title}.\n"
+            f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
+            f"3. \"hands_on\": Practical implementation challenge tailored to this role.\n"
+            f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"supported_languages\": {json.dumps(allowed_langs)}, \"starter_code\": {{\"python\": \"def solve(data):\\n    pass\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n"
+            f"4. \"troubleshooting\": A realistic debugging task with buggy code.\n"
+            f"   Object: {{\"id\": \"troubleshooting-1\", \"title\": \"...\", \"bug_description\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"broken_code\": {{\"python\": \"def fix(data):\\n    return data\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n\n"
+            f"Output strictly valid JSON only with NO markdown fences."
+        )
+    else:
+        llm_prompt = (
+            f"You are a Senior Executive Director of Talent Assessment for {domain_category.upper()}.\n"
+            f"Generate a 100% dynamic, job-tailored 4-category Professional Assessment for:\n"
+            f"Role Title: {role_title}\n"
+            f"Required Skills & Core Competencies: {skills_str}\n"
+            f"Job Description Context: {desc_snippet}\n"
+            f"Experience Seniority: {experience_years} years\n"
+            f"Candidate Name: {candidate_name}\n"
+            f"Candidate Variation Seed: {seed_token}\n\n"
+            f"CRITICAL REQUIREMENT: This is a NON-TECHNICAL / PROFESSIONAL role ({domain_category}).\n"
+            f"DO NOT generate programming code, coding challenges, compilers, or developer tech like Python/AWS/SQL.\n"
+            f"Generate strictly valid JSON with these 4 keys:\n"
+            f"1. \"technical_mcqs\": Array of 3 professional knowledge MCQs specifically testing {skills_str} principles, regulations, or standards.\n"
+            f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
+            f"2. \"scenario\": A realistic workplace, business, or operational crisis tailored to {role_title}.\n"
+            f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
+            f"3. \"hands_on\": Practical professional assignment (NOT write code) appropriate to this profession (e.g. balance sheet reconciliation, drafting a PIP, campaign budget model, executive sales pitch).\n"
+            f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"deliverable_template\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": false, \"task_type\": \"practical\"}}\n"
+            f"4. \"troubleshooting\": Realistic professional defect, anomaly, or discrepancy that someone in this role must diagnose and resolve.\n"
+            f"   Object: {{\"id\": \"troubleshooting-1\", \"title\": \"...\", \"bug_description\": \"...\", \"anomaly_data\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": false, \"task_type\": \"troubleshooting\", \"resolution_guidance\": \"...\"}}\n\n"
+            f"Output strictly valid JSON only with NO markdown fences."
+        )
 
-    llm_res = call_llm(llm_prompt, "You are a Principal Engineer. Output strictly valid JSON only.", max_tokens=4096)
+    llm_res = call_llm(llm_prompt, "You are an expert talent assessment director. Output strictly valid JSON only.", max_tokens=4096)
     if llm_res:
         parsed = parse_llm_json(llm_res)
         if parsed and isinstance(parsed, dict):
@@ -783,10 +1283,61 @@ def synthesize_technical_assessment_bundle(
             has_hands = bool(parsed.get("hands_on"))
             has_trouble = bool(parsed.get("troubleshooting"))
             if has_mcqs and has_scen and has_hands and has_trouble:
-                return _normalize_bundle(parsed, allowed_langs, role_title, job_skills)
+                return _normalize_bundle(parsed, allowed_langs, role_title, job_skills, is_coding=is_coding, domain_category=domain_category)
 
-    # 2. Procedural Fallback: Context-Aware Dynamic Generation (works 100% offline with ZERO hardcoded question lists)
-    return _procedural_synthesize_bundle(role_title, job_skills, experience_years, candidate_name, candidate_id, allowed_langs)
+    # 3. Procedural Fallback
+    return _procedural_synthesize_bundle(role_title, job_skills, experience_years, candidate_name, candidate_id, allowed_langs, is_coding=is_coding, domain_category=domain_category)
+
+def evaluate_practical_task(
+    task_title: str,
+    instructions: str,
+    candidate_submission: str,
+    role_title: str = "Professional Role",
+    job_skills: Optional[List[str]] = None
+) -> Dict[str, Any]:
+    """
+    Evaluates candidate's practical non-coding hands-on or troubleshooting deliverable using AI.
+    Strictly returns 0 for blank or trivial submissions.
+    """
+    if not candidate_submission or len(candidate_submission.strip()) < 20:
+        return {
+            "score": 0,
+            "quality": "unsubmitted",
+            "feedback": "No substantive response was submitted for this practical task."
+        }
+
+    skills_str = ", ".join(job_skills or [role_title])
+    prompt = (
+        f"You are a Senior Hiring Committee Director evaluating a candidate's practical assignment for the role of '{role_title}'.\n"
+        f"Key Domain Skills: {skills_str}\n\n"
+        f"Task Title: {task_title}\n"
+        f"Task Instructions & Requirements:\n\"\"\"{instructions}\"\"\"\n\n"
+        f"Candidate's Submitted Deliverable:\n\"\"\"{candidate_submission}\"\"\"\n\n"
+        f"Evaluate the submission objectively based on professional rigor, accuracy, completeness, and adherence to requirements.\n"
+        f"Return strictly valid JSON only with keys: score (integer 0-100), quality ('exceptional' | 'solid' | 'vague' | 'inadequate'), feedback (2 sentences)."
+    )
+    res = call_llm(prompt, "You are a professional hiring director. Output strictly valid JSON only.")
+    if res:
+        parsed = parse_llm_json(res)
+        if parsed and isinstance(parsed, dict) and "score" in parsed:
+            return parsed
+
+    # Procedural heuristic evaluation when LLM key is offline
+    words = len(candidate_submission.strip().split())
+    if words < 10:
+        score = 0
+    elif words < 30:
+        score = 35
+    elif words < 70:
+        score = 65
+    else:
+        score = min(92, 70 + min(22, int(words / 15)))
+
+    return {
+        "score": score,
+        "quality": "solid" if score >= 70 else "vague",
+        "feedback": f"Evaluated based on professional deliverable completeness ({words} words provided)."
+    }
 
 def evaluate_scenario_response(
     scenario_prompt: str,
@@ -880,27 +1431,46 @@ def synthesize_candidate_interview_questions(
     with the candidate's actual background and seniority level.
     """
     candidate_skills = candidate_skills or []
-    p_skill = candidate_skills[0] if candidate_skills else (job_skills[0] if job_skills else "System Architecture")
+    is_coding, domain_category, _ = classify_job_domain(role_title, job_skills)
+
+    p_skill = candidate_skills[0] if candidate_skills else (job_skills[0] if job_skills else ("System Architecture" if is_coding else "Domain Execution"))
     s_skill = (
         candidate_skills[1] if len(candidate_skills) > 1 
-        else (job_skills[1] if len(job_skills) > 1 else (job_skills[0] if job_skills else "PostgreSQL"))
+        else (job_skills[1] if len(job_skills) > 1 else (job_skills[0] if job_skills else ("Data Structures" if is_coding else "Compliance & Controls")))
     )
     skills_str = ", ".join(job_skills[:4] if job_skills else [p_skill, s_skill])
     cand_skills_str = ", ".join(candidate_skills[:4]) if candidate_skills else p_skill
 
     # 1. Primary: Gemini LLM Live Generation (when GEMINI_API_KEY is configured)
-    llm_prompt = (
-        f"Generate 3 highly realistic, rigorous technical interview questions for candidate '{candidate_name}' "
-        f"applying for the position '{role_title}' with {experience_years} years of experience. "
-        f"Job Required Skills: {skills_str}. Candidate Background Skills: {cand_skills_str}.\n"
-        f"Requirements:\n"
-        f"- Question 1: Core runtime, concurrency, memory, or async data flow tailored to {p_skill}.\n"
-        f"- Question 2: Distributed system design, modular integration, and failure modes with {s_skill}.\n"
-        f"- Question 3: Production incident triage, root cause analysis, or critical bug post-mortem.\n"
-        f"Return strictly a JSON array of 3 objects with keys: id (q1, q2, q3), type, prompt, ideal_keywords (array of strings), "
-        f"follow_up_vague (string), follow_up_expert (string). No markdown backticks."
-    )
-    llm_res = call_gemini_llm(llm_prompt, "You are a Principal Staff Engineer conducting technical interviews at top tech companies. Output valid JSON only.")
+    if is_coding:
+        llm_prompt = (
+            f"Generate 3 highly realistic, rigorous technical interview questions for candidate '{candidate_name}' "
+            f"applying for the position '{role_title}' with {experience_years} years of experience. "
+            f"Job Required Skills: {skills_str}. Candidate Background Skills: {cand_skills_str}.\n"
+            f"Requirements:\n"
+            f"- Question 1: Core runtime, concurrency, memory, or async data flow tailored to {p_skill}.\n"
+            f"- Question 2: Distributed system design, modular integration, and failure modes with {s_skill}.\n"
+            f"- Question 3: Production incident triage, root cause analysis, or critical bug post-mortem.\n"
+            f"Return strictly a JSON array of 3 objects with keys: id (q1, q2, q3), type, prompt, ideal_keywords (array of strings), "
+            f"follow_up_vague (string), follow_up_expert (string). No markdown backticks."
+        )
+        system_role = "You are a Principal Staff Engineer conducting technical interviews at top tech companies. Output valid JSON only."
+    else:
+        llm_prompt = (
+            f"Generate 3 highly realistic, rigorous professional interview questions for candidate '{candidate_name}' "
+            f"applying for the non-technical / business role '{role_title}' (domain: {domain_category.upper()}) with {experience_years} years of experience. "
+            f"Job Required Skills: {skills_str}. Candidate Background Skills: {cand_skills_str}.\n"
+            f"CRITICAL: Do NOT generate programming or software coding questions. Focus on business operations, strategy, regulatory compliance, metrics, and problem solving.\n"
+            f"Requirements:\n"
+            f"- Question 1: Core domain competence, frameworks, and practical methodology tailored to {p_skill}.\n"
+            f"- Question 2: Strategic problem solving, stakeholder management, or execution with {s_skill}.\n"
+            f"- Question 3: Critical incident resolution, regulatory dilemma, or organizational dispute post-mortem.\n"
+            f"Return strictly a JSON array of 3 objects with keys: id (q1, q2, q3), type, prompt, ideal_keywords (array of strings), "
+            f"follow_up_vague (string), follow_up_expert (string). No markdown backticks."
+        )
+        system_role = f"You are an Executive Hiring Director evaluating top candidates in {domain_category.upper()}. Output valid JSON only."
+
+    llm_res = call_gemini_llm(llm_prompt, system_role)
     if llm_res:
         parsed = parse_llm_json(llm_res)
         if isinstance(parsed, list) and len(parsed) >= 3:
@@ -910,94 +1480,199 @@ def synthesize_candidate_interview_questions(
     seed_input = f"{candidate_id or 'cand'}:{candidate_name}:{role_title}:{p_skill}"
     seed = int(hashlib.sha256(seed_input.encode()).hexdigest(), 16)
 
-    # Category 1: Core Technical Depth, Concurrency & Runtime
-    pool_1 = [
-        {
-            "type": "Technical Competence & Concurrency",
-            "prompt": f"In your work with {p_skill}, how have you architected services to handle high concurrency and prevent thread pool starvation or memory leaks under sudden traffic bursts?",
-            "ideal_keywords": [p_skill.lower(), "concurrency", "async", "latency", "event loop", "throughput", "caching", "worker"],
-            "follow_up_vague": f"You mentioned utilizing {p_skill}, but what specific profiling tools or metrics did you use to detect memory or CPU bottlenecks?",
-            "follow_up_expert": f"Under a 10x traffic spike on {p_skill}, what backpressure and circuit-breaker patterns did you implement?"
-        },
-        {
-            "type": "Technical Architecture & Performance",
-            "prompt": f"When optimizing {p_skill} applications, what caching topologies (e.g. write-through vs write-behind) and query optimizations have you deployed to achieve sub-50ms p99 latency?",
-            "ideal_keywords": [p_skill.lower(), "cache", "redis", "p99", "latency", "indexes", "query optimization", "in-memory"],
-            "follow_up_vague": f"Could you elaborate on how you handled cache invalidation and prevented cache stampedes on {p_skill}?",
-            "follow_up_expert": f"How do you prevent hotkey contention in your caching layer when thousands of concurrent clients read the same record?"
-        },
-        {
-            "type": "Asynchronous Event Streaming",
-            "prompt": f"How do you design asynchronous background processing between {p_skill} and distributed worker queues to guarantee at-least-once message processing without data duplication?",
-            "ideal_keywords": [p_skill.lower(), "queue", "idempotency", "ack", "worker", "retry", "dead letter queue", "event"],
-            "follow_up_vague": "What specific idempotency keys or transaction boundaries did you establish to prevent duplicate writes?",
-            "follow_up_expert": "If worker nodes crash midway through execution, how does your consumer group rebalance without message starvation?"
-        },
-        {
-            "type": "State Management & Responsive Runtime",
-            "prompt": f"How do you structure complex state in {p_skill} to isolate cascading updates and guarantee smooth 60fps interaction during rapid real-time telemetry streams?",
-            "ideal_keywords": [p_skill.lower(), "state", "memoization", "batching", "re-render", "worker", "event listener", "immutable"],
-            "follow_up_vague": f"What specific architectural patterns in {p_skill} prevented performance degradation when data streams update multiple times per second?",
-            "follow_up_expert": f"How would you offload heavy computations in {p_skill} onto background Web Workers or subprocesses to protect the primary execution thread?"
-        }
-    ]
-
-    # Category 2: Distributed System Architecture & Modular Boundaries
-    pool_2 = [
-        {
-            "type": "Distributed System Architecture",
-            "prompt": f"How do you design modular communication between {p_skill} services and {s_skill} backends while enforcing strict schema contracts and security boundaries?",
-            "ideal_keywords": [s_skill.lower(), "api contract", "grpc", "rest", "schema", "validation", "token", "security", "isolation"],
-            "follow_up_vague": f"What serialization protocol and error retry policies did you configure between {p_skill} and {s_skill}?",
-            "follow_up_expert": f"What eventual consistency or saga pattern did you implement when {s_skill} encounters a network partition?"
-        },
-        {
-            "type": "Data Consistency & Resiliency",
-            "prompt": f"In a distributed setup involving {s_skill}, how do you manage database migrations and multi-region read replicas without taking scheduled downtime?",
-            "ideal_keywords": [s_skill.lower(), "replication", "migration", "zero-downtime", "consistency", "read replica", "lock"],
-            "follow_up_vague": "How do you prevent schema migration locks from blocking active write transactions on live production tables?",
-            "follow_up_expert": "How do you handle replication lag when a user performs a write followed immediately by a critical read?"
-        },
-        {
-            "type": "Microservice Resilience & Security",
-            "prompt": f"Describe how you enforce Zero-Trust access controls, rate limiting, and JWT identity propagation across your {p_skill} services.",
-            "ideal_keywords": ["jwt", "rate limiting", "oauth", "token", "rbac", "least privilege", "api gateway", "tls"],
-            "follow_up_vague": "Where do you enforce token revocation and replay attack protection without adding database query overhead to every request?",
-            "follow_up_expert": "How do you secure inter-service communication against man-in-the-middle attacks within internal VPC subnets?"
-        },
-        {
-            "type": "Fault Tolerance & Partition Tolerance",
-            "prompt": f"When an upstream {s_skill} dependency experiences severe latency or partial outages, what degradation strategies does your {p_skill} layer employ to keep core user journeys functional?",
-            "ideal_keywords": [s_skill.lower(), "graceful degradation", "fallback", "cache", "timeout", "circuit breaker", "bulkhead"],
-            "follow_up_vague": "How do you decide which features to shed or degrade when the system is under severe resource pressure?",
-            "follow_up_expert": "How do you prevent 'thundering herd' recovery storms once the degraded dependency comes back online?"
-        }
-    ]
-
-    # Category 3: Production Incident Triage & Root Cause Analysis
-    pool_3 = [
-        {
-            "type": "Incident Triage & Post-Mortem",
-            "prompt": f"Walk me through a severe production outage or silent data corruption you investigated in your {experience_years}+ years of software development. What was your root-cause analysis procedure?",
-            "ideal_keywords": ["root cause", "telemetry", "post-mortem", "tracing", "logs", "metrics", "monitoring", "prevention"],
-            "follow_up_vague": "What specific observability tools or telemetry traces pointed you to the root cause rather than guesswork?",
-            "follow_up_expert": "What automated canary checks or regression suites were deployed in CI/CD to prevent identical regressions?"
-        },
-        {
-            "type": "Concurrency Race Conditions & Deadlocks",
-            "prompt": f"Have you ever debugged an elusive race condition, thread deadlock, or resource leak that only appeared in production under load? How did you isolate it?",
-            "ideal_keywords": ["race condition", "deadlock", "thread dump", "profiler", "mutex", "atomic", "heap dump", "reproduction"],
-            "follow_up_vague": "How did you reproduce the bug in a staging environment when it only surfaced intermittently in production?",
-            "follow_up_expert": "What defensive programming or immutable data structures did you introduce to structurally eliminate that race condition?"
-        },
-        {
-            "type": "Deployment Failure & Rollback Engineering",
-            "prompt": f"Describe a situation where a production release passed all CI tests but degraded customer traffic immediately upon deployment. What was your rollback and mitigation playbook?",
-            "ideal_keywords": ["rollback", "feature flag", "canary", "blast radius", "incident commander", "metrics", "slo"],
-            "follow_up_vague": "How did you distinguish between a genuine code regression and external downstream third-party outages during the incident?",
-            "follow_up_expert": "How do you structure feature flags and database backward compatibility to allow instantaneous 1-click rollbacks?"
-        }
-    ]
+    if not is_coding:
+        # NON-TECHNICAL DOMAIN QUESTION POOLS
+        if domain_category == "finance":
+            pool_1 = [
+                {
+                    "type": "Internal Controls & Audit Readiness",
+                    "prompt": f"In your financial oversight and reporting with {p_skill}, how do you design internal reconciliation controls to prevent ledger discrepancies and guarantee audit readiness?",
+                    "ideal_keywords": [p_skill.lower(), "reconciliation", "sox", "gaap", "ifrs", "sub-ledger", "variance", "controls", "audit"],
+                    "follow_up_vague": f"What specific variance threshold triggers an escalation in your {p_skill} reconciliation process?",
+                    "follow_up_expert": "How do you ensure segregation of duties in automated ERP posting without slowing month-end close?"
+                },
+                {
+                    "type": "Financial Modeling & Statutory Accounting",
+                    "prompt": f"How do you ensure complete alignment with GAAP/IFRS standards when modeling revenue recognition and multi-currency transactions involving {p_skill}?",
+                    "ideal_keywords": [p_skill.lower(), "gaap", "ifrs", "revenue recognition", "amortization", "statutory", "compliance"],
+                    "follow_up_vague": "Which specific accounting standard governs this treatment in your historical filings?",
+                    "follow_up_expert": "How do you account for unrealized foreign exchange volatility in quarterly consolidated balance sheets?"
+                }
+            ]
+            pool_2 = [
+                {
+                    "type": "Tax Governance & Regulatory Compliance",
+                    "prompt": f"When navigating complex statutory or tax compliance challenges involving {s_skill}, what framework do you employ to evaluate regulatory exposure and mitigate penalties?",
+                    "ideal_keywords": [s_skill.lower(), "tax audit", "withholding", "transfer pricing", "compliance", "penalty", "disclosure"],
+                    "follow_up_vague": "What documentation or audit trail did you maintain to defend that tax position?",
+                    "follow_up_expert": "How do you manage cross-border transfer pricing documentation to withstand aggressive tax authority scrutiny?"
+                }
+            ]
+            pool_3 = [
+                {
+                    "type": "Audit Defense & Material Variance Post-Mortem",
+                    "prompt": f"Walk me through a complex external audit, material financial variance, or fiscal irregularity you investigated in your {experience_years}+ years. What was your resolution procedure?",
+                    "ideal_keywords": ["material variance", "audit", "investigation", "reconciliation", "internal control", "root cause"],
+                    "follow_up_vague": "What analytical tests first flagged the inconsistency rather than routine manual checks?",
+                    "follow_up_expert": "What structural remediation did you institute in ERP policies to prevent identical audit findings?"
+                }
+            ]
+        elif domain_category == "hr":
+            pool_1 = [
+                {
+                    "type": "Talent Acquisition & Sourcing Strategy",
+                    "prompt": f"How do you architect a high-velocity talent sourcing and evaluation framework using {p_skill} while maintaining candidate quality and diverse pipelines?",
+                    "ideal_keywords": [p_skill.lower(), "sourcing", "pipeline", "time-to-hire", "diversity", "ats", "retention", "competency"],
+                    "follow_up_vague": "What metric do you prioritize when evaluating top-of-funnel conversion efficiency?",
+                    "follow_up_expert": "How do you benchmark market compensation bands to compete with top-tier compensation packages?"
+                }
+            ]
+            pool_2 = [
+                {
+                    "type": "Employee Relations & Conflict Mediation",
+                    "prompt": f"When addressing sensitive employee grievances or cross-functional disputes involving {s_skill}, how do you mediate constructively while protecting trust and mitigating legal liability?",
+                    "ideal_keywords": [s_skill.lower(), "mediation", "compliance", "grievance", "eeoc", "culture", "confidentiality"],
+                    "follow_up_vague": "What investigation protocol do you follow before presenting recommendations to leadership?",
+                    "follow_up_expert": "How do you navigate situations where senior leadership behavior conflicts with published workplace policies?"
+                }
+            ]
+            pool_3 = [
+                {
+                    "type": "Organizational Restructure & Retention Post-Mortem",
+                    "prompt": f"Describe an organizational restructure, leadership transition, or critical retention crisis you navigated in your {experience_years}+ years in HR. What was your playbook?",
+                    "ideal_keywords": ["restructure", "retention", "change management", "flight risk", "severance", "culture"],
+                    "follow_up_vague": "How did you measure organizational morale and voluntary turnover during the transition period?",
+                    "follow_up_expert": "What proactive interventions did you implement to retain key flight-risk personnel?"
+                }
+            ]
+        elif domain_category == "marketing":
+            pool_1 = [
+                {
+                    "type": "Growth Strategy & Unit Economics",
+                    "prompt": f"In your campaigns leveraging {p_skill}, how do you model customer acquisition cost (CAC) and lifetime value (LTV) to maximize return on ad spend across channels?",
+                    "ideal_keywords": [p_skill.lower(), "cac", "ltv", "roas", "attribution", "conversion", "funnel", "analytics", "roi"],
+                    "follow_up_vague": "What attribution model (first-touch, last-touch, or data-driven) do you rely on most heavily?",
+                    "follow_up_expert": "How do you account for channel saturation and diminishing marginal returns when scaling budgets?"
+                }
+            ]
+            pool_2 = [
+                {
+                    "type": "Funnel Optimization & Conversion Strategy",
+                    "prompt": f"Describe a specific multi-channel initiative with {s_skill} where you restructured the customer journey to improve conversion and activation rates.",
+                    "ideal_keywords": [s_skill.lower(), "conversion rate", "a/b testing", "activation", "onboarding", "lifecycle", "retention"],
+                    "follow_up_vague": "What statistical significance criteria did you require before declaring a test winner?",
+                    "follow_up_expert": "How do you balance short-term direct-response lead generation with long-term brand equity investment?"
+                }
+            ]
+            pool_3 = [
+                {
+                    "type": "Campaign Crisis & Attribution Post-Mortem",
+                    "prompt": f"Walk me through a campaign or brand launch in your {experience_years}+ years that underperformed projections. How did you diagnose the breakdown and pivot?",
+                    "ideal_keywords": ["post-mortem", "campaign diagnosis", "pivot", "messaging", "churn", "attribution"],
+                    "follow_up_vague": "What initial metric alerted you that the campaign was trending off-benchmark?",
+                    "follow_up_expert": "What preventive guardrails did you establish for subsequent go-to-market launches?"
+                }
+            ]
+        else:
+            # General Business, Operations, Sales & Management Pool
+            pool_1 = [
+                {
+                    "type": "Operational Excellence & Execution",
+                    "prompt": f"How do you structure execution workflows and KPI benchmarks in {p_skill} to drive predictable business outcomes and remove operational bottlenecks?",
+                    "ideal_keywords": [p_skill.lower(), "kpi", "workflow", "sla", "process", "efficiency", "milestone", "delivery"],
+                    "follow_up_vague": "What operational metrics do you review weekly to detect execution drift?",
+                    "follow_up_expert": "How do you scale these operational processes across distributed cross-functional teams?"
+                }
+            ]
+            pool_2 = [
+                {
+                    "type": "Stakeholder Negotiation & Resource Allocation",
+                    "prompt": f"When key stakeholders hold conflicting priorities regarding {s_skill}, what data-driven framework do you use to reach consensus and allocate resources?",
+                    "ideal_keywords": [s_skill.lower(), "stakeholder", "negotiation", "resource allocation", "prioritization", "alignment"],
+                    "follow_up_vague": "How do you manage expectations when client or executive demands exceed current team capacity?",
+                    "follow_up_expert": "How do you protect project scope while maintaining positive long-term stakeholder partnerships?"
+                }
+            ]
+            pool_3 = [
+                {
+                    "type": "Crisis Resolution & Strategic Post-Mortem",
+                    "prompt": f"Describe a high-stakes operational breakdown or strategic impasse you navigated in your {experience_years}+ years of experience. What was your resolution procedure?",
+                    "ideal_keywords": ["crisis", "resolution", "mitigation", "sla", "post-mortem", "contingency", "risk"],
+                    "follow_up_vague": "What contingency actions did you trigger within the first 24 hours of the issue surfacing?",
+                    "follow_up_expert": "What systematic organizational changes were implemented to structurally prevent a recurrence?"
+                }
+            ]
+    else:
+        # TECHNICAL / SOFTWARE ENGINEERING QUESTION POOLS
+        pool_1 = [
+            {
+                "type": "Technical Competence & Concurrency",
+                "prompt": f"In your work with {p_skill}, how have you architected services to handle high concurrency and prevent thread pool starvation or memory leaks under sudden traffic bursts?",
+                "ideal_keywords": [p_skill.lower(), "concurrency", "async", "latency", "event loop", "throughput", "caching", "worker"],
+                "follow_up_vague": f"You mentioned utilizing {p_skill}, but what specific profiling tools or metrics did you use to detect memory or CPU bottlenecks?",
+                "follow_up_expert": f"Under a 10x traffic spike on {p_skill}, what backpressure and circuit-breaker patterns did you implement?"
+            },
+            {
+                "type": "Technical Architecture & Performance",
+                "prompt": f"When optimizing {p_skill} applications, what caching topologies (e.g. write-through vs write-behind) and query optimizations have you deployed to achieve sub-50ms p99 latency?",
+                "ideal_keywords": [p_skill.lower(), "cache", "redis", "p99", "latency", "indexes", "query optimization", "in-memory"],
+                "follow_up_vague": f"Could you elaborate on how you handled cache invalidation and prevented cache stampedes on {p_skill}?",
+                "follow_up_expert": f"How do you prevent hotkey contention in your caching layer when thousands of concurrent clients read the same record?"
+            },
+            {
+                "type": "Asynchronous Event Streaming",
+                "prompt": f"How do you design asynchronous background processing between {p_skill} and distributed worker queues to guarantee at-least-once message processing without data duplication?",
+                "ideal_keywords": [p_skill.lower(), "queue", "idempotency", "ack", "worker", "retry", "dead letter queue", "event"],
+                "follow_up_vague": "What specific idempotency keys or transaction boundaries did you establish to prevent duplicate writes?",
+                "follow_up_expert": "If worker nodes crash midway through execution, how does your consumer group rebalance without message starvation?"
+            }
+        ]
+        pool_2 = [
+            {
+                "type": "Distributed System Architecture",
+                "prompt": f"How do you design modular communication between {p_skill} services and {s_skill} backends while enforcing strict schema contracts and security boundaries?",
+                "ideal_keywords": [s_skill.lower(), "api contract", "grpc", "rest", "schema", "validation", "token", "security", "isolation"],
+                "follow_up_vague": f"What serialization protocol and error retry policies did you configure between {p_skill} and {s_skill}?",
+                "follow_up_expert": f"What eventual consistency or saga pattern did you implement when {s_skill} encounters a network partition?"
+            },
+            {
+                "type": "Data Consistency & Resiliency",
+                "prompt": f"In a distributed setup involving {s_skill}, how do you manage database migrations and multi-region read replicas without taking scheduled downtime?",
+                "ideal_keywords": [s_skill.lower(), "replication", "migration", "zero-downtime", "consistency", "read replica", "lock"],
+                "follow_up_vague": "How do you prevent schema migration locks from blocking active write transactions on live production tables?",
+                "follow_up_expert": "How do you handle replication lag when a user performs a write followed immediately by a critical read?"
+            },
+            {
+                "type": "Microservice Resilience & Security",
+                "prompt": f"Describe how you enforce Zero-Trust access controls, rate limiting, and JWT identity propagation across your {p_skill} services.",
+                "ideal_keywords": ["jwt", "rate limiting", "oauth", "token", "rbac", "least privilege", "api gateway", "tls"],
+                "follow_up_vague": "Where do you enforce token revocation and replay attack protection without adding database query overhead to every request?",
+                "follow_up_expert": "How do you secure inter-service communication against man-in-the-middle attacks within internal VPC subnets?"
+            }
+        ]
+        pool_3 = [
+            {
+                "type": "Incident Triage & Post-Mortem",
+                "prompt": f"Walk me through a severe production outage or silent data corruption you investigated in your {experience_years}+ years of software development. What was your root-cause analysis procedure?",
+                "ideal_keywords": ["root cause", "telemetry", "post-mortem", "tracing", "logs", "metrics", "monitoring", "prevention"],
+                "follow_up_vague": "What specific observability tools or telemetry traces pointed you to the root cause rather than guesswork?",
+                "follow_up_expert": "What automated canary checks or regression suites were deployed in CI/CD to prevent identical regressions?"
+            },
+            {
+                "type": "Concurrency Race Conditions & Deadlocks",
+                "prompt": f"Have you ever debugged an elusive race condition, thread deadlock, or resource leak that only appeared in production under load? How did you isolate it?",
+                "ideal_keywords": ["race condition", "deadlock", "thread dump", "profiler", "mutex", "atomic", "heap dump", "reproduction"],
+                "follow_up_vague": "How did you reproduce the bug in a staging environment when it only surfaced intermittently in production?",
+                "follow_up_expert": "What defensive programming or immutable data structures did you introduce to structurally eliminate that race condition?"
+            },
+            {
+                "type": "Deployment Failure & Rollback Engineering",
+                "prompt": f"Describe a situation where a production release passed all CI tests but degraded customer traffic immediately upon deployment. What was your rollback and mitigation playbook?",
+                "ideal_keywords": ["rollback", "feature flag", "canary", "blast radius", "incident commander", "metrics", "slo"],
+                "follow_up_vague": "How did you distinguish between a genuine code regression and external downstream third-party outages during the incident?",
+                "follow_up_expert": "How do you structure feature flags and database backward compatibility to allow instantaneous 1-click rollbacks?"
+            }
+        ]
 
     q1 = dict(pool_1[seed % len(pool_1)])
     q2 = dict(pool_2[(seed // 3) % len(pool_2)])
@@ -1233,10 +1908,9 @@ def calculate_scorecard_and_gap(
         problem_solving = min(98, max(15, int(tech_score * 0.6 + (effective_code_score * 0.4))))
         job_skills_score = int((tech_score * 0.4) + (effective_code_score * 0.4) + (comm_score * 0.2))
         overall = int(
-            (job_skills_score * 0.35) +
-            (tech_score * 0.35) +
-            (comm_score * 0.15) +
-            (integrity_score * 0.15)
+            (job_skills_score * 0.45) +
+            (tech_score * 0.4) +
+            (comm_score * 0.15)
         )
 
     # Dynamic Skill Gap Calculation
@@ -1291,4 +1965,342 @@ def calculate_scorecard_and_gap(
             "readiness": readiness
         },
         "interview_summary": f"Automated dynamic AI evaluation completed. Overall competency scored at {overall}/100 with {integrity_score}/100 integrity rating."
+    }
+
+
+# ─── Resume-to-Job Authoritative Matching Engine ─────────────────────────────
+
+def calculate_resume_job_match(job_data: Dict[str, Any], candidate_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Authoritative, context-aware resume-to-job matching engine.
+    Analyzes candidate profile/resume against job description, required skills,
+    experience, responsibilities, and qualifications.
+
+    Supports:
+      1. Real-Time Generative AI Analysis (Gemini, Groq, OpenAI via call_llm).
+      2. Autonomous Contextual Semantic Analyzer (domain clusters, boundary-aware matching,
+         and domain-gated experience scoring).
+
+    Zero artificial score floors (no Math.max(35/38/40)).
+    Unrelated domains (e.g. AWS Engineer applying for Accountant) score accurately low (0-15%).
+    """
+    job_id = str(job_data.get("id", ""))
+    job_title = str(job_data.get("title", "")).strip()
+    job_dept = str(job_data.get("department", "")).strip()
+    job_desc = str(job_data.get("description", "")).strip()
+    raw_req_skills = job_data.get("required_skills", []) or []
+    job_skills = [str(s).strip() for s in raw_req_skills if str(s).strip()]
+    job_min_exp = float(job_data.get("min_experience_years", 0.0) or 0.0)
+    job_edu = str(job_data.get("education", "")).strip()
+    job_criteria = str(job_data.get("optional_criteria", "")).strip()
+
+    cand_name = str(candidate_data.get("name", "Candidate")).strip()
+    raw_cand_skills = candidate_data.get("skills", []) or []
+    cand_skills = [str(s).strip() for s in raw_cand_skills if str(s).strip()]
+    cand_exp = float(candidate_data.get("experience_years", 0.0) or 0.0)
+    cand_role = str(candidate_data.get("job_role", "")).strip()
+    cand_summary = str(candidate_data.get("resume_summary", "")).strip()
+    cand_text = str(candidate_data.get("resume_text", "")).strip()
+    cand_edu = str(candidate_data.get("education", "")).strip()
+
+    # Empty candidate profile edge case
+    if not cand_skills and not cand_text and not cand_summary and cand_exp <= 0:
+        return {
+            "job_id": job_id,
+            "job_title": job_title,
+            "match_score": 0,
+            "category_scores": {
+                "domain_skills": 0,
+                "experience": 0,
+                "responsibilities": 0,
+                "education": 0
+            },
+            "matched_skills": [],
+            "missing_skills": job_skills,
+            "experience_relevance": "No documented experience provided.",
+            "role_alignment": "Candidate profile contains no relevant role details.",
+            "explanation": "No resume text or skills were provided to evaluate against this role."
+        }
+
+    # ── Strategy 1: Live LLM Semantic Match Analysis ───────────────────────────
+    resume_snippet = cand_text[:2200] if cand_text else cand_summary[:1000]
+    llm_prompt = f"""
+Perform a strict, objective, and context-aware job match evaluation between the candidate's resume/profile and the target job opening.
+
+TARGET JOB OPENING:
+- Job Title: {job_title}
+- Department: {job_dept}
+- Complete Description: {job_desc}
+- Required Skills/Technologies: {', '.join(job_skills) if job_skills else 'Domain competency'}
+- Minimum Experience: {job_min_exp} years
+- Education/Qualifications: {job_edu or 'Relevant degree / certification'}
+- Responsibilities / Criteria: {job_criteria or 'Standard operational duties'}
+
+CANDIDATE PROFILE:
+- Name: {cand_name}
+- Candidate Role/Title: {cand_role or 'Professional'}
+- Experience Years: {cand_exp} years
+- Declared Skills: {', '.join(cand_skills) if cand_skills else 'None specified'}
+- Education: {cand_edu or 'None specified'}
+- Resume Summary / Text:
+{resume_snippet}
+
+EVALUATION RUBRIC (Max 100 points):
+1. Domain & Skill Relevance (0-40 points):
+   Do candidate skills match role requirements? Entirely unrelated domains (e.g., Cloud/AWS vs. Accounting/Tax) score 0-5 points here.
+2. Experience & Seniority Relevance (0-25 points):
+   Is candidate experience relevant to THIS role? Total years in an unrelated field MUST NOT award relevance points (give 0-5 max for transferable soft skills).
+3. Responsibility & Role Alignment (0-20 points):
+   Does candidate work background align with daily job duties in the job description?
+4. Education & Qualifications Alignment (0-15 points):
+   Does candidate education or certifications match role expectations?
+
+CRITICAL SCORING RULES:
+- If the candidate is from an unrelated field (e.g. AWS Cloud Engineer applying for Accountant/Finance, or Graphic Designer applying for Kubernetes Architect), the total match score MUST be genuinely low (< 15%).
+- Do NOT artificially inflate scores for unrelated jobs.
+- Total score is domain_skills + experience + responsibilities + education (0 to 100).
+- Return strictly a JSON object with NO markdown backticks.
+
+JSON format:
+{{
+  "match_score": <int 0-100>,
+  "category_scores": {{
+    "domain_skills": <int 0-40>,
+    "experience": <int 0-25>,
+    "responsibilities": <int 0-20>,
+    "education": <int 0-15>
+  }},
+  "matched_skills": [<string>, ...],
+  "missing_skills": [<string>, ...],
+  "experience_relevance": "<1 concise sentence>",
+  "role_alignment": "<1 concise sentence>",
+  "explanation": "<2 sentence clear explanation of the match result>"
+}}
+"""
+    llm_raw = call_llm(llm_prompt, "You are a Principal Technical & Corporate Talent Acquisition AI. Output valid JSON only.")
+    if llm_raw:
+        parsed = parse_llm_json(llm_raw)
+        if isinstance(parsed, dict) and "match_score" in parsed:
+            score = int(parsed["match_score"])
+            score = max(0, min(100, score))
+            return {
+                "job_id": job_id,
+                "job_title": job_title,
+                "match_score": score,
+                "category_scores": parsed.get("category_scores", {
+                    "domain_skills": int(score * 0.4),
+                    "experience": int(score * 0.25),
+                    "responsibilities": int(score * 0.2),
+                    "education": int(score * 0.15)
+                }),
+                "matched_skills": parsed.get("matched_skills", []),
+                "missing_skills": parsed.get("missing_skills", job_skills),
+                "experience_relevance": parsed.get("experience_relevance", "Experience evaluated against role requirements."),
+                "role_alignment": parsed.get("role_alignment", "Role background compared with job duties."),
+                "explanation": parsed.get("explanation", f"AI matched candidate with {score}% role compatibility.")
+            }
+
+    # ── Strategy 2: Autonomous Contextual Semantic & Domain Heuristic Fallback ─
+    # Domain clusters for cross-domain affinity analysis
+    DOMAINS = {
+        "cloud_infra": {
+            "aws", "cloud", "azure", "gcp", "docker", "kubernetes", "k8s", "terraform", "ansible",
+            "devops", "linux", "ci/cd", "serverless", "microservices", "infrastructure", "ec2", "s3",
+            "iam", "vpc", "lambda", "ecs", "eks", "helm", "grafana", "prometheus"
+        },
+        "software_eng": {
+            "python", "javascript", "typescript", "react", "node", "java", "c++", "golang", "go",
+            "rust", "sql", "postgresql", "mongodb", "fastapi", "django", "graphql", "rest", "api",
+            "algorithms", "data structures", "concurrency", "redis", "kafka", "backend", "frontend"
+        },
+        "finance_accounting": {
+            "accounting", "accountant", "gaap", "ifrs", "tax", "audit", "balance sheet", "general ledger",
+            "reconciliation", "cpa", "financial", "accrual", "journal", "p&l", "accounts payable",
+            "accounts receivable", "variance", "treasury", "sec", "corporate tax", "sox"
+        },
+        "hr_talent": {
+            "hr", "human resources", "recruiting", "recruitment", "talent acquisition", "onboarding",
+            "payroll", "employee relations", "pip", "benefits", "compensation", "labor law", "eeo",
+            "hiring", "applicant tracking", "performance management"
+        },
+        "sales_marketing": {
+            "marketing", "sales", "seo", "sem", "crm", "campaigns", "b2b", "b2c", "lead generation",
+            "branding", "content", "advertising", "revenue", "pipeline", "churn", "outreach", "copywriting"
+        }
+    }
+
+    cand_combined_text = f"{cand_role} {cand_summary} {cand_text} {' '.join(cand_skills)} {cand_edu}".lower()
+    job_combined_text = f"{job_title} {job_dept} {job_desc} {' '.join(job_skills)} {job_criteria} {job_edu}".lower()
+
+    # 1. Identify primary domain cluster for Job and Candidate
+    job_domain_hits = {dom: sum(1 for term in terms if term in job_combined_text) for dom, terms in DOMAINS.items()}
+    cand_domain_hits = {dom: sum(1 for term in terms if term in cand_combined_text) for dom, terms in DOMAINS.items()}
+
+    best_job_dom = max(job_domain_hits, key=job_domain_hits.get) if any(job_domain_hits.values()) else None
+    best_cand_dom = max(cand_domain_hits, key=cand_domain_hits.get) if any(cand_domain_hits.values()) else None
+
+    # Calculate domain affinity (0.0 to 1.0)
+    domain_affinity = 0.5  # default moderate affinity if domain ambiguous
+    if best_job_dom and best_cand_dom:
+        if best_job_dom == best_cand_dom:
+            domain_affinity = 1.0
+        elif (best_job_dom in ("cloud_infra", "software_eng") and best_cand_dom in ("cloud_infra", "software_eng")):
+            domain_affinity = 0.7  # adjacent technical fields
+        else:
+            # Completely disparate domains (e.g. cloud_infra vs finance_accounting)
+            domain_affinity = 0.05
+
+    # Auto-extract missing profile attributes from resume text if candidate has not manually entered them
+    if cand_exp <= 0 and cand_text:
+        ranges = re.findall(r'\b(20\d\d)\s*[-–—to]+\s*(present|current|now|20\d\d)\b', cand_text.lower())
+        total_extracted_exp = 0.0
+        current_year = 2026
+        for s_yr, e_yr in ranges:
+            start = int(s_yr)
+            end = current_year if e_yr in ("present", "current", "now") else int(e_yr)
+            if end >= start:
+                total_extracted_exp += (end - start)
+        if total_extracted_exp > 0:
+            cand_exp = min(total_extracted_exp, 30.0)
+        else:
+            exp_m = re.search(r'(\d+)\+?\s*years?', cand_text.lower())
+            if exp_m:
+                cand_exp = float(exp_m.group(1))
+
+    if not cand_edu and cand_text:
+        for term in ("cpa", "certified public accountant", "master of accounting", "bachelor of science in finance", "b.tech", "m.tech", "b.e", "mca", "bca", "m.com", "b.com", "mba", "phd"):
+            if re.search(r'\b' + re.escape(term) + r'\b', cand_text.lower()):
+                cand_edu = term.title()
+                break
+
+    if not cand_role and cand_text:
+        role_match = re.search(r'(?:senior|lead|principal|staff|associate)?\s*(?:financial controller & tax auditor|financial controller|tax auditor|cloud engineer|software engineer|accountant|data engineer)', cand_text.lower())
+        if role_match:
+            cand_role = role_match.group(0).title()
+
+    # 2. Boundary-aware & inflection-resilient skill matching
+    matched_skills = []
+    missing_skills = []
+
+    for req in job_skills:
+        req_clean = req.lower().strip()
+        
+        # A. Direct candidate declared skill match
+        in_skills = any(
+            req_clean == cs.lower().strip() or
+            (len(req_clean) > 3 and req_clean in cs.lower().strip()) or
+            (len(cs.strip()) > 3 and cs.lower().strip() in req_clean)
+            for cs in cand_skills
+        )
+
+        # B. Direct phrase in resume text
+        in_text = bool(re.search(r'\b' + re.escape(req_clean) + r'\b', cand_combined_text))
+
+        # C. Inflection / plural / stem matching (e.g. reconciliation -> reconciliations, audit -> auditing)
+        if not in_skills and not in_text:
+            tokens = re.findall(r'[a-z]+', req_clean)
+            if len(tokens) == 1:
+                stem = tokens[0][:-1] if tokens[0].endswith('s') else tokens[0]
+                if len(stem) >= 3 and re.search(r'\b' + re.escape(stem) + r'[a-z]*\b', cand_combined_text):
+                    in_text = True
+            else:
+                key_tokens = [t for t in tokens if t not in ("and", "or", "of", "in", "to", "for", "with")]
+                stems = [t[:5] if len(t) > 5 else t for t in key_tokens]
+                matches_per_token = [bool(re.search(r'\b' + re.escape(s) + r'[a-z]*\b', cand_combined_text)) for s in stems]
+                if all(matches_per_token):
+                    in_text = True
+                elif "reconciliation" in req_clean and re.search(r'\breconcil[a-z]*\b', cand_combined_text):
+                    in_text = True
+                elif "auditing" in req_clean and re.search(r'\baudit[a-z]*\b', cand_combined_text):
+                    in_text = True
+                elif "analysis" in req_clean and (re.search(r'\banaly[a-z]*\b', cand_combined_text) or re.search(r'\bvariance\b', cand_combined_text)):
+                    in_text = True
+                elif "tax" in req_clean and re.search(r'\btax\b', cand_combined_text):
+                    in_text = True
+
+        if in_skills or in_text:
+            matched_skills.append(req)
+        else:
+            missing_skills.append(req)
+
+    skill_ratio = len(matched_skills) / max(1, len(job_skills))
+    domain_skills_score = int(skill_ratio * 40)
+
+    # 3. Experience Relevance Gated by Domain Affinity
+    relevance_multiplier = max(domain_affinity, skill_ratio)
+
+    if cand_exp >= job_min_exp and job_min_exp > 0:
+        base_exp = 25
+    elif job_min_exp > 0:
+        base_exp = int((cand_exp / job_min_exp) * 20)
+    else:
+        base_exp = 20 if cand_exp > 0 else 5
+
+    experience_score = int(base_exp * relevance_multiplier)
+
+    # 4. Role & Responsibility Alignment (0-20)
+    desc_words = set(re.findall(r'\b[a-zA-Z]{4,}\b', (job_desc + " " + job_criteria + " " + job_title).lower())) - {"with", "that", "this", "from", "have", "will", "role", "team"}
+    cand_resp_words = set(re.findall(r'\b[a-zA-Z]{4,}\b', (cand_role + " " + cand_summary + " " + cand_text).lower()))
+    resp_overlap = len(desc_words & cand_resp_words) / max(1, len(desc_words)) if desc_words else 0.0
+    role_score = int(resp_overlap * 20 * (1.0 if domain_affinity > 0.3 else 0.2))
+
+    # 5. Education & Qualifications Alignment (0-15)
+    cand_edu_lower = (cand_edu + " " + cand_text).lower()
+    job_edu_lower = job_edu.lower()
+    edu_score = 0
+
+    if best_job_dom == "finance_accounting":
+        if any(term in cand_edu_lower for term in ("cpa", "accounting", "finance", "commerce", "b.com", "m.com")):
+            edu_score = 15
+        else:
+            edu_score = 0
+    elif best_job_dom in ("cloud_infra", "software_eng"):
+        if any(term in cand_edu_lower for term in ("computer", "engineering", "b.tech", "b.e", "mca", "bca", "science", "software")):
+            edu_score = 15
+        else:
+            edu_score = 0
+    else:
+        edu_score = 10 if (cand_edu_lower and domain_affinity > 0.2) else 0
+
+    # Total Score: sum of categories (0 - 100), strictly NO artificial minimum floor!
+    # Strict Zero Rule: if candidate has 0 matching skills and zero domain affinity, score is 0%
+    if len(matched_skills) == 0 and domain_affinity <= 0.15:
+        total_match = 0
+        domain_skills_score = 0
+        experience_score = 0
+        role_score = 0
+        edu_score = 0
+    else:
+        total_match = domain_skills_score + experience_score + role_score + edu_score
+        total_match = max(0, min(100, total_match))
+
+    # Dynamic explanation
+    if total_match >= 75:
+        exp_rel = f"Demonstrated {cand_exp} years directly aligns with {job_title} requirements."
+        role_rel = "Strong technical and architectural alignment with core responsibilities."
+        explanation = f"High match ({total_match}%): Candidate possesses {len(matched_skills)}/{len(job_skills)} core role competencies with proven domain seniority."
+    elif total_match >= 40:
+        exp_rel = f"Candidate background partially translates to the {job_dept} domain."
+        role_rel = "Moderate overlap; foundational skills present with adjacent technology gaps."
+        explanation = f"Moderate match ({total_match}%): Candidate aligns on {len(matched_skills)} core requirements, but lacks critical competencies: {', '.join(missing_skills[:3])}."
+    else:
+        exp_rel = f"Candidate's {cand_exp} years experience is in an unrelated domain from {job_title}."
+        role_rel = "Low domain alignment with required job responsibilities and technical workflows."
+        explanation = f"Low match ({total_match}%): Profile does not align with required {job_title} competencies (missing: {', '.join(missing_skills[:3]) if missing_skills else 'all core skills'})."
+
+    return {
+        "job_id": job_id,
+        "job_title": job_title,
+        "match_score": total_match,
+        "category_scores": {
+            "domain_skills": domain_skills_score,
+            "experience": experience_score,
+            "responsibilities": role_score,
+            "education": edu_score
+        },
+        "matched_skills": matched_skills,
+        "missing_skills": missing_skills,
+        "experience_relevance": exp_rel,
+        "role_alignment": role_rel,
+        "explanation": explanation
     }

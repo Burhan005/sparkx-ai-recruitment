@@ -20,8 +20,10 @@ export default function ProctorLiveMonitor() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const proctorRef = useRef(null);
+  const streamRef = useRef(null);
 
   const [faceStatus, setFaceStatus] = useState('VERIFIED');
+  const faceStatusRef = useRef(faceStatus);
   const [integrityScore, setIntegrityScore] = useState(96);
   const [riskLevel, setRiskLevel] = useState('Low');
   const [events, setEvents] = useState([
@@ -29,6 +31,11 @@ export default function ProctorLiveMonitor() {
     { id: '2', timestamp: '01:14', type: 'FACE_VERIFIED', description: 'Primary facial biometric baseline confirmed.', severity: 'info' }
   ]);
   const [cameraActive, setCameraActive] = useState(false);
+
+  // Sync faceStatus ref for the canvas HUD loop
+  useEffect(() => {
+    faceStatusRef.current = faceStatus;
+  }, [faceStatus]);
 
   useEffect(() => {
     proctorRef.current = new ProctorMonitor({
@@ -41,16 +48,26 @@ export default function ProctorLiveMonitor() {
 
     proctorRef.current.start();
 
+    let isMounted = true;
+
     async function initCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        if (!isMounted) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+        streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play();
+          const playPromise = videoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {});
+          }
           setCameraActive(true);
         }
       } catch (err) {
-        console.warn('Proctor video feed fallback active');
+        console.warn('Proctor video feed fallback active:', err?.message);
       }
     }
 
@@ -63,22 +80,29 @@ export default function ProctorLiveMonitor() {
         const h = canvasRef.current.height;
         ctx.clearRect(0, 0, w, h);
 
+        const currentStatus = faceStatusRef.current;
+
         // Radar line animation
-        ctx.strokeStyle = faceStatus === 'VERIFIED' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.5)';
+        ctx.strokeStyle = currentStatus === 'VERIFIED' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.5)';
         ctx.lineWidth = 1.5;
         ctx.strokeRect(w * 0.2, h * 0.15, w * 0.6, h * 0.7);
 
         ctx.fillStyle = ctx.strokeStyle;
         ctx.font = '10px monospace';
-        ctx.fillText(`BIOMETRIC HUD: ${faceStatus}`, w * 0.2 + 8, h * 0.15 + 16);
+        ctx.fillText(`BIOMETRIC HUD: ${currentStatus}`, w * 0.2 + 8, h * 0.15 + 16);
       }
     }, 100);
 
     return () => {
+      isMounted = false;
       clearInterval(interval);
       if (proctorRef.current) proctorRef.current.stop();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
     };
-  }, [faceStatus]);
+  }, []);
 
   const triggerEvent = (type) => {
     if (!proctorRef.current) return;
@@ -112,7 +136,7 @@ export default function ProctorLiveMonitor() {
         <div>
           <div className="flex items-center space-x-2">
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
-              Slide 8 & 9 Innovation
+              Real-Time Biometric HUD
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">Autonomous Proctoring Engine</span>
           </div>
@@ -190,7 +214,7 @@ export default function ProctorLiveMonitor() {
               <span className="text-[10px] text-slate-400">Instant Event Logging</span>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
                 onClick={() => triggerEvent('TAB_SWITCH')}
                 className="p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-amber-500 text-xs font-semibold text-slate-200 transition text-center"

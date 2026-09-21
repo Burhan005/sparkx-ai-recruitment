@@ -50,6 +50,7 @@ class CandidateModel(Base):
     resume_filename = Column(String, nullable=True)
     resume_text = Column(Text, nullable=True)
     fraud_flags = Column(JSON, default=list)
+    match_details = Column(JSON, default=dict)
     
     # 4-Category Technical Assessment Data & Code Submissions
     assessment_data = Column(JSON, default=dict)
@@ -69,9 +70,12 @@ class CandidateModel(Base):
     evidence_snippets = Column(JSON, default=list)
     skill_gaps = Column(JSON, default=dict)
 
-    # Human Decisions
+    # Human Decisions & Recruiter Evaluation
     hr_notes = Column(Text, default="")
-    final_decision = Column(String, default="Pending Interview")
+    final_decision = Column(String, default="Under Review")
+    recruiter_score = Column(Integer, nullable=True)
+    rejection_reason = Column(Text, nullable=True)
+    rejection_category = Column(String, nullable=True)
     
     # Real-time Scheduling & Email Telemetry
     interview_scheduled_at = Column(String, nullable=True)

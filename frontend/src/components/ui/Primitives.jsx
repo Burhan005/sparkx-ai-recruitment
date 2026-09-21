@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 /**
  * Animated number counter that smoothly increments from 0 to the target value.
@@ -85,12 +85,17 @@ export function FadeInUp({ children, delay = 0, className = '' }) {
   const ref = useRef(null);
 
   useEffect(() => {
+    // Immediate fallback so top-level containers never remain blank if observer delays
+    const timer = setTimeout(() => setVisible(true), 60);
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setVisible(true); },
-      { threshold: 0.1 }
+      { threshold: 0.05 }
     );
     if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
   return (
@@ -98,8 +103,8 @@ export function FadeInUp({ children, delay = 0, className = '' }) {
       ref={ref}
       className={className}
       style={{
-        transition: `transform 0.6s cubic-bezier(0.16,1,0.3,1) ${delay}ms, opacity 0.6s ease ${delay}ms`,
-        transform: visible ? 'translateY(0)' : 'translateY(24px)',
+        transition: `transform 0.5s cubic-bezier(0.16,1,0.3,1) ${delay}ms, opacity 0.5s ease ${delay}ms`,
+        transform: visible ? 'none' : 'translateY(16px)',
         opacity: visible ? 1 : 0,
       }}
     >
@@ -116,23 +121,27 @@ export function SlideIn({ children, from = 'left', delay = 0, className = '' }) 
   const ref = useRef(null);
 
   useEffect(() => {
+    const timer = setTimeout(() => setVisible(true), 60);
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setVisible(true); },
-      { threshold: 0.1 }
+      { threshold: 0.05 }
     );
     if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
   }, []);
 
-  const xInit = from === 'left' ? '-32px' : '32px';
+  const xInit = from === 'left' ? '-24px' : '24px';
 
   return (
     <div
       ref={ref}
       className={className}
       style={{
-        transition: `transform 0.6s cubic-bezier(0.16,1,0.3,1) ${delay}ms, opacity 0.6s ease ${delay}ms`,
-        transform: visible ? 'translateX(0)' : `translateX(${xInit})`,
+        transition: `transform 0.5s cubic-bezier(0.16,1,0.3,1) ${delay}ms, opacity 0.5s ease ${delay}ms`,
+        transform: visible ? 'none' : `translateX(${xInit})`,
         opacity: visible ? 1 : 0,
       }}
     >

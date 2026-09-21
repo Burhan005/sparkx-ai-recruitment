@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { 
   Award, 
@@ -13,16 +14,23 @@ import {
 } from 'lucide-react';
 
 export default function SkillGapReport() {
+  const navigate = useNavigate();
+  const { candidateId: routeCandidateId } = useParams();
   const { 
     selectedCandidate, 
     candidates,
     currentUser,
     activeJob, 
-    setCurrentView 
+    myApplications = []
   } = useRecruitment();
 
-  // Pick the real active candidate (selected or logged-in candidate)
-  const cand = selectedCandidate || candidates.find(c => c.email === currentUser?.email || c.id === currentUser?.id) || (candidates.length > 0 ? candidates[candidates.length - 1] : null);
+  // Pick the real candidate (route candidate, selected, logged-in candidate, or candidate application)
+  const cand = (routeCandidateId && candidates.find(c => String(c.id) === String(routeCandidateId))) ||
+    (routeCandidateId && myApplications.find(a => String(a.id) === String(routeCandidateId))) ||
+    selectedCandidate || 
+    candidates.find(c => c.email === currentUser?.email || c.id === currentUser?.id) || 
+    myApplications.find(a => a.id === currentUser?.id || a.email === currentUser?.email) || 
+    (myApplications.length > 0 ? myApplications[0] : null);
 
   const activeJobSkills = activeJob?.requiredSkills || ["AWS", "Docker", "Kubernetes"];
 
@@ -37,7 +45,7 @@ export default function SkillGapReport() {
           Complete the technical assessment for {activeJob?.title || 'your applied role'} to generate your dynamic competency evaluation.
         </p>
         <button
-          onClick={() => setCurrentView('assessment')}
+          onClick={() => navigate(cand?.id ? `/assessment/${cand.id}` : '/assessment')}
           className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/30"
         >
           Start Technical Assessment
@@ -80,48 +88,44 @@ export default function SkillGapReport() {
         </div>
 
         <div>
-          <span className={`text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full border shadow-sm ${
-            overall >= 80 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25' :
-            overall >= 50 ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/25' :
-            'text-rose-600 dark:text-rose-400 bg-rose-500/10 border-rose-500/25'
-          }`}>
-            {overall === 0 ? 'Assessment Blank / Incomplete' : 'Assessment Complete & Verified'}
+          <span className="text-xs font-bold uppercase tracking-wider px-3.5 py-1 rounded-full border shadow-sm text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/25">
+            Autonomous Competency & Growth Dossier
           </span>
           <h1 className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white mt-3 tracking-tight">
-            Candidate Performance & Skill Gap Dossier
+            Role Competency & Skill Gap Dossier
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-xl mx-auto mt-1.5 font-normal leading-relaxed">
-            Autonomous Talent Feedback: Actionable competency telemetry for <span className="font-bold text-slate-700 dark:text-slate-300">{cand.name}</span> ({activeJob?.title || cand.job?.title || 'Applied Position'}).
+            Personalized Career Roadmap: Actionable competency telemetry and upskilling guide for <span className="font-bold text-slate-700 dark:text-slate-300">{cand.name}</span> ({activeJob?.title || cand.job?.title || 'Applied Position'}).
           </p>
         </div>
 
-        {/* Score Metric Cards Grid */}
+        {/* Competency & Status Telemetry Cards Grid */}
         <div className="pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-2xl mx-auto">
-          <div className="p-4 rounded-2xl bg-white/80 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] shadow-md">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Overall Score</span>
-            <div className={`text-3xl font-black mt-1 ${overall >= 80 ? 'text-emerald-600 dark:text-emerald-400' : overall >= 50 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-500'}`}>
-              {overall}%
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08] shadow-sm">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Hiring Review</span>
+            <div className="text-base sm:text-lg font-black text-blue-600 dark:text-blue-400 mt-1 truncate">
+              {cand.finalDecision || cand.status || 'Under Review'}
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white/80 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] shadow-md">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Technical Depth</span>
-            <div className={`text-3xl font-black mt-1 ${technicalScore >= 80 ? 'text-indigo-600 dark:text-indigo-400' : technicalScore >= 50 ? 'text-indigo-500' : 'text-rose-500'}`}>
-              {technicalScore}%
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08] shadow-sm">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Role Calibration</span>
+            <div className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400 mt-1">
+              Verified
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white/80 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] shadow-md">
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Communication</span>
-            <div className="text-3xl font-black text-purple-600 dark:text-purple-400 mt-1">
-              {communication}%
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08] shadow-sm">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Evaluation Pillars</span>
+            <div className="text-base sm:text-lg font-black text-purple-600 dark:text-purple-400 mt-1">
+              4 Pillars
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white/80 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] shadow-md">
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08] shadow-sm">
             <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Integrity Audit</span>
-            <div className="text-3xl font-black text-cyan-600 dark:text-cyan-400 mt-1">
-              {integrity}%
+            <div className="text-base sm:text-lg font-black text-cyan-600 dark:text-cyan-400 mt-1">
+              Verified
             </div>
           </div>
         </div>
@@ -140,7 +144,7 @@ export default function SkillGapReport() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           {/* Strengths */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06] space-y-2.5 shadow-sm">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06] space-y-2.5 shadow-sm">
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
               <CheckCircle2 className="w-4 h-4" />
               <span>Validated Strengths</span>
@@ -159,7 +163,7 @@ export default function SkillGapReport() {
           </div>
 
           {/* Missing Skills */}
-          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06] space-y-2.5 shadow-sm">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06] space-y-2.5 shadow-sm">
             <span className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
               <TrendingUp className="w-4 h-4" />
               <span>Targeted Upskilling Areas</span>
@@ -177,14 +181,14 @@ export default function SkillGapReport() {
 
       {/* Learning Recommendations */}
       <div className="glass-card p-6 sm:p-7 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-4 shadow-xl">
-        <div className="flex items-center space-x-2 text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-wider">
-          <BookOpen className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+        <div className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 font-bold text-xs uppercase tracking-wider">
+          <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <span>Personalized Career & Learning Roadmap ({activeJob?.title || 'Applied Role'})</span>
         </div>
 
         <div className="space-y-3">
           {recommendations.map((rec, i) => (
-            <div key={i} className="p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06] flex items-start space-x-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 shadow-sm">
+            <div key={i} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-white/[0.06] flex items-start space-x-3.5 text-xs sm:text-sm text-slate-700 dark:text-slate-300 shadow-sm">
               <div className="w-7 h-7 rounded-xl bg-indigo-500/15 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs shrink-0 mt-0.5 border border-indigo-500/30">
                 {i + 1}
               </div>
@@ -199,14 +203,14 @@ export default function SkillGapReport() {
       {/* Navigation actions */}
       <div className="flex items-center justify-between pt-4">
         <button
-          onClick={() => setCurrentView('candidate')}
-          className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white transition shadow-sm"
+          onClick={() => navigate('/jobs')}
+          className="px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-white/[0.08] text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white transition shadow-sm"
         >
           Return to Job Openings
         </button>
 
         <button
-          onClick={() => setCurrentView('assessment')}
+          onClick={() => navigate(cand?.id ? `/assessment/${cand.id}` : '/assessment')}
           className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition flex items-center space-x-2"
         >
           <span>Practice Technical Assessment</span>

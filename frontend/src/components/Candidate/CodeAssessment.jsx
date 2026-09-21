@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import api from '../../services/api';
 import { 
@@ -21,25 +22,60 @@ import {
   Cpu,
   Loader2,
   AlertTriangle,
-  Lightbulb
+  Lightbulb,
+  FileText,
+  Briefcase,
+  Lock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import CandidateIDE from './CandidateIDE';
 
 export default function CodeAssessment() {
+  const navigate = useNavigate();
+  const { candidateId: routeCandidateId } = useParams();
   const { 
     activeJob, 
     currentUser,
     candidates,
     currentInterviewSession, 
     completeInterviewAndEvaluate,
-    setCurrentView 
+    userRole,
+    myApplications
   } = useRecruitment();
 
-  // Resolve candidate ID
-  const candidateId = currentInterviewSession?.candidateId || 
+  // Resolve candidate and application
+  const activeCandidate = (routeCandidateId && candidates.find(c => String(c.id) === String(routeCandidateId))) ||
+    candidates.find(c => 
+      c.id === currentInterviewSession?.candidateId || 
+      (currentUser && c.email?.toLowerCase() === currentUser.email?.toLowerCase())
+    ) || null;
+
+  const activeApp = (routeCandidateId && myApplications?.find(a => String(a.id) === String(routeCandidateId))) ||
+    myApplications?.find(a => 
+      a.jobId === activeJob?.id || (currentUser && a.email?.toLowerCase() === currentUser.email?.toLowerCase())
+    ) || (myApplications?.length > 0 ? myApplications[0] : null);
+
+  const candidateId = routeCandidateId ||
+    currentInterviewSession?.candidateId || 
+    activeCandidate?.id ||
+    activeApp?.id ||
     candidates.find(c => c.email === currentUser?.email)?.id || 
-    candidates[0]?.id || 
-    'cand-001';
+    currentUser?.id ||
+    null;
+
+  const isRecruiterTesting = userRole === 'recruiter';
+  const isScheduledOrAdvanced = Boolean(
+    activeCandidate?.interviewScheduledAt ||
+    activeCandidate?.interview_scheduled_at ||
+    activeCandidate?.interviewStatus === 'Interview Scheduled' ||
+    activeCandidate?.interview_status === 'Interview Scheduled' ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeCandidate?.status) ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeCandidate?.finalDecision) ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeCandidate?.final_decision) ||
+    activeApp?.interviewScheduledAt ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeApp?.status) ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeApp?.finalDecision)
+  );
 
   // 4 Categories: 'technical' | 'scenario' | 'hands_on' | 'troubleshooting'
   const [activeCategory, setActiveCategory] = useState('technical');
@@ -47,6 +83,11 @@ export default function CodeAssessment() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
+  const [accessDeniedMessage, setAccessDeniedMessage] = useState(null);
+
+  // Timer & Evaluation Start State
+  const [hasStarted, setHasStarted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(45 * 60); // 45:00 minutes
 
   // Category 1: Technical MCQs state
   const [technicalAnswers, setTechnicalAnswers] = useState({});
@@ -60,6 +101,7 @@ export default function CodeAssessment() {
   const [isRunningHandsOn, setIsRunningHandsOn] = useState(false);
   const [handsOnResults, setHandsOnResults] = useState(null);
   const [handsOnConsole, setHandsOnConsole] = useState('');
+  const [handsOnTelemetry, setHandsOnTelemetry] = useState(null);
 
   // Category 4: Troubleshooting state
   const [troubleLang, setTroubleLang] = useState('python');
@@ -67,12 +109,17 @@ export default function CodeAssessment() {
   const [isRunningTrouble, setIsRunningTrouble] = useState(false);
   const [troubleResults, setTroubleResults] = useState(null);
   const [troubleConsole, setTroubleConsole] = useState('');
+  const [troubleTelemetry, setTroubleTelemetry] = useState(null);
 
   // Fetch dynamic assessment from backend
   useEffect(() => {
     let isMounted = true;
 
     async function loadAssessment() {
+      if (!candidateId) {
+        if (isMounted) setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         const targetJobId = activeJob?.id || currentInterviewSession?.jobId || candidates.find(c => c.id === candidateId)?.jobId;
@@ -80,19 +127,46 @@ export default function CodeAssessment() {
         if (isMounted && data?.bundle) {
           setAssessmentBundle(data.bundle);
 
-          // Initialize hands-on code
+          if (data.is_completed) {
+            setSubmissionSuccess(true);
+          }
+
+          // Check if user has already started this session
+          const startKey = `assessment_started_${candidateId}_${targetJobId || 'default'}`;
+          const isStartedSession = sessionStorage.getItem(startKey) === 'true';
+          const savedStartTime = parseInt(sessionStorage.getItem(`${startKey}_time`) || '0', 10);
+
+          const hasSavedAnswers = Boolean(
+            (data.saved_answers?.technical && Object.keys(data.saved_answers.technical).length > 0) ||
+            data.saved_answers?.scenario ||
+            data.saved_answers?.hands_on?.code ||
+            data.saved_answers?.troubleshooting?.code
+          );
+
+          if (isStartedSession && savedStartTime > 0) {
+            const elapsed = Math.floor((Date.now() - savedStartTime) / 1000);
+            const remaining = Math.max(0, 45 * 60 - elapsed);
+            setTimeLeft(remaining);
+            setHasStarted(true);
+          } else if (hasSavedAnswers) {
+            setHasStarted(true);
+          }
+
+          // Initialize hands-on code or practical template
           const handsOn = data.bundle.hands_on;
           const initialHandsLang = (handsOn?.supported_languages && handsOn.supported_languages.includes('python'))
             ? 'python'
             : (handsOn?.supported_languages?.[0] || 'javascript');
           setHandsOnLang(initialHandsLang);
-          setHandsOnCode(handsOn?.starter_code?.[initialHandsLang] || '');
+          setHandsOnCode(handsOn?.starter_code?.[initialHandsLang] || handsOn?.starter_template || '');
 
-          // Initialize troubleshooting code
+          // Initialize troubleshooting code or practical template
           const trouble = data.bundle.troubleshooting;
-          const initialTroubleLang = (trouble?.broken_code?.python) ? 'python' : 'javascript';
+          const initialTroubleLang = (trouble?.broken_code?.python) 
+            ? 'python' 
+            : (trouble?.supported_languages?.[0] || (trouble?.broken_code && Object.keys(trouble.broken_code)[0]) || 'javascript');
           setTroubleLang(initialTroubleLang);
-          setTroubleCode(trouble?.broken_code?.[initialTroubleLang] || '');
+          setTroubleCode(trouble?.broken_code?.[initialTroubleLang] || trouble?.broken_template || '');
 
           // Restore any existing saved answers if present
           if (data.saved_answers) {
@@ -101,10 +175,24 @@ export default function CodeAssessment() {
               const firstScen = Object.values(data.saved_answers.scenario)[0];
               if (firstScen) setScenarioAnswer(firstScen);
             }
+            if (data.saved_answers.hands_on?.code) {
+              setHandsOnCode(data.saved_answers.hands_on.code);
+              if (data.saved_answers.hands_on.language) setHandsOnLang(data.saved_answers.hands_on.language);
+              if (data.saved_answers.hands_on.test_results) setHandsOnResults(data.saved_answers.hands_on.test_results);
+            }
+            if (data.saved_answers.troubleshooting?.code) {
+              setTroubleCode(data.saved_answers.troubleshooting.code);
+              if (data.saved_answers.troubleshooting.language) setTroubleLang(data.saved_answers.troubleshooting.language);
+              if (data.saved_answers.troubleshooting.test_results) setTroubleResults(data.saved_answers.troubleshooting.test_results);
+            }
           }
         }
       } catch (err) {
         console.warn('Could not load dynamic assessment bundle:', err);
+        const errMsg = err.response?.data?.detail || err.message || '';
+        if (err.response?.status === 403 || errMsg.includes('403') || errMsg.toLowerCase().includes('restricted') || errMsg.toLowerCase().includes('screening')) {
+          setAccessDeniedMessage(errMsg || "Assessment access restricted: Application is currently in recruiter screening.");
+        }
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -114,11 +202,48 @@ export default function CodeAssessment() {
     return () => { isMounted = false; };
   }, [candidateId, activeJob?.id]);
 
+  // Live Countdown Timer Effect (Active once started)
+  useEffect(() => {
+    if (!hasStarted || submissionSuccess) return;
+
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          handleFinalSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [hasStarted, submissionSuccess]);
+
+  // Format seconds to MM:SS
+  const formatTime = (totalSeconds) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Start Assessment and begin countdown
+  const handleStartEvaluation = () => {
+    const targetJobId = activeJob?.id || currentInterviewSession?.jobId || candidates.find(c => c.id === candidateId)?.jobId;
+    const startKey = `assessment_started_${candidateId}_${targetJobId || 'default'}`;
+    sessionStorage.setItem(startKey, 'true');
+    sessionStorage.setItem(`${startKey}_time`, String(Date.now()));
+    setHasStarted(true);
+    confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
+  };
+
   // Handle switching language in Hands-on
   const handleHandsOnLangChange = (newLang) => {
     setHandsOnLang(newLang);
     if (assessmentBundle?.hands_on?.starter_code?.[newLang]) {
       setHandsOnCode(assessmentBundle.hands_on.starter_code[newLang]);
+    } else if (assessmentBundle?.hands_on?.starter_template) {
+      setHandsOnCode(assessmentBundle.hands_on.starter_template);
     }
   };
 
@@ -127,51 +252,59 @@ export default function CodeAssessment() {
     setTroubleLang(newLang);
     if (assessmentBundle?.troubleshooting?.broken_code?.[newLang]) {
       setTroubleCode(assessmentBundle.troubleshooting.broken_code[newLang]);
+    } else if (assessmentBundle?.troubleshooting?.broken_template) {
+      setTroubleCode(assessmentBundle.troubleshooting.broken_template);
     }
   };
 
-  // Execute Hands-on Code
+  // Execute Hands-on Code / Validate Practical Deliverable
   const handleRunHandsOn = async () => {
     setIsRunningHandsOn(true);
-    setHandsOnConsole(`> Compiling and executing ${handsOnLang.toUpperCase()} test suite...\n`);
+    const isCoding = assessmentBundle?.hands_on?.is_coding !== false;
+    const taskLang = isCoding ? handsOnLang : 'deliverable';
+    setHandsOnConsole(isCoding ? `> Compiling and executing ${handsOnLang.toUpperCase()} test suite...\n` : `> Validating professional deliverable format and content...\n`);
 
     const res = await api.runCodeSandbox({
       candidate_id: candidateId,
       job_id: activeJob?.id,
       task_id: assessmentBundle.hands_on.id,
       category: 'hands_on',
-      language: handsOnLang,
+      language: taskLang,
       code: handsOnCode
     });
 
-    setHandsOnResults(res.test_results);
-    setHandsOnConsole(res.console_output);
+    setHandsOnResults(res?.test_results || []);
+    setHandsOnConsole(res?.console_output || '> Validation finished.');
+    setHandsOnTelemetry({ execution_ms: res?.execution_ms, memory_mb: res?.memory_mb });
     setIsRunningHandsOn(false);
 
-    if (res.all_passed) {
+    if (res?.all_passed) {
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
     }
   };
 
-  // Execute Troubleshooting Bug Fix
+  // Execute Troubleshooting Bug Fix / Validate Anomaly Resolution
   const handleRunTroubleshooting = async () => {
     setIsRunningTrouble(true);
-    setTroubleConsole(`> Running regression verification in ${troubleLang.toUpperCase()}...\n`);
+    const isCoding = assessmentBundle?.troubleshooting?.is_coding !== false;
+    const taskLang = isCoding ? troubleLang : 'deliverable';
+    setTroubleConsole(isCoding ? `> Running regression verification in ${troubleLang.toUpperCase()}...\n` : `> Validating anomaly diagnosis and remediation plan...\n`);
 
     const res = await api.runCodeSandbox({
       candidate_id: candidateId,
       job_id: activeJob?.id,
       task_id: assessmentBundle.troubleshooting.id,
       category: 'troubleshooting',
-      language: troubleLang,
+      language: taskLang,
       code: troubleCode
     });
 
-    setTroubleResults(res.test_results);
-    setTroubleConsole(res.console_output);
+    setTroubleResults(res?.test_results || []);
+    setTroubleConsole(res?.console_output || '> Validation finished.');
+    setTroubleTelemetry({ execution_ms: res?.execution_ms, memory_mb: res?.memory_mb });
     setIsRunningTrouble(false);
 
-    if (res.all_passed) {
+    if (res?.all_passed) {
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 } });
     }
   };
@@ -205,9 +338,7 @@ export default function CodeAssessment() {
 
     if (res?.success) {
       setSubmissionSuccess(true);
-      if ((res.scores?.overall || 0) >= 70) {
-        confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
-      }
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
 
       await completeInterviewAndEvaluate({
         transcript: currentInterviewSession?.transcript || [],
@@ -217,33 +348,237 @@ export default function CodeAssessment() {
         candidateId: candidateId,
         assessmentScores: res.scores
       });
-
-      const hasInterviewed = Boolean(
-        (currentInterviewSession?.transcript && currentInterviewSession.transcript.length > 0) ||
-        (activeCandidate?.interviewStatus === 'Interview Completed')
-      );
-      setTimeout(() => {
-        setCurrentView(hasInterviewed ? 'feedback' : 'interview');
-      }, 1600);
+      // Do not redirect to feedback / skill gap report - keep candidate on clear completion confirmation screen
     }
   };
 
+  // Dynamic Role & Domain Detection
+  const isNonTech = Boolean(
+    (assessmentBundle?.domain_category && assessmentBundle.domain_category !== 'technical') ||
+    assessmentBundle?.is_coding === false ||
+    assessmentBundle?.hands_on?.is_coding === false ||
+    (activeJob && (
+      /finance|account|tax|audit|cpa|controller|treasur|bookkeep/i.test(activeJob.title || '') ||
+      /finance|account/i.test(activeJob.department || '') ||
+      /hr|human\s*resource|recruiter|talent|people/i.test(activeJob.title || '') ||
+      /hr|human\s*resource/i.test(activeJob.department || '') ||
+      /market|seo|content|copywrit|growth|brand/i.test(activeJob.title || '') ||
+      /market/i.test(activeJob.department || '') ||
+      /sales|business\s*dev|account\s*exec/i.test(activeJob.title || '') ||
+      /sales/i.test(activeJob.department || '') ||
+      /legal|compliance|counsel/i.test(activeJob.title || '') ||
+      /operat|logistics|supply\s*chain/i.test(activeJob.title || '')
+    ))
+  );
+  const isTechRole = !isNonTech;
+
   // Category Tabs metadata
   const categories = [
-    { id: 'technical', label: '1. Technical', icon: FileQuestion, count: assessmentBundle?.technical_mcqs?.length || 3 },
-    { id: 'scenario', label: '2. Scenario', icon: HelpCircle, count: 1 },
-    { id: 'hands_on', label: '3. Hands-on', icon: Code2, count: 1 },
-    { id: 'troubleshooting', label: '4. Troubleshooting', icon: Wrench, count: 1 },
+    { 
+      id: 'technical', 
+      label: isTechRole ? '1. Technical MCQs' : '1. Core Knowledge', 
+      icon: FileQuestion, 
+      count: assessmentBundle?.technical_mcqs?.length || 3 
+    },
+    { 
+      id: 'scenario', 
+      label: '2. Scenario', 
+      icon: HelpCircle, 
+      count: 1 
+    },
+    { 
+      id: 'hands_on', 
+      label: isTechRole ? '3. Hands-on Coding' : '3. Practical Simulation', 
+      icon: isTechRole ? Code2 : Briefcase, 
+      count: 1 
+    },
+    { 
+      id: 'troubleshooting', 
+      label: isTechRole ? '4. Troubleshooting' : '4. Anomaly Resolution', 
+      icon: Wrench, 
+      count: 1 
+    },
   ];
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 text-center">
         <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
-        <h2 className="text-base font-bold text-slate-700 dark:text-slate-300">Calibrating Technical Assessment...</h2>
+        <h2 className="text-base font-bold text-slate-700 dark:text-slate-300">
+          {isTechRole ? 'Calibrating Technical Assessment...' : 'Calibrating Role Assessment...'}
+        </h2>
         <p className="text-xs text-slate-500 max-w-sm">
           Dynamically pulling tailored 4-category challenge bundle for {activeJob?.title || 'this role'}.
         </p>
+      </div>
+    );
+  }
+
+  if (!candidateId && userRole === 'candidate') {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 py-16 px-4 text-center">
+        <div className="glass-card p-8 sm:p-10 rounded-3xl border border-slate-200 dark:border-white/[0.08] shadow-2xl relative space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mx-auto">
+            <Briefcase className="w-8 h-8" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">No Application Found</h2>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
+              Please apply to an active job opening first to unlock your role-specific technical assessment.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/jobs')}
+            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/30"
+          >
+            Browse Open Roles
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DEDICATED SCREEN: CANDIDATE ASSESSMENT SUBMISSION CONFIRMATION
+  // ─────────────────────────────────────────────────────────────────────────
+  if (submissionSuccess) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 py-12 px-4 text-center">
+        <div className="glass-card p-8 sm:p-10 rounded-3xl border border-slate-200 dark:border-white/[0.08] shadow-2xl relative overflow-hidden space-y-6">
+          <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-500 mx-auto shadow-xl">
+            <CheckCircle2 className="w-10 h-10" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+              <Check className="w-3.5 h-3.5" />
+              <span>Assessment Completed</span>
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Assessment Submitted Successfully
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto leading-relaxed">
+              Your assessment responses have been recorded and received. Your submission is now officially advancing through the recruitment evaluation process.
+            </p>
+          </div>
+
+          {/* Current Application Status Card */}
+          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-left space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Application Status</span>
+              <span className="px-3 py-1 rounded-xl text-xs font-black bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 flex items-center space-x-1.5">
+                <Clock className="w-3.5 h-3.5 animate-pulse" />
+                <span>Under Review</span>
+              </span>
+            </div>
+
+            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 text-xs space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Role:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{activeJob?.title || 'Applied Position'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Company:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{activeJob?.companyName || 'SparkX Technologies'}</span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-900/30 text-[11px] text-slate-600 dark:text-slate-300 flex items-start space-x-2">
+              <Sparkles className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+              <span>
+                Our hiring committee is reviewing your application alongside interview telemetry and assessment benchmarks. You will be notified regarding next steps.
+              </span>
+            </div>
+          </div>
+
+          {/* Navigation Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => navigate('/my-applications')}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/25 flex items-center justify-center space-x-2"
+            >
+              <span>View My Applications</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/jobs')}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition"
+            >
+              Browse Open Positions
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RESTRICTED ACCESS SCREEN (If candidate is in screening and not scheduled)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (accessDeniedMessage || (!isRecruiterTesting && !isScheduledOrAdvanced)) {
+    return (
+      <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-6 animate-in fade-in zoom-in-95">
+        <div className="w-20 h-20 rounded-3xl bg-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 flex items-center justify-center mx-auto shadow-xl">
+          <Lock className="w-10 h-10" />
+        </div>
+
+        <div className="space-y-2">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-wider">
+            Stage 1: 📋 Recruiter Screening
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            Assessment Access Restricted
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+            Your application for <strong>{activeJob?.title || 'this position'}</strong> has been received and is currently in the recruiter screening pipeline.
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Per company recruitment protocol, the 4-Pillar Assessment is locked until the recruiter reviews your application and schedules your evaluation slot.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/[0.08] text-left space-y-2.5 text-xs shadow-md max-w-md mx-auto">
+          <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-white/[0.06] pb-2">
+            <span className="font-semibold">Candidate Status</span>
+            <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-[10px]">
+              Stage 1: Screening
+            </span>
+          </div>
+          <div className="flex justify-between text-slate-600 dark:text-slate-300">
+            <span>Applicant:</span>
+            <span className="font-bold text-slate-900 dark:text-white">{activeCandidate?.name || currentUser?.name || 'Applicant'}</span>
+          </div>
+          <div className="flex justify-between text-slate-600 dark:text-slate-300">
+            <span>Target Role:</span>
+            <span className="font-semibold text-indigo-600 dark:text-indigo-400">{activeJob?.title || 'Applied Position'}</span>
+          </div>
+          <div className="flex justify-between text-slate-600 dark:text-slate-300">
+            <span>Assessment:</span>
+            <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center space-x-1">
+              <span>⏳ Awaiting Recruiter Invitation</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => navigate('/my-applications')}
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
+          >
+            <span>View My Applications</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/jobs')}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition"
+          >
+            Browse Openings
+          </button>
+        </div>
       </div>
     );
   }
@@ -256,10 +591,189 @@ export default function CodeAssessment() {
         <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
           Please apply for a job or start from the job catalog to initiate the assessment.
         </p>
-        <button onClick={() => setCurrentView('candidate')}
+        <button onClick={() => navigate('/jobs')}
           className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
           Browse Jobs Catalog →
         </button>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INTERSTITIAL SCREEN: ASSESSMENT BRIEFING & START EVALUATION BUTTON
+  // ─────────────────────────────────────────────────────────────────────────
+  if (!hasStarted) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6 pb-12 text-slate-900 dark:text-slate-100">
+        {/* Header Hero */}
+        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-white/[0.08] shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10 space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                {isTechRole ? 'Autonomous Technical Evaluation' : 'Autonomous Professional Evaluation'}
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{activeJob?.companyName || 'SparkX Technologies'}</span>
+              <span className="text-slate-400">•</span>
+              <span className="text-xs text-slate-500">{activeJob?.department || 'Finance & Operations'}</span>
+            </div>
+
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                {activeJob?.title || (isTechRole ? 'Software Engineer' : 'Professional Candidate')}
+              </h1>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                {isTechRole 
+                  ? 'Comprehensive 4-Pillar Autonomous Engineering Evaluation calibrating technical architecture, hands-on coding, and bug troubleshooting.'
+                  : 'Comprehensive 4-Pillar Professional Competency Evaluation calibrating domain standards, strategic scenarios, practical deliverables, and anomaly resolution.'}
+              </p>
+            </div>
+
+            {/* Quick Specs Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+                <div className="flex items-center space-x-1.5 text-indigo-500 mb-1">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Duration</span>
+                </div>
+                <div className="text-base font-black text-slate-900 dark:text-white font-mono">45:00</div>
+                <div className="text-[10px] text-slate-400">Timed countdown</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+                <div className="flex items-center space-x-1.5 text-purple-500 mb-1">
+                  <Layers className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Structure</span>
+                </div>
+                <div className="text-base font-black text-slate-900 dark:text-white">4 Pillars</div>
+                <div className="text-[10px] text-slate-400">End-to-end evaluation</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+                <div className="flex items-center space-x-1.5 text-emerald-500 mb-1">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Format</span>
+                </div>
+                <div className="text-base font-black text-slate-900 dark:text-white">Autonomous</div>
+                <div className="text-[10px] text-slate-400">Real-time validation</div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+                <div className="flex items-center space-x-1.5 text-amber-500 mb-1">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Telemetry</span>
+                </div>
+                <div className="text-base font-black text-slate-900 dark:text-white">AI Scoring</div>
+                <div className="text-[10px] text-slate-400">Domain-weighted</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Pillars Breakdown Cards */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+            Evaluation Curriculum & Structure
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Pillar 1 */}
+            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
+                  <FileQuestion className="w-4 h-4" />
+                  <span>Pillar 1: {isTechRole ? 'Technical MCQs' : 'Core Knowledge & Principles'}</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  {assessmentBundle.technical_mcqs?.length || 3} Questions
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isTechRole 
+                  ? 'Core computer science, architecture patterns, concurrency, and cloud infrastructure knowledge.'
+                  : `Core domain standards, regulatory compliance, GAAP/IFRS principles, and operational best practices for ${activeJob?.title || 'this role'}.`}
+              </p>
+            </div>
+
+            {/* Pillar 2 */}
+            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-purple-600 dark:text-purple-400 font-bold text-xs">
+                  <HelpCircle className="w-4 h-4" />
+                  <span>Pillar 2: Real-World Scenario</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                  Strategic Case
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isTechRole
+                  ? 'High-stakes architectural triage, trade-off evaluations, and resilient production systems strategy.'
+                  : 'Critical operational scenario requiring structured root-cause analysis, corrective action steps, and internal governance safeguards.'}
+              </p>
+            </div>
+
+            {/* Pillar 3 */}
+            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                  {isTechRole ? <Code2 className="w-4 h-4" /> : <Briefcase className="w-4 h-4" />}
+                  <span>Pillar 3: {isTechRole ? 'Hands-on Coding Sandbox' : 'Practical Task Simulation'}</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  {isTechRole ? 'Live Tests' : 'Deliverable Validation'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isTechRole
+                  ? 'Write, test, and refine code in Python, JavaScript, Java, C++, TypeScript, or SQL with instant test suite assertions.'
+                  : 'Draft structured professional deliverables (schedules, journal entries, balance reconciliations, or plans) with instant automated checks.'}
+              </p>
+            </div>
+
+            {/* Pillar 4 */}
+            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400 font-bold text-xs">
+                  <Wrench className="w-4 h-4" />
+                  <span>Pillar 4: {isTechRole ? 'Live Code Troubleshooting' : 'Anomaly Resolution & Remediation'}</span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  Defect Triage
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                {isTechRole
+                  ? 'Locate and fix defects in live buggy code with real-time regression verification until all invariants pass.'
+                  : 'Isolate root cause from incident data and unrecorded variances, formulating actionable corrective and preventive remedies.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Readiness Instructions & Start Action Footer */}
+        <div className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
+          <div className="space-y-1 max-w-xl">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+              <Lightbulb className="w-4 h-4 text-amber-500" />
+              <span>Assessment Guidelines & Timer Instructions</span>
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              Clicking the button below will start the official <strong>45-minute countdown timer</strong>. You can navigate between all 4 sections freely and validate your solutions before final submission.
+            </p>
+          </div>
+
+          <button
+            onClick={handleStartEvaluation}
+            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:opacity-95 text-white font-bold text-sm shadow-xl shadow-indigo-600/35 transition flex items-center justify-center space-x-3 group shrink-0"
+          >
+            <Play className="w-5 h-5 fill-current transition group-hover:scale-110" />
+            <span>Start Evaluation & Begin Timer</span>
+            <ArrowRight className="w-4 h-4 transition group-hover:translate-x-1" />
+          </button>
+        </div>
       </div>
     );
   }
@@ -283,20 +797,26 @@ export default function CodeAssessment() {
         <div>
           <div className="flex items-center space-x-2">
             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-              Comprehensive Technical Assessment
+              {isTechRole ? 'Comprehensive Technical Assessment' : 'Comprehensive Competency Assessment'}
             </span>
             <span className="text-slate-400">•</span>
-            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{activeJob?.title || 'Software Engineering'}</span>
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{activeJob?.title || (isTechRole ? 'Software Engineering' : 'Professional Evaluation')}</span>
             <span className="text-slate-400">•</span>
             <span className="text-[11px] text-slate-500">{activeJob?.companyName || 'SparkX Technologies'}</span>
           </div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">4-Pillar Engineering Evaluation</h2>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
+            {isTechRole ? '4-Pillar Engineering Evaluation' : '4-Pillar Professional Evaluation'}
+          </h2>
         </div>
 
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-700 dark:text-slate-300 font-mono shadow-sm">
-            <Clock className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Time Remaining: 38:45</span>
+          <div className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-mono shadow-sm transition-colors ${
+            timeLeft < 300 
+              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 animate-pulse' 
+              : 'bg-slate-100 dark:bg-[#06080E] border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-300'
+          }`}>
+            <Clock className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-rose-500' : 'text-indigo-500'}`} />
+            <span className="font-bold">Time Remaining: {formatTime(timeLeft)}</span>
           </div>
 
           <button
@@ -359,12 +879,14 @@ export default function CodeAssessment() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
                 <FileQuestion className="w-4 h-4" />
-                <span>Part 1: Conceptual Technical Mastery ({assessmentBundle.technical_mcqs.length} Questions)</span>
+                <span>Part 1: {isTechRole ? 'Conceptual Technical Mastery' : 'Core Domain & Regulatory Knowledge'} ({assessmentBundle.technical_mcqs.length} Questions)</span>
               </div>
               <span className="text-xs text-slate-500">Auto-calibrated for {activeJob?.title || 'this role'}</span>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400">
-              Select the most technically accurate answer for each core computer science & architecture question.
+              {isTechRole 
+                ? 'Select the most technically accurate answer for each core computer science & architecture question.'
+                : `Select the most accurate response for each ${activeJob?.title || 'domain'} standard practice and regulatory question.`}
             </p>
           </div>
 
@@ -435,7 +957,7 @@ export default function CodeAssessment() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
                 <HelpCircle className="w-4 h-4" />
-                <span>Part 2: Real-World Engineering Scenario</span>
+                <span>Part 2: {isTechRole ? 'Real-World Engineering Scenario' : 'Real-World Professional Scenario'}</span>
               </div>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
                 {assessmentBundle.scenario.difficulty}
@@ -460,17 +982,19 @@ export default function CodeAssessment() {
 
             <div className="space-y-2 pt-2">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                Your Proposed Solution & Architecture:
+                {isTechRole ? 'Your Proposed Solution & Architecture:' : 'Your Proposed Analysis & Remediation Plan:'}
               </label>
               <textarea
                 rows="8"
                 value={scenarioAnswer}
                 onChange={e => setScenarioAnswer(e.target.value)}
-                placeholder="1. Root Cause Analysis: ...&#10;2. Immediate Production Mitigation: ...&#10;3. Long-Term Architecture & Monitoring: ..."
+                placeholder={isTechRole 
+                  ? "1. Root Cause Analysis: ...\n2. Immediate Production Mitigation: ...\n3. Long-Term Architecture & Monitoring: ..."
+                  : "1. Root Cause & Materiality Analysis: ...\n2. Immediate Corrective Action: ...\n3. Internal Safeguards & Compliance Controls: ..."}
                 className="w-full p-4 rounded-2xl bg-white dark:bg-[#06080E] border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-indigo-500 leading-relaxed shadow-inner"
               />
               <div className="flex justify-between text-[11px] text-slate-400">
-                <span>Structured responses covering root causes, mitigation, and resiliency score highest.</span>
+                <span>{isTechRole ? 'Structured responses covering root causes, mitigation, and resiliency score highest.' : 'Structured responses addressing accounting standards, journal impact, and governance score highest.'}</span>
                 <span>{scenarioAnswer.length} characters</span>
               </div>
             </div>
@@ -483,14 +1007,14 @@ export default function CodeAssessment() {
               className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition flex items-center space-x-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Previous: Technical MCQs</span>
+              <span>Previous: {isTechRole ? 'Technical MCQs' : 'Core Knowledge'}</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveCategory('hands_on')}
               className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-indigo-600/30"
             >
-              <span>Next: Hands-on Coding Challenge</span>
+              <span>Next: {isTechRole ? 'Hands-on Coding Challenge' : 'Practical Task Simulation'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -498,139 +1022,138 @@ export default function CodeAssessment() {
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          CATEGORY 3: HANDS-ON CODING (MULTI-LANGUAGE SANDBOX)
+          CATEGORY 3: HANDS-ON (CANDIDATE MONACO IDE OR PRACTICAL DELIVERABLE)
       ───────────────────────────────────────────────────────────────────────────── */}
-      {activeCategory === 'hands_on' && (
+      {activeCategory === 'hands_on' && assessmentBundle?.hands_on && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Problem Statement & Test Cases (4 Cols) */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="glass-card p-5 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-4 shadow-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
-                    <Code2 className="w-4 h-4" />
-                    <span>Part 3: Practical Coding</span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    {assessmentBundle.hands_on.difficulty}
-                  </span>
-                </div>
-
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  {assessmentBundle.hands_on.title}
-                </h3>
-
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal whitespace-pre-line">
-                  {assessmentBundle.hands_on.instructions}
-                </p>
-
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Test Suite Assertions:</span>
-                  <div className="mt-2 space-y-1.5">
-                    {assessmentBundle.hands_on.test_cases?.map((tc, idx) => (
-                      <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06] text-[11px]">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">{tc.name}</div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">Exp: {tc.expected}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Multi-Language Editor & Execution Sandbox (8 Cols) */}
-            <div className="lg:col-span-8 space-y-4 flex flex-col">
-              <div className="glass-card rounded-3xl border border-slate-200 dark:border-white/[0.08] overflow-hidden flex flex-col shadow-2xl">
-                
-                {/* Editor Bar with Language Selector */}
-                <div className="px-4 py-2.5 bg-slate-100 dark:bg-[#06080E] border-b border-slate-200 dark:border-white/[0.06] flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+          {assessmentBundle.hands_on.is_coding !== false ? (
+            <CandidateIDE
+              taskId={assessmentBundle.hands_on.id}
+              taskTitle={assessmentBundle.hands_on.title}
+              difficulty={assessmentBundle.hands_on.difficulty || 'Mid-Level'}
+              instructions={assessmentBundle.hands_on.instructions}
+              examples={assessmentBundle.hands_on.examples || []}
+              constraints={assessmentBundle.hands_on.constraints || []}
+              functionSignatures={assessmentBundle.hands_on.function_signature || {}}
+              supportedLanguages={assessmentBundle.hands_on.supported_languages || ['python', 'javascript', 'typescript', 'java', 'cpp', 'sql']}
+              starterCodes={assessmentBundle.hands_on.starter_code || {}}
+              code={handsOnCode}
+              language={handsOnLang}
+              sampleTestCases={assessmentBundle.hands_on.sample_test_cases || assessmentBundle.hands_on.test_cases || []}
+              onCodeChange={setHandsOnCode}
+              onLanguageChange={handleHandsOnLangChange}
+              onRunSampleTests={handleRunHandsOn}
+              onRunCustomTest={async (customInput) => {
+                return await api.runCodeSandbox({
+                  candidate_id: candidateId,
+                  job_id: activeJob?.id,
+                  task_id: assessmentBundle.hands_on.id,
+                  category: 'hands_on',
+                  language: handsOnLang,
+                  code: handsOnCode,
+                  custom_input: customInput,
+                  is_custom_test: true
+                });
+              }}
+              isExecuting={isRunningHandsOn}
+              sampleResults={handsOnResults}
+              consoleOutput={handsOnConsole}
+              executionTelemetry={handsOnTelemetry}
+              storageKeyPrefix={`hands_on_${candidateId}`}
+            />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left: Problem Statement & Requirements (4 Cols) */}
+              <div className="lg:col-span-4 space-y-4">
+                <div className="glass-card p-5 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                      <Briefcase className="w-4 h-4" />
+                      <span>Part 3: Hands-on Deliverable</span>
                     </div>
-                    <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 ml-2">
-                      {getLanguageFileName(handsOnLang)}
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {assessmentBundle.hands_on.difficulty || 'Professional'}
                     </span>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    {/* Multi-Language Dropdown */}
-                    <div className="flex items-center space-x-1 text-xs">
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Language:</span>
-                      <select
-                        value={handsOnLang}
-                        onChange={e => handleHandsOnLangChange(e.target.value)}
-                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 focus:outline-none"
-                      >
-                        {(assessmentBundle.hands_on.supported_languages || ['python', 'javascript', 'typescript', 'java', 'cpp']).map(l => (
-                          <option key={l} value={l}>
-                            {l === 'python' ? 'Python (3.11)' : 
-                             l === 'javascript' ? 'JavaScript (ES6+)' :
-                             l === 'typescript' ? 'TypeScript' :
-                             l === 'java' ? 'Java (OpenJDK 17)' :
-                             l === 'cpp' ? 'C++ (GCC 11)' : l}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {assessmentBundle.hands_on.title}
+                  </h3>
 
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal whitespace-pre-line">
+                    {assessmentBundle.hands_on.instructions}
+                  </p>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Key Deliverable Checkpoints:
+                    </span>
+                    <div className="mt-2 space-y-1.5">
+                      {assessmentBundle.hands_on.test_cases?.map((tc, idx) => (
+                        <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06] text-[11px]">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">{tc.name}</div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">Exp: {tc.expected}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Practical Deliverable Workspace (8 Cols) */}
+              <div className="lg:col-span-8 space-y-4 flex flex-col">
+                <div className="glass-card rounded-3xl border border-slate-200 dark:border-white/[0.08] overflow-hidden flex flex-col shadow-2xl">
+                  <div className="px-4 py-2.5 bg-slate-100 dark:bg-[#06080E] border-b border-slate-200 dark:border-white/[0.06] flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
+                      deliverable_submission.doc
+                    </span>
+                    <div className="flex items-center space-x-2 text-[11px] text-slate-500 font-medium">
+                      <span>Word Count: <strong className="text-slate-700 dark:text-slate-200">{handsOnCode.trim().split(/\s+/).filter(Boolean).length}</strong> words</span>
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={handsOnCode}
+                    onChange={e => setHandsOnCode(e.target.value)}
+                    placeholder="Draft your professional deliverable, analysis, structured tables, or recommendations here..."
+                    className="w-full h-72 p-4 text-xs sm:text-sm focus:outline-none resize-none leading-relaxed bg-white dark:bg-slate-900/90 text-slate-800 dark:text-slate-100 font-sans border-0 focus:ring-0"
+                  />
+
+                  <div className="p-3 bg-slate-100 dark:bg-[#0B0F19] border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500">Validate deliverable structure before submitting.</span>
                     <button
                       type="button"
-                      onClick={() => handleHandsOnLangChange(handsOnLang)}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-[11px] flex items-center space-x-1 transition px-2 py-1 rounded-md"
-                      title="Reset boilerplate"
+                      onClick={handleRunHandsOn}
+                      disabled={isRunningHandsOn}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5"
                     >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reset</span>
+                      {isRunningHandsOn ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                      <span>{isRunningHandsOn ? "Validating..." : "Validate Deliverable"}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Code Textarea */}
-                <textarea
-                  value={handsOnCode}
-                  onChange={e => setHandsOnCode(e.target.value)}
-                  spellCheck="false"
-                  className="w-full h-72 p-4 bg-slate-950 text-emerald-300 font-mono text-xs sm:text-sm focus:outline-none resize-none leading-relaxed selection:bg-indigo-900 shadow-inner"
-                />
-
-                <div className="p-3 bg-slate-100 dark:bg-[#0B0F19] border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
-                  <span className="text-[11px] text-slate-500">Press Run Tests to verify assertions in the live sandbox.</span>
-                  <button
-                    type="button"
-                    onClick={handleRunHandsOn}
-                    disabled={isRunningHandsOn}
-                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-emerald-600/25"
-                  >
-                    {isRunningHandsOn ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-                    <span>{isRunningHandsOn ? "Executing..." : "Run Tests"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Console & Execution Output */}
-              <div className="glass-card rounded-3xl border border-slate-200 dark:border-white/[0.08] p-4 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-slate-200 dark:border-white/[0.06] pb-2">
-                  <div className="flex items-center space-x-1.5">
-                    <Terminal className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Execution Output & Diagnostics</span>
+                {/* Validation Telemetry */}
+                <div className="glass-card rounded-3xl border border-slate-200 dark:border-white/[0.08] p-4 space-y-2 shadow-sm">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-slate-200 dark:border-white/[0.06] pb-2">
+                    <div className="flex items-center space-x-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Deliverable Validation Telemetry</span>
+                    </div>
+                    {handsOnResults && (
+                      <span className="text-emerald-500 font-bold text-[11px] flex items-center space-x-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{handsOnResults.filter(r => r.passed).length}/{handsOnResults.length} Requirements Validated</span>
+                      </span>
+                    )}
                   </div>
-                  {handsOnResults && (
-                    <span className="text-emerald-500 font-bold text-[11px] flex items-center space-x-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{handsOnResults.filter(r => r.passed).length}/{handsOnResults.length} Tests Passed</span>
-                    </span>
-                  )}
+                  <pre className="font-mono text-xs text-slate-300 bg-slate-950 p-3.5 rounded-2xl min-h-[90px] overflow-x-auto whitespace-pre-wrap border border-slate-800">
+                    {handsOnConsole || '// Click "Validate Deliverable" to check completeness...'}
+                  </pre>
                 </div>
-
-                <pre className="font-mono text-xs text-slate-300 bg-slate-950 p-3.5 rounded-2xl min-h-[90px] overflow-x-auto whitespace-pre-wrap border border-slate-800">
-                  {handsOnConsole || '// Click "Run Tests" to execute your solution in the browser sandbox...'}
-                </pre>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-between pt-2">
             <button
@@ -646,7 +1169,7 @@ export default function CodeAssessment() {
               onClick={() => setActiveCategory('troubleshooting')}
               className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-indigo-600/30"
             >
-              <span>Next: Troubleshooting Bug-Fix</span>
+              <span>Next: {isTechRole ? 'Code Troubleshooting' : 'Anomaly Resolution'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -654,144 +1177,148 @@ export default function CodeAssessment() {
       )}
 
       {/* ─────────────────────────────────────────────────────────────────────────────
-          CATEGORY 4: TROUBLESHOOTING & DEBUGGING
+          CATEGORY 4: TROUBLESHOOTING & ANOMALY RESOLUTION
       ───────────────────────────────────────────────────────────────────────────── */}
-      {activeCategory === 'troubleshooting' && (
+      {activeCategory === 'troubleshooting' && assessmentBundle?.troubleshooting && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Defect Description & Invariants (4 Cols) */}
-            <div className="lg:col-span-4 space-y-4">
-              <div className="glass-card p-5 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-4 shadow-xl">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
-                    <Wrench className="w-4 h-4" />
-                    <span>Part 4: Live Troubleshooting</span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                    Defect Isolation
-                  </span>
-                </div>
-
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                  {assessmentBundle.troubleshooting.title}
-                </h3>
-
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
-                  {assessmentBundle.troubleshooting.bug_description}
-                </p>
-
-                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300 space-y-1.5">
-                  <div className="font-bold flex items-center space-x-1">
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                    <span>Your Objective:</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed">
-                    Inspect the buggy code on the right, identify the defect, patch it directly, and run the regression tests until all assertions pass.
-                  </p>
-                </div>
-
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Regression Test Suite:</span>
-                  <div className="mt-2 space-y-1.5">
-                    {assessmentBundle.troubleshooting.test_cases?.map((tc, idx) => (
-                      <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06] text-[11px]">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">{tc.name}</div>
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5">Exp: {tc.expected}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Code Debugger & Regression Suite (8 Cols) */}
-            <div className="lg:col-span-8 space-y-4 flex flex-col">
-              <div className="glass-card rounded-3xl border border-slate-200 dark:border-white/[0.08] overflow-hidden flex flex-col shadow-2xl">
-                
-                {/* Editor Bar */}
-                <div className="px-4 py-2.5 bg-slate-100 dark:bg-[#06080E] border-b border-slate-200 dark:border-white/[0.06] flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1.5">
-                      <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+          {assessmentBundle.troubleshooting.is_coding !== false ? (
+            <CandidateIDE
+              taskId={assessmentBundle.troubleshooting.id}
+              taskTitle={assessmentBundle.troubleshooting.title}
+              difficulty={assessmentBundle.troubleshooting.difficulty || 'Mid-Level'}
+              instructions={assessmentBundle.troubleshooting.bug_description}
+              examples={assessmentBundle.troubleshooting.examples || []}
+              constraints={assessmentBundle.troubleshooting.constraints || []}
+              functionSignatures={assessmentBundle.troubleshooting.function_signature || {}}
+              supportedLanguages={assessmentBundle.troubleshooting.supported_languages || ['python', 'javascript', 'typescript', 'java', 'cpp', 'sql']}
+              starterCodes={assessmentBundle.troubleshooting.broken_code || {}}
+              code={troubleCode}
+              language={troubleLang}
+              sampleTestCases={assessmentBundle.troubleshooting.sample_test_cases || assessmentBundle.troubleshooting.test_cases || []}
+              onCodeChange={setTroubleCode}
+              onLanguageChange={handleTroubleLangChange}
+              onRunSampleTests={handleRunTroubleshooting}
+              onRunCustomTest={async (customInput) => {
+                return await api.runCodeSandbox({
+                  candidate_id: candidateId,
+                  job_id: activeJob?.id,
+                  task_id: assessmentBundle.troubleshooting.id,
+                  category: 'troubleshooting',
+                  language: troubleLang,
+                  code: troubleCode,
+                  custom_input: customInput,
+                  is_custom_test: true
+                });
+              }}
+              isExecuting={isRunningTrouble}
+              sampleResults={troubleResults}
+              consoleOutput={troubleConsole}
+              executionTelemetry={troubleTelemetry}
+              storageKeyPrefix={`trouble_${candidateId}`}
+            />
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left: Defect Description & Invariants (4 Cols) */}
+              <div className="lg:col-span-4 space-y-4">
+                <div className="glass-card p-5 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-4 shadow-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
+                      <Wrench className="w-4 h-4" />
+                      <span>Part 4: Anomaly Diagnosis & Remediation</span>
                     </div>
-                    <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 ml-2">
-                      patch_fix.{troubleLang === 'python' ? 'py' : troubleLang === 'javascript' ? 'js' : troubleLang}
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      Triage & Remediation
                     </span>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <div className="flex items-center space-x-1 text-xs">
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Language:</span>
-                      <select
-                        value={troubleLang}
-                        onChange={e => handleTroubleLangChange(e.target.value)}
-                        className="px-2.5 py-1 text-xs font-bold rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-indigo-600 dark:text-indigo-400 focus:outline-none"
-                      >
-                        {['python', 'javascript', 'typescript', 'java', 'cpp'].map(l => (
-                          <option key={l} value={l}>
-                            {l === 'python' ? 'Python' : l === 'javascript' ? 'JavaScript' : l === 'typescript' ? 'TypeScript' : l === 'java' ? 'Java' : 'C++'}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {assessmentBundle.troubleshooting.title}
+                  </h3>
 
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal whitespace-pre-line">
+                    {assessmentBundle.troubleshooting.bug_description}
+                  </p>
+
+                  <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300 space-y-1.5">
+                    <div className="font-bold flex items-center space-x-1">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Your Objective:</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed">
+                      Investigate the anomaly briefing, isolate root cause, and document your complete corrective action plan.
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Investigation Checkpoints:
+                    </span>
+                    <div className="mt-2 space-y-1.5">
+                      {assessmentBundle.troubleshooting.test_cases?.map((tc, idx) => (
+                        <div key={idx} className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06] text-[11px]">
+                          <div className="font-semibold text-slate-800 dark:text-slate-200">{tc.name}</div>
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">Exp: {tc.expected}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Anomaly Resolution Workspace (8 Cols) */}
+              <div className="lg:col-span-8 space-y-4 flex flex-col">
+                <div className="glass-card rounded-3xl border border-slate-200 dark:border-white/[0.08] overflow-hidden flex flex-col shadow-2xl">
+                  <div className="px-4 py-2.5 bg-slate-100 dark:bg-[#06080E] border-b border-slate-200 dark:border-white/[0.06] flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300">
+                      remediation_action_plan.txt
+                    </span>
+                    <div className="flex items-center space-x-2 text-[11px] text-slate-500 font-medium">
+                      <span>Word Count: <strong className="text-slate-700 dark:text-slate-200">{troubleCode.trim().split(/\s+/).filter(Boolean).length}</strong> words</span>
+                    </div>
+                  </div>
+
+                  <textarea
+                    value={troubleCode}
+                    onChange={e => setTroubleCode(e.target.value)}
+                    placeholder="Identify the anomaly root cause, affected processes, and step-by-step corrective actions..."
+                    className="w-full h-72 p-4 text-xs sm:text-sm focus:outline-none resize-none leading-relaxed bg-white dark:bg-slate-900/90 text-slate-800 dark:text-slate-100 font-sans border-0 focus:ring-0"
+                  />
+
+                  <div className="p-3 bg-slate-100 dark:bg-[#0B0F19] border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500">Validate your anomaly resolution plan before finalizing submission.</span>
                     <button
                       type="button"
-                      onClick={() => handleTroubleLangChange(troubleLang)}
-                      className="text-slate-400 hover:text-slate-600 dark:hover:text-white text-[11px] flex items-center space-x-1 transition px-2 py-1 rounded-md"
-                      title="Reset buggy boilerplate"
+                      onClick={handleRunTroubleshooting}
+                      disabled={isRunningTrouble}
+                      className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center space-x-1.5"
                     >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reset Buggy Code</span>
+                      {isRunningTrouble ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+                      <span>{isRunningTrouble ? "Validating Plan..." : "Validate Resolution"}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Buggy Code Textarea */}
-                <textarea
-                  value={troubleCode}
-                  onChange={e => setTroubleCode(e.target.value)}
-                  spellCheck="false"
-                  className="w-full h-72 p-4 bg-slate-950 text-amber-200 font-mono text-xs sm:text-sm focus:outline-none resize-none leading-relaxed selection:bg-indigo-900 shadow-inner"
-                />
-
-                <div className="p-3 bg-slate-100 dark:bg-[#0B0F19] border-t border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
-                  <span className="text-[11px] text-slate-500">Run regression tests to verify that your patch fixes the defect.</span>
-                  <button
-                    type="button"
-                    onClick={handleRunTroubleshooting}
-                    disabled={isRunningTrouble}
-                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-amber-600/25"
-                  >
-                    {isRunningTrouble ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-                    <span>{isRunningTrouble ? "Verifying Patch..." : "Run Regression Tests"}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Console Output */}
-              <div className="glass-card rounded-3xl border border-slate-200 dark:border-white/[0.08] p-4 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-slate-200 dark:border-white/[0.06] pb-2">
-                  <div className="flex items-center space-x-1.5">
-                    <Terminal className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Regression Suite Output</span>
+                {/* Diagnostic Telemetry */}
+                <div className="glass-card rounded-3xl border border-slate-200 dark:border-white/[0.08] p-4 space-y-2 shadow-sm">
+                  <div className="flex items-center justify-between text-xs font-semibold text-slate-400 border-b border-slate-200 dark:border-white/[0.06] pb-2">
+                    <div className="flex items-center space-x-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Diagnostic Telemetry</span>
+                    </div>
+                    {troubleResults && (
+                      <span className="text-emerald-500 font-bold text-[11px] flex items-center space-x-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{troubleResults.filter(r => r.passed).length}/{troubleResults.length} Checkpoints Verified</span>
+                      </span>
+                    )}
                   </div>
-                  {troubleResults && (
-                    <span className="text-emerald-500 font-bold text-[11px] flex items-center space-x-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{troubleResults.filter(r => r.passed).length}/{troubleResults.length} Regressions Resolved</span>
-                    </span>
-                  )}
+                  <pre className="font-mono text-xs text-slate-300 bg-slate-950 p-3.5 rounded-2xl min-h-[90px] overflow-x-auto whitespace-pre-wrap border border-slate-800">
+                    {troubleConsole || '// Click "Validate Resolution" to verify your diagnostic proposal...'}
+                  </pre>
                 </div>
-
-                <pre className="font-mono text-xs text-slate-300 bg-slate-950 p-3.5 rounded-2xl min-h-[90px] overflow-x-auto whitespace-pre-wrap border border-slate-800">
-                  {troubleConsole || '// Click "Run Regression Tests" to verify your fix...'}
-                </pre>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-between pt-2">
             <button
@@ -800,7 +1327,7 @@ export default function CodeAssessment() {
               className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition flex items-center space-x-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Previous: Hands-on</span>
+              <span>Previous: {isTechRole ? 'Hands-on Coding' : 'Practical Deliverable'}</span>
             </button>
 
             <button

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import CandidateScorecardModal from './CandidateScorecardModal';
 import JobCreatorModal from './JobCreatorModal';
@@ -29,10 +30,16 @@ import {
   CheckCircle2,
   TrendingUp,
   Sparkle,
-  ArrowRightLeft
+  ArrowRightLeft,
+  GripVertical,
+  ArrowDown,
+  Bot,
+  XCircle
 } from 'lucide-react';
 
 export default function CandidatePipeline() {
+  const navigate = useNavigate();
+  const { jobId: routeJobId, candidateId: routeCandidateId } = useParams();
   const { 
     candidates, 
     jobs, 
@@ -40,7 +47,7 @@ export default function CandidatePipeline() {
     setActiveJobId, 
     selectedCandidate, 
     setSelectedCandidate,
-    setCurrentView,
+    switchRole,
     updateCandidateStatus
   } = useRecruitment();
 
@@ -55,6 +62,38 @@ export default function CandidatePipeline() {
   const [draggedCandidateId, setDraggedCandidateId] = useState(null);
   const [dragOverStage, setDragOverStage] = useState(null);
   const [openMoveMenuId, setOpenMoveMenuId] = useState(null);
+  const isDraggingRef = useRef(false);
+
+  // Sync route param for jobId
+  useEffect(() => {
+    if (routeJobId) {
+      setSelectedJobFilter(routeJobId);
+      setActiveJobId(routeJobId);
+      setActiveTab('candidates');
+    }
+  }, [routeJobId, setActiveJobId]);
+
+  // Sync route param for candidateId
+  useEffect(() => {
+    if (routeCandidateId && candidates.length > 0) {
+      const match = candidates.find(c => String(c.id) === String(routeCandidateId));
+      if (match) {
+        setSelectedCandidate(match);
+      }
+    }
+  }, [routeCandidateId, candidates, setSelectedCandidate]);
+
+  const handleOpenCandidate = (cand) => {
+    setSelectedCandidate(cand);
+    navigate(`/recruiter/candidates/${cand.id}`);
+  };
+
+  const handleCloseCandidateModal = () => {
+    setSelectedCandidate(null);
+    if (routeCandidateId) {
+      navigate(routeJobId ? `/recruiter/jobs/${routeJobId}` : '/recruiter');
+    }
+  };
 
   // Filter candidates
   const filteredCandidates = candidates.filter(c => {
@@ -68,7 +107,10 @@ export default function CandidatePipeline() {
     if (!matchesSearch) return false;
 
     if (filterStatus === 'All') return true;
-    if (filterStatus === 'Evaluated') return c.status === 'Evaluated' || (c.scores && c.scores.overall > 0) || c.interviewSummary;
+    if (filterStatus === 'Evaluated') {
+      if (c.status === 'Applied' || c.finalDecision === 'Applied') return false;
+      return c.status === 'Evaluated' || c.status === 'Under Review' || c.finalDecision === 'Under Review' || (c.scores && c.scores.overall > 0);
+    }
     if (filterStatus === 'Shortlisted') return c.finalDecision === 'Shortlisted';
     if (filterStatus === 'High Risk') return c.integrityRisk === 'High';
     return true;
@@ -77,7 +119,10 @@ export default function CandidatePipeline() {
   const totalApplicants = candidates.length;
   const highMatchCount = candidates.filter(c => c.matchScore >= 85).length;
   const integrityFlaggedCount = candidates.filter(c => c.integrityRisk === 'High').length;
-  const evaluatedCount = candidates.filter(c => c.status === 'Evaluated' || (c.scores && c.scores.overall > 0) || c.interviewSummary).length;
+  const evaluatedCount = candidates.filter(c => {
+    if (c.status === 'Applied' || c.finalDecision === 'Applied') return false;
+    return c.status === 'Evaluated' || c.status === 'Under Review' || c.finalDecision === 'Under Review' || (c.scores && c.scores.overall > 0);
+  }).length;
 
   const handleKpiClick = (status, tab = 'candidates', mode = 'list') => {
     setActiveTab(tab);
@@ -135,11 +180,11 @@ export default function CandidatePipeline() {
         {/* Action buttons */}
         <div className="flex items-center space-x-3">
           <button
-            onClick={() => setCurrentView('interview')}
+            onClick={() => navigate('/recruiter/proctor')}
             className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-indigo-500/50 text-slate-700 dark:text-slate-200 text-xs font-semibold transition flex items-center space-x-2 shadow-sm"
           >
-            <Sparkles className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-            <span>Test Live AI Interview</span>
+            <ShieldAlert className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+            <span>Integrity HUD & Telemetry</span>
           </button>
           
           <button
@@ -153,7 +198,7 @@ export default function CandidatePipeline() {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* CARD 1: ACTIVE ROLES */}
         <div 
@@ -404,7 +449,9 @@ export default function CandidatePipeline() {
                     <button
                       onClick={() => {
                         setSelectedJobFilter(job.id);
+                        setActiveJobId(job.id);
                         setActiveTab('candidates');
+                        navigate(`/recruiter/jobs/${job.id}`);
                       }}
                       className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
                     >
@@ -415,7 +462,8 @@ export default function CandidatePipeline() {
                     <button
                       onClick={() => {
                         setActiveJobId(job.id);
-                        setCurrentView('candidate');
+                        switchRole('candidate');
+                        navigate(`/jobs/${job.id}/apply`);
                       }}
                       className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-300 text-xs font-bold transition flex items-center space-x-1.5 border border-slate-200 dark:border-slate-800"
                     >
@@ -505,7 +553,10 @@ export default function CandidatePipeline() {
           <div className="flex items-center space-x-2 overflow-x-auto pb-1 text-xs">
             <span className="text-slate-400 font-bold text-[11px] whitespace-nowrap uppercase tracking-wider">Role Scope:</span>
             <button
-              onClick={() => setSelectedJobFilter('ALL')}
+              onClick={() => {
+                setSelectedJobFilter('ALL');
+                navigate('/recruiter');
+              }}
               className={`px-3 py-1 rounded-lg font-bold whitespace-nowrap text-[11px] transition ${
                 selectedJobFilter === 'ALL'
                   ? 'bg-indigo-600 text-white shadow-sm'
@@ -517,7 +568,11 @@ export default function CandidatePipeline() {
             {jobs.map(j => (
               <button
                 key={j.id}
-                onClick={() => setSelectedJobFilter(j.id)}
+                onClick={() => {
+                  setSelectedJobFilter(j.id);
+                  setActiveJobId(j.id);
+                  navigate(`/recruiter/jobs/${j.id}`);
+                }}
                 className={`px-3 py-1 rounded-lg font-bold whitespace-nowrap text-[11px] transition ${
                   selectedJobFilter === j.id
                     ? 'bg-indigo-600 text-white shadow-sm'
@@ -556,13 +611,45 @@ export default function CandidatePipeline() {
             </div>
           ) : displayMode === 'kanban' ? (
             /* KANBAN BOARD VIEW */
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start overflow-x-auto pb-4">
+            <div className="w-full flex items-start gap-3 sm:gap-4 overflow-x-auto pb-6 pt-1 px-1 scrollbar-thin">
               {(() => {
                 const getCandidateStage = (c) => {
-                  if (c.finalDecision === 'Selected' || c.finalDecision === 'Offered' || c.finalDecision === 'Rejected' || c.status === 'Rejected') return 'decided';
-                  if (c.finalDecision === 'Shortlisted') return 'shortlisted';
-                  if (c.finalDecision === 'Interview' || c.status === 'Interview Scheduled' || (c.interviewScheduledAt && c.status !== 'Evaluated')) return 'scheduled';
-                  if (c.finalDecision === 'Under Review' || c.status === 'Evaluated' || (c.scores && c.scores.overall > 0) || c.interviewSummary) return 'evaluated';
+                  const status = c.status || 'Applied';
+                  const decision = c.finalDecision || status;
+
+                  // 1. Explicit Decisions (Selected / Offered / Rejected)
+                  if (['Selected', 'Offered', 'Rejected'].includes(decision) || ['Selected', 'Offered', 'Rejected'].includes(status)) {
+                    return 'decided';
+                  }
+
+                  // 2. Explicit Shortlisted
+                  if (decision === 'Shortlisted' || status === 'Shortlisted') {
+                    return 'shortlisted';
+                  }
+
+                  // 3. Explicit Screening / Applied stage (MUST check before heuristic fallback)
+                  if (status === 'Applied' || status === 'Screening' || decision === 'Applied' || decision === 'Screening') {
+                    return 'screening';
+                  }
+
+                  // 4. Explicit Interview stage
+                  if (status === 'Interview' || status === 'Interview Scheduled' || decision === 'Interview' || decision === 'Interview Scheduled') {
+                    return 'scheduled';
+                  }
+
+                  // 5. Explicit Under Review / AI Evaluated
+                  if (status === 'Under Review' || decision === 'Under Review' || status === 'Evaluated' || decision === 'Evaluated') {
+                    return 'evaluated';
+                  }
+
+                  // 6. Heuristic fallbacks for unclassified legacy data
+                  if (c.interviewScheduledAt || c.interview_scheduled_at) {
+                    return 'scheduled';
+                  }
+                  if (c.codingScore != null || c.coding_score != null || (c.scores && c.scores.overall > 0) || c.interviewSummary) {
+                    return 'evaluated';
+                  }
+
                   return 'screening';
                 };
 
@@ -571,16 +658,32 @@ export default function CandidatePipeline() {
                   setDraggedCandidateId(null);
                   if (!candId) return;
 
+                  const currentCand = candidates.find(c => c.id === candId);
+                  if (!currentCand) return;
+
+                  const currentStage = getCandidateStage(currentCand);
+                  if (currentStage === targetStageId) return;
+
                   const stageToStatus = {
-                    screening: 'Under Review',
+                    screening: 'Applied',
                     scheduled: 'Interview',
                     evaluated: 'Under Review',
                     shortlisted: 'Shortlisted',
                     decided: 'Selected'
                   };
 
-                  const targetStatus = stageToStatus[targetStageId] || 'Under Review';
+                  const stageNames = {
+                    screening: 'Screening',
+                    scheduled: 'Interview Scheduled',
+                    evaluated: 'AI Evaluated',
+                    shortlisted: 'Shortlisted',
+                    decided: 'Decisions'
+                  };
+
+                  const targetStatus = stageToStatus[targetStageId] || 'Applied';
                   await updateCandidateStatus(candId, targetStatus);
+                  setSuccessBanner(`✓ Moved ${currentCand.name} to ${stageNames[targetStageId] || targetStatus}`);
+                  setTimeout(() => setSuccessBanner(''), 4500);
 
                   if (targetStageId === 'shortlisted' || targetStatus === 'Selected') {
                     confetti({
@@ -591,48 +694,74 @@ export default function CandidatePipeline() {
                   }
                 };
 
-                return [
+                const stages = [
                   {
                     id: 'screening',
                     name: 'Screening',
-                    dotColor: 'bg-blue-400',
-                    badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                    subtitle: 'New applicants & screening',
+                    icon: Users,
+                    dotColor: 'bg-blue-500',
+                    badgeColor: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+                    activeRing: 'ring-blue-500/60 border-blue-400 dark:border-blue-500 bg-blue-500/5',
+                    dropBg: 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-300',
                     items: filteredCandidates.filter(c => getCandidateStage(c) === 'screening')
                   },
                   {
                     id: 'scheduled',
                     name: 'Interview Scheduled',
-                    dotColor: 'bg-cyan-400',
-                    badgeColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+                    subtitle: 'Authorized for assessment',
+                    icon: Calendar,
+                    dotColor: 'bg-cyan-500',
+                    badgeColor: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20',
+                    activeRing: 'ring-cyan-500/60 border-cyan-400 dark:border-cyan-500 bg-cyan-500/5',
+                    dropBg: 'border-cyan-500 bg-cyan-500/10 text-cyan-600 dark:text-cyan-300',
                     items: filteredCandidates.filter(c => getCandidateStage(c) === 'scheduled')
                   },
                   {
                     id: 'evaluated',
                     name: 'AI Evaluated',
-                    dotColor: 'bg-indigo-400',
-                    badgeColor: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+                    subtitle: 'Assessment & interview done',
+                    icon: Bot,
+                    dotColor: 'bg-indigo-500',
+                    badgeColor: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+                    activeRing: 'ring-indigo-500/60 border-indigo-400 dark:border-indigo-500 bg-indigo-500/5',
+                    dropBg: 'border-indigo-500 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300',
                     items: filteredCandidates.filter(c => getCandidateStage(c) === 'evaluated')
                   },
                   {
                     id: 'shortlisted',
                     name: 'Shortlisted',
-                    dotColor: 'bg-emerald-400',
-                    badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                    subtitle: 'Top-tier candidates',
+                    icon: Sparkles,
+                    dotColor: 'bg-emerald-500',
+                    badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+                    activeRing: 'ring-emerald-500/60 border-emerald-400 dark:border-emerald-500 bg-emerald-500/5',
+                    dropBg: 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300',
                     items: filteredCandidates.filter(c => getCandidateStage(c) === 'shortlisted')
                   },
                   {
                     id: 'decided',
-                    name: 'Decisions / Closed',
-                    dotColor: 'bg-purple-400',
-                    badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                    name: 'Decisions',
+                    subtitle: 'Selected / Rejected',
+                    icon: CheckCircle2,
+                    dotColor: 'bg-purple-500',
+                    badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+                    activeRing: 'ring-purple-500/60 border-purple-400 dark:border-purple-500 bg-purple-500/5',
+                    dropBg: 'border-purple-500 bg-purple-500/10 text-purple-600 dark:text-purple-300',
                     items: filteredCandidates.filter(c => getCandidateStage(c) === 'decided')
                   }
-                ].map(stage => (
+                ];
+
+                return stages.map(stage => (
                   <div 
                     key={stage.id} 
                     onDragOver={(e) => {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = 'move';
+                      if (dragOverStage !== stage.id) setDragOverStage(stage.id);
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
                       if (dragOverStage !== stage.id) setDragOverStage(stage.id);
                     }}
                     onDragLeave={(e) => {
@@ -645,42 +774,65 @@ export default function CandidatePipeline() {
                       const candId = e.dataTransfer.getData('text/plain') || draggedCandidateId;
                       handleStageDrop(candId, stage.id);
                     }}
-                    className={`kanban-column p-3.5 sm:p-4 rounded-2xl flex flex-col space-y-3 min-w-[240px] transition-all duration-200 ${
+                    className={`kanban-column p-3.5 sm:p-4 rounded-3xl flex flex-col space-y-3 flex-1 min-w-[240px] shrink-0 xl:shrink transition-all duration-200 ${
                       dragOverStage === stage.id
-                        ? 'ring-2 ring-indigo-500 bg-indigo-500/10 dark:bg-indigo-950/40 border-indigo-400 dark:border-indigo-500 shadow-lg'
+                        ? `ring-2 ${stage.activeRing} shadow-xl kanban-drop-active`
                         : ''
                     }`}
                   >
                     {/* Column Header */}
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-white/[0.06]">
-                      <div className="flex items-center space-x-2">
-                        <span className={`w-2 h-2 rounded-full ${stage.dotColor}`} />
-                        <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                          {stage.name}
-                        </span>
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-200/80 dark:border-white/[0.08]">
+                      <div className="flex items-center space-x-2.5">
+                        <div className={`w-7 h-7 rounded-xl flex items-center justify-center border ${stage.badgeColor}`}>
+                          <stage.icon className="w-3.5 h-3.5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${stage.dotColor}`} />
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                              {stage.name}
+                            </h3>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400">{stage.subtitle}</p>
+                        </div>
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-slate-200/80 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300/60 dark:border-white/[0.06]">
                         {stage.items.length}
                       </span>
                     </div>
 
+                    {/* Active Drop Cue inside column */}
+                    {dragOverStage === stage.id && draggedCandidateId && (
+                      <div className={`p-3 rounded-2xl border-2 border-dashed ${stage.dropBg} text-xs font-bold flex items-center justify-center space-x-2 animate-pulse shadow-md transition-all`}>
+                        <ArrowDown className="w-4 h-4 animate-bounce" />
+                        <span>Drop to move to {stage.name}</span>
+                      </div>
+                    )}
+
                     {/* Column Cards */}
-                    <div className="space-y-3 min-h-[140px]">
-                      {stage.items.length === 0 ? (
-                        <div className="p-6 text-center rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.01] text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center space-y-1">
-                          <span className="text-base opacity-40">📭</span>
-                          <span className="text-[11px] font-medium">Drop candidate here or move</span>
+                    <div className="space-y-3 min-h-[160px] flex-1">
+                      {stage.items.length === 0 && (!dragOverStage || dragOverStage !== stage.id) ? (
+                        <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200/90 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.01] text-slate-400 dark:text-slate-500 text-xs flex flex-col items-center justify-center space-y-2">
+                          <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800/60 flex items-center justify-center opacity-60">
+                            <stage.icon className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">No candidates in {stage.name}</p>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">Drag or move candidates here</span>
                         </div>
                       ) : (
                         stage.items.map(cand => {
                           const initials = cand.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
                           const isHighRisk = cand.integrityRisk === 'High';
+                          const isBeingDragged = draggedCandidateId === cand.id;
+                          const hasTechScore = cand.codingScore != null || cand.coding_score != null;
+                          const techScoreVal = cand.codingScore ?? cand.coding_score;
 
                           return (
                             <div
                               key={cand.id}
                               draggable
                               onDragStart={(e) => {
+                                isDraggingRef.current = true;
                                 e.dataTransfer.setData('text/plain', cand.id);
                                 e.dataTransfer.effectAllowed = 'move';
                                 setDraggedCandidateId(cand.id);
@@ -688,19 +840,34 @@ export default function CandidatePipeline() {
                               onDragEnd={() => {
                                 setDraggedCandidateId(null);
                                 setDragOverStage(null);
+                                setTimeout(() => {
+                                  isDraggingRef.current = false;
+                                }, 120);
                               }}
-                              onClick={() => setSelectedCandidate(cand)}
-                              className={`kanban-card p-3.5 space-y-2.5 cursor-grab active:cursor-grabbing group hover:border-indigo-500/50 transition-all shadow-sm relative ${
-                                draggedCandidateId === cand.id ? 'opacity-30 border-dashed border-indigo-500 scale-95' : ''
+                              onClick={() => {
+                                if (isDraggingRef.current) return;
+                                handleOpenCandidate(cand);
+                              }}
+                              className={`kanban-card p-3.5 space-y-2.5 cursor-grab active:cursor-grabbing group hover:border-indigo-500/50 transition-all duration-200 relative select-none ${
+                                isBeingDragged 
+                                  ? 'opacity-35 border-2 border-dashed border-indigo-500 scale-[0.98] bg-indigo-50/40 dark:bg-indigo-950/20' 
+                                  : 'hover:shadow-md'
                               }`}
                             >
+                              {/* Top Row: Grip Handle + Avatar + Candidate Name + Match Score */}
                               <div className="flex items-start justify-between gap-2">
-                                <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                                <div className="flex items-center space-x-2 min-w-0 flex-1">
+                                  <div 
+                                    className="p-1 rounded-md text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-grab active:cursor-grabbing shrink-0" 
+                                    title="Drag card to move stage"
+                                  >
+                                    <GripVertical className="w-3.5 h-3.5" />
+                                  </div>
                                   <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-indigo-500 flex items-center justify-center text-white text-xs font-black shadow-md ring-1 ring-white/20 shrink-0">
                                     {initials}
                                   </div>
                                   <div className="min-w-0 flex-1">
-                                    <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition leading-snug truncate">
+                                    <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition leading-snug truncate">
                                       {cand.name}
                                     </h4>
                                     <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
@@ -711,21 +878,21 @@ export default function CandidatePipeline() {
 
                                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border shrink-0 whitespace-nowrap ${
                                   cand.matchScore >= 85 
-                                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' 
+                                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-500/30' 
                                     : cand.matchScore >= 70
-                                    ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-500/30'
-                                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+                                    ? 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-300 dark:border-cyan-500/30'
+                                    : 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-500/30'
                                 }`}>
-                                  {cand.matchScore}% Match
+                                  {cand.matchScore ? `${cand.matchScore}% Match` : 'Applied'}
                                 </span>
                               </div>
 
                               {/* Scheduled Interview Slot & Meet link if available */}
                               {cand.interviewScheduledAt && (
-                                <div className="p-2 rounded-xl bg-cyan-50 dark:bg-cyan-950/50 border border-cyan-200 dark:border-cyan-800/50 flex items-center justify-between text-[11px] shadow-sm">
+                                <div className="p-2 rounded-xl bg-cyan-50/90 dark:bg-cyan-950/50 border border-cyan-200/90 dark:border-cyan-800/50 flex items-center justify-between text-[11px] shadow-sm">
                                   <span className="text-cyan-800 dark:text-cyan-300 font-medium truncate text-[10px] flex items-center space-x-1">
                                     <span>📅</span>
-                                    <span className="truncate max-w-[125px]">{cand.interviewScheduledAt}</span>
+                                    <span className="truncate max-w-[130px]">{cand.interviewScheduledAt}</span>
                                   </span>
                                   {cand.interviewMeetingUrl && (
                                     <a
@@ -743,19 +910,32 @@ export default function CandidatePipeline() {
                                 </div>
                               )}
 
+                              {/* Automated Tech Assessment score chip if available */}
+                              {hasTechScore && (
+                                <div className="px-2 py-1 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/40 flex items-center justify-between text-[10px]">
+                                  <span className="text-indigo-700 dark:text-indigo-300 font-semibold flex items-center space-x-1">
+                                    <CheckCircle2 className="w-3 h-3 text-indigo-500" />
+                                    <span>Tech Assessment:</span>
+                                  </span>
+                                  <span className="font-mono font-bold text-indigo-900 dark:text-indigo-200">
+                                    {techScoreVal}/100
+                                  </span>
+                                </div>
+                              )}
+
                               {/* Skills pills */}
                               <div className="flex flex-wrap gap-1">
-                                {cand.skills?.slice(0, 2).map((s, i) => (
+                                {cand.skills?.slice(0, 3).map((s, i) => (
                                   <span key={i} className="px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800/80 text-[10px] text-slate-700 dark:text-slate-300 font-medium border border-slate-200 dark:border-white/[0.04]">
                                     {s}
                                   </span>
                                 ))}
-                                {cand.skills?.length > 2 && (
-                                  <span className="text-[9px] text-slate-500 self-center">+{cand.skills.length - 2}</span>
+                                {cand.skills?.length > 3 && (
+                                  <span className="text-[9px] text-slate-500 self-center">+{cand.skills.length - 3}</span>
                                 )}
                               </div>
 
-                              {/* Card Footer */}
+                              {/* Card Footer: Integrity + Move Dropdown + Dossier Action */}
                               <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-white/[0.05] text-[10px]">
                                 <span className={`font-bold flex items-center space-x-1 ${
                                   isHighRisk ? 'text-rose-500' : 'text-emerald-600 dark:text-emerald-400'
@@ -770,7 +950,7 @@ export default function CandidatePipeline() {
                                     <button
                                       type="button"
                                       onClick={() => setOpenMoveMenuId(openMoveMenuId === cand.id ? null : cand.id)}
-                                      className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition flex items-center space-x-0.5"
+                                      className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition flex items-center space-x-1 shadow-sm"
                                       title="Move candidate stage"
                                     >
                                       <ArrowRightLeft className="w-2.5 h-2.5" />
@@ -778,16 +958,17 @@ export default function CandidatePipeline() {
                                     </button>
 
                                     {openMoveMenuId === cand.id && (
-                                      <div className="absolute right-0 bottom-full mb-1.5 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 p-1.5 space-y-0.5 text-[11px] backdrop-blur-md">
-                                        <div className="px-2 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
+                                      <div className="absolute right-0 bottom-full mb-1.5 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 p-1.5 space-y-0.5 text-xs backdrop-blur-md animate-in fade-in zoom-in-95">
+                                        <div className="px-2.5 py-1 text-[9px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 dark:border-slate-800">
                                           Move to Stage
                                         </div>
                                         {[
-                                          { label: '📋 Under Review', status: 'Under Review' },
-                                          { label: '📅 Interview', status: 'Interview' },
-                                          { label: '🌟 Shortlisted', status: 'Shortlisted' },
-                                          { label: '🤝 Selected', status: 'Selected' },
-                                          { label: '❌ Rejected', status: 'Rejected' },
+                                          { label: 'Screening (Applied)', status: 'Applied', dot: 'bg-blue-400' },
+                                          { label: 'Interview Scheduled', status: 'Interview', dot: 'bg-cyan-400' },
+                                          { label: 'AI Evaluated', status: 'Under Review', dot: 'bg-indigo-400' },
+                                          { label: 'Shortlisted', status: 'Shortlisted', dot: 'bg-emerald-400' },
+                                          { label: 'Selected / Offer', status: 'Selected', dot: 'bg-purple-400' },
+                                          { label: 'Rejected', status: 'Rejected', dot: 'bg-rose-400' },
                                         ].map(item => (
                                           <button
                                             key={item.status}
@@ -795,23 +976,33 @@ export default function CandidatePipeline() {
                                             onClick={() => {
                                               updateCandidateStatus(cand.id, item.status);
                                               setOpenMoveMenuId(null);
-                                              if (item.status === 'Shortlisted' || item.status === 'Selected' || item.status === 'Offered') {
+                                              setSuccessBanner(`✓ Moved ${cand.name} to ${item.label}`);
+                                              setTimeout(() => setSuccessBanner(''), 4500);
+                                              if (item.status === 'Shortlisted' || item.status === 'Selected') {
                                                 confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
                                               }
                                             }}
-                                            className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-300 text-slate-700 dark:text-slate-300 font-medium transition flex items-center justify-between"
+                                            className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-300 text-slate-700 dark:text-slate-300 font-medium transition flex items-center space-x-2"
                                           >
-                                            <span>{item.label}</span>
+                                            <span className={`w-2 h-2 rounded-full ${item.dot}`} />
+                                            <span className="text-[11px] font-semibold">{item.label}</span>
                                           </button>
                                         ))}
                                       </div>
                                     )}
                                   </div>
 
-                                  <span className="text-indigo-600 dark:text-indigo-400 font-bold group-hover:translate-x-0.5 transition-transform flex items-center space-x-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenCandidate(cand);
+                                    }}
+                                    className="px-2 py-1 rounded-lg text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-500/20 transition flex items-center space-x-0.5"
+                                  >
                                     <span>Dossier</span>
                                     <ChevronRight className="w-3 h-3" />
-                                  </span>
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -843,7 +1034,7 @@ export default function CandidatePipeline() {
                       
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer transition" onClick={() => setSelectedCandidate(cand)}>
+                          <h3 className="text-base font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-300 cursor-pointer transition" onClick={() => handleOpenCandidate(cand)}>
                             {cand.name}
                           </h3>
 
@@ -953,7 +1144,7 @@ export default function CandidatePipeline() {
                       {/* Buttons */}
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => setSelectedCandidate(cand)}
+                          onClick={() => handleOpenCandidate(cand)}
                           className="px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-600/20 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-white border border-indigo-200 dark:border-indigo-500/30 text-xs font-bold transition flex items-center space-x-1.5 shadow-sm"
                         >
                           <Award className="w-3.5 h-3.5" />
@@ -977,7 +1168,7 @@ export default function CandidatePipeline() {
       {selectedCandidate && (
         <CandidateScorecardModal
           candidate={selectedCandidate}
-          onClose={() => setSelectedCandidate(null)}
+          onClose={handleCloseCandidateModal}
         />
       )}
 

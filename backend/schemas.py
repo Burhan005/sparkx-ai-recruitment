@@ -40,8 +40,11 @@ class CandidateApply(BaseModel):
     fraud_flags: Optional[List[str]] = []
 
 class CandidateStatusUpdate(BaseModel):
-    status: str # Shortlisted | Rejected | Under Review | Evaluated | Interview | Selected
+    status: str # Applied | Under Review | Shortlisted | Interview | Selected | Rejected
     hr_notes: Optional[str] = ""
+    recruiter_score: Optional[int] = None
+    rejection_reason: Optional[str] = None
+    rejection_category: Optional[str] = None
 
 class CandidateResponse(BaseModel):
     id: str
@@ -69,6 +72,9 @@ class CandidateResponse(BaseModel):
     skill_gaps: Optional[Dict[str, Any]]
     hr_notes: Optional[str]
     final_decision: Optional[str]
+    recruiter_score: Optional[int] = None
+    rejection_reason: Optional[str] = None
+    rejection_category: Optional[str] = None
     interview_scheduled_at: Optional[str] = None
     interview_meeting_url: Optional[str] = None
     interview_status: Optional[str] = "Applied"
@@ -78,6 +84,7 @@ class CandidateResponse(BaseModel):
     coding_score: Optional[int] = 0
     coding_submission: Optional[str] = None
     coding_results: Optional[Dict[str, Any]] = None
+    match_details: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True
@@ -214,7 +221,7 @@ class CandidateApplicationItem(BaseModel):
     applied_date: str
     status: str
     final_decision: str
-    match_score: int
+    match_score: Optional[int] = None
     experience_years: float
     skills: List[str]
     resume_filename: Optional[str] = None
@@ -222,6 +229,51 @@ class CandidateApplicationItem(BaseModel):
     interview_scheduled_at: Optional[str] = None
     interview_meeting_url: Optional[str] = None
     interview_status: Optional[str] = "Applied"
+    assessment_status: Optional[str] = "Pending"
+    coding_score: Optional[int] = None
+    recruiter_score: Optional[int] = None
+    rejection_reason: Optional[str] = None
+    rejection_category: Optional[str] = None
+    hr_notes: Optional[str] = ""
+    match_details: Optional[Dict[str, Any]] = None
+
+# ─── Resume-to-Job Matching Schemas ──────────────────────────────────────────
+class JobMatchRequest(BaseModel):
+    candidate_id: Optional[str] = None
+    name: Optional[str] = "Candidate"
+    skills: Optional[List[str]] = []
+    experience_years: Optional[float] = 0.0
+    job_role: Optional[str] = ""
+    resume_summary: Optional[str] = ""
+    resume_text: Optional[str] = ""
+    education: Optional[str] = ""
+
+class JobMatchResponse(BaseModel):
+    job_id: str
+    job_title: str
+    match_score: int
+    category_scores: Dict[str, Any] = {}
+    matched_skills: List[str] = []
+    missing_skills: List[str] = []
+    experience_relevance: str = ""
+    role_alignment: str = ""
+    explanation: str = ""
+
+class BatchJobMatchRequest(BaseModel):
+    candidate_id: Optional[str] = None
+    name: Optional[str] = "Candidate"
+    skills: Optional[List[str]] = []
+    experience_years: Optional[float] = 0.0
+    job_role: Optional[str] = ""
+    resume_summary: Optional[str] = ""
+    resume_text: Optional[str] = ""
+    education: Optional[str] = ""
+    candidate: Optional[Dict[str, Any]] = None
+
+class BatchJobMatchResponse(BaseModel):
+    matches: Dict[str, JobMatchResponse]
+
+
 
 # ─── 4-Category Technical Assessment Schemas ─────────────────────────────────
 class CodeRunRequest(BaseModel):
@@ -232,6 +284,8 @@ class CodeRunRequest(BaseModel):
     language: str = "javascript" # "python" | "javascript" | "java" | "cpp" | "typescript"
     code: str
     test_cases: Optional[List[Dict[str, Any]]] = None
+    custom_input: Optional[str] = None
+    is_custom_test: Optional[bool] = False
 
 class CodeRunResponse(BaseModel):
     all_passed: bool
@@ -240,6 +294,9 @@ class CodeRunResponse(BaseModel):
     test_results: List[Dict[str, Any]]
     console_output: str
     execution_ms: float
+    memory_mb: Optional[float] = 28.5
+    compilation_error: Optional[str] = None
+    runtime_error: Optional[str] = None
 
 class AssessmentSubmitRequest(BaseModel):
     candidate_id: str
@@ -252,8 +309,9 @@ class AssessmentSubmitRequest(BaseModel):
 class AssessmentSubmitResponse(BaseModel):
     success: bool
     candidate_id: str
-    scores: Dict[str, Any]
     status: str
     final_decision: str
-    feedback_summary: str
+    scores: Optional[Dict[str, Any]] = None
+    feedback_summary: Optional[str] = None
+    message: Optional[str] = "Assessment submitted successfully."
 

@@ -223,15 +223,23 @@ export function generateCandidateEvaluation({
     communicationScore = Math.min(98, Math.max(25, Math.round(30 + Math.min(60, totalWords * 1.2))));
   }
 
-  const problemSolvingScore = Math.min(98, Math.max(20, Math.round((technicalScore * 0.7) + (codeScore * 0.3))));
-  const jobSkillsScore = Math.round((technicalScore * 0.5) + (codeScore * 0.3) + (communicationScore * 0.2));
-  
-  const overall = Math.round(
-    (jobSkillsScore * 0.35) + 
-    (technicalScore * 0.35) + 
-    (communicationScore * 0.15) + 
-    (integrityScore * 0.15)
-  );
+  let problemSolvingScore = 0;
+  let jobSkillsScore = 0;
+  let overall = 0;
+
+  if (technicalScore > 0 || codeScore > 0) {
+    problemSolvingScore = Math.min(98, Math.max(10, Math.round((technicalScore * 0.7) + (codeScore * 0.3))));
+    jobSkillsScore = Math.round((technicalScore * 0.5) + (codeScore * 0.3) + (communicationScore * 0.2));
+    overall = Math.round(
+      (jobSkillsScore * 0.4) + 
+      (technicalScore * 0.4) + 
+      (communicationScore * 0.2)
+    );
+  } else {
+    problemSolvingScore = 0;
+    jobSkillsScore = 0;
+    overall = 0;
+  }
 
   // Skill Gap Analysis
   const candidateSkillsLower = (resumeSkills || []).map(s => s.toLowerCase());

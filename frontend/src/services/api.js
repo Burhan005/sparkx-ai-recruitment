@@ -2,7 +2,7 @@
 // Connects the React frontend to the Python FastAPI backend.
 // ALL data comes from the backend — zero hardcoded data in this file.
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:8000/api';
 
 // ─── Normalizers: snake_case (backend) → camelCase (frontend) ─────────────────
 export function normalizeJob(j) {
@@ -53,21 +53,67 @@ export function normalizeCandidate(c) {
     interviewScheduledAt: c.interview_scheduled_at ?? c.interviewScheduledAt ?? null,
     interviewMeetingUrl:  c.interview_meeting_url  ?? c.interviewMeetingUrl  ?? null,
     interviewStatus:      c.interview_status       ?? c.interviewStatus      ?? 'Applied',
+    recruiterScore:       c.recruiter_score        != null ? c.recruiter_score : (c.recruiterScore ?? null),
+    rejectionReason:      c.rejection_reason       ?? c.rejectionReason      ?? null,
+    rejectionCategory:    c.rejection_category     ?? c.rejectionCategory    ?? null,
+    matchDetails:         c.match_details          ?? c.matchDetails         ?? null,
     emailLogs:            c.email_logs             ?? c.emailLogs            ?? [],
   };
 }
 
+export const authEventBus = {
+  listeners: [],
+  on(fn) {
+    this.listeners.push(fn);
+    return () => { this.listeners = this.listeners.filter(l => l !== fn); };
+  },
+  emit(event, data) {
+    this.listeners.forEach(fn => {
+      try { fn(event, data); } catch (e) { console.error('authEventBus error:', e); }
+    });
+  }
+};
+
 export function getAuthHeaders(extra = {}) {
   const token = localStorage.getItem('sparkx_token');
-  const headers = { 'Content-Type': 'application/json', ...extra };
+  const headers = { ...extra };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
   return headers;
 }
 
+export async function authFetch(url, options = {}) {
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  const defaultHeaders = isFormData ? {} : { 'Content-Type': 'application/json' };
+  const headers = getAuthHeaders({ ...defaultHeaders, ...(options.headers || {}) });
+  const res = await fetch(url, { ...options, headers });
+  if (res.status === 401) {
+    localStorage.removeItem('sparkx_token');
+    authEventBus.emit('UNAUTHORIZED', { url, status: 401 });
+  } else if (res.status === 403) {
+    authEventBus.emit('FORBIDDEN', { url, status: 403 });
+  }
+  return res;
+}
+
 export const api = {
-  // ─── Authentication & Password Recovery ──────────────────────────────────────
+  // ─── Authentication & Session Validation ────────────────────────────────────
+  async getCurrentUser() {
+    const token = localStorage.getItem('sparkx_token');
+    if (!token) return null;
+    try {
+      const res = await authFetch(`${API_BASE_URL}/auth/me`, {
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCurrentUser error:', err.message);
+      return null;
+    }
+  },
+
   async login(email, password) {
     try {
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -129,9 +175,8 @@ export const api = {
 
   async updateProfile(userId, profileData) {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/profile/${userId}`, {
+      const res = await authFetch(`${API_BASE_URL}/auth/profile/${userId}`, {
         method: 'PUT',
-        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: profileData.name,
           phone: profileData.phone,
@@ -202,7 +247,7 @@ export const api = {
   // ─── Jobs ─────────────────────────────────────────────────────────────────
   async getJobs() {
     try {
-      const res = await fetch(`${API_BASE_URL}/jobs`, { signal: AbortSignal.timeout(4000) });
+      const res = await authFetch(`${API_BASE_URL}/jobs`, { signal: AbortSignal.timeout(4000) });
       if (!res.ok) throw new Error('Failed to fetch jobs');
       const data = await res.json();
       return Array.isArray(data) ? data.map(normalizeJob) : [];
@@ -220,16 +265,16 @@ export const api = {
         location:             jobData.location || 'Remote',
         min_experience_years: Number(jobData.minExperienceYears ?? 2),
         education:            jobData.education,
-        languages:            jobData.languages || ['English'],
+        languages:            Array.isArray(jobData.languages) ? jobData.languages : ['English'],
         required_skills:      jobData.requiredSkills || [],
         optional_criteria:    jobData.optionalCriteria || '',
         description:          jobData.description,
         questions:            jobData.questions || [],
-        coding_assessment:    jobData.codingAssessment || null,
+        coding_assessment:    jobData.codingAssessment || jobData.coding_assessment || null,
+        coding_difficulty:    jobData.codingDifficulty || jobData.coding_difficulty || null,
       };
-      const res = await fetch(`${API_BASE_URL}/jobs`, {
+      const res = await authFetch(`${API_BASE_URL}/jobs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(5000),
       });
@@ -241,10 +286,75 @@ export const api = {
     }
   },
 
+  async matchJob(jobId, candidateData) {
+    try {
+      const payload = {
+        name: candidateData.name || '',
+        job_role: candidateData.jobRole || candidateData.job_role || '',
+        experience_years: Number(candidateData.experienceYears ?? candidateData.experience_years ?? 0),
+        skills: candidateData.skills || [],
+        education: candidateData.education || '',
+        resume_summary: candidateData.resumeSummary || candidateData.resume_summary || '',
+        resume_text: candidateData.resumeText || candidateData.resume_text || '',
+      };
+      const res = await authFetch(`${API_BASE_URL}/jobs/${jobId}/match`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error('Match evaluation failed');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] matchJob failed:', err.message);
+      return null;
+    }
+  },
+
+  async batchMatchJobs(candidateData) {
+    try {
+      const payload = {
+        candidate: {
+          name: candidateData.name || '',
+          job_role: candidateData.jobRole || candidateData.job_role || '',
+          experience_years: Number(candidateData.experienceYears ?? candidateData.experience_years ?? 0),
+          skills: candidateData.skills || [],
+          education: candidateData.education || '',
+          resume_summary: candidateData.resumeSummary || candidateData.resume_summary || '',
+          resume_text: candidateData.resumeText || candidateData.resume_text || '',
+        }
+      };
+      const res = await authFetch(`${API_BASE_URL}/jobs/batch-match`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(20000),
+      });
+      if (!res.ok) throw new Error('Batch match evaluation failed');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] batchMatchJobs failed:', err.message);
+      return null;
+    }
+  },
+
   // ─── Candidates ───────────────────────────────────────────────────────────
+  async parseResume(formData) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/parse-resume`, {
+        method: 'POST',
+        body: formData,
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) throw new Error('Resume parsing failed');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] parseResume error:', err.message);
+      return null;
+    }
+  },
+
   async getCandidates() {
     try {
-      const res = await fetch(`${API_BASE_URL}/candidates`, { signal: AbortSignal.timeout(4000) });
+      const res = await authFetch(`${API_BASE_URL}/candidates`, { signal: AbortSignal.timeout(4000) });
       if (!res.ok) throw new Error('Failed to fetch candidates');
       const data = await res.json();
       return Array.isArray(data) ? data.map(normalizeCandidate) : [];
@@ -270,9 +380,8 @@ export const api = {
         resume_text:     candData.resumeText || null,
         fraud_flags:     candData.fraudFlags || [],
       };
-      const res = await fetch(`${API_BASE_URL}/candidates/apply`, {
+      const res = await authFetch(`${API_BASE_URL}/candidates/apply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(6000),
       });
@@ -287,7 +396,7 @@ export const api = {
   async getMyApplications(email) {
     try {
       if (!email) return [];
-      const res = await fetch(`${API_BASE_URL}/candidates/my-applications?email=${encodeURIComponent(email)}`, {
+      const res = await authFetch(`${API_BASE_URL}/candidates/my-applications?email=${encodeURIComponent(email)}`, {
         signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) throw new Error('Failed to fetch my applications');
@@ -310,6 +419,12 @@ export const api = {
         interviewScheduledAt: app.interview_scheduled_at,
         interviewMeetingUrl: app.interview_meeting_url,
         interviewStatus: app.interview_status || 'Applied',
+        assessmentStatus: app.assessment_status || (app.status && !['Applied', 'Screening'].includes(app.status) ? 'Completed' : 'Pending'),
+        codingScore: app.coding_score != null ? app.coding_score : null,
+        recruiterScore: app.recruiter_score != null ? app.recruiter_score : (app.recruiterScore ?? null),
+        rejectionReason: app.rejection_reason ?? app.rejectionReason ?? null,
+        rejectionCategory: app.rejection_category ?? app.rejectionCategory ?? null,
+        matchDetails: app.match_details ?? app.matchDetails ?? null,
       })) : [];
     } catch (err) {
       console.warn('[API] getMyApplications failed:', err.message);
@@ -317,12 +432,21 @@ export const api = {
     }
   },
 
-  async updateCandidateStatus(candidateId, status, hrNotes = '') {
+  async updateCandidateStatus(candidateId, status, hrNotes = '', recruiterScore = null, rejectionReason = null, rejectionCategory = null) {
     try {
-      const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/status`, {
+      const payload = { status, hr_notes: hrNotes };
+      if (recruiterScore !== null && recruiterScore !== undefined && recruiterScore !== '') {
+        payload.recruiter_score = Number(recruiterScore);
+      }
+      if (rejectionReason !== null && rejectionReason !== undefined) {
+        payload.rejection_reason = rejectionReason;
+      }
+      if (rejectionCategory !== null && rejectionCategory !== undefined) {
+        payload.rejection_category = rejectionCategory;
+      }
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/status`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, hr_notes: hrNotes }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(4000),
       });
       return res.ok ? await res.json() : null;
@@ -331,9 +455,8 @@ export const api = {
 
   async scheduleInterview(candidateId, scheduledAt, notes = '', meetingUrl = '') {
     try {
-      const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/schedule`, {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/schedule`, {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify({ 
           scheduled_at: scheduledAt, 
           notes,
@@ -351,9 +474,8 @@ export const api = {
 
   async sendEmail(candidateId, templateType, customMessage = '') {
     try {
-      const res = await fetch(`${API_BASE_URL}/candidates/${candidateId}/send-email`, {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/send-email`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template_type: templateType, custom_message: customMessage }),
         signal: AbortSignal.timeout(4000),
       });
@@ -367,7 +489,7 @@ export const api = {
 
   async getAIStatus() {
     try {
-      const res = await fetch(`${API_BASE_URL}/interview/ai-status`, {
+      const res = await authFetch(`${API_BASE_URL}/interview/ai-status`, {
         signal: AbortSignal.timeout(3000)
       });
       if (!res.ok) throw new Error('AI status fetch failed');
@@ -379,9 +501,8 @@ export const api = {
 
   async updateAIConfig(provider, apiKey) {
     try {
-      const res = await fetch(`${API_BASE_URL}/interview/ai-config`, {
+      const res = await authFetch(`${API_BASE_URL}/interview/ai-config`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, api_key: apiKey }),
         signal: AbortSignal.timeout(10000)
       });
@@ -394,9 +515,8 @@ export const api = {
 
   async generateCandidateQuestions({ jobId, candidateId, candidateName, candidateSkills = [], experienceYears = 2 }) {
     try {
-      const res = await fetch(`${API_BASE_URL}/interview/candidate-questions`, {
+      const res = await authFetch(`${API_BASE_URL}/interview/candidate-questions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           job_id: jobId,
           candidate_id: candidateId,
@@ -421,9 +541,8 @@ export const api = {
 
   async evaluateAdaptiveAnswer(questionPrompt, candidateAnswer, idealKeywords = [], followUpVague = null, followUpExpert = null) {
     try {
-      const res = await fetch(`${API_BASE_URL}/interview/adaptive-question`, {
+      const res = await authFetch(`${API_BASE_URL}/interview/adaptive-question`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question_prompt: questionPrompt,
           candidate_answer: candidateAnswer,
@@ -443,7 +562,7 @@ export const api = {
   // ─── Presets ──────────────────────────────────────────────────────────────
   async getPresets() {
     try {
-      const res = await fetch(`${API_BASE_URL}/presets`, { signal: AbortSignal.timeout(3000) });
+      const res = await authFetch(`${API_BASE_URL}/presets`, { signal: AbortSignal.timeout(3000) });
       return res.ok ? await res.json() : [];
     } catch { return []; }
   },
@@ -451,9 +570,8 @@ export const api = {
   // ─── Telemetry ────────────────────────────────────────────────────────────
   async logTelemetry(candidateId, event) {
     try {
-      await fetch(`${API_BASE_URL}/interview/telemetry`, {
+      await authFetch(`${API_BASE_URL}/interview/telemetry`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ candidate_id: candidateId, timestamp: event.timestamp, event_type: event.type, description: event.description, severity: event.severity || 'medium' }),
         signal: AbortSignal.timeout(2000),
       });
@@ -463,9 +581,8 @@ export const api = {
   // ─── Evaluation ───────────────────────────────────────────────────────────
   async evaluateInterview(payload) {
     try {
-      const res = await fetch(`${API_BASE_URL}/interview/evaluate`, {
+      const res = await authFetch(`${API_BASE_URL}/interview/evaluate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(4000),
       });
@@ -477,8 +594,7 @@ export const api = {
   async getAssessment(candidateId, jobId) {
     try {
       const url = `${API_BASE_URL}/assessment/${candidateId}${jobId ? `?job_id=${jobId}` : ''}`;
-      const res = await fetch(url, {
-        headers: getAuthHeaders(),
+      const res = await authFetch(url, {
         signal: AbortSignal.timeout(30000),
       });
       if (!res.ok) throw new Error(`Failed to load assessment: ${res.status}`);
@@ -491,9 +607,8 @@ export const api = {
 
   async runCodeSandbox(payload) {
     try {
-      const res = await fetch(`${API_BASE_URL}/assessment/run-code`, {
+      const res = await authFetch(`${API_BASE_URL}/assessment/run-code`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(12000),
       });
@@ -514,9 +629,8 @@ export const api = {
 
   async submitAssessment(candidateId, payload) {
     try {
-      const res = await fetch(`${API_BASE_URL}/assessment/${candidateId}/submit`, {
+      const res = await authFetch(`${API_BASE_URL}/assessment/${candidateId}/submit`, {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(30000),
       });

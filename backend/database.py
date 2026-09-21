@@ -38,12 +38,16 @@ if is_pg and is_postgres_running("127.0.0.1", 5432):
         logger.info("Connected to PostgreSQL database on 127.0.0.1:5432.")
     except Exception as err:
         logger.warning(f"PostgreSQL authentication failed ({err}). Falling back to local SQLite.")
-        DATABASE_URL = "sqlite:///./sparkx_recruitment.db"
+        _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+        _SQLITE_PATH = os.path.join(_BACKEND_DIR, "sparkx_recruitment.db").replace("\\", "/")
+        DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
         engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
     if is_pg:
         logger.info("PostgreSQL service is not active on port 5432. Automatically running on local SQLite database 'sparkx_recruitment.db'.")
-    DATABASE_URL = "sqlite:///./sparkx_recruitment.db"
+    _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+    _SQLITE_PATH = os.path.join(_BACKEND_DIR, "sparkx_recruitment.db").replace("\\", "/")
+    DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -97,7 +101,11 @@ def ensure_schema_columns():
                     "coding_language": "VARCHAR",
                     "coding_score": "INTEGER DEFAULT 0",
                     "coding_submission": "TEXT",
-                    "coding_results": "JSON DEFAULT '{}'"
+                    "coding_results": "JSON DEFAULT '{}'",
+                    "recruiter_score": "INTEGER",
+                    "rejection_reason": "TEXT",
+                    "rejection_category": "VARCHAR",
+                    "match_details": "JSON DEFAULT '{}'"
                 }
                 for col, col_type in new_cand_cols.items():
                     if col not in cand_cols:

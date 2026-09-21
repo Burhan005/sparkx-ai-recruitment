@@ -1,4 +1,4 @@
-from models.db_models import JobModel, CandidateModel, IntegrityLogModel
+from models.db_models import JobModel, CandidateModel, IntegrityLogModel, UserModel
 from schemas import (
     JobCreate, JobResponse,
     CandidateApply, CandidateResponse, CandidateStatusUpdate,
