@@ -7,7 +7,19 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        mono: ["'JetBrains Mono'", "'Fira Code'", "'Cascadia Code'", "Consolas", "monospace"],
+        sans: ["'Inter'", "-apple-system", "BlinkMacSystemFont", "sans-serif"]
+      },
       colors: {
+        ide: {
+          bg: '#0B0F19',
+          surface: '#111827',
+          sidebar: '#0D111D',
+          border: '#1E293B',
+          header: '#070A12',
+          active: '#1E2235'
+        },
         brand: {
           50:  '#eef2ff',
           100: '#e0e7ff',

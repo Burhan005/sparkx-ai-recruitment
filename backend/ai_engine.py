@@ -1405,6 +1405,20 @@ def _generate_10_dynamic_mcqs(role_title: str, job_skills: List[str], domain_cat
                 }
             ]
 
+def _sanitize_english_text(text: Any, fallback: str = "") -> str:
+    """Ensures string contains only clean English / ASCII and standard punctuation without Devanagari or corrupted characters."""
+    if text is None:
+        return fallback
+    s = str(text).strip()
+    if not s:
+        return fallback
+    # Detect Devanagari Unicode block (\u0900-\u097F) and strip/replace if contaminated
+    if re.search(r'[\u0900-\u097F]', s):
+        # Remove devanagari characters
+        cleaned = re.sub(r'[\u0900-\u097F]+', '', s).strip()
+        return cleaned if len(cleaned) > 5 else fallback
+    return s
+
 def _normalize_bundle(
     raw_bundle: Dict[str, Any],
     allowed_langs: List[str],
@@ -1430,7 +1444,8 @@ def _normalize_bundle(
     seen_questions = set()
 
     for q in raw_mcqs:
-        q_text = str(q.get("question", "")).strip().lower()
+        raw_q_text = _sanitize_english_text(q.get("question", ""))
+        q_text = raw_q_text.strip().lower()
         if q_text and q_text not in seen_questions:
             seen_questions.add(q_text)
             merged_mcqs.append(q)
@@ -1438,7 +1453,8 @@ def _normalize_bundle(
     for q_supp in dynamic_supplement:
         if len(merged_mcqs) >= 10:
             break
-        q_text = str(q_supp.get("question", "")).strip().lower()
+        raw_q_text = _sanitize_english_text(q_supp.get("question", ""))
+        q_text = raw_q_text.strip().lower()
         if q_text not in seen_questions:
             seen_questions.add(q_text)
             merged_mcqs.append(q_supp)
@@ -1452,24 +1468,25 @@ def _normalize_bundle(
             for opt_idx, opt_val in enumerate(raw_opts):
                 key = chr(65 + opt_idx)
                 val_clean = re.sub(r'^[A-D]\)\s*|^[A-D]:\s*', '', str(opt_val)).strip()
-                opts[key] = val_clean
+                opts[key] = _sanitize_english_text(val_clean, f"Option {key}")
         elif isinstance(raw_opts, dict):
             for k, v in raw_opts.items():
                 clean_k = k.strip().upper()[:1]
                 if clean_k in ["A", "B", "C", "D"]:
-                    opts[clean_k] = str(v).strip()
+                    opts[clean_k] = _sanitize_english_text(v, f"Option {clean_k}")
 
         correct = q.get("correct_option") or q.get("correct_answer") or "A"
         match = re.search(r'\b([A-D])\b', str(correct).upper())
         correct_key = match.group(1) if match else "A"
         mcq_solutions[q_id] = correct_key
 
+        fallback_q = f"Professional Knowledge Question on {job_skills[0] if job_skills else role_title}"
         normalized_mcqs.append({
             "id": q_id,
-            "question": q.get("question", f"Professional Knowledge Question on {job_skills[0] if job_skills else role_title}"),
+            "question": _sanitize_english_text(q.get("question"), fallback_q),
             "options": opts if len(opts) >= 2 else {"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"},
             "difficulty": q.get("difficulty", "Mid-Level"),
-            "explanation": q.get("explanation", "")
+            "explanation": _sanitize_english_text(q.get("explanation"), "")
         })
 
     # Scenario normalization
@@ -1483,9 +1500,9 @@ def _normalize_bundle(
 
     normalized_scenario = {
         "id": scen.get("id", "scen_prod_01"),
-        "title": scen.get("title", f"Real-World Scenario: {role_title}"),
-        "prompt": scen_prompt or f"Formulate an operational solution for {role_title}.",
-        "guidance": scen_guidance or "Address root cause triage, core trade-offs, and implementation milestones.",
+        "title": _sanitize_english_text(scen.get("title"), f"Real-World Scenario: {role_title}"),
+        "prompt": _sanitize_english_text(scen_prompt, f"Formulate an operational solution for {role_title}."),
+        "guidance": _sanitize_english_text(scen_guidance, "Address root cause triage, core trade-offs, and implementation milestones."),
         "difficulty": scen.get("difficulty", "Senior"),
         "ideal_keywords": scen.get("ideal_keywords") or job_skills or ["analysis", "strategy", "execution"]
     }
@@ -1638,14 +1655,14 @@ INSERT INTO employees (id, name, department_id, salary, status) VALUES
 
     normalized_hands = {
         "id": hands.get("id", "hands_on_01"),
-        "title": hands.get("title", f"Practical Task: {role_title}"),
-        "instructions": hands.get("instructions") or hands.get("objective") or f"Complete the practical assignment for {role_title}.",
+        "title": _sanitize_english_text(hands.get("title"), f"Practical Task: {role_title}"),
+        "instructions": _sanitize_english_text(hands.get("instructions") or hands.get("objective"), f"Complete the practical assignment for {role_title}."),
         "difficulty": hands.get("difficulty", "Mid-Level"),
         "is_coding": is_coding,
         "task_type": "code" if is_coding else "practical",
         "supported_languages": [l for l in allowed_langs if l in starter_code] if is_coding else [],
         "starter_code": starter_code if is_coding else {},
-        "deliverable_template": deliverable_template,
+        "deliverable_template": _sanitize_english_text(deliverable_template),
         "schema_ddl": sql_schema_ddl if ("sql" in allowed_langs or is_coding) else "",
         "expected_rows": sql_expected_rows if ("sql" in allowed_langs or is_coding) else [],
         "examples": hands_examples if is_coding else [],
@@ -1739,14 +1756,14 @@ INSERT INTO employees (id, name, department_id, salary, status) VALUES
 
     normalized_trouble = {
         "id": trouble.get("id", "trouble_01"),
-        "title": trouble.get("title", f"Troubleshooting Challenge: {role_title}"),
-        "bug_description": trouble_desc or f"Diagnose and resolve the operational defect in this {role_title} task.",
-        "anomaly_data": anomaly_data,
+        "title": _sanitize_english_text(trouble.get("title"), f"Troubleshooting Challenge: {role_title}"),
+        "bug_description": _sanitize_english_text(trouble_desc, f"Diagnose and resolve the operational defect in this {role_title} task."),
+        "anomaly_data": _sanitize_english_text(anomaly_data),
         "difficulty": trouble.get("difficulty", "Mid-Level"),
         "is_coding": is_coding,
         "task_type": "code" if is_coding else "troubleshooting",
         "broken_code": broken_code if is_coding else {},
-        "resolution_guidance": trouble.get("resolution_guidance") or "Identify the exact root cause, state the defect, and draft the correcting solution.",
+        "resolution_guidance": _sanitize_english_text(trouble.get("resolution_guidance"), "Identify the exact root cause, state the defect, and draft the correcting solution."),
         "examples": trouble_examples if is_coding else [],
         "constraints": trouble_constraints if is_coding else [],
         "function_signature": trouble_signatures if is_coding else {},
@@ -2262,6 +2279,7 @@ def synthesize_technical_assessment_bundle(
     if is_coding:
         llm_prompt = (
             f"You are a Principal Staff Engineer.\n"
+            f"CRITICAL REQUIREMENT: ALL text content (questions, options, explanations, scenarios, prompts, instructions, bugs, descriptions) MUST be written 100% in English only. Do NOT generate Hindi, Hinglish, or any other language under any circumstances.\n"
             f"Generate a 100% dynamic, job-tailored 4-category Technical Assessment for:\n"
             f"Role Title: {role_title}\n"
             f"Required Skills & Technologies: {skills_str}\n"
@@ -2271,9 +2289,9 @@ def synthesize_technical_assessment_bundle(
             f"Allowed Programming Technologies: {', '.join(allowed_langs)}\n"
             f"Candidate Variation Seed: {seed_token}\n\n"
             f"Generate strictly valid JSON with these 4 keys:\n"
-            f"1. \"technical_mcqs\": Array of 10 multiple-choice questions specifically testing {skills_str} (covering architecture, concurrency, database indexing, protocols, memory, Linux, cloud, and distributed systems).\n"
+            f"1. \"technical_mcqs\": Array of 10 multiple-choice questions in English specifically testing {skills_str} (covering architecture, concurrency, database indexing, protocols, memory, Linux, cloud, and distributed systems).\n"
             f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
-            f"2. \"scenario\": A realistic production incident or architecture design problem tailored to {role_title}.\n"
+            f"2. \"scenario\": A realistic production incident or architecture design problem in English tailored to {role_title}.\n"
             f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
             f"3. \"hands_on\": Practical implementation challenge tailored to this role.\n"
             f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"supported_languages\": {json.dumps(allowed_langs)}, \"starter_code\": {{\"python\": \"def solve(data):\\n    pass\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n"
@@ -2284,6 +2302,7 @@ def synthesize_technical_assessment_bundle(
     else:
         llm_prompt = (
             f"You are a Senior Executive Director of Talent Assessment for {domain_category.upper()}.\n"
+            f"CRITICAL REQUIREMENT: ALL text content (questions, options, explanations, scenarios, prompts, instructions, bugs, descriptions) MUST be written 100% in English only. Do NOT generate Hindi, Hinglish, or any other language under any circumstances.\n"
             f"Generate a 100% dynamic, job-tailored 4-category Professional Assessment for:\n"
             f"Role Title: {role_title}\n"
             f"Required Skills & Core Competencies: {skills_str}\n"
@@ -2294,18 +2313,18 @@ def synthesize_technical_assessment_bundle(
             f"CRITICAL REQUIREMENT: This is a NON-TECHNICAL / PROFESSIONAL role ({domain_category}).\n"
             f"DO NOT generate programming code, coding challenges, compilers, or developer tech like Python/AWS/SQL.\n"
             f"Generate strictly valid JSON with these 4 keys:\n"
-            f"1. \"technical_mcqs\": Array of 10 professional knowledge MCQs specifically testing {skills_str} principles, regulations, or standards.\n"
+            f"1. \"technical_mcqs\": Array of 10 professional knowledge MCQs specifically testing {skills_str} principles, regulations, or standards in English.\n"
             f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
-            f"2. \"scenario\": A realistic workplace, business, or operational crisis tailored to {role_title}.\n"
+            f"2. \"scenario\": A realistic workplace, business, or operational crisis in English tailored to {role_title}.\n"
             f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
-            f"3. \"hands_on\": Practical professional assignment (NOT write code) appropriate to this profession (e.g. balance sheet reconciliation, drafting a PIP, campaign budget model, executive sales pitch).\n"
+            f"3. \"hands_on\": Practical professional assignment (NOT write code) in English appropriate to this profession (e.g. balance sheet reconciliation, drafting a PIP, campaign budget model, executive sales pitch).\n"
             f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"deliverable_template\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": false, \"task_type\": \"practical\"}}\n"
-            f"4. \"troubleshooting\": Realistic professional defect, anomaly, or discrepancy that someone in this role must diagnose and resolve.\n"
+            f"4. \"troubleshooting\": Realistic professional defect, anomaly, or discrepancy in English that someone in this role must diagnose and resolve.\n"
             f"   Object: {{\"id\": \"troubleshooting-1\", \"title\": \"...\", \"bug_description\": \"...\", \"anomaly_data\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": false, \"task_type\": \"troubleshooting\", \"resolution_guidance\": \"...\"}}\n\n"
             f"Output strictly valid JSON only with NO markdown fences."
         )
 
-    llm_res = call_llm(llm_prompt, "You are an expert talent assessment director. Output strictly valid JSON only.", max_tokens=4096)
+    llm_res = call_llm(llm_prompt, "You are an expert talent assessment director. Output strictly valid JSON only. All text must be in English exclusively.", max_tokens=4096)
     if llm_res:
         parsed = parse_llm_json(llm_res)
         if parsed and isinstance(parsed, dict):
@@ -2475,9 +2494,10 @@ def synthesize_candidate_interview_questions(
     # 1. Primary: Gemini LLM Live Generation (when GEMINI_API_KEY is configured)
     if is_coding:
         llm_prompt = (
-            f"Generate 3 highly realistic, rigorous technical interview questions for candidate '{candidate_name}' "
+            f"Generate 3 highly realistic, rigorous technical interview questions in English only for candidate '{candidate_name}' "
             f"applying for the position '{role_title}' with {experience_years} years of experience. "
             f"Job Required Skills: {skills_str}. Candidate Background Skills: {cand_skills_str}.\n"
+            f"CRITICAL: ALL text MUST be in 100% English. Do NOT use Hindi or any other language.\n"
             f"Requirements:\n"
             f"- Question 1: Core runtime, concurrency, memory, or async data flow tailored to {p_skill}.\n"
             f"- Question 2: Distributed system design, modular integration, and failure modes with {s_skill}.\n"
@@ -2485,13 +2505,13 @@ def synthesize_candidate_interview_questions(
             f"Return strictly a JSON array of 3 objects with keys: id (q1, q2, q3), type, prompt, ideal_keywords (array of strings), "
             f"follow_up_vague (string), follow_up_expert (string). No markdown backticks."
         )
-        system_role = "You are a Principal Staff Engineer conducting technical interviews at top tech companies. Output valid JSON only."
+        system_role = "You are a Principal Staff Engineer conducting technical interviews at top tech companies. Output valid JSON in English only."
     else:
         llm_prompt = (
-            f"Generate 3 highly realistic, rigorous professional interview questions for candidate '{candidate_name}' "
+            f"Generate 3 highly realistic, rigorous professional interview questions in English only for candidate '{candidate_name}' "
             f"applying for the non-technical / business role '{role_title}' (domain: {domain_category.upper()}) with {experience_years} years of experience. "
             f"Job Required Skills: {skills_str}. Candidate Background Skills: {cand_skills_str}.\n"
-            f"CRITICAL: Do NOT generate programming or software coding questions. Focus on business operations, strategy, regulatory compliance, metrics, and problem solving.\n"
+            f"CRITICAL: ALL text MUST be in 100% English. Do NOT use Hindi or any other language. Do NOT generate programming or software coding questions. Focus on business operations, strategy, regulatory compliance, metrics, and problem solving.\n"
             f"Requirements:\n"
             f"- Question 1: Core domain competence, frameworks, and practical methodology tailored to {p_skill}.\n"
             f"- Question 2: Strategic problem solving, stakeholder management, or execution with {s_skill}.\n"
@@ -2499,7 +2519,7 @@ def synthesize_candidate_interview_questions(
             f"Return strictly a JSON array of 3 objects with keys: id (q1, q2, q3), type, prompt, ideal_keywords (array of strings), "
             f"follow_up_vague (string), follow_up_expert (string). No markdown backticks."
         )
-        system_role = f"You are an Executive Hiring Director evaluating top candidates in {domain_category.upper()}. Output valid JSON only."
+        system_role = f"You are an Executive Hiring Director evaluating top candidates in {domain_category.upper()}. Output valid JSON in English only."
 
     llm_res = call_gemini_llm(llm_prompt, system_role)
     if llm_res:

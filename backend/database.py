@@ -35,6 +35,16 @@ if is_pg and is_postgres_running("127.0.0.1", 5432):
             pool_pre_ping=True,
             connect_args={"connect_timeout": 3}
         )
+        # Verify the connection; if the target database does not exist, fall back to SQLite
+        try:
+            with engine.connect() as _conn:
+                pass
+        except Exception as conn_err:
+            logger.warning(f"PostgreSQL DB connection failed ({conn_err}). Falling back to local SQLite.")
+            _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+            _SQLITE_PATH = os.path.join(_BACKEND_DIR, "sparkx_recruitment.db").replace('\\', '/')
+            DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
+            engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
         logger.info("Connected to PostgreSQL database on 127.0.0.1:5432.")
     except Exception as err:
         logger.warning(f"PostgreSQL authentication failed ({err}). Falling back to local SQLite.")

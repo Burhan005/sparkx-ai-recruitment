@@ -24,27 +24,33 @@ import {
   Sliders,
   Database,
   Table,
-  Copy
+  Copy,
+  Sun,
+  Moon,
+  ExternalLink,
+  ShieldCheck,
+  Zap,
+  GripHorizontal
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const RUNTIME_METADATA = {
-  c: { label: 'C', version: 'GCC 11.4 (C17)', monacoLang: 'c', engine: 'Native GCC' },
-  cpp: { label: 'C++', version: 'GCC 11.4 (C++20)', monacoLang: 'cpp', engine: 'Native GCC' },
-  csharp: { label: 'C#', version: '.NET 8.0 (C# 12)', monacoLang: 'csharp', engine: 'Roslyn / CLR' },
-  vb: { label: 'VB.NET', version: '.NET 8.0 (VB)', monacoLang: 'vb', engine: 'CLR Engine' },
-  java: { label: 'Java', version: 'OpenJDK 17 LTS', monacoLang: 'java', engine: 'JVM' },
-  python: { label: 'Python', version: 'Python 3.11.8', monacoLang: 'python', engine: 'C-Python Sandbox' },
-  javascript: { label: 'JavaScript (Node.js)', version: 'Node.js v20.11.0 LTS', monacoLang: 'javascript', engine: 'V8 Isolated VM' },
-  typescript: { label: 'TypeScript', version: 'TypeScript 5.3.3', monacoLang: 'typescript', engine: 'Node.js / TSC' },
-  go: { label: 'Go', version: 'Go 1.22 LTS', monacoLang: 'go', engine: 'Go Runtime' },
-  rust: { label: 'Rust', version: 'Rust 1.77 (Edition 2021)', monacoLang: 'rust', engine: 'LLVM Backend' },
-  php: { label: 'PHP', version: 'PHP 8.3 CLI', monacoLang: 'php', engine: 'Zend Engine' },
-  ruby: { label: 'Ruby', version: 'Ruby 3.3.0', monacoLang: 'ruby', engine: 'YARV VM' },
-  kotlin: { label: 'Kotlin', version: 'Kotlin 1.9.22', monacoLang: 'kotlin', engine: 'Kotlin / JVM' },
-  swift: { label: 'Swift', version: 'Swift 5.10', monacoLang: 'swift', engine: 'Swift LLVM' },
-  sql: { label: 'SQL (Relational Engine)', version: 'SQLite 3.50 Native Sandbox', monacoLang: 'sql', engine: 'Relational Database Engine' },
-  mongodb: { label: 'MongoDB (NoSQL)', version: 'MongoDB 7.0 / MQL', monacoLang: 'javascript', engine: 'Document Aggregation Pipeline' }
+  c: { label: 'C', version: 'GCC 11.4 (C17)', monacoLang: 'c', engine: 'Native GCC', ext: '.c' },
+  cpp: { label: 'C++', version: 'GCC 11.4 (C++20)', monacoLang: 'cpp', engine: 'Native GCC', ext: '.cpp' },
+  csharp: { label: 'C#', version: '.NET 8.0 (C# 12)', monacoLang: 'csharp', engine: 'Roslyn / CLR', ext: '.cs' },
+  vb: { label: 'VB.NET', version: '.NET 8.0 (VB)', monacoLang: 'vb', engine: 'CLR Engine', ext: '.vb' },
+  java: { label: 'Java', version: 'OpenJDK 17 LTS', monacoLang: 'java', engine: 'JVM', ext: '.java' },
+  python: { label: 'Python', version: 'Python 3.11.8', monacoLang: 'python', engine: 'C-Python Sandbox', ext: '.py' },
+  javascript: { label: 'JavaScript (Node.js)', version: 'Node.js v20.11.0 LTS', monacoLang: 'javascript', engine: 'V8 Isolated VM', ext: '.js' },
+  typescript: { label: 'TypeScript', version: 'TypeScript 5.3.3', monacoLang: 'typescript', engine: 'Node.js / TSC', ext: '.ts' },
+  go: { label: 'Go', version: 'Go 1.22 LTS', monacoLang: 'go', engine: 'Go Runtime', ext: '.go' },
+  rust: { label: 'Rust', version: 'Rust 1.77 (Edition 2021)', monacoLang: 'rust', engine: 'LLVM Backend', ext: '.rs' },
+  php: { label: 'PHP', version: 'PHP 8.3 CLI', monacoLang: 'php', engine: 'Zend Engine', ext: '.php' },
+  ruby: { label: 'Ruby', version: 'Ruby 3.3.0', monacoLang: 'ruby', engine: 'YARV VM', ext: '.rb' },
+  kotlin: { label: 'Kotlin', version: 'Kotlin 1.9.22', monacoLang: 'kotlin', engine: 'Kotlin / JVM', ext: '.kt' },
+  swift: { label: 'Swift', version: 'Swift 5.10', monacoLang: 'swift', engine: 'Swift LLVM', ext: '.swift' },
+  sql: { label: 'SQL (Relational Engine)', version: 'SQLite 3.50 Native Sandbox', monacoLang: 'sql', engine: 'Relational Database Engine', ext: '.sql' },
+  mongodb: { label: 'MongoDB (NoSQL)', version: 'MongoDB 7.0 / MQL', monacoLang: 'javascript', engine: 'Document Aggregation Pipeline', ext: '.js' }
 };
 
 const DATABASE_ENGINES = [
@@ -90,18 +96,23 @@ export default function CandidateIDE({
   const [customResult, setCustomResult] = useState(null);
   const [isExecutingCustom, setIsExecutingCustom] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [editorTheme, setEditorTheme] = useState('vs-dark');
+  const [editorTheme, setEditorTheme] = useState('sparkx-dark');
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [consoleHeight, setConsoleHeight] = useState(240); // px
+  const [isDraggingConsole, setIsDraggingConsole] = useState(false);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+
   const ideContainerRef = useRef(null);
+  const monacoRef = useRef(null);
 
   const activeLangKey = language?.toLowerCase() || 'python';
   const currentRuntime = RUNTIME_METADATA[activeLangKey] || {
     label: activeLangKey.toUpperCase(),
     version: `${activeLangKey.toUpperCase()} Runtime`,
     monacoLang: activeLangKey,
-    engine: 'Sandbox Engine'
+    engine: 'Sandbox Engine',
+    ext: '.txt'
   };
 
   // Draft Auto-Save in LocalStorage
@@ -124,9 +135,74 @@ export default function CandidateIDE({
     const timer = setTimeout(() => {
       localStorage.setItem(storageDraftKey, code);
       setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    }, 1500);
+    }, 1200);
     return () => clearTimeout(timer);
   }, [code, storageDraftKey, isReadOnly]);
+
+  // Define Custom SparkX Monaco Themes
+  const handleEditorBeforeMount = (monaco) => {
+    monacoRef.current = monaco;
+
+    // SparkX Professional Dark Theme
+    monaco.editor.defineTheme('sparkx-dark', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748B', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '818CF8', fontStyle: 'bold' },
+        { token: 'identifier', foreground: 'E2E8F0' },
+        { token: 'string', foreground: '34D399' },
+        { token: 'number', foreground: '38BDF8' },
+        { token: 'type', foreground: 'C084FC' },
+        { token: 'function', foreground: '60A5FA' },
+        { token: 'operator', foreground: 'F472B6' }
+      ],
+      colors: {
+        'editor.background': '#0B0F19',
+        'editor.foreground': '#E2E8F0',
+        'editor.lineHighlightBackground': '#111827',
+        'editorLineNumber.foreground': '#475569',
+        'editorLineNumber.activeForeground': '#818CF8',
+        'editor.selectionBackground': '#312E81',
+        'editor.inactiveSelectionBackground': '#1E1B4B',
+        'editorCursor.foreground': '#818CF8',
+        'editorWhitespace.foreground': '#1E293B',
+        'editorIndentGuide.background': '#1E293B',
+        'editorIndentGuide.activeBackground': '#334155',
+        'editorBracketMatch.background': '#1E293B',
+        'editorBracketMatch.border': '#6366F1',
+        'scrollbarSlider.background': '#1E293B80',
+        'scrollbarSlider.hoverBackground': '#33415580',
+        'scrollbarSlider.activeBackground': '#6366F180'
+      }
+    });
+
+    // SparkX Clean High-Contrast Light Theme
+    monaco.editor.defineTheme('sparkx-light', {
+      base: 'vs',
+      inherit: true,
+      rules: [
+        { token: 'comment', foreground: '64748B', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '4F46E5', fontStyle: 'bold' },
+        { token: 'identifier', foreground: '0F172A' },
+        { token: 'string', foreground: '059669' },
+        { token: 'number', foreground: '0284C7' },
+        { token: 'type', foreground: '7C3AED' },
+        { token: 'function', foreground: '2563EB' }
+      ],
+      colors: {
+        'editor.background': '#F8FAFC',
+        'editor.foreground': '#0F172A',
+        'editor.lineHighlightBackground': '#F1F5F9',
+        'editorLineNumber.foreground': '#94A3B8',
+        'editorLineNumber.activeForeground': '#4F46E5',
+        'editor.selectionBackground': '#E0E7FF',
+        'editorCursor.foreground': '#4F46E5',
+        'editorIndentGuide.background': '#E2E8F0',
+        'editorIndentGuide.activeBackground': '#CBD5E1'
+      }
+    });
+  };
 
   // Keyboard Shortcuts (Ctrl+Enter to Run, Ctrl+S to Save, Esc to exit Fullscreen)
   const handleKeyDown = useCallback((e) => {
@@ -149,6 +225,36 @@ export default function CandidateIDE({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Console Resizing Logic
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    setIsDraggingConsole(true);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDraggingConsole || !ideContainerRef.current) return;
+      const containerRect = ideContainerRef.current.getBoundingClientRect();
+      const newHeight = containerRect.bottom - e.clientY;
+      if (newHeight >= 120 && newHeight <= 520) {
+        setConsoleHeight(newHeight);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingConsole(false);
+    };
+
+    if (isDraggingConsole) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingConsole]);
 
   // Handle Reset to Starter Code
   const handleResetCode = () => {
@@ -176,26 +282,35 @@ export default function CandidateIDE({
     }
   };
 
+  const handleCopySchema = () => {
+    if (!schemaDdl) return;
+    navigator.clipboard.writeText(schemaDdl);
+    setIsCopiedSchema(true);
+    setTimeout(() => setIsCopiedSchema(false), 2000);
+  };
+
   return (
     <div
       ref={ideContainerRef}
-      className={`flex flex-col bg-slate-900 border border-slate-700/80 rounded-2xl overflow-hidden shadow-2xl transition-all ${
+      className={`flex flex-col bg-[#0B0F19] border border-slate-800/90 rounded-2xl overflow-hidden shadow-2xl transition-all font-sans select-text ${
         isFullscreen
           ? 'fixed inset-0 z-50 rounded-none w-screen h-screen'
-          : 'w-full min-h-[700px] h-[780px]'
+          : 'w-full min-h-[720px] h-[800px]'
       }`}
     >
-      {/* Top Header & Toolbar */}
-      <div className="bg-slate-950 px-4 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 select-none">
+      {/* ─── Top Header & Toolbar ────────────────────────────────────── */}
+      <div className="bg-[#070A12] px-4 py-2.5 border-b border-slate-800/90 flex flex-wrap items-center justify-between gap-3 select-none">
         {/* Left: Task Identity & Runtime */}
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm">
               <Code2 className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-100 flex items-center space-x-2">
-                <span>{taskTitle || 'Technical Challenge'}</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-bold text-slate-100 tracking-tight">
+                  {taskTitle || 'Assessment Challenge'}
+                </span>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                   difficulty === 'Senior'
                     ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
@@ -203,29 +318,30 @@ export default function CandidateIDE({
                 }`}>
                   {difficulty}
                 </span>
-              </span>
+              </div>
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center space-x-1.5 px-2 py-1 rounded-md bg-slate-900 border border-slate-800 text-[11px] text-slate-400">
+          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-slate-900/90 border border-slate-800 text-[11px] text-slate-300 font-mono-code">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="font-mono">{currentRuntime.version}</span>
+            <span>{currentRuntime.version}</span>
           </div>
         </div>
 
-        {/* Right Toolbar Controls */}
+        {/* Right: Controls (Language, Theme, AutoSave, Reset, Fullscreen) */}
         <div className="flex items-center space-x-2.5">
           {/* Language Selector */}
-          <div className="flex items-center space-x-1.5 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-xs text-slate-300">
+          <div className="flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800 text-xs text-slate-200 shadow-inner">
             <FileCode className="w-3.5 h-3.5 text-indigo-400" />
             <select
               value={activeLangKey}
               onChange={(e) => onLanguageChange && onLanguageChange(e.target.value)}
               disabled={isReadOnly}
-              className="bg-transparent text-xs font-semibold focus:outline-none cursor-pointer pr-2 text-slate-200"
+              className="bg-transparent text-xs font-semibold focus:outline-none cursor-pointer pr-1 text-slate-200"
+              title="Select Programming Language"
             >
               {supportedLanguages.map((l) => (
-                <option key={l} value={l} className="bg-slate-900 text-slate-200">
+                <option key={l} value={l} className="bg-slate-900 text-slate-100">
                   {RUNTIME_METADATA[l]?.label || l.toUpperCase()}
                 </option>
               ))}
@@ -234,7 +350,7 @@ export default function CandidateIDE({
 
           {/* Database Engine & Version Selector (When SQL is active) */}
           {activeLangKey === 'sql' && (
-            <div className="flex items-center space-x-1.5 bg-slate-900 px-2.5 py-1 rounded-lg border border-indigo-500/30 text-xs text-indigo-300">
+            <div className="flex items-center space-x-1.5 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-indigo-500/30 text-xs text-indigo-300 shadow-inner">
               <Database className="w-3.5 h-3.5 text-cyan-400" />
               <select
                 value={selectedDbEngine}
@@ -274,52 +390,57 @@ export default function CandidateIDE({
           {/* Theme Switcher */}
           <button
             type="button"
-            onClick={() => setEditorTheme(editorTheme === 'vs-dark' ? 'light' : 'vs-dark')}
-            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 text-xs transition"
-            title="Toggle Editor Theme"
+            onClick={() => setEditorTheme(editorTheme === 'sparkx-dark' ? 'sparkx-light' : 'sparkx-dark')}
+            className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-slate-100 border border-slate-800 text-xs transition"
+            title={`Toggle Theme (Current: ${editorTheme === 'sparkx-dark' ? 'Dark' : 'Light'})`}
           >
-            <Sliders className="w-3.5 h-3.5" />
+            {editorTheme === 'sparkx-dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-indigo-400" />}
           </button>
 
-          {/* Auto-save Status */}
+          {/* Auto-save Status Indicator */}
           {lastSavedTime && (
-            <span className="hidden md:inline-flex items-center space-x-1 text-[11px] text-slate-500">
+            <span className="hidden md:inline-flex items-center space-x-1 text-[11px] text-slate-400 font-medium">
               <Check className="w-3 h-3 text-emerald-400" />
-              <span>Draft saved {lastSavedTime}</span>
+              <span>Saved {lastSavedTime}</span>
             </span>
           )}
 
-          {/* Reset Code */}
+          {/* Reset Code Button */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setIsResetConfirmOpen(true)}
               disabled={isReadOnly}
-              className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800 text-xs transition flex items-center space-x-1"
+              className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-rose-400 border border-slate-800 text-xs transition flex items-center space-x-1"
               title="Reset Code to Starter Template"
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
+            {/* Reset Confirmation Modal */}
             {isResetConfirmOpen && (
-              <div className="absolute right-0 mt-2 w-56 p-3 bg-slate-950 border border-slate-700 rounded-xl shadow-2xl z-50 space-y-2">
-                <p className="text-[11px] text-slate-300 font-medium">
-                  Reset code to original starter template? Current edits will be cleared.
+              <div className="absolute right-0 mt-2 w-64 p-3.5 bg-slate-950 border border-slate-700 rounded-xl shadow-2xl z-50 space-y-2.5">
+                <div className="flex items-center space-x-1.5 text-rose-400 text-xs font-bold">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span>Confirm Code Reset</span>
+                </div>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Reset code back to original template? Your unsaved modifications in {currentRuntime.label} will be discarded.
                 </p>
                 <div className="flex justify-end space-x-2 pt-1">
                   <button
                     type="button"
                     onClick={() => setIsResetConfirmOpen(false)}
-                    className="px-2 py-1 text-[10px] text-slate-400 hover:text-slate-200"
+                    className="px-2.5 py-1 text-[11px] text-slate-400 hover:text-slate-200 font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={handleResetCode}
-                    className="px-2.5 py-1 text-[10px] font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-md transition"
+                    className="px-3 py-1 text-[11px] font-bold bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition shadow-md shadow-rose-600/20"
                   >
-                    Confirm Reset
+                    Reset Code
                   </button>
                 </div>
               </div>
@@ -330,185 +451,209 @@ export default function CandidateIDE({
           <button
             type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 text-xs transition"
-            title={isFullscreen ? 'Exit Full Screen (Esc)' : 'Full Screen Mode'}
+            className="p-1.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-slate-100 border border-slate-800 text-xs transition"
+            title={isFullscreen ? 'Exit Full Screen (Esc)' : 'Full Screen Assessment Mode'}
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
-      {/* Main Split Layout: Left (Problem Statement) & Right (Monaco Editor + Console) */}
+      {/* ─── Main Split Layout: Left Problem Panel & Right Monaco/Console ─── */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* LEFT PANEL: Problem Specification & Schema Viewer */}
-        <div className="w-full md:w-[42%] lg:w-[38%] border-b md:border-b-0 md:border-r border-slate-800 bg-slate-950/60 flex flex-col overflow-hidden">
-          {/* Sub-tab Navigation when SQL or schemaDdl is present */}
-          {(activeLangKey === 'sql' || schemaDdl) && (
-            <div className="px-4 py-2 bg-slate-950 border-b border-slate-800 flex items-center space-x-2">
+        {/* LEFT PANEL: Problem Specification & Table Schema (DDL) */}
+        <div className={`w-full ${leftPanelCollapsed ? 'md:w-[48px]' : 'md:w-[40%] lg:w-[36%]'} border-b md:border-b-0 md:border-r border-slate-800/90 bg-[#070A12]/80 flex flex-col overflow-hidden transition-all duration-200`}>
+          {/* Sub-tab Navigation */}
+          <div className="px-3 py-2 bg-[#070A12] border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center space-x-1.5">
               <button
                 type="button"
-                onClick={() => setActiveProblemTab('problem')}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
-                  activeProblemTab === 'problem'
+                onClick={() => { setActiveProblemTab('problem'); setLeftPanelCollapsed(false); }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
+                  activeProblemTab === 'problem' && !leftPanelCollapsed
                     ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <Info className="w-3.5 h-3.5" />
-                <span>Problem Statement</span>
+                <span className={leftPanelCollapsed ? 'hidden' : 'inline'}>Problem</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setActiveProblemTab('schema')}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
-                  activeProblemTab === 'schema'
-                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                <Database className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Table Schema (DDL)</span>
-              </button>
+
+              {(activeLangKey === 'sql' || schemaDdl) && (
+                <button
+                  type="button"
+                  onClick={() => { setActiveProblemTab('schema'); setLeftPanelCollapsed(false); }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
+                    activeProblemTab === 'schema' && !leftPanelCollapsed
+                      ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Database className="w-3.5 h-3.5 text-cyan-400" />
+                  <span className={leftPanelCollapsed ? 'hidden' : 'inline'}>Table Schema (DDL)</span>
+                </button>
+              )}
             </div>
-          )}
 
-          {/* Tab 1: Problem Statement View */}
-          {activeProblemTab === 'problem' && (
-            <div className="flex-1 p-5 overflow-y-auto space-y-5 text-slate-300 text-xs custom-scrollbar">
-              {/* Instructions */}
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
-                  <Info className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Problem Statement</span>
-                </h3>
-                <div className="text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-xs bg-slate-900/50 p-3.5 rounded-xl border border-slate-800/80 shadow-inner">
-                  {instructions}
-                </div>
-              </div>
+            <button
+              type="button"
+              onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
+              className="hidden md:block p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 text-[10px]"
+              title={leftPanelCollapsed ? 'Expand Panel' : 'Collapse Panel'}
+            >
+              {leftPanelCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5 rotate-90" />}
+            </button>
+          </div>
 
-              {/* Examples */}
-              {examples && examples.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Examples
-                  </h3>
-                  {examples.map((ex, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-slate-900/70 border border-slate-800 rounded-xl p-3 space-y-2"
-                    >
-                      <div className="text-[10px] font-bold text-indigo-400 uppercase">Example {idx + 1}</div>
-                      <div className="space-y-1 font-mono text-[11px]">
-                        <div>
-                          <span className="text-slate-400 select-none">Input: </span>
-                          <span className="text-emerald-300">{ex.input}</span>
-                        </div>
-                        <div>
-                          <span className="text-slate-400 select-none">Output: </span>
-                          <span className="text-cyan-300">{ex.output}</span>
-                        </div>
-                      </div>
-                      {ex.explanation && (
-                        <div className="text-[11px] text-slate-400 italic pt-1 border-t border-slate-800/60 font-sans">
-                          {ex.explanation}
-                        </div>
-                      )}
+          {!leftPanelCollapsed && (
+            <div className="flex-1 p-5 overflow-y-auto space-y-5 text-slate-300 text-xs ide-scrollbar">
+              {/* Tab 1: Problem Statement View */}
+              {activeProblemTab === 'problem' && (
+                <>
+                  {/* Instructions */}
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                      <Info className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Requirements & Overview</span>
+                    </h3>
+                    <div className="text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-xs bg-slate-900/70 p-4 rounded-xl border border-slate-800/90 shadow-inner">
+                      {instructions}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Constraints */}
-              {constraints && constraints.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Constraints & Limits
-                  </h3>
-                  <ul className="space-y-1.5 text-[11px] text-slate-300 font-mono">
-                    {constraints.map((c, idx) => (
-                      <li key={idx} className="flex items-center space-x-2 bg-slate-900/40 px-2.5 py-1 rounded-md border border-slate-800/50">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                        <span>{c}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Function Signature Specification */}
-              {functionSignatures && functionSignatures[activeLangKey] && (
-                <div className="space-y-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Required Signature ({currentRuntime.label})
-                  </h3>
-                  <pre className="p-3 bg-slate-900 rounded-xl border border-slate-800 font-mono text-[11px] text-indigo-300 overflow-x-auto">
-                    {functionSignatures[activeLangKey]}
-                  </pre>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab 2: Database Schema (DDL) View */}
-          {activeProblemTab === 'schema' && (
-            <div className="flex-1 p-5 overflow-y-auto space-y-4 text-slate-300 text-xs custom-scrollbar">
-              <div className="p-3 rounded-xl bg-cyan-950/30 border border-cyan-800/40 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 text-cyan-400 font-bold text-xs">
-                    <Database className="w-4 h-4" />
-                    <span>Database Engine: {DATABASE_ENGINES.find(d => d.id === selectedDbEngine)?.name || 'PostgreSQL'}</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-900/40 text-cyan-300 border border-cyan-700/50">
-                    v{selectedDbVersion}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Tables and seed records are provisioned in an isolated in-memory sandbox. Write your query against the catalog structure below.
-                </p>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
-                    <Table className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Schema DDL & Sample Data</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ddlText = schemaDdl || `-- Default Relational Schema\nCREATE TABLE departments (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL\n);\n\nCREATE TABLE employees (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL,\n    department_id INTEGER,\n    salary INTEGER NOT NULL,\n    status TEXT NOT NULL\n);`;
-                      navigator.clipboard.writeText(ddlText);
-                      setIsCopiedSchema(true);
-                      setTimeout(() => setIsCopiedSchema(false), 2000);
-                    }}
-                    className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-semibold flex items-center space-x-1 border border-slate-700"
-                  >
-                    {isCopiedSchema ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                    <span>{isCopiedSchema ? 'Copied' : 'Copy DDL'}</span>
-                  </button>
+                  {/* Function Signature */}
+                  {functionSignatures && functionSignatures[activeLangKey] && (
+                    <div className="space-y-1.5">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                        <Code2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Target Signature ({currentRuntime.label})</span>
+                      </h3>
+                      <pre className="p-3 bg-slate-900/90 border border-slate-800/90 rounded-xl font-mono-code text-[11px] text-emerald-300 overflow-x-auto">
+                        {functionSignatures[activeLangKey]}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Examples */}
+                  {examples && examples.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Input / Output Examples
+                      </h3>
+                      {examples.map((ex, idx) => (
+                        <div
+                          key={idx}
+                          className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 space-y-2 shadow-sm"
+                        >
+                          <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Example {idx + 1}</div>
+                          <div className="font-mono-code text-[11px] space-y-1 bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80">
+                            <div>
+                              <span className="text-slate-400">Input: </span>
+                              <span className="text-slate-100">{ex.input}</span>
+                            </div>
+                            <div>
+                              <span className="text-slate-400">Output: </span>
+                              <span className="text-emerald-300 font-bold">{ex.output}</span>
+                            </div>
+                          </div>
+                          {ex.explanation && (
+                            <p className="text-[11px] text-slate-400 leading-relaxed pt-0.5">
+                              {ex.explanation}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Constraints */}
+                  {constraints && constraints.length > 0 && (
+                    <div className="space-y-2">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Constraints & Invariants
+                      </h3>
+                      <ul className="space-y-1.5 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
+                        {constraints.map((c, idx) => (
+                          <li key={idx} className="flex items-start space-x-2 text-[11px] text-slate-300">
+                            <span className="text-indigo-400 font-bold">•</span>
+                            <span className="font-mono-code text-[11px]">{c}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Tab 2: Table Schema (DDL) View */}
+              {activeProblemTab === 'schema' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center space-x-1.5">
+                        <Database className="w-4 h-4 text-cyan-400" />
+                        <span>Relational Table Definitions</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400 pt-0.5">
+                        Target Sandbox Engine: <strong className="text-slate-200">{selectedDbEngine.toUpperCase()} (SQLite 3.50 Driver)</strong>
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCopySchema}
+                      className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center space-x-1.5 transition border border-slate-700"
+                    >
+                      {isCopiedSchema ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-300" />}
+                      <span>{isCopiedSchema ? 'Copied!' : 'Copy DDL'}</span>
+                    </button>
+                  </div>
+
+                  <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-[#0B0F19]">
+                    <pre className="p-4 font-mono-code text-[11px] text-slate-200 leading-relaxed overflow-x-auto whitespace-pre">
+                      {schemaDdl || '-- No specific DDL defined for this challenge'}
+                    </pre>
+                  </div>
                 </div>
-                <pre className="p-3.5 bg-slate-900/90 rounded-xl border border-slate-800 font-mono text-[11px] text-cyan-200 overflow-x-auto leading-relaxed shadow-inner max-h-[380px]">
-                  {schemaDdl || `-- Relational Schema: departments & employees\nCREATE TABLE departments (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL\n);\n\nCREATE TABLE employees (\n    id INTEGER PRIMARY KEY,\n    name TEXT NOT NULL,\n    department_id INTEGER,\n    salary INTEGER NOT NULL,\n    status TEXT NOT NULL,\n    FOREIGN KEY (department_id) REFERENCES departments(id)\n);\n\nINSERT INTO departments (id, name) VALUES\n(1, 'Engineering'), (2, 'Sales'), (3, 'Finance');\n\nINSERT INTO employees (id, name, department_id, salary, status) VALUES\n(101, 'Alice Chen', 1, 125000, 'Active'),\n(102, 'Bob Smith', 1, 95000, 'Active'),\n(103, 'Carol Danvers', 1, 140000, 'Active'),\n(104, 'David Miller', 2, 75000, 'Active'),\n(105, 'Emma Wilson', 2, 85000, 'Active'),\n(106, 'Frank Wright', 3, 90000, 'Terminated'),\n(107, 'Grace Hopper', 3, 115000, 'Active');`}
-                </pre>
-              </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* RIGHT PANEL: Monaco Editor (Top) & Test Runner Console (Bottom) */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-[#1e1e1e]">
-          {/* Monaco Code Editor */}
-          <div className="flex-1 min-h-[280px] relative overflow-hidden">
+        {/* RIGHT PANEL: Monaco Code Editor + Bottom Console / Test Feedback */}
+        <div className="flex-1 flex flex-col bg-[#0B0F19] overflow-hidden min-w-0">
+          {/* Editor File Tab Header */}
+          <div className="bg-[#070A12] px-4 py-1.5 border-b border-slate-800/90 flex items-center justify-between text-xs select-none">
+            <div className="flex items-center space-x-2">
+              <div className="px-3 py-1 bg-[#0B0F19] border-t-2 border-indigo-500 border-x border-slate-800 text-slate-100 font-mono-code text-[11px] rounded-t flex items-center space-x-1.5">
+                <FileCode className="w-3.5 h-3.5 text-indigo-400" />
+                <span>solution{currentRuntime.ext}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3 text-[11px] text-slate-400 font-mono-code">
+              <span>UTF-8</span>
+              <span>Spaces: 4</span>
+              <span className="hidden sm:inline-block text-slate-500">{currentRuntime.engine}</span>
+            </div>
+          </div>
+
+          {/* Monaco Code Editor Surface */}
+          <div className="flex-1 min-h-[260px] relative overflow-hidden">
             <Editor
               height="100%"
               language={currentRuntime.monacoLang}
               value={code}
               onChange={(val) => onCodeChange && onCodeChange(val || '')}
+              beforeMount={handleEditorBeforeMount}
               theme={editorTheme}
               options={{
                 minimap: { enabled: false },
-                fontSize: 13,
-                fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
+                fontSize: 13.5,
+                lineHeight: 22,
+                letterSpacing: 0.2,
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace",
+                fontLigatures: true,
                 lineNumbers: 'on',
                 roundedSelection: true,
                 scrollBeyondLastLine: false,
@@ -518,16 +663,29 @@ export default function CandidateIDE({
                 wordWrap: 'on',
                 bracketPairColorization: { enabled: true },
                 formatOnPaste: true,
+                cursorBlinking: 'smooth',
+                cursorSmoothCaretAnimation: 'on',
+                smoothScrolling: true,
+                padding: { top: 14, bottom: 14 },
                 scrollbar: {
-                  verticalScrollbarSize: 8,
-                  horizontalScrollbarSize: 8
+                  verticalScrollbarSize: 7,
+                  horizontalScrollbarSize: 7
                 }
               }}
             />
           </div>
 
-          {/* Action Bar (Run Sample Tests & Run Custom Test) */}
-          <div className="bg-slate-950 px-4 py-2 border-t border-b border-slate-800 flex items-center justify-between select-none">
+          {/* Resizable Splitter Drag Handle */}
+          <div
+            onMouseDown={handleMouseDown}
+            className="h-2 bg-slate-900 hover:bg-indigo-600/50 cursor-row-resize flex items-center justify-center transition select-none group border-t border-slate-800"
+            title="Drag to resize console"
+          >
+            <GripHorizontal className="w-4 h-3 text-slate-600 group-hover:text-indigo-300" />
+          </div>
+
+          {/* Action Bar (Run Sample Tests & Console Tabs) */}
+          <div className="bg-[#070A12] px-4 py-2 border-b border-slate-800 flex items-center justify-between select-none">
             <div className="flex items-center space-x-2">
               {/* Console Tabs */}
               <button
@@ -573,14 +731,14 @@ export default function CandidateIDE({
                 }`}
               >
                 <Terminal className="w-3.5 h-3.5" />
-                <span>Diagnostics & Logs</span>
+                <span>Diagnostics & Output</span>
               </button>
             </div>
 
-            {/* Run Buttons */}
-            <div className="flex items-center space-x-2">
-              <span className="hidden lg:inline-block text-[10px] text-slate-500 font-mono">
-                Shortcut: Ctrl+Enter
+            {/* Run Button with Keyboard Shortcut */}
+            <div className="flex items-center space-x-2.5">
+              <span className="hidden lg:inline-block text-[10px] text-slate-400 font-mono-code bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                Ctrl + Enter
               </span>
               <button
                 type="button"
@@ -597,19 +755,19 @@ export default function CandidateIDE({
             </div>
           </div>
 
-          {/* BOTTOM DRAWER / CONSOLE */}
+          {/* Bottom Execution Console */}
           <div
             style={{ height: `${consoleHeight}px` }}
-            className="bg-slate-950/95 p-4 overflow-y-auto border-t border-slate-800 text-xs custom-scrollbar"
+            className="bg-[#070A12]/95 p-4 overflow-y-auto text-xs ide-scrollbar border-t border-slate-800/80"
           >
             {/* TAB 1: Sample Tests Results */}
             {activeConsoleTab === 'tests' && (
               <div className="space-y-3">
                 {!sampleResults && !isExecuting && (
-                  <div className="py-6 text-center text-slate-500 space-y-1">
+                  <div className="py-6 text-center text-slate-500 space-y-1.5">
                     <Terminal className="w-6 h-6 mx-auto text-slate-600 mb-1" />
-                    <p className="font-medium text-xs">No execution results yet</p>
-                    <p className="text-[11px]">Click <strong>Run Sample Tests</strong> (or press Ctrl+Enter) to verify against visible sample assertions.</p>
+                    <p className="font-semibold text-xs text-slate-400">Ready to execute test suite</p>
+                    <p className="text-[11px] text-slate-500">Click <strong>Run Sample Tests</strong> (or press Ctrl+Enter) to evaluate your implementation against visible test fixtures.</p>
                   </div>
                 )}
 
@@ -622,10 +780,10 @@ export default function CandidateIDE({
 
                 {sampleResults && !isExecuting && (
                   <div className="space-y-2.5">
-                    {/* Summary Telemetry */}
+                    {/* Telemetry Bar */}
                     <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px]">
                       <div className="flex items-center space-x-2">
-                        <span className={`font-bold flex items-center space-x-1 ${
+                        <span className={`font-bold flex items-center space-x-1.5 ${
                           sampleResults.every(r => r.passed) ? 'text-emerald-400' : 'text-rose-400'
                         }`}>
                           {sampleResults.every(r => r.passed) ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
@@ -634,7 +792,7 @@ export default function CandidateIDE({
                       </div>
 
                       {executionTelemetry && (
-                        <div className="flex items-center space-x-3 text-slate-400 font-mono">
+                        <div className="flex items-center space-x-3 text-slate-400 font-mono-code">
                           <span className="flex items-center space-x-1">
                             <Clock className="w-3 h-3 text-indigo-400" />
                             <span>{executionTelemetry.execution_ms ?? executionTelemetry.duration ?? '1.2'}ms</span>
@@ -652,7 +810,7 @@ export default function CandidateIDE({
                       {sampleResults.map((tc, idx) => (
                         <div
                           key={idx}
-                          className={`p-3 rounded-xl border font-mono text-[11px] transition ${
+                          className={`p-3.5 rounded-xl border font-mono-code text-[11px] transition ${
                             tc.passed
                               ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300'
                               : 'bg-rose-950/20 border-rose-500/30 text-rose-300'
@@ -688,12 +846,12 @@ export default function CandidateIDE({
                           {tc.actual && (
                             <div className="text-[10px] pt-1">
                               <span className="text-slate-400">Your Output: </span>
-                              <span className={tc.passed ? 'text-emerald-300' : 'text-rose-400'}>{tc.actual}</span>
+                              <span className={tc.passed ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold'}>{tc.actual}</span>
                             </div>
                           )}
 
                           {tc.error && (
-                            <div className="text-[10px] text-rose-400 mt-1.5 p-1.5 rounded bg-rose-950/40 border border-rose-500/20">
+                            <div className="text-[10px] text-rose-400 mt-2 p-2 rounded bg-rose-950/40 border border-rose-500/20 whitespace-pre-wrap">
                               {tc.error}
                             </div>
                           )}
@@ -714,7 +872,7 @@ export default function CandidateIDE({
                     type="button"
                     onClick={handleCustomTestExecute}
                     disabled={isExecutingCustom || isReadOnly}
-                    className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition flex items-center space-x-1"
+                    className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-md shadow-indigo-600/20"
                   >
                     {isExecutingCustom ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-current" />}
                     <span>Run Custom Input</span>
@@ -726,11 +884,11 @@ export default function CandidateIDE({
                   onChange={(e) => setCustomInput(e.target.value)}
                   placeholder={'e.g. [{"level": "ERROR", "service": "auth"}] or [1, 2, 3]'}
                   rows={3}
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl p-3 font-mono text-xs text-slate-200 focus:outline-none focus:border-indigo-500/80 resize-none shadow-inner"
+                  className="w-full bg-[#0B0F19] border border-slate-700/80 rounded-xl p-3 font-mono-code text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none shadow-inner"
                 />
 
                 {customResult && (
-                  <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-2 font-mono text-[11px]">
+                  <div className="p-3.5 rounded-xl bg-[#0B0F19] border border-slate-800 space-y-2 font-mono-code text-[11px]">
                     <div className="flex items-center justify-between text-xs font-sans pb-1 border-b border-slate-800">
                       <span className="font-bold text-slate-200">Custom Run Output</span>
                       <div className="flex items-center space-x-2 text-slate-400 text-[10px]">
@@ -752,15 +910,15 @@ export default function CandidateIDE({
               </div>
             )}
 
-            {/* TAB 3: Execution Output & Diagnostics Console */}
+            {/* TAB 3: Execution Diagnostics & Console Stream */}
             {activeConsoleTab === 'console' && (
-              <div className="font-mono text-[11px] leading-relaxed space-y-1">
-                <div className="text-slate-500 pb-1 border-b border-slate-800 text-[10px] flex items-center justify-between">
+              <div className="font-mono-code text-[11px] leading-relaxed space-y-1">
+                <div className="text-slate-500 pb-1 border-b border-slate-800 text-[10px] flex items-center justify-between font-sans">
                   <span>SANDBOX STDOUT / STDERR STREAM</span>
                   <span>{currentRuntime.version}</span>
                 </div>
-                <pre className="text-slate-300 whitespace-pre-wrap">
-                  {consoleOutput || '> Sandbox initialized. Ready for code execution.'}
+                <pre className="text-slate-300 whitespace-pre-wrap pt-1 font-mono-code">
+                  {consoleOutput || '> Sandbox initialized. Ready for execution stream.'}
                 </pre>
               </div>
             )}
