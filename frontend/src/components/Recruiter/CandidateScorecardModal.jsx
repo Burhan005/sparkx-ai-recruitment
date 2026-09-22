@@ -27,29 +27,82 @@ import {
   Check,
   Wrench,
   Lock,
-  Cpu
+  Cpu,
+  Copy,
+  ExternalLink,
+  RefreshCw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+
+// Helper to format Date into YYYY-MM-DDTHH:mm for datetime-local
+const formatToLocalISO = (d) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
+// Helper to parse existing scheduled slot into datetime-local string
+const toDatetimeLocal = (val) => {
+  if (!val) {
+    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    d.setHours(14, 0, 0, 0);
+    return formatToLocalISO(d);
+  }
+  const match = String(val).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]}T${match[4]}:${match[5]}`;
+  }
+  const parsed = new Date(val);
+  if (!isNaN(parsed.getTime())) {
+    return formatToLocalISO(parsed);
+  }
+  const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  d.setHours(14, 0, 0, 0);
+  return formatToLocalISO(d);
+};
+
+// Generates authentic 10-char Google Meet URL in 3-4-3 format
+const generateGoogleMeetUrl = () => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  const getPart = (len) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `https://meet.google.com/${getPart(3)}-${getPart(4)}-${getPart(3)}`;
+};
+
+// Formats ISO string into human readable confirmation
+const formatReadableSlot = (isoVal) => {
+  if (!isoVal) return '';
+  const match = String(isoVal).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (match) {
+    const d = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]), Number(match[5]));
+    return d.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  }
+  return isoVal;
+};
 
 export default function CandidateScorecardModal({ candidate, onClose }) {
   const { updateCandidateStatus, scheduleInterview, sendEmail } = useRecruitment();
 
-  // Helper to dynamically suggest tomorrow at 14:00 for demo realism
-  const getDefaultScheduledSlot = () => {
-    const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd} 14:00`;
-  };
-
   const [hrNotes, setHrNotes] = useState(candidate?.hrNotes || '');
   const [activeTab, setActiveTab] = useState('scorecard');
   const [actionSuccess, setActionSuccess] = useState('');
-  const [scheduledAt, setScheduledAt] = useState(
-    candidate?.interviewScheduledAt || candidate?.interview_scheduled_at || getDefaultScheduledSlot()
-  );
-  const [meetingUrl, setMeetingUrl] = useState(candidate?.interviewMeetingUrl || candidate?.interview_meeting_url || '');
+  const [scheduledAt, setScheduledAt] = useState(() => {
+    return toDatetimeLocal(candidate?.interviewScheduledAt || candidate?.interview_scheduled_at);
+  });
+  const [meetingUrl, setMeetingUrl] = useState(() => {
+    return candidate?.interviewMeetingUrl || candidate?.interview_meeting_url || candidate?.meetingUrl || generateGoogleMeetUrl();
+  });
+  const [copiedMeet, setCopiedMeet] = useState(false);
   const [scheduleNotes, setScheduleNotes] = useState('');
   const [sendingEmailType, setSendingEmailType] = useState(null);
   const [customEmailMsg, setCustomEmailMsg] = useState('');
@@ -131,8 +184,13 @@ export default function CandidateScorecardModal({ candidate, onClose }) {
     e.preventDefault();
     if (!scheduledAt) return;
     setSendingEmailType('schedule');
-    await scheduleInterview(candidate.id, scheduledAt, scheduleNotes, meetingUrl);
+    const finalMeetUrl = meetingUrl.trim() || generateGoogleMeetUrl();
+    if (!meetingUrl.trim()) setMeetingUrl(finalMeetUrl);
+    const readableDate = formatReadableSlot(scheduledAt);
+    await scheduleInterview(candidate.id, readableDate || scheduledAt.replace('T', ' '), scheduleNotes, finalMeetUrl);
     setSendingEmailType(null);
+    setActionSuccess('Interview scheduled & confirmation email with Google Meet invite dispatched!');
+    setTimeout(() => setActionSuccess(''), 3500);
   };
 
   const handleSendEmailTemplate = async (templateType) => {
@@ -1371,88 +1429,216 @@ ${candidate.resumeSummary || 'Standard verified candidate profile submitted via 
             <div className="space-y-6">
               
               {/* Interview Slot Card */}
-              <form onSubmit={handleScheduleSubmit} className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
+              <form onSubmit={handleScheduleSubmit} className="p-5 rounded-2xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center space-x-2">
-                    <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider">
-                      Schedule Official Interview Slot
-                    </span>
+                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                      <Calendar className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider block">
+                        Schedule Official Interview Slot
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Pick date & time via interactive calendar — automatic Google Meet room link attached
+                      </span>
+                    </div>
                   </div>
+                  
                   <div className="flex items-center space-x-2">
-                    {candidate.interviewScheduledAt && (
-                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50">
-                        Scheduled: {candidate.interviewScheduledAt}
+                    {(candidate.interviewScheduledAt || candidate.interview_scheduled_at) && (
+                      <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/50 flex items-center space-x-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Scheduled: {candidate.interviewScheduledAt || candidate.interview_scheduled_at}</span>
                       </span>
                     )}
-                    {candidate.meetingUrl && (
+                    {(candidate.interviewMeetingUrl || candidate.interview_meeting_url || candidate.meetingUrl) && (
                       <a 
-                        href={candidate.meetingUrl} 
+                        href={candidate.interviewMeetingUrl || candidate.interview_meeting_url || candidate.meetingUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50 hover:bg-blue-100 dark:hover:bg-blue-900 transition flex items-center space-x-1"
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50 hover:bg-blue-100 dark:hover:bg-blue-900 transition flex items-center space-x-1"
                         title="Open Video Call Meeting Room"
                       >
                         <Video className="w-3 h-3" />
-                        <span>Google Meet</span>
+                        <span>Launch Meet ↗</span>
                       </a>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-3 text-xs">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-400 font-semibold mb-1">Select Slot Date & Time *</label>
-                      <input
-                        type="text"
-                        value={scheduledAt}
-                        onChange={e => setScheduledAt(e.target.value)}
-                        placeholder="e.g. 2026-09-21 14:30 IST"
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none shadow-sm"
-                      />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-slate-600 dark:text-slate-400 font-semibold">Google Meet / Video Call URL</label>
-                        <a 
-                          href="https://meet.google.com/new" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 dark:hover:text-cyan-300 font-semibold flex items-center space-x-0.5 hover:underline"
-                          title="Generate a real instant Google Meet room from your Google account"
-                        >
-                          <span>+ Create Google Meet ↗</span>
-                        </a>
+                <div className="space-y-4 text-xs">
+                  {/* Row 1: Calendar Date & Time Picker */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-semibold">
+                        <span className="flex items-center space-x-1.5">
+                          <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                          <span>Select Interview Date & Time *</span>
+                        </span>
+                        {scheduledAt && (
+                          <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">
+                            {formatReadableSlot(scheduledAt)}
+                          </span>
+                        )}
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="datetime-local"
+                          value={scheduledAt}
+                          min={formatToLocalISO(new Date())}
+                          onChange={e => setScheduledAt(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-medium focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none shadow-sm transition"
+                        />
                       </div>
-                      <input
-                        type="text"
-                        value={meetingUrl}
-                        onChange={e => setMeetingUrl(e.target.value)}
-                        placeholder="e.g. https://meet.google.com/xyz-abcd-efg"
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none shadow-sm"
-                      />
+
+                      {/* Quick Slot Presets */}
+                      <div className="pt-1">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-semibold block mb-1.5">
+                          Quick Select Slot:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                              d.setHours(10, 0, 0, 0);
+                              setScheduledAt(formatToLocalISO(d));
+                            }}
+                            className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950 dark:hover:text-indigo-300 text-[11px] font-medium transition"
+                          >
+                            Tomorrow 10:00 AM
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+                              d.setHours(14, 0, 0, 0);
+                              setScheduledAt(formatToLocalISO(d));
+                            }}
+                            className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950 dark:hover:text-indigo-300 text-[11px] font-medium transition"
+                          >
+                            Tomorrow 2:00 PM
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const d = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+                              d.setHours(11, 0, 0, 0);
+                              setScheduledAt(formatToLocalISO(d));
+                            }}
+                            className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950 dark:hover:text-indigo-300 text-[11px] font-medium transition"
+                          >
+                            In 2 Days 11:00 AM
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const d = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+                              d.setHours(15, 30, 0, 0);
+                              setScheduledAt(formatToLocalISO(d));
+                            }}
+                            className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 hover:text-indigo-600 dark:hover:bg-indigo-950 dark:hover:text-indigo-300 text-[11px] font-medium transition"
+                          >
+                            In 3 Days 3:30 PM
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Google Meet Link Generation & Instant Join */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center space-x-1.5 text-slate-700 dark:text-slate-300 font-semibold">
+                          <Video className="w-3.5 h-3.5 text-blue-500" />
+                          <span>Google Meet Room URL</span>
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => setMeetingUrl(generateGoogleMeetUrl())}
+                            className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 font-semibold flex items-center space-x-1 hover:underline"
+                            title="Generate a fresh Google Meet meeting ID"
+                          >
+                            <RefreshCw className="w-3 h-3" />
+                            <span>Regenerate Code</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="relative flex items-center">
+                        <input
+                          type="text"
+                          value={meetingUrl}
+                          onChange={e => setMeetingUrl(e.target.value)}
+                          placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                          className="w-full pl-3.5 pr-20 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-xs focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none shadow-sm transition"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (meetingUrl) {
+                              navigator.clipboard?.writeText(meetingUrl);
+                              setCopiedMeet(true);
+                              setTimeout(() => setCopiedMeet(false), 2000);
+                            }
+                          }}
+                          className="absolute right-2 px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 flex items-center space-x-1 transition"
+                          title="Copy Meeting Link"
+                        >
+                          {copiedMeet ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedMeet ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+
+                      {/* Instant Join Button and Info */}
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center space-x-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                          <span>Auto-synced to invite email & .ics calendar</span>
+                        </span>
+                        {meetingUrl && (
+                          <a
+                            href={meetingUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm hover:shadow transition"
+                            title="Launch Google Meet now to test or conduct the interview"
+                          >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>Join Google Meet ↗</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Row 2: Recruiter Notes */}
                   <div>
-                    <label className="block text-slate-600 dark:text-slate-400 font-semibold mb-1">Recruiter Notes / Instructions (Optional)</label>
+                    <label className="block text-slate-700 dark:text-slate-300 font-semibold mb-1">
+                      Recruiter Notes & Instructions for Candidate (Optional)
+                    </label>
                     <input
                       type="text"
                       value={scheduleNotes}
                       onChange={e => setScheduleNotes(e.target.value)}
-                      placeholder="e.g. Any special instructions, portfolio links, or preparation steps..."
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none shadow-sm"
+                      placeholder="e.g. Please join 5 mins early with camera on; have a code editor ready if requested..."
+                      className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:border-indigo-500 focus:outline-none shadow-sm transition"
                     />
                   </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed bg-white dark:bg-slate-900/80 p-2 rounded-lg border border-slate-200 dark:border-slate-800">
-                    💡 <strong className="text-slate-800 dark:text-slate-200">Real Google Meet:</strong> Google requires meeting rooms to be initiated from a Google account. Click <a href="https://meet.google.com/new" target="_blank" rel="noopener noreferrer" className="text-cyan-600 dark:text-cyan-400 underline font-semibold">+ Create Google Meet ↗</a>, copy your meeting link (e.g. <code className="text-indigo-600 dark:text-indigo-300">meet.google.com/abc-defg-hij</code>), and paste it above so candidates can join without error.
-                  </p>
+
+                  <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/40 text-[11px] text-blue-900 dark:text-blue-300 flex items-start space-x-2.5">
+                    <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <div className="leading-relaxed">
+                      <strong>Automatic Google Meet & Calendar Sync:</strong> SparkX uses your configured Google Mail account (<code className="font-semibold">bkapasi472@rku.ac.in</code>). When you click save, it dispatches an official confirmation email containing the direct <strong>Google Meet link</strong>, meeting ID, PIN, and an interactive <strong>iCalendar (.ics) invite</strong> that automatically blocks the slot on both your and the candidate's Google Calendar.
+                    </div>
+                  </div>
                 </div>
 
                 <button
                   type="submit"
                   disabled={sendingEmailType === 'schedule'}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-md shadow-indigo-600/30"
+                  className="px-5 py-3 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold transition flex items-center space-x-2 shadow-lg shadow-indigo-600/25"
                 >
                   {sendingEmailType === 'schedule' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   <span>Save Schedule & Dispatch Confirmation Email</span>

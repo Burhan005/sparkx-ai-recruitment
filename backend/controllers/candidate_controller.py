@@ -359,7 +359,7 @@ class CandidateController:
             meet_url=meet_url
         )
 
-        # Dispatch live SMTP email with plaintext + HTML + automatic Meeting Invite (.ics)
+        # Dispatch live SMTP email with plaintext + HTML + automatic Meeting Invite (.ics) to candidate
         send_email(
             email_event["recipient"], 
             email_event["subject"], 
@@ -367,6 +367,17 @@ class CandidateController:
             html, 
             ics_content=ics_data
         )
+
+        # Also dispatch an interview invite confirmation copy to the recruiter's Gmail inbox
+        if organizer and organizer.lower() != candidate.email.strip().lower():
+            recruiter_subject = f"[RECRUITER SCHEDULED] Interview with {candidate.name}: {job_title}"
+            send_email(
+                organizer,
+                recruiter_subject,
+                email_event["body"],
+                html,
+                ics_content=ics_data
+            )
 
         db.commit()
         db.refresh(candidate)
