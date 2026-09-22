@@ -354,6 +354,12 @@ export const api = {
 
   async getCandidates() {
     try {
+      try {
+        const stored = JSON.parse(localStorage.getItem('sparkx_user') || '{}');
+        if (stored?.role && stored.role !== 'recruiter') {
+          return [];
+        }
+      } catch {}
       const res = await authFetch(`${API_BASE_URL}/candidates`, { signal: AbortSignal.timeout(4000) });
       if (!res.ok) throw new Error('Failed to fetch candidates');
       const data = await res.json();

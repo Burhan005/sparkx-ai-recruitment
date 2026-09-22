@@ -4,6 +4,7 @@ import { useRecruitment } from '../../context/RecruitmentContext';
 import { evaluateAnswerAndAdapt } from '../../services/aiRecruiterService';
 import { ProctorMonitor } from '../../services/proctorService';
 import { api } from '../../services/api';
+import { normalizeSkill } from '../../utils/skillMatcher';
 import { 
   Video, 
   VideoOff, 
@@ -36,6 +37,7 @@ export default function AIInterviewRoom() {
     activeJob, 
     currentInterviewSession, 
     setCurrentInterviewSession, 
+    completeInterviewAndEvaluate,
     candidates,
     currentUser,
     userRole,
@@ -142,7 +144,9 @@ export default function AIInterviewRoom() {
       try {
         const candidateId = activeCandidate?.id || currentInterviewSession?.candidateId || currentUser?.id || 'candidate-default';
         const candidateName = activeCandidate?.name || currentInterviewSession?.candidateName || currentUser?.name || 'Candidate';
-        const candidateSkills = activeCandidate?.skills || ['Distributed Systems', 'Backend Architecture'];
+        // Normalize skills before sending to API — prevents typos like "docket" appearing in interview questions
+        const rawSkills = activeCandidate?.skills || ['Distributed Systems', 'Backend Architecture'];
+        const candidateSkills = rawSkills.map(s => { try { return normalizeSkill(s); } catch { return s; } });
         const experienceYears = activeCandidate?.experienceYears || 3;
 
         const res = await api.generateCandidateQuestions({

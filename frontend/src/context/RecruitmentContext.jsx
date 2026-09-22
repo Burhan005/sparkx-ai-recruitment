@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { generateCandidateEvaluation } from '../services/aiRecruiterService';
 import { api, authEventBus } from '../services/api';
+import { fuzzySkillMatch, normalizeSkill } from '../utils/skillMatcher';
 
 const RecruitmentContext = createContext();
 
@@ -192,12 +193,12 @@ export function RecruitmentProvider({ children }) {
       setActiveJobId(prev => prev || safeJobs[0]?.id || null);
 
       // Strict role-based candidate sync:
-      // Only recruiters fetch the full candidates pipeline. Candidates fetch their own applications.
-      if (activeRole === 'recruiter') {
+      // Only verified recruiters fetch the full candidates pipeline. Candidates fetch their own applications.
+      if (activeRole === 'recruiter' && currentUser?.role === 'recruiter') {
         const dbCandidates = await api.getCandidates();
         const safeCands = (dbCandidates && dbCandidates.length > 0) ? dbCandidates : [];
         setCandidates(safeCands);
-      } else if (activeRole === 'candidate') {
+      } else if (activeRole === 'candidate' || currentUser?.role === 'candidate') {
         setCandidates([]);
         if (currentUser?.email) {
           refreshMyApplications(currentUser.email);
@@ -437,9 +438,9 @@ export function RecruitmentProvider({ children }) {
       return null;
     }
     // Client-side match preview score (backend recalculates authoritatively)
+    const normalizedSkills = (skills || []).map(s => normalizeSkill(s));
     const reqSkills = targetJob.requiredSkills || [];
-    const lowerSkills = (skills || []).map(s => s.toLowerCase());
-    const matchCount = reqSkills.filter(req => lowerSkills.some(s => s.includes(req.toLowerCase()) || req.toLowerCase().includes(s))).length;
+    const matchCount = reqSkills.filter(req => normalizedSkills.some(s => fuzzySkillMatch(s, req))).length;
     let matchPercentage = Math.round((matchCount / Math.max(1, reqSkills.length)) * 70);
     matchPercentage += Number(experienceYears) >= (targetJob.minExperienceYears || 2) ? 25 : 10;
     matchPercentage = Math.min(99, Math.max(35, matchPercentage));
@@ -455,7 +456,9 @@ export function RecruitmentProvider({ children }) {
       finalDecision: 'Applied',
       matchScore: matchPercentage,
       experienceYears: Number(experienceYears),
-      education, skills, resumeSummary,
+      education, 
+      skills: normalizedSkills, 
+      resumeSummary,
       resumeFilename: resumeFilename || null,
       resumeText: resumeText || null,
       fraudFlags,

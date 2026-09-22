@@ -1,5 +1,6 @@
 // AI Recruiter Service: Dynamic Evaluation & Adaptive Questioning
 // NO HARDCODED SCORES — every score is computed live from the candidate's actual text.
+import { fuzzySkillMatch } from '../utils/skillMatcher';
 
 const TECH_ENTITIES = {
   redis: "Redis caching & in-memory data structures",
@@ -25,11 +26,18 @@ const TECH_ENTITIES = {
 };
 
 const UNSURE_PATTERNS = [
-  /\bi don't know\b/i, /\bi dont know\b/i, /\bno idea\b/i, /\bnot sure\b/i,
+  /\bidk\b/i, /\bi don't know\b/i, /\bi dont know\b/i, /\bno idea\b/i, /\bnot sure\b/i,
   /\bnot familiar\b/i, /\bhaven't used\b/i, /\bhavent used\b/i, /\bnever used\b/i,
   /\bpass\b/i, /\bskip\b/i, /\bno clue\b/i, /\bcan't answer\b/i, /\bcant answer\b/i,
   /\bnot worked with\b/i, /\bhaven't worked with\b/i, /\bhavent worked with\b/i,
-  /\bnot experienced\b/i, /\bno experience\b/i, /\bunfamiliar\b/i
+  /\bnot experienced\b/i, /\bno experience\b/i, /\bunfamiliar\b/i,
+  /^\s*no\s*$/i, /^\s*nope\s*$/i, /^\s*nah\s*$/i
+];
+
+const TERMINAL_PATTERNS = [
+  /\bbye\b/i, /\bbye bye\b/i, /\bexit\b/i, /\bquit\b/i, /\bstop\b/i,
+  /\bend\b/i, /\bleave\b/i, /\bterminate\b/i, /\bwhat the hell\b/i,
+  /\bclose interview\b/i, /\bfinish\b/i
 ];
 
 export function generateQuestionsForRole(roleTitle, skills, experienceYears = 2, candidateName = 'Candidate') {
@@ -43,7 +51,7 @@ export function generateQuestionsForRole(roleTitle, skills, experienceYears = 2,
       type: "Technical Competence & Concurrency",
       prompt: `In your production work with ${primarySkill}, how have you architected services to handle high concurrency and prevent memory leaks or thread starvation under sudden traffic bursts?`,
       idealKeywords: [primarySkill.toLowerCase(), "concurrency", "optimization", "monitoring", "latency", "async", "cache", "throughput"],
-      followUpVague: `You mentioned utilizing ${primarySkill}, but what specific profiling tools or metrics did you use to detect memory or CPU bottlenecks?`,
+      followUpVague: `In a system leveraging ${primarySkill}, what specific profiling tools or metrics would you use to detect memory or CPU bottlenecks?`,
       followUpExpert: `Under a 10x traffic spike on ${primarySkill}, what backpressure and circuit-breaker patterns did you implement?`
     },
     {
@@ -81,20 +89,26 @@ export function evaluateAnswerAndAdapt(question, answer) {
   const answerLower = answerTrimmed.toLowerCase();
   const primaryTopic = question?.idealKeywords?.[0] || "this architecture";
 
-  // Case 1: Detect explicit admissions of uncertainty / lack of knowledge ("I don't know")
+  // Case 0: Detect terminal exit requests ("bye", "quit", "what the hell")
+  const isTerminal = TERMINAL_PATTERNS.some(p => p.test(answerTrimmed));
+  if (isTerminal) {
+    return {
+      needsFollowUp: false,
+      followUpQuestion: null,
+      quality: "terminal_exit",
+      feedback: "Candidate concluded response. Advancing session."
+    };
+  }
+
+  // Case 1: Detect explicit admissions of uncertainty / lack of knowledge ("idk", "I don't know")
+  // Do NOT trap the candidate in follow-up loops — advance smoothly
   const isUnsure = UNSURE_PATTERNS.some(p => p.test(answerTrimmed));
   if (isUnsure) {
-    const unsurePivots = [
-      `Understood — transparency about technical boundaries is a vital trait in senior engineering. If you encountered a system requiring ${primaryTopic} on the job tomorrow, what first-principles approach would you take to research, prototype, and validate it?`,
-      `Fair enough, thanks for your upfront answer. Looking at the wider system around ${primaryTopic}, have you worked with any adjacent tools or alternative patterns that accomplish a similar goal?`,
-      `That's completely fine. Let's look at it conceptually: even without direct hands-on experience in ${primaryTopic}, how would you reason about the trade-offs of latency versus data consistency here?`
-    ];
-    const chosen = unsurePivots[answerTrimmed.length % unsurePivots.length];
     return {
-      needsFollowUp: true,
-      followUpQuestion: chosen,
+      needsFollowUp: false,
+      followUpQuestion: null,
       quality: "acknowledged_gap",
-      feedback: `Candidate transparently acknowledged unfamiliarity with ${primaryTopic}. Pivot dispatched to evaluate first-principles reasoning.`
+      feedback: `Candidate transparently acknowledged unfamiliarity with ${primaryTopic}. Moving forward.`
     };
   }
 
@@ -250,7 +264,7 @@ export function generateCandidateEvaluation({
 
   requiredSkills.forEach(skill => {
     const sLower = skill.toLowerCase();
-    if (candidateSkillsLower.some(cs => cs.includes(sLower) || sLower.includes(cs)) || transcriptTextLower.includes(sLower)) {
+    if ((resumeSkills || []).some(cs => fuzzySkillMatch(cs, skill)) || transcriptTextLower.includes(sLower)) {
       strongSkills.push(skill);
     } else {
       missingSkills.push(skill);

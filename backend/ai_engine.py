@@ -2480,7 +2480,9 @@ def synthesize_candidate_interview_questions(
     No two candidates receive the same questions. Questions interleave the job requirements
     with the candidate's actual background and seniority level.
     """
-    candidate_skills = candidate_skills or []
+    # Normalize all skills to resolve typos (e.g. docket -> Docker) before LLM prompt or fallback pool generation
+    candidate_skills = [normalize_skill_name(s) for s in (candidate_skills or []) if s and str(s).strip()]
+    job_skills = [normalize_skill_name(s) for s in (job_skills or []) if s and str(s).strip()]
     is_coding, domain_category, _ = classify_job_domain(role_title, job_skills)
 
     p_skill = candidate_skills[0] if candidate_skills else (job_skills[0] if job_skills else ("System Architecture" if is_coding else "Domain Execution"))
@@ -2660,7 +2662,7 @@ def synthesize_candidate_interview_questions(
                 "type": "Technical Competence & Concurrency",
                 "prompt": f"In your work with {p_skill}, how have you architected services to handle high concurrency and prevent thread pool starvation or memory leaks under sudden traffic bursts?",
                 "ideal_keywords": [p_skill.lower(), "concurrency", "async", "latency", "event loop", "throughput", "caching", "worker"],
-                "follow_up_vague": f"You mentioned utilizing {p_skill}, but what specific profiling tools or metrics did you use to detect memory or CPU bottlenecks?",
+                "follow_up_vague": f"In a system leveraging {p_skill}, what specific profiling tools or metrics would you use to detect memory or CPU bottlenecks?",
                 "follow_up_expert": f"Under a 10x traffic spike on {p_skill}, what backpressure and circuit-breaker patterns did you implement?"
             },
             {
@@ -2781,6 +2783,30 @@ def analyze_text_quality(answer: str, ideal_keywords: List[str]) -> Dict[str, An
         "score": score
     }
 
+UNSURE_PATTERNS = [
+    r'\bidk\b', r'\bi don\'?t know\b', r'\bno idea\b', r'\bnot sure\b',
+    r'\bnot familiar\b', r'\bhaven\'?t used\b', r'\bnever used\b',
+    r'\bpass\b', r'\bskip\b', r'\bno clue\b', r'\bcan\'?t answer\b',
+    r'\bnot worked with\b', r'\bhaven\'?t worked with\b',
+    r'\bnot experienced\b', r'\bno experience\b', r'\bunfamiliar\b',
+    r'^\s*no\s*$', r'^\s*nope\s*$', r'^\s*nah\s*$'
+]
+
+TERMINAL_PATTERNS = [
+    r'\bbye\b', r'\bbye bye\b', r'\bexit\b', r'\bquit\b', r'\bstop\b',
+    r'\bend\b', r'\bleave\b', r'\bterminate\b', r'\bwhat the hell\b',
+    r'\bclose interview\b', r'\bfinish\b'
+]
+
+def extract_tech_entity(text: str) -> Optional[str]:
+    if not text:
+        return None
+    lower = text.lower()
+    for k, v in TECH_ENTITIES.items():
+        if re.search(r'\b' + re.escape(k) + r'\b', lower):
+            return v
+    return None
+
 def evaluate_adaptive_answer(
     prompt: str, 
     answer: str, 
@@ -2791,12 +2817,36 @@ def evaluate_adaptive_answer(
     """
     Real-time context-aware answer evaluation.
     Evaluates:
-      1. Admissions of uncertainty ("I don't know") -> Pivots constructively to first-principles problem solving.
-      2. Specific entity mentions ("We used Redis") -> Generates targeted deep-dive into that exact entity.
-      3. Vague responses -> Probes specific architectural metrics/trade-offs.
-      4. Advanced responses -> Issues scenario stress-tests.
+      1. Terminal / Exits ("bye", "quit") -> Concludes question without follow-up.
+      2. Admissions of uncertainty ("idk", "I don't know") -> Acknowledges candor and advances without trapped looping.
+      3. Specific entity mentions ("We used Redis") -> Generates targeted deep-dive into that exact entity.
+      4. Vague responses -> Probes specific architectural metrics/trade-offs.
+      5. Advanced responses -> Issues scenario stress-tests.
     """
     answer_clean = answer.strip() if answer else ""
+
+    # Check terminal and unsure intent first
+    is_terminal = any(re.search(p, answer_clean, re.I) for p in TERMINAL_PATTERNS)
+    if is_terminal:
+        return {
+            "needs_follow_up": False,
+            "follow_up_question": None,
+            "quality": "terminal_exit",
+            "score": 35,
+            "feedback": "Candidate concluded response. Advancing interview.",
+            "engine": "local_nlp"
+        }
+
+    is_unsure = any(re.search(p, answer_clean, re.I) for p in UNSURE_PATTERNS)
+    if is_unsure:
+        return {
+            "needs_follow_up": False,
+            "follow_up_question": None,
+            "quality": "acknowledged_gap",
+            "score": 45,
+            "feedback": "Candidate acknowledged unfamiliarity with the topic. Moving forward to next question.",
+            "engine": "local_nlp"
+        }
     
     # 1. Primary: Live LLM Real-Time Evaluation (when Gemini, Groq, or OpenAI key is configured)
     llm_prompt = (
@@ -2805,8 +2855,8 @@ def evaluate_adaptive_answer(
         f"Candidate Answer: \"{answer_clean}\"\n"
         f"Target Technologies: {', '.join(ideal_keywords or ['System Architecture'])}\n\n"
         f"Evaluate the candidate's response in real-time according to these conversational rules:\n"
-        f"1. Gaps / Uncertainty: If the candidate says 'I don't know', 'pass', 'not familiar', or acknowledges an area of weakness, DO NOT repeat robotic demands for production examples. Recognize candor as a positive senior engineer trait, and naturally pivot to first-principles thinking or adjacent tools based on the question.\n"
-        f"2. Specific Mentions: If the candidate mentions specific tools or architectural patterns, ask an architectural follow-up probing real trade-offs, failover, or scaling constraints.\n"
+        f"1. Gaps / Uncertainty / Exits: If the candidate says 'I don't know', 'idk', 'pass', 'bye', or cannot answer, set needs_follow_up=false. Do NOT ask more questions.\n"
+        f"2. Specific Mentions: If the candidate mentions specific tools or architectural patterns they used, ask an architectural follow-up probing real trade-offs, failover, or scaling constraints.\n"
         f"3. Vague: If the answer is hand-wavy or lacks depth, ask a targeted follow-up probing metrics, latency, or error-handling.\n"
         f"4. Advanced: If the answer is strong, challenge them with a high-concurrency edge case or zero-downtime rollback scenario.\n"
         f"5. Complete: If the answer is solid and thorough, set needs_follow_up=false.\n\n"
@@ -2837,24 +2887,6 @@ def evaluate_adaptive_answer(
 
     # 2. Local Deterministic Context-Aware NLP Engine
     analysis = analyze_text_quality(answer_clean, ideal_keywords)
-    primary_topic = ideal_keywords[0] if (ideal_keywords and len(ideal_keywords) > 0) else "this architecture"
-
-    # Case A: Candidate acknowledges they don't know / uncertainty
-    is_unsure = any(re.search(p, answer_clean, re.I) for p in UNSURE_PATTERNS)
-    if is_unsure:
-        unsure_pivots = [
-            f"Understood — transparency about technical boundaries is a vital trait in senior engineering. If you encountered a system requiring {primary_topic} on the job tomorrow, what first-principles approach would you take to research, prototype, and validate it?",
-            f"Fair enough, thanks for your upfront answer. Looking at the wider system around {primary_topic}, have you worked with any adjacent tools or alternative patterns that accomplish a similar goal?",
-            f"That's completely fine. Let's look at it conceptually: even without direct hands-on experience in {primary_topic}, how would you reason about the trade-offs of latency versus data consistency here?"
-        ]
-        chosen_pivot = unsure_pivots[len(answer_clean) % len(unsure_pivots)]
-        return {
-            "needs_follow_up": True,
-            "follow_up_question": chosen_pivot,
-            "quality": "acknowledged_gap",
-            "score": max(35, analysis["score"]),
-            "feedback": f"Candidate transparently acknowledged unfamiliarity with {primary_topic}. Pivot dispatched to evaluate first-principles reasoning."
-        }
 
     # Case B: Gibberish or empty text
     if analysis["is_gibberish"] or analysis["word_count"] < 2:
@@ -3020,6 +3052,174 @@ def calculate_scorecard_and_gap(
 
 
 # ─── Resume-to-Job Authoritative Matching Engine ─────────────────────────────
+
+SKILL_CANONICAL_MAP = {
+    # Container & Cloud Infrastructure
+    "docket": "Docker",
+    "dockr": "Docker",
+    "docker": "Docker",
+    "dockers": "Docker",
+    "k8s": "Kubernetes",
+    "k8": "Kubernetes",
+    "kubernete": "Kubernetes",
+    "kubernets": "Kubernetes",
+    "kubernetes": "Kubernetes",
+    "terrafom": "Terraform",
+    "terform": "Terraform",
+    "terraform": "Terraform",
+    "ansibl": "Ansible",
+    "ansible": "Ansible",
+    "aws": "AWS",
+    "amazon web services": "AWS",
+    "gcp": "Google Cloud",
+    "google cloud": "Google Cloud",
+    "azure": "Microsoft Azure",
+
+    # Programming Languages & Frameworks
+    "pyhton": "Python",
+    "pyton": "Python",
+    "python": "Python",
+    "python3": "Python",
+    "recat": "React",
+    "reactjs": "React",
+    "react.js": "React",
+    "react": "React",
+    "react native": "React Native",
+    "angularjs": "Angular",
+    "anglar": "Angular",
+    "angular": "Angular",
+    "vuejs": "Vue.js",
+    "vue": "Vue.js",
+    "node": "Node.js",
+    "nodejs": "Node.js",
+    "node.js": "Node.js",
+    "ts": "TypeScript",
+    "typscript": "TypeScript",
+    "typescript": "TypeScript",
+    "js": "JavaScript",
+    "javascrip": "JavaScript",
+    "javascript": "JavaScript",
+    "golang": "Go",
+    "go lang": "Go",
+    "go": "Go",
+    "rust": "Rust",
+    "c++": "C++",
+    "cpp": "C++",
+    "c#": "C#",
+    "csharp": "C#",
+    "dotnet": ".NET Core",
+    ".net": ".NET Core",
+    "fastapi": "FastAPI",
+    "fast-api": "FastAPI",
+    "django": "Django",
+    "springboot": "Spring Boot",
+    "spring-boot": "Spring Boot",
+    "spring": "Spring Boot",
+
+    # Databases & Messaging
+    "postgres": "PostgreSQL",
+    "postgre": "PostgreSQL",
+    "postgresql": "PostgreSQL",
+    "pgsql": "PostgreSQL",
+    "mysql": "MySQL",
+    "mongo": "MongoDB",
+    "mongod": "MongoDB",
+    "mongodb": "MongoDB",
+    "redis": "Redis",
+    "kafka": "Apache Kafka",
+    "apache kafka": "Apache Kafka",
+    "rabbitmq": "RabbitMQ",
+    "graphql": "GraphQL",
+
+    # Finance & Accounting
+    "gaap": "GAAP",
+    "ifrs": "IFRS",
+    "cpa": "CPA",
+    "sox": "SOX Compliance",
+    "reconcilation": "Reconciliation",
+    "reconciliation": "Reconciliation",
+    "reconciliations": "Reconciliation",
+    "audit": "Financial Auditing",
+    "auditing": "Financial Auditing",
+    "tax": "Tax Accounting",
+    "taxation": "Tax Accounting",
+    "general ledger": "General Ledger",
+    "p&l": "P&L Management",
+    "balance sheet": "Balance Sheet Reconciliation"
+}
+
+def _levenshtein_distance(a: str, b: str) -> int:
+    """Calculates Levenshtein distance between two strings."""
+    if len(a) == 0:
+        return len(b)
+    if len(b) == 0:
+        return len(a)
+    dp = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+    for i in range(len(a) + 1):
+        dp[i][0] = i
+    for j in range(len(b) + 1):
+        dp[0][j] = j
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            cost = 0 if a[i - 1] == b[j - 1] else 1
+            dp[i][j] = min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+    return dp[len(a)][len(b)]
+
+def normalize_skill_name(raw_skill: str) -> str:
+    """Normalizes a raw skill string and corrects common typos (e.g. docket -> Docker)."""
+    if not raw_skill or not isinstance(raw_skill, str):
+        return ""
+    clean = raw_skill.strip()
+    lower = clean.lower()
+
+    # Exact alias match
+    if lower in SKILL_CANONICAL_MAP:
+        return SKILL_CANONICAL_MAP[lower]
+
+    # Fuzzy match against known skill aliases
+    for alias, canonical in SKILL_CANONICAL_MAP.items():
+        if abs(len(alias) - len(lower)) <= 2:
+            max_dist = 1 if len(lower) <= 6 else 2
+            if _levenshtein_distance(lower, alias) <= max_dist:
+                return canonical
+
+    return clean
+
+def fuzzy_skill_match_py(cand_skill: str, job_skill: str) -> bool:
+    """Checks whether candidate skill matches required job skill with typo tolerance."""
+    if not cand_skill or not job_skill:
+        return False
+    c_clean = cand_skill.lower().strip()
+    j_clean = job_skill.lower().strip()
+
+    if c_clean == j_clean:
+        return True
+
+    # Check canonical dictionary aliases
+    if c_clean in SKILL_CANONICAL_MAP and j_clean in SKILL_CANONICAL_MAP:
+        if SKILL_CANONICAL_MAP[c_clean] == SKILL_CANONICAL_MAP[j_clean]:
+            return True
+
+    # Substring match for longer tokens
+    if len(c_clean) > 3 and c_clean in j_clean:
+        return True
+    if len(j_clean) > 3 and j_clean in c_clean:
+        return True
+
+    # Fuzzy distance tolerance for typos (e.g., 'docket' vs 'docker')
+    min_len = min(len(c_clean), len(j_clean))
+    if min_len >= 4 and abs(len(c_clean) - len(j_clean)) <= 2:
+        max_dist = 1 if min_len <= 6 else 2
+        if _levenshtein_distance(c_clean, j_clean) <= max_dist:
+            return True
+
+    # Compare canonical normalized names
+    c_norm = normalize_skill_name(cand_skill).lower()
+    j_norm = normalize_skill_name(job_skill).lower()
+    if c_norm == j_norm or (len(c_norm) > 3 and c_norm in j_norm) or (len(j_norm) > 3 and j_norm in c_norm):
+        return True
+
+    return False
 
 def calculate_resume_job_match(job_data: Dict[str, Any], candidate_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -3236,16 +3436,15 @@ JSON format:
     for req in job_skills:
         req_clean = req.lower().strip()
         
-        # A. Direct candidate declared skill match
-        in_skills = any(
-            req_clean == cs.lower().strip() or
-            (len(req_clean) > 3 and req_clean in cs.lower().strip()) or
-            (len(cs.strip()) > 3 and cs.lower().strip() in req_clean)
-            for cs in cand_skills
-        )
+        # A. Direct / Fuzzy candidate declared skill match (resilient to typos like docket -> Docker)
+        in_skills = any(fuzzy_skill_match_py(cs, req) for cs in cand_skills)
 
-        # B. Direct phrase in resume text
+        # B. Direct phrase in resume text or normalized match
         in_text = bool(re.search(r'\b' + re.escape(req_clean) + r'\b', cand_combined_text))
+        if not in_text:
+            req_canonical = normalize_skill_name(req).lower()
+            if req_canonical and req_canonical != req_clean:
+                in_text = bool(re.search(r'\b' + re.escape(req_canonical) + r'\b', cand_combined_text))
 
         # C. Inflection / plural / stem matching (e.g. reconciliation -> reconciliations, audit -> auditing)
         if not in_skills and not in_text:

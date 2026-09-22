@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { api } from '../../services/api';
+import { normalizeSkill } from '../../utils/skillMatcher';
 import { 
   X, Upload, FileText, Sparkles, CheckCircle2, 
   AlertTriangle, ArrowRight, Bot, Zap, Loader2

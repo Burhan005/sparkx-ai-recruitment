@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { api } from '../../services/api';
+import { fuzzySkillMatch } from '../../utils/skillMatcher';
 import ResumeUploadModal from './ResumeUploadModal';
 import { FadeInUp } from '../ui/Primitives';
 import { 
@@ -113,9 +114,9 @@ export default function JobCatalog() {
         explanation = bm.explanation || '';
       } else if (hasCandidateProfile) {
         // Transitional non-inflated estimation without artificial score floors
-        const reqSkills = (job.requiredSkills || []).map(s => String(s).toLowerCase());
-        const matched = (job.requiredSkills || []).filter(req => 
-          candidateSkills.some(cs => cs.includes(req.toLowerCase()) || req.toLowerCase().includes(cs))
+        const reqSkills = job.requiredSkills || [];
+        const matched = reqSkills.filter(req => 
+          candidateSkills.some(cs => fuzzySkillMatch(cs, req))
         );
         matchedSkills = matched;
         const skillRatio = reqSkills.length > 0 ? (matched.length / reqSkills.length) : 0;

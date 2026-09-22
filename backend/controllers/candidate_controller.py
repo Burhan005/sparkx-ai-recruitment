@@ -594,7 +594,7 @@ class CandidateController:
         if role_match:
             role = role_match.group(0).strip()
 
-        # Skills
+        # Skills Extraction with Typo Normalization (e.g., docket -> Docker)
         skills = []
         competency_section = re.search(r'(?:Core Competencies|Skills|Technical Skills)\s*([\s\S]*?)(?:Professional Experience|Experience|Education|$)', text, re.I)
         if competency_section:
@@ -605,8 +605,14 @@ class CandidateController:
                     parts = re.split(r'[/,;]', line)
                     for p in parts:
                         clean_p = p.strip()
-                        if clean_p and len(clean_p) > 1 and clean_p not in skills:
-                            skills.append(clean_p)
+                        if clean_p and len(clean_p) > 1:
+                            try:
+                                from backend.ai_engine import normalize_skill_name
+                                normalized_p = normalize_skill_name(clean_p)
+                            except Exception:
+                                normalized_p = clean_p
+                            if normalized_p and normalized_p not in skills:
+                                skills.append(normalized_p)
 
         summary = ""
         sum_match = re.search(r'(?:Strategic|Experienced|Certified|Senior|Dedicated)[\s\S]*?\.\s*(?=[A-Z][a-z]+ [A-Z]|\n\n)', text)
