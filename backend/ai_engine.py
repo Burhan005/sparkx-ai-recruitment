@@ -2823,48 +2823,24 @@ def evaluate_adaptive_answer(
       4. Vague responses -> Probes specific architectural metrics/trade-offs.
       5. Advanced responses -> Issues scenario stress-tests.
     """
-    answer_clean = answer.strip() if answer else ""
-
-    # Check terminal and unsure intent first
-    is_terminal = any(re.search(p, answer_clean, re.I) for p in TERMINAL_PATTERNS)
-    if is_terminal:
-        return {
-            "needs_follow_up": False,
-            "follow_up_question": None,
-            "quality": "terminal_exit",
-            "score": 35,
-            "feedback": "Candidate concluded response. Advancing interview.",
-            "engine": "local_nlp"
-        }
-
-    is_unsure = any(re.search(p, answer_clean, re.I) for p in UNSURE_PATTERNS)
-    if is_unsure:
-        return {
-            "needs_follow_up": False,
-            "follow_up_question": None,
-            "quality": "acknowledged_gap",
-            "score": 45,
-            "feedback": "Candidate acknowledged unfamiliarity with the topic. Moving forward to next question.",
-            "engine": "local_nlp"
-        }
-    
-    # 1. Primary: Live LLM Real-Time Evaluation (when Gemini, Groq, or OpenAI key is configured)
+    # 1. Primary: Live LLM Dynamic Real-Time Evaluation (Gemini, Groq, OpenAI)
+    # The LLM dynamically understands conversational nuance, candor vs depth, and context.
     llm_prompt = (
-        f"You are an elite Principal Technical Interviewer at a top tier tech company (Google, Meta, Stripe).\n"
+        f"You are an elite Principal Technical Interviewer at a top tier tech company.\n"
         f"Question Asked: \"{prompt}\"\n"
         f"Candidate Answer: \"{answer_clean}\"\n"
         f"Target Technologies: {', '.join(ideal_keywords or ['System Architecture'])}\n\n"
-        f"Evaluate the candidate's response in real-time according to these conversational rules:\n"
-        f"1. Gaps / Uncertainty / Exits: If the candidate says 'I don't know', 'idk', 'pass', 'bye', or cannot answer, set needs_follow_up=false. Do NOT ask more questions.\n"
-        f"2. Specific Mentions: If the candidate mentions specific tools or architectural patterns they used, ask an architectural follow-up probing real trade-offs, failover, or scaling constraints.\n"
-        f"3. Vague: If the answer is hand-wavy or lacks depth, ask a targeted follow-up probing metrics, latency, or error-handling.\n"
-        f"4. Advanced: If the answer is strong, challenge them with a high-concurrency edge case or zero-downtime rollback scenario.\n"
-        f"5. Complete: If the answer is solid and thorough, set needs_follow_up=false.\n\n"
-        f"Output strictly valid JSON with no markdown code blocks:\n"
+        f"Evaluate the candidate's response dynamically based on semantic context:\n"
+        f"1. Concluding/Exit/Trivial Gaps: If the candidate gives up ('idk', 'pass', 'bye', 'no idea', 'no'), or explicitly asks to move on, set needs_follow_up=false. Respectfully acknowledge and transition.\n"
+        f"2. Nuanced admissions: If they say they don't know one specific detail but explain other technical concepts, evaluate their actual knowledge and score accordingly.\n"
+        f"3. Specific Mentions: If they describe architectural trade-offs, ask a context-aware follow-up probing failure modes, latency, or scaling.\n"
+        f"4. Vague: If high-level without technical substance, ask for concrete metrics or design patterns.\n"
+        f"5. Complete: If thorough, set needs_follow_up=false.\n\n"
+        f"Return strictly valid JSON:\n"
         f"{{\n"
-        f"  \"needs_follow_up\": true,\n"
-        f"  \"follow_up_question\": \"...\",\n"
-        f"  \"quality\": \"acknowledged_gap\",\n"
+        f"  \"needs_follow_up\": false,\n"
+        f"  \"follow_up_question\": null,\n"
+        f"  \"quality\": \"solid\",\n"
         f"  \"score\": 75,\n"
         f"  \"feedback\": \"...\"\n"
         f"}}"
@@ -2879,11 +2855,35 @@ def evaluate_adaptive_answer(
                 "follow_up_question": data.get("follow_up_question"),
                 "quality": data.get("quality", "solid"),
                 "score": int(data.get("score", 70)),
-                "feedback": data.get("feedback", "Evaluated live by Real-Time LLM."),
+                "feedback": data.get("feedback", "Evaluated dynamically by Live AI Engine."),
                 "engine": "live_llm"
             }
         except Exception as e:
             print(f"[AI Engine] LLM response JSON parse failed: {e}")
+
+    # 2. Secondary: Offline Deterministic Fallback (Only executed when LLM is unavailable/timed out)
+    # Check if input is a short exit or admission of not knowing (< 12 words)
+    is_terminal = any(re.search(p, answer_clean, re.I) for p in TERMINAL_PATTERNS)
+    if is_terminal and len(answer_clean.split()) < 12:
+        return {
+            "needs_follow_up": False,
+            "follow_up_question": None,
+            "quality": "terminal_exit",
+            "score": 35,
+            "feedback": "Candidate concluded response. Advancing interview.",
+            "engine": "offline_fallback"
+        }
+
+    is_unsure = any(re.search(p, answer_clean, re.I) for p in UNSURE_PATTERNS)
+    if is_unsure and len(answer_clean.split()) < 12:
+        return {
+            "needs_follow_up": False,
+            "follow_up_question": None,
+            "quality": "acknowledged_gap",
+            "score": 45,
+            "feedback": "Candidate acknowledged unfamiliarity with the topic. Moving forward to next question.",
+            "engine": "offline_fallback"
+        }
 
     # 2. Local Deterministic Context-Aware NLP Engine
     analysis = analyze_text_quality(answer_clean, ideal_keywords)
