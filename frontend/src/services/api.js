@@ -478,6 +478,34 @@ export const api = {
     }
   },
 
+  async getGoogleMeetStatus() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/auth/google/status`, {
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) return { configured: false, connected: false };
+      return await res.json();
+    } catch (err) {
+      return { configured: false, connected: false };
+    }
+  },
+
+  getGoogleConnectUrl() {
+    return `${API_BASE_URL}/auth/google/connect`;
+  },
+
+  async disconnectGoogleMeet() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/auth/google/disconnect`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(5000)
+      });
+      return res.ok;
+    } catch (err) {
+      return false;
+    }
+  },
+
   async sendEmail(candidateId, templateType, customMessage = '') {
     try {
       const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/send-email`, {

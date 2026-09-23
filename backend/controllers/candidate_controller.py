@@ -9,6 +9,7 @@ from models.db_models import CandidateModel, JobModel
 from schemas import CandidateApply, CandidateStatusUpdate, CandidateScheduleRequest, EmailSendRequest
 from email_service import send_email, create_ics_calendar_event, parse_slot_to_datetime
 from ai_engine import calculate_resume_job_match
+from google_meet_service import is_google_connected, create_google_meet_event
 
 class CandidateController:
     @staticmethod
@@ -237,19 +238,95 @@ class CandidateController:
         notes_clean = payload.notes.strip() if payload.notes else ""
         notes_line = f"\n• Recruiter Notes: {notes_clean}" if notes_clean else ""
 
-        # Determine dynamic or recruiter-supplied Google Meet conference credentials
+        # Determine dynamic meeting credentials — real Google Meet or Jitsi fallback
         custom_url = (payload.meeting_url or "").strip()
+        meet_provider = "jitsi"  # default fallback
+        meet_code = ""
+        google_event_link = ""
+
         if custom_url:
+            # Recruiter explicitly provided a URL (could be Meet, Jitsi, or any platform)
             meet_url = custom_url
             clean_part = custom_url.split("?")[0].rstrip("/")
             meet_code = clean_part.split("/")[-1] if "/" in clean_part else custom_url
+            if "meet.google.com" in custom_url:
+                meet_provider = "google_meet"
+            elif "meet.jit.si" in custom_url or "jitsi" in custom_url.lower():
+                meet_provider = "jitsi"
+            else:
+                meet_provider = "custom"
+        elif is_google_connected():
+            # Google account connected — create a REAL Google Meet event via Calendar API
+            start_dt = parse_slot_to_datetime(scheduled_slot)
+            end_dt = start_dt + timedelta(minutes=45)
+            organizer_email = os.environ.get("SMTP_FROM_EMAIL", "")
+
+            success, meet_result = create_google_meet_event(
+                summary=f"SparkX AI Interview: {job_title} — {candidate.name}",
+                description=(
+                    f"AI Video Interview for {job_title}\n"
+                    f"Candidate: {candidate.name} ({candidate.email})\n"
+                    f"Assessed Competencies: {skills_str}\n"
+                    f"{notes_line}"
+                ),
+                start_dt=start_dt,
+                end_dt=end_dt,
+                attendee_emails=[candidate.email, organizer_email],
+            )
+
+            if success and meet_result.get("meet_url"):
+                meet_url = meet_result["meet_url"]
+                meet_code = meet_result.get("meet_id", "")
+                google_event_link = meet_result.get("html_link", "")
+                meet_provider = "google_meet"
+                print(f"[Google Meet] Created real meeting: {meet_url}")
+            else:
+                # Google API failed — fall back to Jitsi
+                error_msg = meet_result.get("error", "Unknown error") if isinstance(meet_result, dict) else str(meet_result)
+                print(f"[Google Meet] Calendar API failed ({error_msg}), falling back to Jitsi")
+                cand_clean = (candidate.id or "candidate").replace("cand-", "")[:10]
+                meet_url = f"https://meet.jit.si/SparkX-Interview-{cand_clean}"
+                meet_code = ""
+                meet_provider = "jitsi"
         else:
-            short_id = candidate.id.replace("cand-", "")[:6]
-            meet_code = f"spk-{short_id[:3]}-{short_id[3:] or 'rec'}"
-            meet_url = f"https://meet.google.com/{meet_code}"
+            # No Google connected and no custom URL — use Jitsi instant room
+            cand_clean = (candidate.id or "candidate").replace("cand-", "")[:10]
+            meet_url = f"https://meet.jit.si/SparkX-Interview-{cand_clean}"
+            meet_code = ""
+            meet_provider = "jitsi"
 
         candidate.interview_meeting_url = meet_url
-        pin_code = f"{abs(hash(candidate.id)) % 900000 + 100000}"
+
+        # Build provider-aware email content
+        if meet_provider == "google_meet":
+            platform_name = "Google Meet"
+            platform_icon = "📹"
+            join_instruction = f"Click the Google Meet link below at your scheduled time to join."
+            credentials_block = (
+                f"VIDEO CONFERENCE CREDENTIALS:\n"
+                f"• Platform: Google Meet\n"
+                f"• Direct Video Link: {meet_url}\n"
+                f"• Meeting Code: {meet_code}\n"
+            )
+            if google_event_link:
+                credentials_block += f"• Google Calendar Event: {google_event_link}\n"
+        elif meet_provider == "jitsi":
+            platform_name = "SparkX Video Room (Jitsi)"
+            platform_icon = "🎥"
+            join_instruction = f"Click the video link below to join. No login required — works in any browser."
+            credentials_block = (
+                f"VIDEO CONFERENCE CREDENTIALS:\n"
+                f"• Platform: SparkX Video Room (Jitsi — HD Video, no login needed)\n"
+                f"• Direct Video Link: {meet_url}\n"
+            )
+        else:
+            platform_name = "Video Conference"
+            platform_icon = "🎥"
+            join_instruction = f"Click the meeting link below at your scheduled time."
+            credentials_block = (
+                f"VIDEO CONFERENCE CREDENTIALS:\n"
+                f"• Meeting Link: {meet_url}\n"
+            )
 
         subject = f"[SPARKX CONFIRMED] AI Video Interview: {job_title}"
         body = (
@@ -259,19 +336,18 @@ class CandidateController:
             f"• Target Position: {job_title}\n"
             f"• Assessed Competencies: {skills_str}\n"
             f"• Scheduled Slot: {scheduled_slot}{notes_line}\n\n"
-            f"VIDEO CONFERENCE CREDENTIALS:\n"
-            f"• Platform: Google Meet\n"
-            f"• Direct Video Link: {meet_url}\n"
-            f"• Meeting ID: {meet_code}\n"
-            f"• Access Passcode / PIN: {pin_code}\n"
-            f"• SparkX AI Candidate Portal: http://localhost:3000\n\n"
+            f"{credentials_block}\n"
             f"HOW TO JOIN:\n"
-            f"1. To join via Google Meet: Click {meet_url} at your scheduled time (Passcode: {pin_code}).\n"
-            f"2. To join via SparkX AI Portal: Log in at http://localhost:3000 and enter 'AI Interview Room'.\n"
+            f"1. {join_instruction}\n"
+            f"2. Meeting Link: {meet_url}\n"
             f"3. Ensure your webcam, microphone, and a quiet environment are ready.\n\n"
             f"Best regards,\n"
             f"SparkX AI Recruitment Team"
         )
+
+        # Provider-aware credential box color
+        cred_bg = "#1a73e8" if meet_provider == "google_meet" else "#7c3aed"
+        cred_label = f"{platform_name} Conference Access"
 
         html = f"""
         <div style="font-family: Arial, sans-serif; background-color: #070A12; color: #FFFFFF; padding: 32px; border-radius: 16px; max-width: 540px; margin: 0 auto; border: 1px solid #1e293b;">
@@ -300,23 +376,20 @@ class CandidateController:
 
           <!-- Video Conference Credentials Box -->
           <div style="background-color: #1e293b; border: 1px solid #475569; border-radius: 12px; padding: 18px; margin: 20px 0;">
-            <div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; font-family: Arial, sans-serif;">Google Meet Conference Access</div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px; font-family: Arial, sans-serif;">{cred_label}</div>
+            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px; font-family: Arial, sans-serif;">• <strong>Platform:</strong> {platform_name}</div>
             <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px; font-family: Arial, sans-serif;">• <strong>Meeting Link:</strong> <a href="{meet_url}" target="_blank" style="color: #60a5fa; text-decoration: underline;">{meet_url}</a></div>
-            <div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px; font-family: Arial, sans-serif;">• <strong>Meeting ID:</strong> <span style="font-family: monospace; color: #facc15; font-weight: bold;">{meet_code}</span></div>
-            <div style="font-size: 13px; color: #cbd5e1; font-family: Arial, sans-serif;">• <strong>Passcode / PIN:</strong> <span style="font-family: monospace; color: #4ade80; font-weight: bold;">{pin_code}</span></div>
+            {f'<div style="font-size: 13px; color: #cbd5e1; margin-bottom: 6px; font-family: Arial, sans-serif;">• <strong>Meeting Code:</strong> <span style="font-family: monospace; color: #facc15; font-weight: bold;">{meet_code}</span></div>' if meet_code else ''}
           </div>
 
-          <!-- Bulletproof Action Buttons Table Layout -->
+          <!-- Action Buttons -->
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 28px 0; text-align: center;">
             <tr>
               <td align="center">
                 <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
                   <tr>
                     <td align="center" style="padding: 6px 8px;">
-                      <a href="{meet_url}" target="_blank" style="background-color: #1a73e8; color: #ffffff; padding: 13px 22px; border-radius: 10px; text-decoration: none; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; display: inline-block; line-height: 1.2; text-align: center; border: 1px solid #1a73e8; min-width: 160px; box-sizing: border-box;">📹 Join Google Meet</a>
-                    </td>
-                    <td align="center" style="padding: 6px 8px;">
-                      <a href="http://localhost:3000" target="_blank" style="background-color: #4f46e5; color: #ffffff; padding: 13px 22px; border-radius: 10px; text-decoration: none; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; display: inline-block; line-height: 1.2; text-align: center; border: 1px solid #4f46e5; min-width: 160px; box-sizing: border-box;">⚡ Launch SparkX Portal</a>
+                      <a href="{meet_url}" target="_blank" style="background-color: {cred_bg}; color: #ffffff; padding: 13px 22px; border-radius: 10px; text-decoration: none; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; display: inline-block; line-height: 1.2; text-align: center; min-width: 160px; box-sizing: border-box;">{platform_icon} Join {platform_name}</a>
                     </td>
                   </tr>
                 </table>
@@ -325,7 +398,7 @@ class CandidateController:
           </table>
 
           <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; font-family: Arial, sans-serif;">
-            <strong>Instructions:</strong> You can join via Google Meet (enter Passcode: {pin_code} if prompted) or directly through the SparkX AI Portal. Ensure camera and microphone permissions are enabled.
+            <strong>Instructions:</strong> {join_instruction} Ensure camera and microphone permissions are enabled.
           </p>
           <hr style="border: none; border-top: 1px solid #1e293b; margin: 24px 0;" />
           <p style="color: #64748b; font-size: 11px; text-align: center; font-family: Arial, sans-serif;">SparkX AI Recruitment Intelligence Platform</p>
