@@ -324,8 +324,8 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
 
       {/* ── Studio Header ── */}
       <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0 overflow-hidden">
-          <div className="space-y-1">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+          <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
                 Evaluation Authoring Suite
@@ -341,8 +341,8 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-            <div className="w-52 sm:w-64 min-w-0 shrink">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="w-52 sm:w-60">
               <CustomDropdown
                 value={selectedJobId}
                 onChange={(val) => {
@@ -352,6 +352,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
                 options={jobOptions}
                 icon={Briefcase}
                 menuWidth="w-80"
+                align="right"
                 title="Select Job Requisition"
               />
             </div>
@@ -365,7 +366,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
               className={isGeneratingAI ? 'opacity-70' : ''}
               title="Re-analyze job requirements and regenerate evaluation plan"
             >
-              {isGeneratingAI ? 'Generating…' : 'Regenerate'}
+              {isGeneratingAI ? 'Generating…' : 'Regenerate with AI'}
             </Button>
 
             <Button

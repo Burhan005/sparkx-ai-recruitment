@@ -23,37 +23,27 @@ load_dotenv()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+GROK_API_KEY = os.environ.get("GROK_API_KEY", "")  # xAI Grok
 
 def get_llm_status() -> Dict[str, Any]:
     """Return active LLM provider and status."""
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
     groq_key = os.environ.get("GROQ_API_KEY", "").strip()
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    grok_key = os.environ.get("GROK_API_KEY", "").strip()
 
     if gemini_key:
-        return {
-            "active": True,
-            "provider": "Google Gemini",
-            "model": "gemini-3.6-flash",
-            "has_key": True,
-            "mode": "live_llm"
-        }
+        return {"active": True, "provider": "Google Gemini", "model": "gemini-2.5-flash", "has_key": True, "mode": "live_llm"}
     elif groq_key:
-        return {
-            "active": True,
-            "provider": "Groq",
-            "model": "llama-3.3-70b-versatile",
-            "has_key": True,
-            "mode": "live_llm"
-        }
+        return {"active": True, "provider": "Groq", "model": "llama-3.3-70b-versatile", "has_key": True, "mode": "live_llm"}
+    elif deepseek_key:
+        return {"active": True, "provider": "DeepSeek", "model": "deepseek-chat", "has_key": True, "mode": "live_llm"}
+    elif grok_key:
+        return {"active": True, "provider": "xAI Grok", "model": "grok-beta", "has_key": True, "mode": "live_llm"}
     elif openai_key:
-        return {
-            "active": True,
-            "provider": "OpenAI",
-            "model": "gpt-4o-mini",
-            "has_key": True,
-            "mode": "live_llm"
-        }
+        return {"active": True, "provider": "OpenAI", "model": "gpt-4o-mini", "has_key": True, "mode": "live_llm"}
     else:
         return {
             "active": False,
@@ -69,6 +59,10 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
     env_var_name = "GEMINI_API_KEY"
     if "groq" in provider_lower:
         env_var_name = "GROQ_API_KEY"
+    elif "deepseek" in provider_lower:
+        env_var_name = "DEEPSEEK_API_KEY"
+    elif "grok" in provider_lower or "xai" in provider_lower:
+        env_var_name = "GROK_API_KEY"
     elif "openai" in provider_lower:
         env_var_name = "OPENAI_API_KEY"
 
@@ -229,10 +223,78 @@ def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "", ma
         return None
     return None
 
+def _call_deepseek_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
+    """Direct call to DeepSeek API (OpenAI-compatible endpoint). Free tier available."""
+    url = "https://api.deepseek.com/chat/completions"
+    messages = []
+    if system_instruction:
+        messages.append({"role": "system", "content": system_instruction})
+    messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": "deepseek-chat",
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": max_tokens
+    }
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=15) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            choices = res_data.get("choices", [])
+            if choices and "message" in choices[0]:
+                return choices[0]["message"].get("content", "").strip()
+    except Exception as e:
+        print(f"[AI Engine] DeepSeek error: {e}")
+        return None
+    return None
+
+def _call_grok_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
+    """Direct call to xAI Grok API (OpenAI-compatible endpoint). Free tier available via console.x.ai."""
+    url = "https://api.x.ai/v1/chat/completions"
+    messages = []
+    if system_instruction:
+        messages.append({"role": "system", "content": system_instruction})
+    messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "model": "grok-beta",
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": max_tokens
+    }
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=15) as response:
+            res_data = json.loads(response.read().decode("utf-8"))
+            choices = res_data.get("choices", [])
+            if choices and "message" in choices[0]:
+                return choices[0]["message"].get("content", "").strip()
+    except Exception as e:
+        print(f"[AI Engine] Grok error: {e}")
+        return None
+    return None
+
 def call_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """
     Unified Real-Time LLM dispatcher.
-    Checks providers in order: Gemini -> Groq -> OpenAI.
+    Checks providers in order: Gemini -> Groq -> DeepSeek -> Grok (xAI) -> OpenAI.
     Returns live response text from LLM, or None if no keys or network error.
     """
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -252,6 +314,24 @@ def call_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) 
                 return res
         except Exception as e:
             print(f"[AI Engine] Groq call failed: {e}")
+
+    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if deepseek_key:
+        try:
+            res = _call_deepseek_api(deepseek_key, prompt, system_instruction, max_tokens=max_tokens)
+            if res:
+                return res
+        except Exception as e:
+            print(f"[AI Engine] DeepSeek call failed: {e}")
+
+    grok_key = os.environ.get("GROK_API_KEY", "").strip()
+    if grok_key:
+        try:
+            res = _call_grok_api(grok_key, prompt, system_instruction, max_tokens=max_tokens)
+            if res:
+                return res
+        except Exception as e:
+            print(f"[AI Engine] Grok call failed: {e}")
 
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if openai_key:
