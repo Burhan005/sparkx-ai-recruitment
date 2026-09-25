@@ -107,7 +107,7 @@ export default function AIConfigModal({ isOpen, onClose, onConfigUpdated }) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.08] pb-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-600/30">
+            <div className="w-10 h-10 rounded-2xl bg-brand-600 flex items-center justify-center shadow-sm">
               <Cpu className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -136,9 +136,9 @@ export default function AIConfigModal({ isOpen, onClose, onConfigUpdated }) {
           <div className="flex items-start justify-between">
             <div className="space-y-1">
               <div className="flex items-center space-x-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${aiStatus.active ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
+                <span className={`w-2 h-2 rounded-full ${aiStatus.active ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                 <span className="text-xs font-bold uppercase tracking-wider">
-                  {aiStatus.active ? 'Active LLM Connected' : 'Simulated Procedural Mode'}
+                  {aiStatus.active ? 'Active LLM Connected' : 'Local Deterministic Engine'}
                 </span>
               </div>
               <p className="text-sm font-semibold text-slate-900 dark:text-white">
@@ -178,7 +178,7 @@ export default function AIConfigModal({ isOpen, onClose, onConfigUpdated }) {
                   onClick={() => setSelectedProvider(prov.id)}
                   className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
                     selectedProvider === prov.id
-                      ? 'bg-indigo-50 dark:bg-indigo-600/20 border-indigo-500 text-indigo-950 dark:text-white shadow-md shadow-indigo-600/10 ring-1 ring-indigo-500/50'
+                      ? 'bg-brand-50 dark:bg-brand-950/40 border-brand-500 text-brand-950 dark:text-white ring-1 ring-brand-500/50 shadow-sm'
                       : 'bg-slate-50 dark:bg-[#06080E] border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
@@ -192,7 +192,7 @@ export default function AIConfigModal({ isOpen, onClose, onConfigUpdated }) {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
-                <Key className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                <Key className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 <span>API Key</span>
               </label>
               {selectedProvider === 'gemini' && (
@@ -200,7 +200,7 @@ export default function AIConfigModal({ isOpen, onClose, onConfigUpdated }) {
                   href="https://aistudio.google.com/app/apikey"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline flex items-center space-x-1 font-semibold"
+                  className="text-[11px] text-brand-600 dark:text-brand-400 hover:underline flex items-center space-x-1 font-semibold"
                 >
                   <span>Get Free Key (Google AI Studio)</span>
                   <ExternalLink className="w-3 h-3" />
@@ -214,7 +214,7 @@ export default function AIConfigModal({ isOpen, onClose, onConfigUpdated }) {
                 placeholder={`Paste your ${selectedProvider.toUpperCase()} API key...`}
                 value={apiKey}
                 onChange={e => setApiKey(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#06080E] border border-slate-300 dark:border-slate-700/80 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition shadow-inner font-mono pr-10"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#06080E] border border-slate-300 dark:border-slate-700/80 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-brand-500 transition shadow-inner font-mono pr-10"
               />
               <button
                 type="button"
@@ -255,7 +255,7 @@ export default function AIConfigModal({ isOpen, onClose, onConfigUpdated }) {
             <button
               type="submit"
               disabled={isSubmitting || !apiKey.trim()}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 disabled:opacity-40 text-white font-bold text-xs transition flex items-center space-x-2 shadow-lg shadow-indigo-600/30"
+              className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white font-bold text-xs transition flex items-center space-x-2 shadow-sm"
             >
               {isSubmitting ? (
                 <>

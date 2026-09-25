@@ -72,7 +72,14 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
     elif "openai" in provider_lower:
         env_var_name = "OPENAI_API_KEY"
 
-    clean_key = api_key.strip()
+    clean_key = re.sub(r"[\r\n]", "", api_key.strip())
+    if not clean_key or not re.match(r"^[A-Za-z0-9_\-\.]+$", clean_key):
+        return {
+            "success": False,
+            "provider": env_var_name,
+            "message": "Invalid API key format. Key contains invalid or illegal characters."
+        }
+
     os.environ[env_var_name] = clean_key
 
     # Persist to backend/.env
@@ -110,7 +117,7 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
 
 def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """Direct call to Google Gemini with auto-fallback across verified active models."""
-    candidate_models = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]
+    candidate_models = ["gemini-3.6-flash", "gemini-2.5-pro", "gemini-flash-latest"]
 
     payload: Dict[str, Any] = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -128,7 +135,7 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", ma
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
         try:
             req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=7) as response:
+            with urllib.request.urlopen(req, timeout=10) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 candidates = res_data.get("candidates", [])
                 if candidates and "content" in candidates[0]:
@@ -136,20 +143,22 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", ma
                     if parts and "text" in parts[0]:
                         return parts[0]["text"].strip()
         except urllib.error.HTTPError as e:
-            if e.code == 404:
+            if e.code in (404, 503, 429):
+                # Model unavailable or busy, try next candidate model
+                print(f"[AI Engine] Gemini {model} HTTP {e.code}: {e.reason}, trying next model...")
                 continue
-            if e.code in (400, 401, 403, 429, 503):
-                # Invalid, quota exceeded, or service unavailable across all models
-                print(f"[AI Engine] Gemini API error HTTP {e.code}: {e.reason}")
+            if e.code in (400, 401, 403):
+                # Authentication or bad request issue
+                print(f"[AI Engine] Gemini API auth error HTTP {e.code}: {e.reason}")
                 return None
             print(f"[AI Engine] Gemini {model} HTTP {e.code}: {e.reason}")
             continue
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             print(f"[AI Engine] Gemini connection error: {e}")
-            return None
+            continue
         except Exception as e:
             print(f"[AI Engine] Gemini {model} error: {e}")
-            return None
+            continue
     return None
 
 def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
@@ -493,6 +502,12 @@ def classify_job_domain(role_title: str, job_skills: List[str], job_description:
     ]) or bool(detected_tech)
 
     if is_tech:
+        is_network = bool(re.search(r'\b(network|routing|switching|cisco|juniper|arista|firewall|palo\s*alto|fortinet|ccna|ccnp|ccie|tcp\/ip|bgp|ospf|lan\/wan|subnets?|cidr)\b', combined))
+        if is_network:
+            network_langs = [l for l in detected_tech if l in ["python", "bash"]] if detected_tech else ["python", "bash"]
+            if not network_langs:
+                network_langs = ["python", "bash"]
+            return True, "network", network_langs
         langs = detected_tech if detected_tech else ["python", "javascript", "typescript", "java", "cpp"]
         return True, "technical", langs
 
@@ -861,12 +876,19 @@ def _generate_10_dynamic_mcqs(role_title: str, job_skills: List[str], domain_cat
 
     # 3. TECHNICAL (10 Architectural & Engineering Dimensions)
     else:
+        # Detect cloud / DevOps / SRE / infrastructure focus
+        is_cloud_title = any(k in role_title.lower() for k in ["cloud", "devops", "sre", "infra", "infrastructure", "platform engineer", "site reliability"])
+        is_cloud_focus = is_cloud_title or any(k in [s.lower() for s in job_skills] + [role_title.lower()] for k in ["cloud", "aws", "gcp", "azure", "kubernetes", "k8s", "docker", "devops", "sre", "terraform", "infra", "infrastructure", "platform engineer", "site reliability", "ci/cd", "ansible"])
+        # Detect if frontend / web focused
+        is_web_title = any(k in role_title.lower() for k in ["frontend", "front-end", "ui engineer", "web developer", "react"])
+        is_web_focus = is_web_title or any(k in [s.lower() for s in job_skills] + [role_title.lower()] for k in ["react", "frontend", "vue", "angular", "css", "html", "web"])
         # Detect if database / SQL focused
         is_sql_focus = any(k in [s.lower() for s in job_skills] + [role_title.lower()] for k in ["sql", "database", "postgres", "mysql", "dba", "data engineer"])
-        # Detect if frontend / web focused
-        is_web_focus = any(k in [s.lower() for s in job_skills] + [role_title.lower()] for k in ["react", "frontend", "vue", "angular", "css", "html", "web"])
-        # Detect if cloud / infra focused
-        is_cloud_focus = any(k in [s.lower() for s in job_skills] + [role_title.lower()] for k in ["cloud", "aws", "kubernetes", "k8s", "docker", "devops", "terraform", "infra"])
+
+        # Prioritize cloud/DevOps if role title specifically states so
+        if is_cloud_title:
+            is_sql_focus = False
+            is_web_focus = False
 
         if is_sql_focus:
             return [
@@ -2277,28 +2299,55 @@ def synthesize_technical_assessment_bundle(
 
     # 2. Live LLM Dispatch
     if is_coding:
-        llm_prompt = (
-            f"You are a Principal Staff Engineer.\n"
-            f"CRITICAL REQUIREMENT: ALL text content (questions, options, explanations, scenarios, prompts, instructions, bugs, descriptions) MUST be written 100% in English only. Do NOT generate Hindi, Hinglish, or any other language under any circumstances.\n"
-            f"Generate a 100% dynamic, job-tailored 4-category Technical Assessment for:\n"
-            f"Role Title: {role_title}\n"
-            f"Required Skills & Technologies: {skills_str}\n"
-            f"Job Description Context: {desc_snippet}\n"
-            f"Experience Seniority: {experience_years} years\n"
-            f"Candidate Name: {candidate_name}\n"
-            f"Allowed Programming Technologies: {', '.join(allowed_langs)}\n"
-            f"Candidate Variation Seed: {seed_token}\n\n"
-            f"Generate strictly valid JSON with these 4 keys:\n"
-            f"1. \"technical_mcqs\": Array of 10 multiple-choice questions in English specifically testing {skills_str} (covering architecture, concurrency, database indexing, protocols, memory, Linux, cloud, and distributed systems).\n"
-            f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
-            f"2. \"scenario\": A realistic production incident or architecture design problem in English tailored to {role_title}.\n"
-            f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
-            f"3. \"hands_on\": Practical implementation challenge tailored to this role.\n"
-            f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"supported_languages\": {json.dumps(allowed_langs)}, \"starter_code\": {{\"python\": \"def solve(data):\\n    pass\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n"
-            f"4. \"troubleshooting\": A realistic debugging task with buggy code.\n"
-            f"   Object: {{\"id\": \"troubleshooting-1\", \"title\": \"...\", \"bug_description\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"broken_code\": {{\"python\": \"def fix(data):\\n    return data\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n\n"
-            f"Output strictly valid JSON only with NO markdown fences."
-        )
+        is_network = domain_category == "network" or bool(re.search(r'\b(network|routing|switching|cisco|juniper|firewall|bgp|ospf|ccna|ccnp)\b', f"{role_title} {skills_str}", re.I))
+        if is_network:
+            llm_prompt = (
+                f"You are a Principal Network Architect and Infrastructure Assessment Director.\n"
+                f"CRITICAL REQUIREMENT: ALL text content (questions, options, explanations, scenarios, prompts, instructions, bugs, descriptions) MUST be written 100% in English only. Do NOT generate Hindi, Hinglish, or any other language under any circumstances.\n"
+                f"Generate a 100% dynamic, job-tailored 4-category Network Engineering Assessment for:\n"
+                f"Role Title: {role_title}\n"
+                f"Required Skills & Technologies: {skills_str}\n"
+                f"Job Description Context: {desc_snippet}\n"
+                f"Experience Seniority: {experience_years} years\n"
+                f"Candidate Name: {candidate_name}\n"
+                f"Allowed Scripting / CLI Technologies: {', '.join(allowed_langs)}\n"
+                f"Candidate Variation Seed: {seed_token}\n\n"
+                f"IMPORTANT: This is a NETWORK ENGINEERING & INFRASTRUCTURE role, NOT a generic software engineering role.\n"
+                f"DO NOT generate generic LeetCode puzzles (no binary tree traversal, reverse strings, or sorting algorithms).\n"
+                f"Generate strictly valid JSON with these 4 keys:\n"
+                f"1. \"technical_mcqs\": Array of 10 multiple-choice questions in English specifically testing networking protocols (TCP/IP stack, Subnetting/CIDR calculations, BGP/OSPF route selection, VLANs, 802.1Q, Firewalls/ACLs, and packet analysis).\n"
+                f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
+                f"2. \"scenario\": A realistic enterprise network outage, asymmetric routing, MTU black hole, BGP flap, or multi-site VPN failover incident in English.\n"
+                f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
+                f"3. \"hands_on\": Practical network automation challenge (e.g. write a Python or Bash script to validate subnet CIDRs, calculate usable IP ranges, parse router interfaces, or automate ACL verification).\n"
+                f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"supported_languages\": {json.dumps(allowed_langs)}, \"starter_code\": {{\"python\": \"def solve(data):\\n    pass\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n"
+                f"4. \"troubleshooting\": A realistic network diagnostic challenge with a buggy network automation script or packet capture log parser.\n"
+                f"   Object: {{\"id\": \"troubleshooting-1\", \"title\": \"...\", \"bug_description\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"broken_code\": {{\"python\": \"def fix(data):\\n    return data\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n\n"
+                f"Output strictly valid JSON only with NO markdown fences."
+            )
+        else:
+            llm_prompt = (
+                f"You are a Principal Staff Engineer.\n"
+                f"CRITICAL REQUIREMENT: ALL text content (questions, options, explanations, scenarios, prompts, instructions, bugs, descriptions) MUST be written 100% in English only. Do NOT generate Hindi, Hinglish, or any other language under any circumstances.\n"
+                f"Generate a 100% dynamic, job-tailored 4-category Technical Assessment for:\n"
+                f"Role Title: {role_title}\n"
+                f"Required Skills & Technologies: {skills_str}\n"
+                f"Job Description Context: {desc_snippet}\n"
+                f"Experience Seniority: {experience_years} years\n"
+                f"Candidate Name: {candidate_name}\n"
+                f"Allowed Programming Technologies: {', '.join(allowed_langs)}\n"
+                f"Candidate Variation Seed: {seed_token}\n\n"
+                f"Generate strictly valid JSON with these 4 keys:\n"
+                f"1. \"technical_mcqs\": Array of 10 multiple-choice questions in English specifically testing {skills_str} (covering architecture, concurrency, database indexing, protocols, memory, Linux, cloud, and distributed systems).\n"
+                f"   Each object: {{\"id\": \"mcq-1\", \"question\": \"...\", \"options\": {{\"A\": \"...\", \"B\": \"...\", \"C\": \"...\", \"D\": \"...\"}}, \"correct_option\": \"A\", \"explanation\": \"...\", \"difficulty\": \"Mid-Level\"}}\n"
+                f"2. \"scenario\": A realistic production incident or architecture design problem in English tailored to {role_title}.\n"
+                f"   Object: {{\"id\": \"scenario-1\", \"title\": \"...\", \"prompt\": \"...\", \"guidance\": \"...\", \"difficulty\": \"Senior\", \"ideal_keywords\": [\"...\"]}}\n"
+                f"3. \"hands_on\": Practical implementation challenge tailored to this role.\n"
+                f"   Object: {{\"id\": \"hands-on-1\", \"title\": \"...\", \"instructions\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"supported_languages\": {json.dumps(allowed_langs)}, \"starter_code\": {{\"python\": \"def solve(data):\\n    pass\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n"
+                f"4. \"troubleshooting\": A realistic debugging task with buggy code.\n"
+                f"   Object: {{\"id\": \"troubleshooting-1\", \"title\": \"...\", \"bug_description\": \"...\", \"difficulty\": \"Mid-Level\", \"is_coding\": true, \"broken_code\": {{\"python\": \"def fix(data):\\n    return data\"}}, \"test_cases\": [{{\"name\": \"...\", \"input\": \"...\", \"expected\": \"...\", \"assertion_py\": \"\", \"assertion_js\": \"\"}}]}}\n\n"
+                f"Output strictly valid JSON only with NO markdown fences."
+            )
     else:
         llm_prompt = (
             f"You are a Senior Executive Director of Talent Assessment for {domain_category.upper()}.\n"
@@ -2656,8 +2705,71 @@ def synthesize_candidate_interview_questions(
                 }
             ]
     else:
-        # TECHNICAL / SOFTWARE ENGINEERING QUESTION POOLS
-        pool_1 = [
+        # TECHNICAL: Check if role or candidate specializes in DevOps / Cloud / Infrastructure / SRE
+        is_devops = (
+            any(k in role_title.lower() for k in ["devops", "sre", "cloud", "infra", "infrastructure", "platform engineer", "site reliability", "sysadmin"]) or
+            any(k in [s.lower() for s in (job_skills or []) + (candidate_skills or [])] for k in ["kubernetes", "terraform", "devops", "ci/cd", "ansible", "docker", "cloud infrastructure", "aws", "gcp"])
+        )
+
+        if is_devops:
+            pool_1 = [
+                {
+                    "type": "Infrastructure as Code & State Drift",
+                    "prompt": f"In your production deployments utilizing {p_skill}, how do you architect Infrastructure as Code (Terraform / Ansible) to prevent configuration drift, enforce remote state locking, and guarantee immutable rollouts?",
+                    "ideal_keywords": [p_skill.lower(), "terraform", "iac", "state locking", "drift", "immutable", "modules", "dynamodb", "ci/cd"],
+                    "follow_up_vague": f"What specific remote backend and state locking mechanism do you configure on {p_skill} to prevent concurrent state corruption?",
+                    "follow_up_expert": "How do you handle cross-module resource dependencies and zero-downtime state migration when refactoring infrastructure?"
+                },
+                {
+                    "type": "CI/CD Canary Pipelines & Automated Rollback",
+                    "prompt": f"How do you design high-reliability CI/CD pipelines with {p_skill} that execute automated canary or blue-green rollouts, monitor real-time SLO error budgets, and trigger instant rollbacks upon regression?",
+                    "ideal_keywords": [p_skill.lower(), "canary", "blue-green", "ci/cd", "pipeline", "rollback", "helm", "argo", "slo", "automation"],
+                    "follow_up_vague": f"What telemetry threshold or health probe triggers an automatic abort during a {p_skill} canary release?",
+                    "follow_up_expert": "How do you architect database schema migrations to remain strictly backward-compatible during an active blue-green split traffic phase?"
+                },
+                {
+                    "type": "Container Optimization & Base Image Hardening",
+                    "prompt": f"When building and deploying containers with {p_skill}, how do you minimize image attack surface, enforce non-root execution, and optimize multi-stage build cache layers?",
+                    "ideal_keywords": [p_skill.lower(), "dockerfile", "multi-stage", "cve", "distroless", "trivy", "cgroups", "layers", "security"],
+                    "follow_up_vague": "What scanner or policy engine do you integrate into CI to block high/critical CVEs before container registry push?",
+                    "follow_up_expert": "How do you configure Linux seccomp profiles and read-only root filesystems to prevent container breakout exploits?"
+                }
+            ]
+            pool_2 = [
+                {
+                    "type": "Kubernetes High Availability & Autoscaling",
+                    "prompt": f"In a multi-node Kubernetes cluster running {s_skill}, how do you configure resource requests/limits, Horizontal Pod Autoscalers (HPA), and Pod Disruption Budgets (PDB) to survive sudden node evictions or cloud zone outages?",
+                    "ideal_keywords": [s_skill.lower(), "kubernetes", "k8s", "hpa", "pdb", "qos", "eviction", "affinity", "tolerations", "daemonset"],
+                    "follow_up_vague": f"How do you tune HPA stabilization windows and cooldown metrics on {s_skill} to eliminate rapid scaling oscillation (thrashing)?",
+                    "follow_up_expert": "How do you configure Guaranteed QoS classes and priority classes for mission-critical daemonsets during host kernel out-of-memory (OOM) events?"
+                },
+                {
+                    "type": "Zero-Trust Cloud Networking & Secrets Management",
+                    "prompt": f"Describe how you enforce network security boundaries, VPC peering, and automated dynamic secret rotation (e.g. HashiCorp Vault or Cloud Secrets Manager) for {s_skill} worker workloads.",
+                    "ideal_keywords": [s_skill.lower(), "vpc", "security group", "vault", "secrets", "mtls", "iam", "least privilege", "zero trust"],
+                    "follow_up_vague": f"How do you inject short-lived dynamic credentials into {s_skill} containers without hardcoding tokens in environment variables or container images?",
+                    "follow_up_expert": "How do you architect cross-account VPC transit gateways with egress inspection firewalls without introducing throughput bottlenecks?"
+                }
+            ]
+            pool_3 = [
+                {
+                    "type": "SRE Incident Triage & Cluster Post-Mortem",
+                    "prompt": f"Walk me through a high-severity production outage, cascading container crash-loop, or network partition you triaged in your {experience_years}+ years in DevOps/SRE. What diagnostic telemetry (Prometheus, Grafana, OpenTelemetry) isolated the root cause?",
+                    "ideal_keywords": ["incident", "post-mortem", "prometheus", "grafana", "root cause", "crashloopbackoff", "latency", "slo", "mttr"],
+                    "follow_up_vague": "What specific kubectl commands, cgroups metrics, or journal logs led you directly to the failure point?",
+                    "follow_up_expert": "What automated chaos engineering tests or alerts did you build into the platform to verify that failure mode never recurs?"
+                },
+                {
+                    "type": "SLO Error Budget Depletion & Production Freeze",
+                    "prompt": f"Under SRE operational governance, describe a situation where a core service exhausted its monthly 99.9% SLO error budget. What operational triage and release freezes did you enforce with development teams?",
+                    "ideal_keywords": ["error budget", "slo", "sli", "sre", "governance", "freeze", "reliability", "post-mortem"],
+                    "follow_up_vague": "How did you measure the burn rate to distinguish between a fast burn spike and a slow burn regression?",
+                    "follow_up_expert": "How do you arbitrate disputes with product managers who insist on pushing commercial features despite a depleted reliability error budget?"
+                }
+            ]
+        else:
+            # GENERAL TECHNICAL / SOFTWARE ENGINEERING QUESTION POOLS
+            pool_1 = [
             {
                 "type": "Technical Competence & Concurrency",
                 "prompt": f"In your work with {p_skill}, how have you architected services to handle high concurrency and prevent thread pool starvation or memory leaks under sudden traffic bursts?",
@@ -2680,52 +2792,52 @@ def synthesize_candidate_interview_questions(
                 "follow_up_expert": "If worker nodes crash midway through execution, how does your consumer group rebalance without message starvation?"
             }
         ]
-        pool_2 = [
-            {
-                "type": "Distributed System Architecture",
-                "prompt": f"How do you design modular communication between {p_skill} services and {s_skill} backends while enforcing strict schema contracts and security boundaries?",
-                "ideal_keywords": [s_skill.lower(), "api contract", "grpc", "rest", "schema", "validation", "token", "security", "isolation"],
-                "follow_up_vague": f"What serialization protocol and error retry policies did you configure between {p_skill} and {s_skill}?",
-                "follow_up_expert": f"What eventual consistency or saga pattern did you implement when {s_skill} encounters a network partition?"
-            },
-            {
-                "type": "Data Consistency & Resiliency",
-                "prompt": f"In a distributed setup involving {s_skill}, how do you manage database migrations and multi-region read replicas without taking scheduled downtime?",
-                "ideal_keywords": [s_skill.lower(), "replication", "migration", "zero-downtime", "consistency", "read replica", "lock"],
-                "follow_up_vague": "How do you prevent schema migration locks from blocking active write transactions on live production tables?",
-                "follow_up_expert": "How do you handle replication lag when a user performs a write followed immediately by a critical read?"
-            },
-            {
-                "type": "Microservice Resilience & Security",
-                "prompt": f"Describe how you enforce Zero-Trust access controls, rate limiting, and JWT identity propagation across your {p_skill} services.",
-                "ideal_keywords": ["jwt", "rate limiting", "oauth", "token", "rbac", "least privilege", "api gateway", "tls"],
-                "follow_up_vague": "Where do you enforce token revocation and replay attack protection without adding database query overhead to every request?",
-                "follow_up_expert": "How do you secure inter-service communication against man-in-the-middle attacks within internal VPC subnets?"
-            }
-        ]
-        pool_3 = [
-            {
-                "type": "Incident Triage & Post-Mortem",
-                "prompt": f"Walk me through a severe production outage or silent data corruption you investigated in your {experience_years}+ years of software development. What was your root-cause analysis procedure?",
-                "ideal_keywords": ["root cause", "telemetry", "post-mortem", "tracing", "logs", "metrics", "monitoring", "prevention"],
-                "follow_up_vague": "What specific observability tools or telemetry traces pointed you to the root cause rather than guesswork?",
-                "follow_up_expert": "What automated canary checks or regression suites were deployed in CI/CD to prevent identical regressions?"
-            },
-            {
-                "type": "Concurrency Race Conditions & Deadlocks",
-                "prompt": f"Have you ever debugged an elusive race condition, thread deadlock, or resource leak that only appeared in production under load? How did you isolate it?",
-                "ideal_keywords": ["race condition", "deadlock", "thread dump", "profiler", "mutex", "atomic", "heap dump", "reproduction"],
-                "follow_up_vague": "How did you reproduce the bug in a staging environment when it only surfaced intermittently in production?",
-                "follow_up_expert": "What defensive programming or immutable data structures did you introduce to structurally eliminate that race condition?"
-            },
-            {
-                "type": "Deployment Failure & Rollback Engineering",
-                "prompt": f"Describe a situation where a production release passed all CI tests but degraded customer traffic immediately upon deployment. What was your rollback and mitigation playbook?",
-                "ideal_keywords": ["rollback", "feature flag", "canary", "blast radius", "incident commander", "metrics", "slo"],
-                "follow_up_vague": "How did you distinguish between a genuine code regression and external downstream third-party outages during the incident?",
-                "follow_up_expert": "How do you structure feature flags and database backward compatibility to allow instantaneous 1-click rollbacks?"
-            }
-        ]
+            pool_2 = [
+                {
+                    "type": "Distributed System Architecture",
+                    "prompt": f"How do you design modular communication between {p_skill} services and {s_skill} backends while enforcing strict schema contracts and security boundaries?",
+                    "ideal_keywords": [s_skill.lower(), "api contract", "grpc", "rest", "schema", "validation", "token", "security", "isolation"],
+                    "follow_up_vague": f"What serialization protocol and error retry policies did you configure between {p_skill} and {s_skill}?",
+                    "follow_up_expert": f"What eventual consistency or saga pattern did you implement when {s_skill} encounters a network partition?"
+                },
+                {
+                    "type": "Data Consistency & Resiliency",
+                    "prompt": f"In a distributed setup involving {s_skill}, how do you manage database migrations and multi-region read replicas without taking scheduled downtime?",
+                    "ideal_keywords": [s_skill.lower(), "replication", "migration", "zero-downtime", "consistency", "read replica", "lock"],
+                    "follow_up_vague": "How do you prevent schema migration locks from blocking active write transactions on live production tables?",
+                    "follow_up_expert": "How do you handle replication lag when a user performs a write followed immediately by a critical read?"
+                },
+                {
+                    "type": "Microservice Resilience & Security",
+                    "prompt": f"Describe how you enforce Zero-Trust access controls, rate limiting, and JWT identity propagation across your {p_skill} services.",
+                    "ideal_keywords": ["jwt", "rate limiting", "oauth", "token", "rbac", "least privilege", "api gateway", "tls"],
+                    "follow_up_vague": "Where do you enforce token revocation and replay attack protection without adding database query overhead to every request?",
+                    "follow_up_expert": "How do you secure inter-service communication against man-in-the-middle attacks within internal VPC subnets?"
+                }
+            ]
+            pool_3 = [
+                {
+                    "type": "Incident Triage & Post-Mortem",
+                    "prompt": f"Walk me through a severe production outage or silent data corruption you investigated in your {experience_years}+ years of software development. What was your root-cause analysis procedure?",
+                    "ideal_keywords": ["root cause", "telemetry", "post-mortem", "tracing", "logs", "metrics", "monitoring", "prevention"],
+                    "follow_up_vague": "What specific observability tools or telemetry traces pointed you to the root cause rather than guesswork?",
+                    "follow_up_expert": "What automated canary checks or regression suites were deployed in CI/CD to prevent identical regressions?"
+                },
+                {
+                    "type": "Concurrency Race Conditions & Deadlocks",
+                    "prompt": f"Have you ever debugged an elusive race condition, thread deadlock, or resource leak that only appeared in production under load? How did you isolate it?",
+                    "ideal_keywords": ["race condition", "deadlock", "thread dump", "profiler", "mutex", "atomic", "heap dump", "reproduction"],
+                    "follow_up_vague": "How did you reproduce the bug in a staging environment when it only surfaced intermittently in production?",
+                    "follow_up_expert": "What defensive programming or immutable data structures did you introduce to structurally eliminate that race condition?"
+                },
+                {
+                    "type": "Deployment Failure & Rollback Engineering",
+                    "prompt": f"Describe a situation where a production release passed all CI tests but degraded customer traffic immediately upon deployment. What was your rollback and mitigation playbook?",
+                    "ideal_keywords": ["rollback", "feature flag", "canary", "blast radius", "incident commander", "metrics", "slo"],
+                    "follow_up_vague": "How did you distinguish between a genuine code regression and external downstream third-party outages during the incident?",
+                    "follow_up_expert": "How do you structure feature flags and database backward compatibility to allow instantaneous 1-click rollbacks?"
+                }
+            ]
 
     q1 = dict(pool_1[seed % len(pool_1)])
     q2 = dict(pool_2[(seed // 3) % len(pool_2)])
@@ -3553,4 +3665,142 @@ JSON format:
         "experience_relevance": exp_rel,
         "role_alignment": role_rel,
         "explanation": explanation
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RECRUITER STUDIO: GENUINELY DYNAMIC ASSESSMENT CONFIG GENERATOR
+# Reads real job data and uses the LLM to decide what evaluation methods are
+# actually appropriate for this role. No hardcoded assessment structure.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def generate_studio_assessment_config(
+    job_title: str,
+    department: str,
+    job_description: str,
+    required_skills: List[str],
+    optional_criteria: str = "",
+    experience: str = "",
+    languages: Optional[List[str]] = None,
+    job_id: str = ""
+) -> Dict[str, Any]:
+    """
+    Produces a domain-appropriate recruiter Assessment Studio configuration
+    driven entirely by real job data. No hardcoded assessment categories.
+    The LLM decides what evaluation methods apply to this role.
+    """
+    skills_str = ", ".join(required_skills[:8]) if required_skills else "General professional skills"
+    desc_snippet = job_description[:800] if job_description else ""
+    langs_str = ", ".join(languages) if languages else "Not specified"
+    optional_str = optional_criteria[:300] if optional_criteria else ""
+    p_skill = required_skills[0] if required_skills else job_title
+    s_skill = required_skills[1] if len(required_skills) > 1 else p_skill
+    skill_list_str = ", ".join(required_skills[:5]) if required_skills else job_title
+
+    llm_prompt = (
+        "You are a Principal Talent Assessment Architect. Design a recruiter assessment config for this specific job.\n"
+        "Based on the REAL job data below, determine what evaluation methods are meaningful.\n"
+        "RULES: No coding challenges for non-technical roles. No finance tasks for engineers. All questions must be specific to this job. English only.\n\n"
+        f"JOB: Title={job_title}, Dept={department}, Exp={experience}\n"
+        f"Skills: {skills_str}\nLanguages: {langs_str}\nOptional: {optional_str}\nDescription: {desc_snippet}\n\n"
+        "Return ONLY strictly valid JSON (no markdown fences):\n"
+        '{"domain":"<cloud_infrastructure|financial_accounting|frontend_engineering|data_science|hr_operations|marketing|devops|backend_engineering|legal|etc>",'
+        '"is_coding":<true if role requires writing/debugging executable code>,'
+        '"domain_rationale":"<1 sentence based on job data>",'
+        '"supported_eval_types":["<applicable types only: coding_challenge|sql_challenge|infrastructure_task|data_analysis_task|written_case_study|financial_modeling|mcq_knowledge|scenario_judgment|interview_questions|compliance_scenario|writing_sample|system_design>"],'
+        '"interview_questions":['
+        '{"id":"iq_1","type":"<competency>","prompt":"<rigorous question specific to this job>","rubric":["<c1>","<c2>","<c3>"],"follow_up_vague":"<probing follow-up>","follow_up_expert":"<deep-dive>"},'
+        '{"id":"iq_2","type":"<competency>","prompt":"<question>","rubric":["<c1>","<c2>","<c3>"],"follow_up_vague":"<fu>","follow_up_expert":"<dfu>"},'
+        '{"id":"iq_3","type":"<competency>","prompt":"<question>","rubric":["<c1>","<c2>","<c3>"],"follow_up_vague":"<fu>","follow_up_expert":"<dfu>"}'
+        '],'
+        '"assessment_pool":{'
+        '"domain":"<domain>","is_coding":<true/false>,'
+        '"technical_mcqs":['
+        '{"id":"mcq_1","question":"<MCQ testing a required skill for this specific job>","options":{"A":"<opt>","B":"<opt>","C":"<opt>","D":"<opt>"},"correct_option":"<A/B/C/D>","explanation":"<why>","difficulty":"<Mid-Level/Senior>"},'
+        '{"id":"mcq_2","question":"<question>","options":{"A":"<opt>","B":"<opt>","C":"<opt>","D":"<opt>"},"correct_option":"<A/B/C/D>","explanation":"<exp>","difficulty":"<diff>"},'
+        '{"id":"mcq_3","question":"<question>","options":{"A":"<opt>","B":"<opt>","C":"<opt>","D":"<opt>"},"correct_option":"<A/B/C/D>","explanation":"<exp>","difficulty":"<diff>"}'
+        '],'
+        '"scenario":{"id":"scenario_1","title":"<realistic title>","prompt":"<realistic problem person faces in this job>","guidance":"<what strong answer references>","difficulty":"Senior","ideal_keywords":["<kw1>","<kw2>","<kw3>","<kw4>"]},'
+        '"hands_on":{"id":"hands_on_1","title":"<task title>","is_coding":<true/false>,'
+        '"task_type":"<coding|sql|infrastructure|data_analysis|financial_modeling|written_case_study|writing_sample|system_design>",'
+        '"instructions":"<specific task relevant to this job - NO PLACEHOLDERS>",'
+        '"difficulty":"Mid-Level","deliverable_description":"<what candidate must produce>",'
+        '"supported_languages":<["python","bash","sql","javascript"] if is_coding else []>,'
+        '"starter_code":<{"python":"def solve(data):\n    pass\n"} if is_coding else {}>,'
+        '"sample_test_cases":<[{"name":"test","input":"in","expected":"out"}] if is_coding else []>,'
+        '"hidden_test_cases":<[{"name":"hidden","input":"in","expected":"out"}] if is_coding else []>'
+        '}'
+        '}'
+        '}'
+    )
+
+    llm_res = call_llm(
+        llm_prompt,
+        "You are an expert talent assessment architect. Output strictly valid JSON only. All text in English.",
+        max_tokens=5000
+    )
+    if llm_res:
+        parsed = parse_llm_json(llm_res)
+        if parsed and isinstance(parsed, dict) and parsed.get("domain") and parsed.get("assessment_pool"):
+            pool = parsed.get("assessment_pool", {})
+            if "is_coding" not in pool:
+                pool["is_coding"] = parsed.get("is_coding", False)
+            parsed["assessment_pool"] = pool
+            parsed["generated_by"] = "llm"
+            parsed["job_id"] = job_id
+            parsed["job_title"] = job_title
+            return parsed
+
+    # ── Procedural Fallback: data-driven from actual job fields ──
+    is_coding, domain_category, detected_langs = classify_job_domain(job_title, required_skills, job_description)
+    if is_coding:
+        lang_list = detected_langs or (languages or ["python"])
+        task_type_label = "coding"
+        eval_types = ["coding_challenge", "mcq_knowledge", "scenario_judgment", "interview_questions"]
+        if any(x in skill_list_str.lower() for x in ["aws","kubernetes","terraform","docker","linux","cloud","network","azure","gcp","infra"]):
+            eval_types = ["infrastructure_task", "mcq_knowledge", "scenario_judgment", "interview_questions"]
+            task_type_label = "infrastructure_task"
+        elif any(x in skill_list_str.lower() for x in ["sql","postgres","mysql","database","bigquery","snowflake"]):
+            eval_types = ["sql_challenge","coding_challenge","mcq_knowledge","scenario_judgment","interview_questions"]
+    else:
+        lang_list = []
+        eval_types = ["mcq_knowledge","scenario_judgment","interview_questions"]
+        task_type_label = "written_case_study"
+        if any(x in domain_category.lower() for x in ["finance","account"]):
+            eval_types = ["mcq_knowledge","financial_modeling","scenario_judgment","interview_questions"]
+            task_type_label = "financial_modeling"
+        elif "data" in domain_category.lower():
+            eval_types = ["mcq_knowledge","data_analysis_task","scenario_judgment","interview_questions"]
+            task_type_label = "data_analysis_task"
+        elif any(x in domain_category.lower() for x in ["marketing","content"]):
+            eval_types = ["mcq_knowledge","writing_sample","scenario_judgment","interview_questions"]
+            task_type_label = "writing_sample"
+        elif any(x in domain_category.lower() for x in ["legal","compliance"]):
+            eval_types = ["mcq_knowledge","compliance_scenario","scenario_judgment","interview_questions"]
+            task_type_label = "compliance_scenario"
+
+    return {
+        "domain": domain_category,
+        "is_coding": is_coding,
+        "domain_rationale": f"Classified as {domain_category} based on job title '{job_title}', skills ({skill_list_str}), and description.",
+        "supported_eval_types": eval_types,
+        "generated_by": "procedural_fallback",
+        "job_id": job_id,
+        "job_title": job_title,
+        "interview_questions": [
+            {"id":"iq_1","type":f"Core Competency — {p_skill}","prompt":f"Describe the most complex challenge you resolved using {p_skill} in a {job_title} role. What was your methodology?","rubric":[p_skill,"Structured problem-solving","Measurable outcome","Stakeholder impact"],"follow_up_vague":f"How exactly was {p_skill} applied?","follow_up_expert":f"How did you ensure the {p_skill} solution was scalable?"},
+            {"id":"iq_2","type":f"Cross-Functional — {s_skill}","prompt":f"Describe coordinating stakeholders to deliver a critical outcome involving {s_skill} under constraints in a {job_title} context.","rubric":[s_skill,"Stakeholder management","Communication under pressure","Delivery"],"follow_up_vague":"What made this coordination difficult?","follow_up_expert":"What systemic improvements followed?"},
+            {"id":"iq_3","type":"Operational Failure & Root Cause","prompt":f"Walk through the most significant failure you handled as a {job_title}. What was your investigation and what changed?","rubric":["Root cause identification","Corrective action","Preventive controls","Leadership communication"],"follow_up_vague":"What early warnings did you miss?","follow_up_expert":"How did you redesign the process to prevent recurrence?"}
+        ],
+        "assessment_pool": {
+            "domain": domain_category,
+            "is_coding": is_coding,
+            "technical_mcqs": [
+                {"id":"mcq_1","question":f"What is the primary responsibility of a {job_title} when overseeing {p_skill}?","options":{"A":f"Delegate all {p_skill} decisions without oversight.","B":f"Ensure {p_skill} activities align with organizational standards and compliance.","C":f"Address {p_skill} issues only when externally escalated.","D":f"Apply {p_skill} practices only during annual reviews."},"correct_option":"B","explanation":f"A {job_title} proactively governs {p_skill} in alignment with organizational and regulatory requirements.","difficulty":"Mid-Level"},
+                {"id":"mcq_2","question":f"When {s_skill} produces an unexpected result in a {job_title} context, what is the correct first step?","options":{"A":"Ignore if variance is below a threshold.","B":"Immediately escalate without investigation.","C":"Conduct root cause analysis before corrective action.","D":"Apply the previous resolution without review."},"correct_option":"C","explanation":"Root cause analysis ensures corrective actions address underlying causes rather than symptoms.","difficulty":"Mid-Level"},
+                {"id":"mcq_3","question":f"What most distinguishes high performance in a {job_title} role handling {skill_list_str} under deadline?","options":{"A":"Completing tasks quickly by skipping documentation.","B":"Applying domain frameworks while maintaining quality, traceability, and stakeholder communication.","C":"Delegating critical decisions to avoid accountability.","D":"Waiting for instructions in ambiguous situations."},"correct_option":"B","explanation":f"High performers in {job_title} demonstrate structured thinking and domain expertise under pressure.","difficulty":"Senior"}
+            ],
+            "scenario": {"id":"scenario_1","title":f"Critical Escalation — {p_skill} in {job_title}","prompt":f"You are a {job_title}. A critical issue in {p_skill} has downstream impact on {s_skill} and organizational compliance. You have 48 hours before a senior leadership review. Detail your prioritization, mitigation, root cause investigation, and stakeholder communication plan.","guidance":f"Strong answers reference domain-specific standards for {p_skill} and {s_skill}, risk methodology, escalation protocols, and a structured remediation plan.","difficulty":"Senior","ideal_keywords":[p_skill.lower(),s_skill.lower(),"root cause","mitigation","stakeholder","escalation","framework"]},
+            "hands_on": {"id":"hands_on_1","title":f"Practical Task — {task_type_label.replace('_',' ').title()} for {job_title}","is_coding":is_coding,"task_type":task_type_label,"instructions":f"Using your knowledge of {skill_list_str}, complete a practical task relevant to the {job_title} role demonstrating actual day-to-day proficiency. Document your approach, methodology, assumptions, and deliverable.","difficulty":"Mid-Level","deliverable_description":f"Complete solution demonstrating mastery of {p_skill} in a realistic {job_title} scenario.","supported_languages":lang_list if is_coding else [],"starter_code":{"python":f"# {job_title} Solution\ndef solve(data):\n    pass\n"} if is_coding else {},"sample_test_cases":[{"name":"Basic case","input":"sample_input","expected":"expected_output"}] if is_coding else [],"hidden_test_cases":[{"name":"Edge case","input":"edge_input","expected":"edge_output"}] if is_coding else []}
+        }
     }

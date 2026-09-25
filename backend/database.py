@@ -74,6 +74,7 @@ def ensure_schema_columns():
                 new_user_cols = {
                     "reset_token": "VARCHAR",
                     "reset_token_expiry": "TIMESTAMP",
+                    "reset_token_attempts": "INTEGER DEFAULT 0",
                     "phone": "VARCHAR",
                     "job_role": "VARCHAR",
                     "experience_years": "FLOAT DEFAULT 0.0",
@@ -93,7 +94,14 @@ def ensure_schema_columns():
                 new_job_cols = {
                     "company_name": "VARCHAR DEFAULT 'SparkX Technologies'",
                     "coding_difficulty": "VARCHAR DEFAULT 'Mid-Level'",
-                    "assessment_pool": "JSON DEFAULT '{}'"
+                    "assessment_pool": "JSON DEFAULT '{}'",
+                    "ctc_type": "VARCHAR DEFAULT 'range'",
+                    "ctc_min": "NUMERIC(10, 2)",
+                    "ctc_max": "NUMERIC(10, 2)",
+                    "ctc_currency": "VARCHAR DEFAULT 'INR'",
+                    "ctc_period": "VARCHAR DEFAULT 'annual'",
+                    "variable_pay_min": "NUMERIC(10, 2)",
+                    "variable_pay_max": "NUMERIC(10, 2)"
                 }
                 for col, col_type in new_job_cols.items():
                     if col not in job_cols:
@@ -115,12 +123,120 @@ def ensure_schema_columns():
                     "recruiter_score": "INTEGER",
                     "rejection_reason": "TEXT",
                     "rejection_category": "VARCHAR",
-                    "match_details": "JSON DEFAULT '{}'"
+                    "match_details": "JSON DEFAULT '{}'",
+                    # Authoritative Candidate Application Compensation Expectations
+                    "current_ctc": "NUMERIC(10, 2)",
+                    "expected_ctc_type": "VARCHAR DEFAULT 'range'",
+                    "expected_ctc_min": "NUMERIC(10, 2)",
+                    "expected_ctc_max": "NUMERIC(10, 2)",
+                    "ctc_currency": "VARCHAR DEFAULT 'INR'",
+                    # Authoritative 4-Dimensional State Columns
+                    "stage": "VARCHAR DEFAULT 'applied'",
+                    "assessment_status": "VARCHAR DEFAULT 'not_invited'",
+                    "assessment_invited_at": "TIMESTAMP",
+                    "assessment_started_at": "TIMESTAMP",
+                    "assessment_submitted_at": "TIMESTAMP",
+                    "assessment_evaluated_at": "TIMESTAMP",
+                    "interview_started_at": "TIMESTAMP",
+                    "interview_completed_at": "TIMESTAMP",
+                    "hiring_decision": "VARCHAR DEFAULT 'undecided'",
+                    "stage_updated_at": "TIMESTAMP",
+                    "decision_updated_at": "TIMESTAMP",
+                    "user_id": "VARCHAR",
+                    "version": "INTEGER DEFAULT 1"
                 }
                 for col, col_type in new_cand_cols.items():
                     if col not in cand_cols:
                         conn.execute(text(f"ALTER TABLE candidates ADD COLUMN {col} {col_type}"))
                         conn.commit()
+
+                # Ensure candidate_state_logs table exists
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS candidate_state_logs (
+                        id VARCHAR PRIMARY KEY,
+                        candidate_id VARCHAR NOT NULL,
+                        dimension VARCHAR NOT NULL,
+                        from_value VARCHAR,
+                        to_value VARCHAR NOT NULL,
+                        changed_by VARCHAR DEFAULT 'system',
+                        notes TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS revoked_tokens (
+                        id VARCHAR PRIMARY KEY,
+                        token_jti VARCHAR UNIQUE NOT NULL,
+                        revoked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        expires_at TIMESTAMP NOT NULL
+                    )
+                """))
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS recruiter_invitations (
+                        id VARCHAR PRIMARY KEY,
+                        invite_code VARCHAR UNIQUE NOT NULL,
+                        created_by VARCHAR,
+                        recipient_email VARCHAR,
+                        used_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """))
+                conn.commit()
+
+                # Zero-Data-Loss Duplicate Audit & Unique Index Setup
+                dup_rows = conn.execute(text("""
+                    SELECT job_id, lower(email) as l_email, COUNT(*) as cnt, GROUP_CONCAT(id) as cids
+                    FROM candidates
+                    GROUP BY job_id, lower(email)
+                    HAVING count(*) > 1
+                """)).fetchall()
+                if dup_rows:
+                    logger.warning("================================================================")
+                    logger.warning("RECONCILIATION REPORT: Existing duplicate candidate applications detected:")
+                    for d in dup_rows:
+                        logger.warning(f"  Job {d[0]}, Email {d[1]}: {d[2]} applications (IDs: {d[3]})")
+                    logger.warning("All records preserved without data loss. Resolve duplicates before applying unique index.")
+                    logger.warning("================================================================")
+                else:
+                    conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_candidate_job_email ON candidates(job_id, email)"))
+                    conn.commit()
+
+                # Backfill user_id on candidates where matching user exists
+                conn.execute(text("""
+                    UPDATE candidates
+                    SET user_id = (
+                        SELECT id FROM users WHERE lower(users.email) = lower(candidates.email) LIMIT 1
+                    )
+                    WHERE user_id IS NULL AND EXISTS (
+                        SELECT 1 FROM users WHERE lower(users.email) = lower(candidates.email)
+                    )
+                """))
+                conn.commit()
+
+                # Deterministic backfill for existing candidate records without new states
+                from workflow_contract import normalize_legacy_candidate_fields
+                existing_cands = conn.execute(text("SELECT id, status, final_decision, interview_scheduled_at, coding_score FROM candidates")).fetchall()
+                for row in existing_cands:
+                    cid, raw_status, raw_decision, has_slot, coding_sc = row[0], row[1], row[2], bool(row[3]), (row[4] or 0) > 0
+                    normalized = normalize_legacy_candidate_fields(raw_status, raw_decision, has_slot, coding_sc)
+                    conn.execute(text("""
+                        UPDATE candidates 
+                        SET stage = COALESCE(stage, :stg),
+                            assessment_status = COALESCE(assessment_status, :ast),
+                            interview_status = CASE 
+                                WHEN interview_status IN ('not_scheduled', 'scheduled', 'in_progress', 'completed', 'cancelled') THEN interview_status
+                                ELSE :ist 
+                            END,
+                            hiring_decision = COALESCE(hiring_decision, :dec)
+                        WHERE id = :cid AND (stage IS NULL OR stage = '' OR hiring_decision IS NULL OR hiring_decision = '')
+                    """), {
+                        "stg": normalized["stage"],
+                        "ast": normalized["assessment_status"],
+                        "ist": normalized["interview_status"],
+                        "dec": normalized["hiring_decision"],
+                        "cid": cid
+                    })
+                conn.commit()
         except Exception as e:
             logger.warning(f"Schema check notice: {e}")
 

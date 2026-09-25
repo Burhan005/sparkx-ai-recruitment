@@ -45,7 +45,7 @@ export function RequireAuth({ children }) {
  * RequireRole: Guards role-specific areas (candidate vs recruiter).
  * If role does not match, redirects to user's authorized home area.
  */
-export function RequireRole({ role, redirectTo, children }) {
+export function RequireRole({ role, roles, redirectTo, children }) {
   const { authStatus, currentUser, userRole, isLoading } = useRecruitment();
   const location = useLocation();
 
@@ -57,7 +57,8 @@ export function RequireRole({ role, redirectTo, children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (userRole !== role) {
+  const allowedRoles = roles || (role ? [role] : []);
+  if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
     const destination = redirectTo || (userRole === 'recruiter' ? '/recruiter' : '/jobs');
     return <Navigate to={destination} replace />;
   }

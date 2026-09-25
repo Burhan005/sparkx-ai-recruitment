@@ -22,7 +22,11 @@ import {
   Coffee,
   Bookmark,
   Link2,
-  Unlink
+  Unlink,
+  Code2,
+  Bot,
+  Building,
+  FileText
 } from 'lucide-react';
 import api from '../../services/api';
 
@@ -62,6 +66,58 @@ export default function FancyInterviewScheduler({
   const [slotInterval, setSlotInterval] = useState(30); // 15, 30, 45, 60 mins
   const [daypartFilter, setDaypartFilter] = useState('all'); // 'all', 'morning', 'afternoon', 'evening'
   const [isCustomTimeOpen, setIsCustomTimeOpen] = useState(false);
+
+  // Interaction / Stage Round Format Type
+  const [roundType, setRoundType] = useState(() => {
+    if (initialMeetingUrl && (initialMeetingUrl.includes('/assessment') || initialMeetingUrl.includes('assessment'))) return 'technical_assessment';
+    if (initialMeetingUrl && (initialMeetingUrl.includes('/interview') || initialMeetingUrl.includes('interview'))) return 'ai_interview';
+    if (initialMeetingUrl && (initialMeetingUrl.includes('Onsite') || initialMeetingUrl.includes('onsite'))) return 'onsite';
+    return 'technical_assessment'; // Default to technical assessment / MCQ first!
+  });
+  const [onsiteLocation, setOnsiteLocation] = useState('SparkX Engineering Campus, Innovation Block, Floor 3');
+
+  const ROUND_OPTIONS = useMemo(() => [
+    {
+      id: 'technical_assessment',
+      title: 'Round 1: Online Technical Assessment (MCQ & Coding Sandbox)',
+      shortTitle: 'MCQ & Technical Test',
+      badge: 'Pre-Interview Test',
+      icon: Code2,
+      desc: 'Send candidate an online timed MCQ + hands-on code challenge before scheduling live video calls.',
+      defaultNote: `Technical Assessment & MCQ Invitation for ${candidate?.jobTitle || 'Applied Role'}. Candidate has 48 hours to complete all modules.`,
+      url: `${typeof window !== 'undefined' ? window.location.origin : ''}/assessment`
+    },
+    {
+      id: 'ai_interview',
+      title: 'Round 2: Autonomous AI Technical Screen',
+      shortTitle: 'AI Voice Interview',
+      badge: 'SparkX AI Room',
+      icon: Bot,
+      desc: 'Candidate enters SparkX AI Interview Room for automated conversational screening on core competencies.',
+      defaultNote: `AI Voice Technical Screening round. Please enter the SparkX AI room with working microphone and webcam.`,
+      url: `${typeof window !== 'undefined' ? window.location.origin : ''}/interview`
+    },
+    {
+      id: 'face_to_face',
+      title: 'Round 3: Live Face-to-Face Video Interview',
+      shortTitle: 'Live Video Call',
+      badge: 'Google Meet / Video',
+      icon: Video,
+      desc: 'Interactive 1-on-1 or panel video discussion with engineering leaders & hiring team.',
+      defaultNote: `Technical panel interview via Google Meet. Please join with camera enabled.`,
+      url: ''
+    },
+    {
+      id: 'onsite',
+      title: 'Round 4: Onsite / In-Person Final Interview',
+      shortTitle: 'Onsite Campus',
+      badge: 'Office Campus',
+      icon: Building,
+      desc: 'Face-to-face final interview round at company engineering headquarters.',
+      defaultNote: `Onsite in-person interview. Please report to reception 10 minutes prior to scheduled slot.`,
+      url: 'Onsite Corporate Office'
+    }
+  ], [candidate]);
 
   // Candidate ID sanitized
   const candIdClean = (candidate?.id || 'candidate').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
@@ -318,17 +374,29 @@ export default function FancyInterviewScheduler({
     const min = String(finalDate.getMinutes()).padStart(2, '0');
     const slotString = `${yyyy}-${mm}-${dd} ${hh}:${min}`;
 
-    // If Google Meet provider is chosen:
-    // If user provided a specific personal room link, send that.
-    // Otherwise send '' which instructs the backend to provision a real Google Meet room via Calendar API!
-    const meetingUrlToSend = selectedProvider === 'google_meet'
-      ? (googleMeetUrl.trim() || '')
-      : autoInstantRoomUrl;
+    let meetingUrlToSend = '';
+    if (roundType === 'technical_assessment') {
+      meetingUrlToSend = `${window.location.origin}/assessment`;
+    } else if (roundType === 'ai_interview') {
+      meetingUrlToSend = `${window.location.origin}/interview`;
+    } else if (roundType === 'onsite') {
+      meetingUrlToSend = onsiteLocation.trim() || 'Onsite Corporate Headquarters';
+    } else {
+      meetingUrlToSend = selectedProvider === 'google_meet'
+        ? (googleMeetUrl.trim() || '')
+        : autoInstantRoomUrl;
+    }
+
+    const selectedOpt = ROUND_OPTIONS.find(r => r.id === roundType);
+    const prefix = selectedOpt ? `[${selectedOpt.shortTitle}] ` : '';
+    const finalNotes = notes?.trim() 
+      ? (notes.startsWith('[') ? notes : `${prefix}${notes}`)
+      : (selectedOpt?.defaultNote || '');
 
     onSubmit({
       scheduledAt: slotString,
       meetingUrl: meetingUrlToSend,
-      notes
+      notes: finalNotes
     });
   };
 
@@ -339,10 +407,87 @@ export default function FancyInterviewScheduler({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       
-      {/* ── TOP HEADER: QUICK PRESETS & INTERVAL TOGGLES ── */}
-      <div className="p-4 bg-gradient-to-r from-indigo-50/90 via-purple-50/60 to-indigo-50/90 dark:from-indigo-950/40 dark:via-purple-950/20 dark:to-indigo-950/40 rounded-3xl border border-indigo-100 dark:border-indigo-900/50 space-y-3">
+      {/* ── RESCHEDULE NOTICE (When candidate already has a slot) ── */}
+      {initialScheduledAt && (
+        <div className="p-3.5 px-4 rounded-xl bg-cyan-50/80 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 flex items-center justify-between gap-3 text-xs shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+              <CalendarIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold text-cyan-900 dark:text-cyan-200">Rescheduling Existing Interview</span>
+              <p className="text-slate-500 dark:text-slate-400 text-[11px]">
+                Currently booked: <strong className="text-slate-800 dark:text-slate-200 font-mono">{initialScheduledAt}</strong>
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/60 text-cyan-800 dark:text-cyan-200 border border-cyan-300 dark:border-cyan-700 shrink-0">
+            Reschedule Mode
+          </span>
+        </div>
+      )}
+
+      {/* ── STEP 1: INTERACTION / STAGE FORMAT SELECTOR ── */}
+      <div className="p-4 sm:p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3.5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs font-black text-indigo-950 dark:text-indigo-200 uppercase tracking-wider flex items-center space-x-1.5">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-brand-600 animate-pulse-subtle" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white font-mono">
+              Step 1: Select Hiring Stage & Interaction Format
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-500 font-medium">
+            Choose online assessment, AI voice screen, or face-to-face round
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {ROUND_OPTIONS.map((opt) => {
+            const Icon = opt.icon;
+            const isSelected = roundType === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  setRoundType(opt.id);
+                  setNotes(opt.defaultNote);
+                }}
+                className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between space-y-2 ${
+                  isSelected
+                    ? 'bg-brand-50/90 dark:bg-brand-950/60 border-brand-500 ring-2 ring-brand-500/20 text-slate-900 dark:text-white shadow-xs'
+                    : 'bg-slate-50/80 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-brand-300'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                    isSelected ? 'bg-brand-600 text-white shadow-xs' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  }`}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  {isSelected && <Check className="w-4 h-4 text-brand-600 dark:text-brand-400" />}
+                </div>
+                <div>
+                  <div className="text-xs font-bold leading-snug">{opt.shortTitle}</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+                    {opt.desc}
+                  </div>
+                </div>
+                <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded self-start font-semibold ${
+                  isSelected ? 'bg-brand-100 dark:bg-brand-900/60 text-brand-800 dark:text-brand-300' : 'bg-slate-200/60 dark:bg-slate-800 text-slate-500'
+                }`}>
+                  {opt.badge}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── TOP HEADER: QUICK PRESETS & INTERVAL TOGGLES ── */}
+      <div className="p-4 bg-brand-50/60 dark:bg-[#0E121E] rounded-2xl border border-brand-200/70 dark:border-slate-800 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
             <Zap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
             <span>1-Click Slot Presets:</span>
           </span>
@@ -428,7 +573,7 @@ export default function FancyInterviewScheduler({
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 text-center">
             {WEEKDAYS.map(w => (
-              <span key={w} className="text-xs font-bold text-slate-400 dark:text-slate-500 py-1 uppercase tracking-wider">
+              <span key={w} className="text-xs font-bold text-slate-500 dark:text-slate-400 py-1 uppercase tracking-wider">
                 {w}
               </span>
             ))}
@@ -448,7 +593,7 @@ export default function FancyInterviewScheduler({
                 cellStyle = "text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-30 line-through";
               }
               if (isSelected) {
-                cellStyle = "bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-600 text-white font-bold shadow-lg shadow-indigo-600/35 scale-105 ring-2 ring-indigo-400/50";
+                cellStyle = "bg-brand-600 text-white font-bold shadow-subtle ring-2 ring-brand-500/40";
               }
 
               return (
@@ -633,8 +778,8 @@ export default function FancyInterviewScheduler({
                         onClick={() => handleSelectTime(slot.hour, slot.minute)}
                         className={`py-2 px-2.5 rounded-xl text-xs font-semibold border text-center transition-all ${
                           isSelected
-                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-600 text-white font-bold shadow-md shadow-indigo-500/25 scale-[1.02]'
-                            : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 hover:bg-indigo-50/50'
+                            ? 'bg-brand-600 border-brand-600 text-white font-bold shadow-subtle scale-[1.02]'
+                            : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-brand-400 hover:bg-brand-50/50'
                         }`}
                       >
                         {slot.label}
@@ -675,8 +820,8 @@ export default function FancyInterviewScheduler({
           </div>
 
           {/* Confirmed Slot Summary Card */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-indigo-500/5 border border-indigo-500/20 text-xs space-y-1.5">
-            <span className="text-[10px] uppercase tracking-wider font-extrabold text-indigo-600 dark:text-indigo-400 block">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 text-xs space-y-1.5 shadow-subtle">
+            <span className="text-2xs uppercase tracking-wider font-bold text-brand-600 dark:text-brand-400 block font-mono">
               Confirmed Slot Preview:
             </span>
             <div className="text-slate-900 dark:text-white font-black text-sm">
@@ -693,143 +838,337 @@ export default function FancyInterviewScheduler({
         </div>
       </div>
 
-      {/* ── VIDEO CONFERENCE HUB: GOOGLE MEET (OFFICIAL) + SPARKX INSTANT (JITSI) ── */}
+      {/* ── DELIVERY & CREDENTIALS HUB (BRANCHED PER ROUND TYPE) ── */}
       <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center space-x-1.5">
-              <Video className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Video Interview Provider & Meeting Credentials</span>
-            </span>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-              Synced with Live Gmail SMTP & Calendar Invites (.ics) — zero hardcoded fake links
-            </span>
-          </div>
-
-          {selectedProvider === 'google_meet' ? (
-            googleStatus.connected ? (
-              <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] flex items-center space-x-1 border border-emerald-500/20">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Google Calendar Synced: {googleStatus.email || 'Active'}</span>
-              </span>
-            ) : (
-              <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[11px] flex items-center space-x-1 border border-amber-500/20">
-                <span>Google OAuth Ready (1-Click Connect)</span>
-              </span>
-            )
-          ) : (
-            <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[11px] flex items-center space-x-1 border border-indigo-500/20">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Instant Video Active</span>
-            </span>
-          )}
-        </div>
-
-        {/* 2 Clear Provider Tabs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          
-          {/* Tab 1: Google Meet (Official / Google Calendar Integration) */}
-          <button
-            type="button"
-            onClick={() => setSelectedProvider('google_meet')}
-            className={`p-4 rounded-2xl border text-left transition-all ${
-              selectedProvider === 'google_meet'
-                ? 'bg-blue-500/10 border-blue-500 text-blue-900 dark:text-blue-100 ring-2 ring-blue-500/20 shadow-xs'
-                : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="font-black text-xs flex items-center space-x-2 text-blue-600 dark:text-blue-400">
-                <Video className="w-4 h-4" />
-                <span>Google Meet (Official / Calendar API)</span>
-              </span>
-              {selectedProvider === 'google_meet' && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-            </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              Creates a <strong>real, working Google Meet link</strong> via Google Calendar API. Dispatches direct link + meeting code + official calendar invite (.ics) to candidate and recruiter.
-            </p>
-          </button>
-
-          {/* Tab 2: SparkX Instant Video Room (Jitsi Quick Join) */}
-          <button
-            type="button"
-            onClick={() => setSelectedProvider('auto_instant')}
-            className={`p-4 rounded-2xl border text-left transition-all ${
-              selectedProvider === 'auto_instant'
-                ? 'bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border-indigo-500 text-indigo-900 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
-                : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="font-black text-xs flex items-center space-x-2 text-indigo-600 dark:text-indigo-400">
-                <Sparkles className="w-4 h-4" />
-                <span>SparkX Instant Video (Jitsi — 1-Click Quick)</span>
-              </span>
-              {selectedProvider === 'auto_instant' && <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
-            </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
-              <strong>Quick Room:</strong> Zero setup, zero login required. Works in any browser with full HD video, mic, and screen sharing. Instant test room ready right now.
-            </p>
-          </button>
-        </div>
-
-        {/* Dynamic Context Card based on selected provider */}
-        {selectedProvider === 'google_meet' ? (
-          <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-blue-200 dark:border-blue-900/50 space-y-3">
+        {/* ROUND 1: ONLINE TECHNICAL ASSESSMENT */}
+        {roundType === 'technical_assessment' && (
+          <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
-                <span>Google Integration Status:</span>
-                {googleStatus.connected ? (
-                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center space-x-1">
-                    <Check className="w-3 h-3" />
-                    <span>Connected ({googleStatus.email})</span>
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center space-x-1.5">
+                  <Code2 className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                  <span>Technical Assessment Hub (MCQ & Code Sandbox)</span>
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                  Candidate receives an automated test invitation link to complete technical screening & coding exercises
+                </span>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 font-bold text-[11px] flex items-center space-x-1 border border-brand-500/20">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Automated Grading Ready</span>
+              </span>
+            </div>
+
+            <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-brand-200 dark:border-brand-900/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                  <span>Candidate Assessment Portal:</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold">
+                    Ready to Dispatch
+                  </span>
+                </span>
+
+                <a
+                  href="/assessment"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
+                  title="Preview assessment portal"
+                >
+                  <Code2 className="w-3.5 h-3.5" />
+                  <span>Preview Assessment ↗</span>
+                </a>
+              </div>
+
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/assessment`}
+                  className="w-full pl-3.5 pr-24 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-xs cursor-default"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/assessment`);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="absolute right-2 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center space-x-1"
+                >
+                  {copiedLink ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+                <p className="font-semibold">
+                  📋 Includes: MCQ Domain Assessment + Live Code Sandbox (Python, JavaScript, Go, SQL).
+                </p>
+                <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                  Candidate submits solutions through the portal. Once submitted, scorecards and benchmark percentiles sync directly into your pipeline.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ROUND 2: AUTONOMOUS AI TECHNICAL VOICE SCREEN */}
+        {roundType === 'ai_interview' && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center space-x-1.5">
+                  <Bot className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <span>Autonomous AI Technical Voice Screen Hub</span>
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                  Candidate enters SparkX AI room for conversational vocal & technical screening
+                </span>
+              </div>
+              <span className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold text-[11px] flex items-center space-x-1 border border-purple-500/20">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>AI Agent Ready</span>
+              </span>
+            </div>
+
+            <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-purple-200 dark:border-purple-900/50 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                  <span>AI Interview Room Link:</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold">
+                    Active
+                  </span>
+                </span>
+
+                <a
+                  href={`/interview?candidateId=${candidate?.id || ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
+                  title="Test AI Interview Room"
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  <span>Enter Room Now ↗</span>
+                </a>
+              </div>
+
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  readOnly
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/interview?candidateId=${candidate?.id || ''}`}
+                  className="w-full pl-3.5 pr-24 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-xs cursor-default"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/interview?candidateId=${candidate?.id || ''}`);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2000);
+                  }}
+                  className="absolute right-2 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center space-x-1"
+                >
+                  {copiedLink ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ROUND 3: LIVE FACE-TO-FACE VIDEO INTERVIEW (GOOGLE MEET / JITSI) */}
+        {roundType === 'face_to_face' && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center space-x-1.5">
+                  <Video className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Video Interview Provider & Meeting Credentials</span>
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                  Synced with Live Gmail SMTP & Calendar Invites (.ics) — zero hardcoded fake links
+                </span>
+              </div>
+
+              {selectedProvider === 'google_meet' ? (
+                googleStatus.connected ? (
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[11px] flex items-center space-x-1 border border-emerald-500/20">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Google Calendar Synced: {googleStatus.email || 'Active'}</span>
                   </span>
                 ) : (
-                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-extrabold">
-                    One-time Connect Recommended
+                  <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold text-[11px] flex items-center space-x-1 border border-amber-500/20">
+                    <span>Google OAuth Ready (1-Click Connect)</span>
                   </span>
-                )}
-              </span>
-
-              {googleStatus.connected ? (
-                <button
-                  type="button"
-                  onClick={handleDisconnectGoogle}
-                  className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition flex items-center space-x-1"
-                >
-                  <Unlink className="w-3 h-3" />
-                  <span>Disconnect</span>
-                </button>
+                )
               ) : (
-                <button
-                  type="button"
-                  onClick={handleConnectGoogle}
-                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
-                >
-                  <Link2 className="w-3.5 h-3.5" />
-                  <span>Connect Google Account (1-Click)</span>
-                </button>
+                <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[11px] flex items-center space-x-1 border border-indigo-500/20">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Instant Video Active</span>
+                </span>
               )}
             </div>
 
-            {googleStatus.connected ? (
-              <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200">
-                <p className="font-semibold">
-                  ✨ Auto-Provisioning Active: When you click <strong>Confirm Schedule</strong>, SparkX will automatically create an authentic Google Meet conference under your connected Google account and send the real link to <strong>{candidate?.name || 'the candidate'}</strong> and <strong>{googleStatus.email}</strong>.
+            {/* 2 Clear Provider Tabs */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Tab 1: Google Meet */}
+              <button
+                type="button"
+                onClick={() => setSelectedProvider('google_meet')}
+                className={`p-4 rounded-2xl border text-left transition-all ${
+                  selectedProvider === 'google_meet'
+                    ? 'bg-blue-500/10 border-blue-500 text-blue-900 dark:text-blue-100 ring-2 ring-blue-500/20 shadow-xs'
+                    : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-black text-xs flex items-center space-x-2 text-blue-600 dark:text-blue-400">
+                    <Video className="w-4 h-4" />
+                    <span>Google Meet (Official / Calendar API)</span>
+                  </span>
+                  {selectedProvider === 'google_meet' && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Creates a <strong>real Google Meet link</strong> via Google Calendar API. Dispatches calendar invite (.ics) to candidate and recruiter.
                 </p>
+              </button>
+
+              {/* Tab 2: SparkX Instant Video Room (Jitsi Quick Join) */}
+              <button
+                type="button"
+                onClick={() => setSelectedProvider('auto_instant')}
+                className={`p-4 rounded-2xl border text-left transition-all ${
+                  selectedProvider === 'auto_instant'
+                    ? 'bg-brand-50/70 dark:bg-brand-950/30 border-brand-500 text-slate-900 dark:text-white ring-2 ring-brand-500/20 shadow-subtle'
+                    : 'bg-white dark:bg-[#0E121E] border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-brand-300'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-black text-xs flex items-center space-x-2 text-indigo-600 dark:text-indigo-400">
+                    <Sparkles className="w-4 h-4" />
+                    <span>SparkX Instant Video (Jitsi — 1-Click Quick)</span>
+                  </span>
+                  {selectedProvider === 'auto_instant' && <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+                </div>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                  <strong>Quick Room:</strong> Zero setup, zero login required. Works in any browser with full HD video, mic, and screen sharing.
+                </p>
+              </button>
+            </div>
+
+            {/* Dynamic Context Card based on selected provider */}
+            {selectedProvider === 'google_meet' ? (
+              <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-blue-200 dark:border-blue-900/50 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                    <span>Google Integration Status:</span>
+                    {googleStatus.connected ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center space-x-1">
+                        <Check className="w-3 h-3" />
+                        <span>Connected ({googleStatus.email})</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-extrabold">
+                        One-time Connect Recommended
+                      </span>
+                    )}
+                  </span>
+
+                  {googleStatus.connected ? (
+                    <button
+                      type="button"
+                      onClick={handleDisconnectGoogle}
+                      className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition flex items-center space-x-1"
+                    >
+                      <Unlink className="w-3 h-3" />
+                      <span>Disconnect</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleConnectGoogle}
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      <span>Connect Google Account (1-Click)</span>
+                    </button>
+                  )}
+                </div>
+
+                {googleStatus.connected ? (
+                  <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200">
+                    <p className="font-semibold">
+                      ✨ Auto-Provisioning Active: When you click <strong>Confirm Schedule</strong>, SparkX will automatically create an authentic Google Meet conference under your connected Google account and send the real link to <strong>{candidate?.name || 'the candidate'}</strong> and <strong>{googleStatus.email}</strong>.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Optional: Or enter your permanent personal Google Meet link below if you prefer using a recurring room:
+                    </p>
+                    <div className="relative flex items-center">
+                      <input
+                        type="text"
+                        value={googleMeetUrl}
+                        onChange={e => setGoogleMeetUrl(e.target.value)}
+                        placeholder="e.g. https://meet.google.com/xyz-abcd-efg (leave blank to auto-create on schedule)"
+                        className="w-full pl-3.5 pr-24 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-xs focus:border-blue-500 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        className="absolute right-2 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center space-x-1"
+                      >
+                        {copiedLink ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center space-x-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="saveDefaultMeet"
+                        checked={saveAsDefaultMeet}
+                        onChange={e => setSaveAsDefaultMeet(e.target.checked)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <label htmlFor="saveDefaultMeet" className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                        Save as my permanent Google Meet room (auto-fills for future candidates)
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="space-y-2">
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Optional: Or enter your permanent personal Google Meet link below if you prefer using a recurring room:
-                </p>
+              /* Jitsi Instant Room Card */
+              <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                    <span>Instant Room Link:</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold">
+                      100% Active Now
+                    </span>
+                  </span>
+
+                  <a
+                    href={activeMeetingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
+                    title="Click to enter and test this room right now"
+                  >
+                    <Video className="w-3.5 h-3.5" />
+                    <span>Test / Enter Room Now ↗</span>
+                  </a>
+                </div>
+
                 <div className="relative flex items-center">
                   <input
                     type="text"
-                    value={googleMeetUrl}
-                    onChange={e => setGoogleMeetUrl(e.target.value)}
-                    placeholder="e.g. https://meet.google.com/xyz-abcd-efg (leave blank to auto-create on schedule)"
-                    className="w-full pl-3.5 pr-24 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-xs focus:border-blue-500 focus:outline-none"
+                    readOnly
+                    value={activeMeetingUrl}
+                    className="w-full pl-3.5 pr-24 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-xs cursor-default"
                   />
                   <button
                     type="button"
@@ -840,61 +1179,37 @@ export default function FancyInterviewScheduler({
                     <span>{copiedLink ? 'Copied' : 'Copy'}</span>
                   </button>
                 </div>
-
-                <div className="flex items-center space-x-2 pt-1">
-                  <input
-                    type="checkbox"
-                    id="saveDefaultMeet"
-                    checked={saveAsDefaultMeet}
-                    onChange={e => setSaveAsDefaultMeet(e.target.checked)}
-                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <label htmlFor="saveDefaultMeet" className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                    Save as my permanent Google Meet room (auto-fills for future candidates)
-                  </label>
-                </div>
               </div>
             )}
           </div>
-        ) : (
-          /* Jitsi Instant Room Card */
-          <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
-                <span>Instant Room Link:</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold">
-                  100% Active Now
-                </span>
-              </span>
+        )}
 
-              {/* Direct 1-Click Test / Launch Button */}
-              <a
-                href={activeMeetingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
-                title="Click to enter and test this room right now"
-              >
-                <Video className="w-3.5 h-3.5" />
-                <span>Test / Enter Room Now ↗</span>
-              </a>
+        {/* ROUND 4: ONSITE / IN-PERSON FINAL INTERVIEW */}
+        {roundType === 'onsite' && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center space-x-1.5">
+                  <Building className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span>Onsite Campus / Office Location Details</span>
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                  Specify office address and room instructions dispatched with the candidate invitation
+                </span>
+              </div>
             </div>
 
-            <div className="relative flex items-center">
+            <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 space-y-3">
+              <label className="block text-slate-700 dark:text-slate-300 font-semibold text-xs">
+                Physical Office Address & Interview Room:
+              </label>
               <input
                 type="text"
-                readOnly
-                value={activeMeetingUrl}
-                className="w-full pl-3.5 pr-24 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-xs cursor-default"
+                value={onsiteLocation}
+                onChange={e => setOnsiteLocation(e.target.value)}
+                placeholder="e.g. SparkX HQ, Building 4, Floor 3, Meeting Room 302 - 500 Tech Boulevard"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:border-emerald-500 focus:outline-none"
               />
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="absolute right-2 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center space-x-1"
-              >
-                {copiedLink ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedLink ? 'Copied' : 'Copy'}</span>
-              </button>
             </div>
           </div>
         )}
@@ -908,24 +1223,40 @@ export default function FancyInterviewScheduler({
             type="text"
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="e.g. Please join 5 mins early with camera enabled; have portfolio or code samples ready..."
-            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:border-indigo-500 focus:outline-none"
+            placeholder={
+              roundType === 'technical_assessment'
+                ? "e.g. You will have 48 hours to complete the MCQ & Sandbox tests. Ensure stable internet..."
+                : roundType === 'ai_interview'
+                ? "e.g. Please join in a quiet room with working headset and microphone enabled..."
+                : roundType === 'onsite'
+                ? "e.g. Please bring government photo ID for security gate check-in at Tower B..."
+                : "e.g. Please join 5 mins early with camera enabled; have portfolio or code samples ready..."
+            }
+            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:border-brand-500 focus:outline-none"
           />
         </div>
       </div>
 
-      {/* ── SUBMIT & DISPATCH EMAIL BUTTON ── */}
+      {/* ── SUBMIT & DISPATCH BUTTON ── */}
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full px-6 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-sm font-black tracking-wide transition flex items-center justify-center space-x-2.5 shadow-xl shadow-indigo-600/30"
+        className="w-full px-6 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white text-xs sm:text-sm font-bold tracking-wide transition flex items-center justify-center space-x-2.5 shadow-subtle disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
           <Send className="w-4 h-4" />
         )}
-        <span>Confirm Schedule & Dispatch Calendar Invite (.ics + Meeting Link)</span>
+        <span>
+          {roundType === 'technical_assessment'
+            ? 'Dispatch Technical Assessment & MCQ Invitation Email'
+            : roundType === 'ai_interview'
+            ? 'Schedule AI Technical Voice Screen & Send Invite'
+            : roundType === 'onsite'
+            ? 'Confirm Onsite Interview & Dispatch Campus Invitation'
+            : (initialScheduledAt ? 'Confirm Rescheduled Slot & Dispatch Calendar Invite (.ics + Link)' : 'Confirm Schedule & Dispatch Calendar Invite (.ics + Link)')}
+        </span>
       </button>
     </form>
   );

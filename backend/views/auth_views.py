@@ -78,3 +78,11 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
     if err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=err)
     return result
+
+@router.post("/logout")
+def logout(request: Request, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
+    raw_token = get_token_from_header(request)
+    if raw_token:
+        from controllers.auth_controller import revoke_token
+        revoke_token(raw_token, db)
+    return {"success": True, "message": "Logged out successfully"}

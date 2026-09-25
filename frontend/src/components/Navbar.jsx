@@ -134,20 +134,19 @@ export default function Navbar() {
               onClick={() => navigateTo(userRole === 'recruiter' ? '/recruiter' : '/jobs')}
             >
               <div className="relative shrink-0">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 ring-1 ring-white/25 group-hover:scale-105 transition-all duration-300">
-                  <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-subtle group-hover:bg-brand-500 transition-colors">
+                  <Sparkles className="w-4 h-4 text-white" />
                 </div>
-                <div className="absolute -inset-1 rounded-2xl bg-indigo-500/20 blur-sm -z-10 group-hover:bg-indigo-500/40 transition" />
               </div>
               <div className="shrink-0">
                 <div className="flex items-center space-x-2 whitespace-nowrap">
-                  <span className="font-black text-lg tracking-tight text-slate-900 dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-white dark:via-slate-100 dark:to-indigo-200">
+                  <span className="font-bold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white">
                     SparkX AI
                   </span>
-                  <span className={`text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded-full border whitespace-nowrap ${
+                  <span className={`text-2xs uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border whitespace-nowrap ${
                     userRole === 'recruiter'
-                      ? 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/25 shadow-sm'
-                      : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25 shadow-sm'
+                      ? 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25'
+                      : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25'
                   }`}>
                     {userRole === 'recruiter' ? 'Recruiter Hub' : 'Candidate'}
                   </span>
@@ -169,7 +168,7 @@ export default function Navbar() {
                     >
                       <Cpu className="w-3 h-3" />
                       <span className={`w-1.5 h-1.5 rounded-full ${aiStatus.active ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
-                      <span>{aiStatus.active ? `Live LLM (${aiStatus.provider?.split(' ')[0]})` : 'Simulated AI (Key)'}</span>
+                      <span>{aiStatus.active ? `Live LLM (${aiStatus.provider?.split(' ')[0]})` : 'Local NLP Engine'}</span>
                     </button>
                   )}
                 </div>
@@ -245,8 +244,8 @@ export default function Navbar() {
                 >
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black shadow-sm ring-1 ring-white/20 ${
                     userRole === 'recruiter' 
-                      ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-purple-600/30' 
-                      : 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white shadow-emerald-600/30'
+                      ? 'bg-brand-600 text-white shadow-subtle' 
+                      : 'bg-emerald-600 text-white shadow-subtle'
                   }`}>
                     {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : (userRole === 'recruiter' ? 'R' : 'C')}
                   </div>
@@ -268,10 +267,10 @@ export default function Navbar() {
                     {/* User Info Header */}
                     <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-100 dark:border-white/[0.05] mb-2">
                       <div className="flex items-center space-x-2.5">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black shadow-md ${
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-black shadow-sm ${
                           userRole === 'recruiter' 
-                            ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white' 
-                            : 'bg-gradient-to-tr from-emerald-600 to-teal-600 text-white'
+                            ? 'bg-brand-600 text-white' 
+                            : 'bg-emerald-600 text-white'
                         }`}>
                           {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
                         </div>
@@ -288,8 +287,8 @@ export default function Navbar() {
                         <span className="text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Role</span>
                         <span className={`px-2 py-0.5 rounded-full font-bold uppercase ${
                           userRole === 'recruiter'
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
-                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                            ? 'bg-brand-50 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 border border-brand-200/60 dark:border-brand-800/40'
+                            : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40'
                         }`}>
                           {userRole === 'recruiter' ? 'Recruiter Admin' : 'Candidate'}
                         </span>
@@ -400,7 +399,7 @@ export default function Navbar() {
                     onClick={() => navigateTo(item.path)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
                       isActive
-                        ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/30'
+                        ? 'bg-brand-600 text-white shadow-sm'
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80'
                     }`}
                   >

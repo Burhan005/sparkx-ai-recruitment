@@ -40,6 +40,7 @@ class CandidateModel(Base):
     education = Column(String, nullable=False)
     skills = Column(JSON, default=list)
     resume_summary = Column(Text, nullable=True)
+    resume_text = Column(Text, nullable=True)
     fraud_flags = Column(JSON, default=list)
     
     # Telemetry & Integrity

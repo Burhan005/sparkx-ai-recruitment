@@ -21,14 +21,35 @@ from typing import Optional, Dict, Any, Tuple
 TOKENS_FILE = Path(__file__).parent / "google_tokens.json"
 
 def _get_google_config() -> Dict[str, str]:
-    """Read Google OAuth config from environment variables."""
+    """Read Google OAuth config from environment variables or google_client_secret.json."""
+    client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+    client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+    redirect_uri = os.environ.get(
+        "GOOGLE_REDIRECT_URI",
+        "http://localhost:8000/api/auth/google/callback"
+    ).strip()
+
+    if not client_id or not client_secret:
+        for json_name in ["google_client_secret.json", "client_secret.json"]:
+            json_file = Path(__file__).parent / json_name
+            if json_file.exists():
+                try:
+                    with open(json_file, "r") as f:
+                        data = json.load(f)
+                    web = data.get("web") or data.get("installed") or {}
+                    if not client_id:
+                        client_id = web.get("client_id", "").strip()
+                    if not client_secret:
+                        client_secret = web.get("client_secret", "").strip()
+                    if client_id and client_secret:
+                        break
+                except Exception:
+                    pass
+
     return {
-        "client_id": os.environ.get("GOOGLE_CLIENT_ID", "").strip(),
-        "client_secret": os.environ.get("GOOGLE_CLIENT_SECRET", "").strip(),
-        "redirect_uri": os.environ.get(
-            "GOOGLE_REDIRECT_URI",
-            "http://localhost:8000/api/auth/google/callback"
-        ).strip(),
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "redirect_uri": redirect_uri,
     }
 
 def is_google_configured() -> bool:

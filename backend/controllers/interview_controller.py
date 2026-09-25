@@ -2,12 +2,74 @@
 (C) Interview Controller - Handles adaptive cross-questioning, telemetry events, and AI evaluation
 """
 import uuid
+from datetime import datetime
+from typing import Tuple, Optional
 from sqlalchemy.orm import Session
 from models.db_models import CandidateModel, JobModel, IntegrityLogModel
 from schemas import AdaptiveQuestionRequest, TelemetryEventCreate, EvaluationRequest, CandidateQuestionsRequest
 from ai_engine import evaluate_adaptive_answer, calculate_scorecard_and_gap, synthesize_candidate_interview_questions
+from workflow_contract import (
+    validate_transition, project_legacy_status, project_legacy_final_decision,
+    STAGE_INTERVIEW, STAGE_REVIEW
+)
+from controllers.candidate_controller import log_state_change
 
 class InterviewController:
+    @staticmethod
+    def start_interview(candidate_id: str, db: Session) -> Tuple[bool, Optional[str]]:
+        candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not candidate:
+            return False, "Candidate not found"
+
+        # Check if interview is already in progress or completed
+        if candidate.interview_status in ["in_progress", "completed"]:
+            return True, None
+
+        # Authorize: candidate must be scheduled (or invited)
+        if candidate.interview_status not in ["scheduled", "invited"]:
+            if not candidate.interview_scheduled_at:
+                return False, "Interview access restricted: Candidate has not been scheduled for an interview."
+
+        can_trans, err = validate_transition("interview_status", candidate.interview_status or "scheduled", "in_progress")
+        if not can_trans:
+            return False, err
+
+        old_interview_status = candidate.interview_status or "scheduled"
+        candidate.interview_status = "in_progress"
+        candidate.interview_started_at = datetime.utcnow()
+        log_state_change(
+            db=db,
+            candidate_id=candidate.id,
+            dimension="interview_status",
+            from_state=old_interview_status,
+            to_state="in_progress",
+            triggered_by="candidate",
+            reason="Candidate joined and started the interview room session"
+        )
+
+        # Ensure stage reflects interview
+        if candidate.stage != STAGE_INTERVIEW:
+            old_stage = candidate.stage
+            candidate.stage = STAGE_INTERVIEW
+            candidate.stage_updated_at = datetime.utcnow()
+            log_state_change(
+                db=db,
+                candidate_id=candidate.id,
+                dimension="stage",
+                from_state=old_stage,
+                to_state=STAGE_INTERVIEW,
+                triggered_by="candidate",
+                reason="Interview session in progress"
+            )
+
+        # Update legacy projections without mutating hiring_decision
+        candidate.status = project_legacy_status(candidate.stage, candidate.assessment_status, candidate.interview_status, candidate.hiring_decision)
+        candidate.final_decision = project_legacy_final_decision(candidate.stage, candidate.hiring_decision)
+
+        db.commit()
+        db.refresh(candidate)
+        return True, None
+
     @staticmethod
     def generate_candidate_questions(payload: CandidateQuestionsRequest, db: Session):
         job = db.query(JobModel).filter(JobModel.id == payload.job_id).first()
@@ -22,14 +84,17 @@ class InterviewController:
         exp_years = cand.experience_years if cand else (payload.experience_years or 2.0)
         cand_id = cand.id if cand else payload.candidate_id
 
-        questions = synthesize_candidate_interview_questions(
-            role_title=role_title,
-            job_skills=job_skills,
-            candidate_name=cand_name,
-            candidate_skills=cand_skills,
-            experience_years=exp_years,
-            candidate_id=cand_id
-        )
+        if job and job.questions and len(job.questions) > 0:
+            questions = job.questions
+        else:
+            questions = synthesize_candidate_interview_questions(
+                role_title=role_title,
+                job_skills=job_skills,
+                candidate_name=cand_name,
+                candidate_skills=cand_skills,
+                experience_years=exp_years,
+                candidate_id=cand_id
+            )
 
         return {
             "candidate_name": cand_name,
@@ -92,8 +157,42 @@ class InterviewController:
         candidate.integrity_score = payload.integrity_score
         candidate.integrity_risk = risk
         candidate.integrity_events = payload.integrity_events
-        candidate.status = "Evaluated"
-        candidate.final_decision = "Shortlisted" if evaluation["scores"]["overall"] >= 80 and risk == "Low" else "Under Review"
+
+        # Interview status -> completed
+        old_interview_status = candidate.interview_status or "in_progress"
+        candidate.interview_status = "completed"
+        candidate.interview_completed_at = datetime.utcnow()
+        log_state_change(
+            db=db,
+            candidate_id=candidate.id,
+            dimension="interview_status",
+            from_state=old_interview_status,
+            to_state="completed",
+            triggered_by="system",
+            reason="AI interview session concluded and evaluated"
+        )
+
+        # Advance stage to review if in interview stage
+        if candidate.stage == STAGE_INTERVIEW:
+            old_stage = candidate.stage
+            candidate.stage = STAGE_REVIEW
+            candidate.stage_updated_at = datetime.utcnow()
+            log_state_change(
+                db=db,
+                candidate_id=candidate.id,
+                dimension="stage",
+                from_state=old_stage,
+                to_state=STAGE_REVIEW,
+                triggered_by="system",
+                reason="Interview completed; application in review stage"
+            )
+
+        # IMPORTANT: Do NOT mutate candidate.hiring_decision! Human recruiter committee decides.
+        # Project legacy projections
+        candidate.status = project_legacy_status(candidate.stage, candidate.assessment_status, candidate.interview_status, candidate.hiring_decision)
+        candidate.final_decision = project_legacy_final_decision(candidate.stage, candidate.hiring_decision)
 
         db.commit()
+        db.refresh(candidate)
         return evaluation, None
+

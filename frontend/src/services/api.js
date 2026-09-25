@@ -19,6 +19,15 @@ export function normalizeJob(j) {
     applicantsCount:   j.applicants_count   != null ? j.applicants_count : (j.applicantsCount ?? 0),
     questions:         j.questions          ?? [],
     status:            j.status             ?? 'Active',
+    // Compensation Specification
+    ctcType:           j.ctc_type           ?? j.ctcType           ?? 'range',
+    ctcMin:            j.ctc_min != null ? Number(j.ctc_min) : (j.ctcMin != null ? Number(j.ctcMin) : null),
+    ctcMax:            j.ctc_max != null ? Number(j.ctc_max) : (j.ctcMax != null ? Number(j.ctcMax) : null),
+    ctcCurrency:       j.ctc_currency       ?? j.ctcCurrency       ?? 'INR',
+    ctcPeriod:         j.ctc_period         ?? j.ctcPeriod         ?? 'annual',
+    variablePayMin:    j.variable_pay_min != null ? Number(j.variable_pay_min) : (j.variablePayMin != null ? Number(j.variablePayMin) : null),
+    variablePayMax:    j.variable_pay_max != null ? Number(j.variable_pay_max) : (j.variablePayMax != null ? Number(j.variablePayMax) : null),
+    formattedCompensation: j.formatted_compensation ?? j.formattedCompensation ?? null,
   };
 }
 
@@ -50,9 +59,30 @@ export function normalizeCandidate(c) {
     codingResults:   c.coding_results  ?? c.codingResults  ?? {},
     scores:          c.scores          ?? { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
     skills:          c.skills          ?? [],
+    // Authoritative Candidate Application Compensation Expectations
+    currentCtc:                  c.current_ctc != null ? Number(c.current_ctc) : (c.currentCtc != null ? Number(c.currentCtc) : null),
+    expectedCtcType:             c.expected_ctc_type ?? c.expectedCtcType ?? 'range',
+    expectedCtcMin:              c.expected_ctc_min != null ? Number(c.expected_ctc_min) : (c.expectedCtcMin != null ? Number(c.expectedCtcMin) : null),
+    expectedCtcMax:              c.expected_ctc_max != null ? Number(c.expected_ctc_max) : (c.expectedCtcMax != null ? Number(c.expectedCtcMax) : null),
+    ctcCurrency:                 c.ctc_currency ?? c.ctcCurrency ?? 'INR',
+    compensationAnalysis:        c.compensation_analysis ?? c.compensationAnalysis ?? null,
+    jobBudgetFormatted:          c.job_budget_formatted ?? c.jobBudgetFormatted ?? null,
+    candidateExpectationFormatted: c.candidate_expectation_formatted ?? c.candidateExpectationFormatted ?? null,
+    // 4-Dimensional Authoritative State
+    stage:                c.stage                  ?? 'screening',
+    assessmentStatus:     c.assessment_status      ?? c.assessmentStatus     ?? 'not_invited',
+    interviewStatus:      c.interview_status       ?? c.interviewStatus      ?? 'not_scheduled',
+    hiringDecision:       c.hiring_decision        ?? c.hiringDecision       ?? 'undecided',
+    assessmentInvitedAt:  c.assessment_invited_at  ?? c.assessmentInvitedAt  ?? null,
+    assessmentStartedAt:  c.assessment_started_at  ?? c.assessmentStartedAt  ?? null,
+    assessmentSubmittedAt:c.assessment_submitted_at?? c.assessmentSubmittedAt?? null,
+    assessmentEvaluatedAt:c.assessment_evaluated_at?? c.assessmentEvaluatedAt?? null,
+    interviewStartedAt:   c.interview_started_at   ?? c.interviewStartedAt   ?? null,
+    interviewCompletedAt: c.interview_completed_at ?? c.interviewCompletedAt ?? null,
+    stageUpdatedAt:       c.stage_updated_at       ?? c.stageUpdatedAt       ?? null,
+    decisionUpdatedAt:    c.decision_updated_at    ?? c.decisionUpdatedAt    ?? null,
     interviewScheduledAt: c.interview_scheduled_at ?? c.interviewScheduledAt ?? null,
     interviewMeetingUrl:  c.interview_meeting_url  ?? c.interviewMeetingUrl  ?? null,
-    interviewStatus:      c.interview_status       ?? c.interviewStatus      ?? 'Applied',
     recruiterScore:       c.recruiter_score        != null ? c.recruiter_score : (c.recruiterScore ?? null),
     rejectionReason:      c.rejection_reason       ?? c.rejectionReason      ?? null,
     rejectionCategory:    c.rejection_category     ?? c.rejectionCategory    ?? null,
@@ -272,6 +302,13 @@ export const api = {
         questions:            jobData.questions || [],
         coding_assessment:    jobData.codingAssessment || jobData.coding_assessment || null,
         coding_difficulty:    jobData.codingDifficulty || jobData.coding_difficulty || null,
+        ctc_type:             jobData.ctcType || jobData.ctc_type || null,
+        ctc_min:              jobData.ctcMin != null && jobData.ctcMin !== '' ? Number(jobData.ctcMin) : (jobData.ctc_min != null && jobData.ctc_min !== '' ? Number(jobData.ctc_min) : null),
+        ctc_max:              jobData.ctcMax != null && jobData.ctcMax !== '' ? Number(jobData.ctcMax) : (jobData.ctc_max != null && jobData.ctc_max !== '' ? Number(jobData.ctc_max) : null),
+        ctc_currency:         jobData.ctcCurrency || jobData.ctc_currency || 'INR',
+        ctc_period:           jobData.ctcPeriod || jobData.ctc_period || 'per_annum',
+        variable_pay_min:     jobData.variablePayMin != null && jobData.variablePayMin !== '' ? Number(jobData.variablePayMin) : (jobData.variable_pay_min != null && jobData.variable_pay_min !== '' ? Number(jobData.variable_pay_min) : null),
+        variable_pay_max:     jobData.variablePayMax != null && jobData.variablePayMax !== '' ? Number(jobData.variablePayMax) : (jobData.variable_pay_max != null && jobData.variable_pay_max !== '' ? Number(jobData.variable_pay_max) : null),
       };
       const res = await authFetch(`${API_BASE_URL}/jobs`, {
         method: 'POST',
@@ -282,6 +319,45 @@ export const api = {
       return normalizeJob(await res.json());
     } catch (err) {
       console.warn('[API] createJob failed:', err.message);
+      return null;
+    }
+  },
+
+  async updateJob(jobId, jobData) {
+    try {
+      const payload = {
+        title:                jobData.title,
+        department:           jobData.department,
+        location:             jobData.location,
+        min_experience_years: jobData.minExperienceYears != null ? Number(jobData.minExperienceYears) : (jobData.min_experience_years != null ? Number(jobData.min_experience_years) : undefined),
+        education:            jobData.education,
+        languages:            Array.isArray(jobData.languages) ? jobData.languages : undefined,
+        required_skills:      jobData.requiredSkills || jobData.required_skills,
+        optional_criteria:    jobData.optionalCriteria || jobData.optional_criteria,
+        description:          jobData.description,
+        questions:            jobData.questions,
+        coding_assessment:    jobData.codingAssessment || jobData.coding_assessment,
+        coding_difficulty:    jobData.codingDifficulty || jobData.coding_difficulty,
+        assessment_pool:      jobData.assessmentPool || jobData.assessment_pool,
+        ctc_type:             jobData.ctcType !== undefined ? jobData.ctcType : jobData.ctc_type,
+        ctc_min:              jobData.ctcMin !== undefined ? (jobData.ctcMin !== null && jobData.ctcMin !== '' ? Number(jobData.ctcMin) : null) : (jobData.ctc_min !== undefined ? (jobData.ctc_min !== null && jobData.ctc_min !== '' ? Number(jobData.ctc_min) : null) : undefined),
+        ctc_max:              jobData.ctcMax !== undefined ? (jobData.ctcMax !== null && jobData.ctcMax !== '' ? Number(jobData.ctcMax) : null) : (jobData.ctc_max !== undefined ? (jobData.ctc_max !== null && jobData.ctc_max !== '' ? Number(jobData.ctc_max) : null) : undefined),
+        ctc_currency:         jobData.ctcCurrency || jobData.ctc_currency,
+        ctc_period:           jobData.ctcPeriod || jobData.ctc_period,
+        variable_pay_min:     jobData.variablePayMin !== undefined ? (jobData.variablePayMin !== null && jobData.variablePayMin !== '' ? Number(jobData.variablePayMin) : null) : (jobData.variable_pay_min !== undefined ? (jobData.variable_pay_min !== null && jobData.variable_pay_min !== '' ? Number(jobData.variable_pay_min) : null) : undefined),
+        variable_pay_max:     jobData.variablePayMax !== undefined ? (jobData.variablePayMax !== null && jobData.variablePayMax !== '' ? Number(jobData.variablePayMax) : null) : (jobData.variable_pay_max !== undefined ? (jobData.variable_pay_max !== null && jobData.variable_pay_max !== '' ? Number(jobData.variable_pay_max) : null) : undefined),
+      };
+      Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+
+      const res = await authFetch(`${API_BASE_URL}/jobs/${jobId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) throw new Error('Failed to update job');
+      return normalizeJob(await res.json());
+    } catch (err) {
+      console.warn('[API] updateJob failed:', err.message);
       return null;
     }
   },
@@ -352,7 +428,7 @@ export const api = {
     }
   },
 
-  async getCandidates() {
+  async getCandidates(params = {}) {
     try {
       try {
         const stored = JSON.parse(localStorage.getItem('sparkx_user') || '{}');
@@ -360,7 +436,17 @@ export const api = {
           return [];
         }
       } catch {}
-      const res = await authFetch(`${API_BASE_URL}/candidates`, { signal: AbortSignal.timeout(4000) });
+
+      const query = new URLSearchParams();
+      if (params.jobId || params.job_id) query.append('job_id', params.jobId || params.job_id);
+      if (params.compensationStatus || params.compensation_status) query.append('compensation_status', params.compensationStatus || params.compensation_status);
+      if (params.minExpectedCtc != null && params.minExpectedCtc !== '') query.append('min_expected_ctc', params.minExpectedCtc);
+      if (params.maxExpectedCtc != null && params.maxExpectedCtc !== '') query.append('max_expected_ctc', params.maxExpectedCtc);
+      if (params.q) query.append('q', params.q);
+
+      const qs = query.toString();
+      const url = `${API_BASE_URL}/candidates${qs ? `?${qs}` : ''}`;
+      const res = await authFetch(url, { signal: AbortSignal.timeout(6000) });
       if (!res.ok) throw new Error('Failed to fetch candidates');
       const data = await res.json();
       return Array.isArray(data) ? data.map(normalizeCandidate) : [];
@@ -373,18 +459,23 @@ export const api = {
   async applyCandidate(candData) {
     try {
       const payload = {
-        job_id:          candData.jobId,
-        company_name:    candData.companyName || 'SparkX Technologies',
-        name:            candData.name,
-        email:           candData.email,
-        phone:           candData.phone || '+91 98000 00000',
-        experience_years:Number(candData.experienceYears ?? 0),
-        education:       candData.education,
-        skills:          candData.skills || [],
-        resume_summary:  candData.resumeSummary || '',
-        resume_filename: candData.resumeFilename || null,
-        resume_text:     candData.resumeText || null,
-        fraud_flags:     candData.fraudFlags || [],
+        job_id:            candData.jobId,
+        company_name:      candData.companyName || 'SparkX Technologies',
+        name:              candData.name,
+        email:             candData.email,
+        phone:             candData.phone || '+91 98000 00000',
+        experience_years:  Number(candData.experienceYears ?? 0),
+        education:         candData.education,
+        skills:            candData.skills || [],
+        resume_summary:    candData.resumeSummary || '',
+        resume_filename:   candData.resumeFilename || null,
+        resume_text:       candData.resumeText || null,
+        fraud_flags:       candData.fraudFlags || [],
+        current_ctc:       candData.currentCtc != null && candData.currentCtc !== '' ? Number(candData.currentCtc) : (candData.current_ctc != null && candData.current_ctc !== '' ? Number(candData.current_ctc) : null),
+        expected_ctc_type: candData.expectedCtcType || candData.expected_ctc_type || null,
+        expected_ctc_min:  candData.expectedCtcMin != null && candData.expectedCtcMin !== '' ? Number(candData.expectedCtcMin) : (candData.expected_ctc_min != null && candData.expected_ctc_min !== '' ? Number(candData.expected_ctc_min) : null),
+        expected_ctc_max:  candData.expectedCtcMax != null && candData.expectedCtcMax !== '' ? Number(candData.expectedCtcMax) : (candData.expected_ctc_max != null && candData.expected_ctc_max !== '' ? Number(candData.expected_ctc_max) : null),
+        ctc_currency:      candData.ctcCurrency || candData.ctc_currency || 'INR',
       };
       const res = await authFetch(`${API_BASE_URL}/candidates/apply`, {
         method: 'POST',
@@ -409,6 +500,8 @@ export const api = {
       const data = await res.json();
       return Array.isArray(data) ? data.map(app => ({
         id: app.id,
+        name: app.name,
+        email: app.email,
         jobId: app.job_id,
         jobTitle: app.job_title,
         companyName: app.company_name || 'SparkX Technologies',
@@ -422,10 +515,31 @@ export const api = {
         skills: app.skills || [],
         resumeFilename: app.resume_filename,
         resumeSummary: app.resume_summary,
+        scores: app.scores || {},
+        skillGaps: app.skill_gaps || {},
         interviewScheduledAt: app.interview_scheduled_at,
         interviewMeetingUrl: app.interview_meeting_url,
-        interviewStatus: app.interview_status || 'Applied',
-        assessmentStatus: app.assessment_status || (app.status && !['Applied', 'Screening'].includes(app.status) ? 'Completed' : 'Pending'),
+        // Candidate's own submitted compensation & job budget preview
+        currentCtc: app.current_ctc != null ? Number(app.current_ctc) : null,
+        expectedCtcType: app.expected_ctc_type || 'range',
+        expectedCtcMin: app.expected_ctc_min != null ? Number(app.expected_ctc_min) : null,
+        expectedCtcMax: app.expected_ctc_max != null ? Number(app.expected_ctc_max) : null,
+        ctcCurrency: app.ctc_currency || 'INR',
+        formattedCandidateCompensation: app.formatted_candidate_compensation || null,
+        formattedJobCompensation: app.formatted_job_compensation || null,
+        // Authoritative 4-Dimensional State
+        stage: app.stage || 'screening',
+        assessmentStatus: app.assessment_status || 'not_invited',
+        interviewStatus: app.interview_status || 'not_scheduled',
+        hiringDecision: app.hiring_decision || 'undecided',
+        assessmentInvitedAt: app.assessment_invited_at || null,
+        assessmentStartedAt: app.assessment_started_at || null,
+        assessmentSubmittedAt: app.assessment_submitted_at || null,
+        assessmentEvaluatedAt: app.assessment_evaluated_at || null,
+        interviewStartedAt: app.interview_started_at || null,
+        interviewCompletedAt: app.interview_completed_at || null,
+        stageUpdatedAt: app.stage_updated_at || null,
+        decisionUpdatedAt: app.decision_updated_at || null,
         codingScore: app.coding_score != null ? app.coding_score : null,
         recruiterScore: app.recruiter_score != null ? app.recruiter_score : (app.recruiterScore ?? null),
         rejectionReason: app.rejection_reason ?? app.rejectionReason ?? null,
@@ -457,6 +571,92 @@ export const api = {
       });
       return res.ok ? await res.json() : null;
     } catch { return null; }
+  },
+
+  async updateCandidateStage(candidateId, stage, notes = '') {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/stage`, {
+        method: 'PATCH',
+        body: JSON.stringify({ stage, notes }),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to update candidate stage');
+      }
+      return normalizeCandidate(await res.json());
+    } catch (err) {
+      console.warn('[API] updateCandidateStage failed:', err.message);
+      throw err;
+    }
+  },
+
+  async updateHiringDecision(candidateId, decision, extra = {}) {
+    try {
+      const payload = {
+        decision,
+        hr_notes: extra.hrNotes || '',
+        recruiter_score: extra.recruiterScore != null ? Number(extra.recruiterScore) : null,
+        rejection_reason: extra.rejectionReason || null,
+        rejection_category: extra.rejectionCategory || null,
+      };
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/decision`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to update hiring decision');
+      }
+      return normalizeCandidate(await res.json());
+    } catch (err) {
+      console.warn('[API] updateHiringDecision failed:', err.message);
+      throw err;
+    }
+  },
+
+  async inviteAssessment(candidateId, customMessage = '') {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/invite-assessment`, {
+        method: 'POST',
+        body: JSON.stringify({ custom_message: customMessage }),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to invite to assessment');
+      }
+      return normalizeCandidate(await res.json());
+    } catch (err) {
+      console.warn('[API] inviteAssessment failed:', err.message);
+      throw err;
+    }
+  },
+
+  async getAuditLogs(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/audit-logs`, {
+        signal: AbortSignal.timeout(5000)
+      });
+      return res.ok ? await res.json() : [];
+    } catch (err) {
+      console.warn('[API] getAuditLogs failed:', err.message);
+      return [];
+    }
+  },
+
+  async getCandidateAuditLogs(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/audit-logs`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error('Failed to fetch audit logs');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCandidateAuditLogs failed:', err.message);
+      return [];
+    }
   },
 
   async scheduleInterview(candidateId, scheduledAt, notes = '', meetingUrl = '') {
@@ -639,6 +839,20 @@ export const api = {
     }
   },
 
+  // ─── Recruiter Assessment Studio: AI Config Generator ─────────────────────
+  async generateStudioConfig(jobId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/studio/job/${jobId}`, {
+        signal: AbortSignal.timeout(60000), // LLM may take a moment
+      });
+      if (!res.ok) throw new Error(`Studio config generation failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('generateStudioConfig error:', err);
+      return null;
+    }
+  },
+
   async runCodeSandbox(payload) {
     try {
       const res = await authFetch(`${API_BASE_URL}/assessment/run-code`, {
@@ -672,6 +886,66 @@ export const api = {
       return await res.json();
     } catch (err) {
       console.error('submitAssessment error:', err);
+      return null;
+    }
+  },
+
+  async startAssessment(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/${candidateId}/start`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to start assessment');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] startAssessment error:', err.message);
+      return null;
+    }
+  },
+
+  async startInterview(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/interview/start`, {
+        method: 'POST',
+        body: JSON.stringify({ candidate_id: candidateId }),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to start interview');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] startInterview error:', err.message);
+      return null;
+    }
+  },
+
+  async queryCopilot({ query, candidateId = null, jobId = null, userRole = 'recruiter', userEmail = null, userName = null }) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/copilot/query`, {
+        method: 'POST',
+        body: JSON.stringify({ 
+          query, 
+          candidate_id: candidateId, 
+          job_id: jobId,
+          user_role: userRole,
+          user_email: userEmail,
+          user_name: userName
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Copilot query failed');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] queryCopilot error:', err.message);
       return null;
     }
   },

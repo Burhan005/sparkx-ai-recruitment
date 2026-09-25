@@ -6,11 +6,40 @@ from sqlalchemy.orm import Session
 from database import get_db
 from schemas import CodeRunRequest, CodeRunResponse, AssessmentSubmitRequest, AssessmentSubmitResponse
 from controllers.assessment_controller import AssessmentController
+from ai_engine import generate_studio_assessment_config
 
 from auth_dependencies import get_current_user
-from models.db_models import UserModel, CandidateModel
+from models.db_models import UserModel, CandidateModel, JobModel
 
 router = APIRouter(prefix="/api/assessment", tags=["Technical Assessment"])
+
+@router.get("/studio/job/{job_id}")
+def get_studio_config_for_job(job_id: str, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Generate a domain-appropriate Assessment Studio configuration for a recruiter.
+    Uses real job data (title, department, description, skills) to determine what
+    evaluation methods are appropriate. No hardcoded assessment structure.
+    Requires recruiter role.
+    """
+    if current_user.role != "recruiter":
+        raise HTTPException(status_code=403, detail="Only recruiters can access studio configuration.")
+
+    job = db.query(JobModel).filter(JobModel.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    config = generate_studio_assessment_config(
+        job_title=job.title or "",
+        department=job.department or "",
+        job_description=job.description or "",
+        required_skills=job.required_skills or [],
+        optional_criteria=job.optional_criteria or "",
+        experience=job.experience or "",
+        languages=job.languages or [],
+        job_id=job_id
+    )
+    return config
+
 
 @router.get("/{candidate_id}")
 def get_assessment(candidate_id: str, job_id: str = None, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -31,6 +60,24 @@ def get_assessment(candidate_id: str, job_id: str = None, current_user: UserMode
         status_code = 403 if ("restricted" in err.lower() or "screening" in err.lower()) else 404
         raise HTTPException(status_code=status_code, detail=err)
     return res
+
+@router.post("/{candidate_id}/start")
+def start_assessment(candidate_id: str, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Candidate starts assessment session.
+    Transitions assessment_status from invited to in_progress.
+    """
+    if current_user.role == "candidate":
+        cand = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not cand:
+            raise HTTPException(status_code=404, detail="Candidate record not found")
+        if cand.email.strip().lower() != current_user.email.strip().lower():
+            raise HTTPException(status_code=403, detail="Access denied: You cannot start an assessment for another candidate.")
+
+    success, err = AssessmentController.start_assessment(candidate_id, db)
+    if not success:
+        raise HTTPException(status_code=400, detail=err)
+    return {"success": True, "message": "Assessment started"}
 
 @router.post("/run-code", response_model=CodeRunResponse)
 def run_code(payload: CodeRunRequest, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):

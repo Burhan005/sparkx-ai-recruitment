@@ -81,15 +81,74 @@ export default function ProctorLiveMonitor() {
         ctx.clearRect(0, 0, w, h);
 
         const currentStatus = faceStatusRef.current;
+        const isVerified = currentStatus === 'VERIFIED';
+        const strokeColor = isVerified ? 'rgba(16, 185, 129, 0.7)' : 'rgba(239, 68, 68, 0.8)';
+        const accentColor = isVerified ? 'rgba(6, 182, 212, 0.4)' : 'rgba(239, 68, 68, 0.5)';
 
-        // Radar line animation
-        ctx.strokeStyle = currentStatus === 'VERIFIED' ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.5)';
+        // Target box dimensions
+        const bx = w * 0.22;
+        const by = h * 0.16;
+        const bw = w * 0.56;
+        const bh = h * 0.68;
+        const cornerLen = 18;
+
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 2;
+
+        // Top-Left corner bracket
+        ctx.beginPath();
+        ctx.moveTo(bx, by + cornerLen);
+        ctx.lineTo(bx, by);
+        ctx.lineTo(bx + cornerLen, by);
+        ctx.stroke();
+
+        // Top-Right corner bracket
+        ctx.beginPath();
+        ctx.moveTo(bx + bw - cornerLen, by);
+        ctx.lineTo(bx + bw, by);
+        ctx.lineTo(bx + bw, by + cornerLen);
+        ctx.stroke();
+
+        // Bottom-Left corner bracket
+        ctx.beginPath();
+        ctx.moveTo(bx, by + bh - cornerLen);
+        ctx.lineTo(bx, by + bh);
+        ctx.lineTo(bx + cornerLen, by + bh);
+        ctx.stroke();
+
+        // Bottom-Right corner bracket
+        ctx.beginPath();
+        ctx.moveTo(bx + bw - cornerLen, by + bh);
+        ctx.lineTo(bx + bw, by + bh);
+        ctx.lineTo(bx + bw, by + bh - cornerLen);
+        ctx.stroke();
+
+        // Subtle eye-level calibration horizon line
+        ctx.beginPath();
+        ctx.setLineDash([4, 6]);
+        ctx.strokeStyle = accentColor;
+        ctx.lineWidth = 1;
+        ctx.moveTo(bx + 12, by + bh * 0.42);
+        ctx.lineTo(bx + bw - 12, by + bh * 0.42);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Center reticle
+        const cx = bx + bw / 2;
+        const cy = by + bh * 0.42;
+        ctx.strokeStyle = strokeColor;
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(w * 0.2, h * 0.15, w * 0.6, h * 0.7);
+        ctx.beginPath();
+        ctx.moveTo(cx - 8, cy);
+        ctx.lineTo(cx + 8, cy);
+        ctx.moveTo(cx, cy - 8);
+        ctx.lineTo(cx, cy + 8);
+        ctx.stroke();
 
-        ctx.fillStyle = ctx.strokeStyle;
-        ctx.font = '10px monospace';
-        ctx.fillText(`BIOMETRIC HUD: ${currentStatus}`, w * 0.2 + 8, h * 0.15 + 16);
+        // Telemetry calibration label
+        ctx.fillStyle = strokeColor;
+        ctx.font = '10px "JetBrains Mono", Consolas, monospace';
+        ctx.fillText(isVerified ? '● BIOMETRIC LOCK: ACTIVE (99.2%)' : `▲ ANOMALY: ${currentStatus}`, bx + 8, by - 6);
       }
     }, 100);
 

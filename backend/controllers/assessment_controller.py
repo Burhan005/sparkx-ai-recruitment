@@ -20,6 +20,12 @@ from sqlalchemy.orm import Session
 from models.db_models import CandidateModel, JobModel
 from schemas import CodeRunRequest, CodeRunResponse, AssessmentSubmitRequest, AssessmentSubmitResponse
 from ai_engine import synthesize_technical_assessment_bundle, evaluate_scenario_response, evaluate_practical_task, _normalize_bundle
+from workflow_contract import (
+    validate_transition, project_legacy_status, project_legacy_final_decision,
+    STAGE_ASSESSMENT, STAGE_REVIEW
+)
+from controllers.candidate_controller import log_state_change
+from services.sandbox_runner import SandboxRunner
 
 
 class AssessmentController:
@@ -29,18 +35,57 @@ class AssessmentController:
         if not candidate:
             return False, "Candidate not found"
 
-        # Check explicit recruiter advancement or scheduling
-        is_scheduled_or_advanced = bool(
-            candidate.interview_scheduled_at
-            or (candidate.interview_status and candidate.interview_status in ["Interview Scheduled", "Interview", "Invited", "Assessment Scheduled"])
-            or (candidate.status and candidate.status in ["Interview", "Interview Scheduled", "Shortlisted", "Selected", "Offered", "Assessment Scheduled"])
-            or (candidate.final_decision and candidate.final_decision in ["Interview", "Interview Scheduled", "Shortlisted", "Selected", "Offered", "Assessment Scheduled"])
-        )
-
-        if is_scheduled_or_advanced:
+        # Authoritative 4D check: candidate has been invited, in progress, submitted, or evaluated
+        if candidate.assessment_status in ["invited", "in_progress", "submitted", "evaluated"]:
             return True, None
 
-        return False, "Assessment access restricted: Application is currently in recruiter screening. Assessment has not been scheduled or invited by the recruiter."
+        # Fallback check for pipeline stage
+        if candidate.stage in ["assessment", "interview", "review", "completed"]:
+            return True, None
+
+        # Fallback legacy checks if unmigrated
+        if candidate.status in ["Assessment Scheduled", "Interview Scheduled", "Interview", "Shortlisted", "Selected", "Offered"] or \
+           candidate.final_decision in ["Assessment Scheduled", "Interview Scheduled", "Interview", "Shortlisted", "Selected", "Offered"]:
+            return True, None
+
+        return False, "Assessment access restricted: Assessment has not been invited by the recruiter."
+
+    @staticmethod
+    def start_assessment(candidate_id: str, db: Session) -> Tuple[bool, Optional[str]]:
+        candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not candidate:
+            return False, "Candidate not found"
+
+        authorized, auth_err = AssessmentController._is_candidate_authorized_for_assessment(candidate)
+        if not authorized:
+            return False, auth_err
+
+        # If already in_progress, submitted, or evaluated, allow entering without re-transitioning
+        if candidate.assessment_status in ["in_progress", "submitted", "evaluated"]:
+            return True, None
+
+        if candidate.assessment_status == "invited":
+            can_trans, err = validate_transition("assessment_status", candidate.assessment_status, "in_progress")
+            if not can_trans:
+                return False, err
+            old_status = candidate.assessment_status
+            candidate.assessment_status = "in_progress"
+            candidate.assessment_started_at = datetime.utcnow()
+            log_state_change(
+                db=db,
+                candidate_id=candidate.id,
+                dimension="assessment_status",
+                from_state=old_status,
+                to_state="in_progress",
+                triggered_by="candidate",
+                reason="Candidate started the assessment session"
+            )
+            candidate.status = project_legacy_status(candidate.stage, candidate.assessment_status, candidate.interview_status, candidate.hiring_decision)
+            candidate.final_decision = project_legacy_final_decision(candidate.stage, candidate.hiring_decision)
+            db.commit()
+            db.refresh(candidate)
+
+        return True, None
 
     @staticmethod
     def _sanitize_bundle_for_candidate(bundle: dict) -> dict:
@@ -112,6 +157,48 @@ class AssessmentController:
     ) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
         candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
         if not candidate:
+            if is_recruiter:
+                target_job_id = job_id
+                job = db.query(JobModel).filter(JobModel.id == target_job_id).first() if target_job_id else db.query(JobModel).first()
+                job_title = job.title if job else "Software Engineer"
+                job_skills = (job.required_skills if job else None) or ["Software Architecture"]
+                job_desc = job.description if job else ""
+                all_default_langs = ["python", "javascript", "typescript", "java", "c", "cpp", "csharp", "vb", "go", "rust", "php", "ruby", "kotlin", "swift", "sql"]
+                job_languages = (job.languages if (job and job.languages) else all_default_langs)
+                experience_years = float(job.min_experience_years if (job and job.min_experience_years) else 3.0)
+
+                if job and job.assessment_pool and isinstance(job.assessment_pool, dict) and (job.assessment_pool.get("hands_on") or job.assessment_pool.get("technical_mcqs")):
+                    bundle = copy.deepcopy(job.assessment_pool)
+                    bundle.pop("mcq_solutions", None)
+                    return {
+                        "candidate_id": "recruiter-preview",
+                        "job_id": job.id,
+                        "bundle": bundle,
+                        "saved_answers": {},
+                        "is_completed": False,
+                        "is_preview": True,
+                        "category_scores": {}
+                    }, None
+
+                bundle, _ = synthesize_technical_assessment_bundle(
+                    role_title=job_title,
+                    job_skills=job_skills,
+                    job_description=job_desc,
+                    experience_years=experience_years,
+                    candidate_name="Recruiter Sandbox Preview",
+                    candidate_skills=job_skills,
+                    candidate_id="recruiter-preview",
+                    languages=job_languages
+                )
+                return {
+                    "candidate_id": "recruiter-preview",
+                    "job_id": job.id if job else "preview-job",
+                    "bundle": bundle,
+                    "saved_answers": {},
+                    "is_completed": False,
+                    "is_preview": True,
+                    "category_scores": {}
+                }, None
             return None, "Candidate not found"
 
         target_job_id = job_id or candidate.job_id
@@ -148,7 +235,7 @@ class AssessmentController:
                 existing_data["bundle"] = upgraded_bundle
                 existing_data["mcq_solutions"] = upgraded_solutions
                 candidate.assessment_data = existing_data
-                db.commit()
+                # In-memory normalization for response; do not call db.commit() in read-only GET
 
         # Allow candidates who already completed the assessment to view completion state
         if existing_bundle and existing_data.get("is_completed"):
@@ -162,10 +249,11 @@ class AssessmentController:
                 "category_scores": existing_data.get("category_scores", {}) if is_recruiter else {}
             }, None
 
-        # Verify candidate authorization: must be scheduled or advanced by recruiter
-        authorized, auth_err = AssessmentController._is_candidate_authorized_for_assessment(candidate)
-        if not authorized:
-            return None, auth_err
+        # Verify candidate authorization: must be scheduled or advanced by recruiter (recruiters can preview anytime)
+        if not is_recruiter:
+            authorized, auth_err = AssessmentController._is_candidate_authorized_for_assessment(candidate)
+            if not authorized:
+                return None, auth_err
 
         job = db.query(JobModel).filter(JobModel.id == target_job_id).first()
         job_title = job.title if job else "Software Engineer"
@@ -184,6 +272,30 @@ class AssessmentController:
                 "saved_answers": existing_data.get("answers", {}),
                 "is_completed": existing_data.get("is_completed", False),
                 "category_scores": existing_data.get("category_scores", {}) if is_recruiter else {}
+            }, None
+
+        # Check if job has an authoritative recruiter-customized assessment pool
+        if job and job.assessment_pool and isinstance(job.assessment_pool, dict) and (job.assessment_pool.get("hands_on") or job.assessment_pool.get("technical_mcqs")):
+            bundle = copy.deepcopy(job.assessment_pool)
+            mcq_solutions = bundle.pop("mcq_solutions", {}) or {}
+            candidate.assessment_data = {
+                "job_id": target_job_id,
+                "bundle": bundle,
+                "mcq_solutions": mcq_solutions,
+                "generated_by": "recruiter_customized",
+                "answers": {},
+                "is_completed": False,
+                "created_at": datetime.utcnow().isoformat()
+            }
+            db.commit()
+            returned_bundle = bundle if is_recruiter else AssessmentController._sanitize_bundle_for_candidate(bundle)
+            return {
+                "candidate_id": candidate.id,
+                "job_id": target_job_id,
+                "bundle": returned_bundle,
+                "saved_answers": {},
+                "is_completed": False,
+                "category_scores": {}
             }, None
 
         # Synthesize fresh 100% dynamic assessment tailored to this exact job & candidate
@@ -240,599 +352,95 @@ class AssessmentController:
         code = payload.code or ""
         task_id = payload.task_id
 
-        # 1. Custom Test Execution (Run user-supplied input)
-        if payload.is_custom_test:
-            return AssessmentController._run_custom_test(code, payload.custom_input, lang, task_id)
+        # 1. Non-coding practical deliverables
+        if lang in ["deliverable", "text", "practical", "document", "markdown", "none", "plain"]:
+            results, console_logs = AssessmentController._run_practical_validation(code, payload.test_cases or [], task_id, [])
+            passed_count = sum(1 for r in results if r.get("passed", False))
+            total_count = len(results)
+            return CodeRunResponse(
+                all_passed=passed_count == total_count and total_count > 0,
+                passed_count=passed_count,
+                total_count=total_count,
+                test_results=results,
+                console_output="\n".join(console_logs),
+                execution_ms=1.0,
+                memory_mb=12.0
+            )
 
-        # 2. Sample Tests Execution
-        start_time = time.time()
-        test_cases = payload.test_cases
+        # 2. Retrieve sample test cases from candidate's bundle if not in payload
+        test_cases = payload.test_cases or []
+        schema_ddl = None
+        expected_rows = None
 
-        # If test cases not in payload, retrieve sample test cases from candidate's bundle
-        if not test_cases and db and payload.candidate_id:
+        if db and payload.candidate_id:
             cand = db.query(CandidateModel).filter(CandidateModel.id == payload.candidate_id).first()
             if cand and cand.assessment_data:
                 b = cand.assessment_data.get("bundle", {})
                 for cat in ["hands_on", "troubleshooting"]:
                     cat_obj = b.get(cat, {})
-                    if cat_obj.get("id") == task_id:
-                        # Candidates only run sample test cases
-                        test_cases = cat_obj.get("sample_test_cases") or cat_obj.get("test_cases", [])[:2]
+                    if cat_obj.get("id") == task_id or cat in str(task_id):
+                        if not test_cases:
+                            test_cases = cat_obj.get("sample_test_cases") or cat_obj.get("test_cases", [])[:2]
+                        schema_ddl = cat_obj.get("schema_ddl")
+                        expected_rows = cat_obj.get("expected_rows")
                         break
 
-        if not test_cases:
-            test_cases = [
-                {"name": "Standard verification", "input": "Default parameters", "expected": "Successful execution", "assertion_py": "", "assertion_js": ""}
-            ]
-
-        results = []
-        console_logs = []
-        compilation_error = None
-        runtime_error = None
-        memory_mb = 24.8
-
-        console_logs.append(f"> Initializing {lang.upper()} Sandbox Runner...")
-        console_logs.append(f"> Task ID: {task_id} • Testing {len(test_cases)} assertions...")
-
-        # Language-specific verification engine
-        if lang in ["deliverable", "text", "practical", "document", "markdown", "none", "plain"]:
-            results, console_logs = AssessmentController._run_practical_validation(code, test_cases, task_id, console_logs)
-        elif lang == "python":
-            results, console_logs, compilation_error, runtime_error, memory_mb = AssessmentController._run_python_tests(code, test_cases, task_id, console_logs)
-        elif lang in ["javascript", "typescript"]:
-            results, console_logs, compilation_error, runtime_error, memory_mb = AssessmentController._run_js_tests(code, test_cases, task_id, console_logs)
-        elif lang == "sql":
-            schema_ddl = None
-            expected_rows = None
-            if db and payload.candidate_id:
-                cand = db.query(CandidateModel).filter(CandidateModel.id == payload.candidate_id).first()
-                if cand and cand.assessment_data:
-                    b = cand.assessment_data.get("bundle", {})
-                    for cat in ["hands_on", "troubleshooting"]:
-                        cat_obj = b.get(cat, {})
-                        if cat_obj.get("id") == task_id or cat in str(task_id):
-                            schema_ddl = cat_obj.get("schema_ddl")
-                            expected_rows = cat_obj.get("expected_rows")
-                            break
-            results, console_logs, compilation_error, runtime_error, memory_mb = AssessmentController._run_sql_tests(
-                code, test_cases, task_id, console_logs, schema_ddl=schema_ddl, expected_rows=expected_rows
-            )
-        else:
-            # Java / C / C++ / C# / VB.NET / Go / Rust / PHP / Ruby / Kotlin / Swift / etc.
-            results, console_logs = AssessmentController._run_compiled_tests(code, test_cases, lang, task_id, console_logs)
-
-        passed_count = sum(1 for r in results if r.get("passed", False))
-        total_count = len(results)
-        all_passed = passed_count == total_count and total_count > 0
-        execution_ms = round((time.time() - start_time) * 1000, 2)
-
-        console_logs.append(f"> Execution complete: {passed_count}/{total_count} assertions passed in {execution_ms}ms (Memory: {memory_mb}MB).")
-        if all_passed:
-            console_logs.append("> Success: All sample test assertions passed successfully!")
-        elif compilation_error:
-            console_logs.append(f"> Compilation Error: {compilation_error}")
-        elif runtime_error:
-            console_logs.append(f"> Runtime Exception: {runtime_error}")
-        elif any(r.get("status") == "Pending Recruiter Review" for r in results):
-            console_logs.append(f"> Notice: Code submission recorded for manual recruiter review ({lang.upper()}).")
-        else:
-            console_logs.append("> Notice: Review failing assertions above and refine your solution.")
-
-        return CodeRunResponse(
-            all_passed=all_passed,
-            passed_count=passed_count,
-            total_count=total_count,
-            test_results=results,
-            console_output="\n".join(console_logs),
-            execution_ms=execution_ms,
-            memory_mb=memory_mb,
-            compilation_error=compilation_error,
-            runtime_error=runtime_error
+        # 3. Delegate to isolated SandboxRunner outside the FastAPI process
+        return SandboxRunner.get_instance().run_code(
+            code=code,
+            language=lang,
+            test_cases=test_cases,
+            task_id=task_id,
+            custom_input=payload.custom_input,
+            is_custom_test=payload.is_custom_test,
+            schema_ddl=schema_ddl,
+            expected_rows=expected_rows
         )
 
     @staticmethod
     def _run_custom_test(code: str, custom_input: Optional[str], lang: str, task_id: str) -> CodeRunResponse:
         """
-        Executes candidate's code with arbitrary user-supplied custom arguments.
-        Captures stdout, return value, execution time, and memory usage.
+        Delegates custom argument execution to the isolated SandboxRunner subprocess.
         """
-        start_time = time.perf_counter()
-        raw_input = (custom_input or "").strip()
-
-        if lang == "python":
-            # 1. AST Syntax Check
-            try:
-                ast.parse(code)
-            except SyntaxError as syn_err:
-                return CodeRunResponse(
-                    all_passed=False,
-                    passed_count=0,
-                    total_count=1,
-                    test_results=[{
-                        "id": 1,
-                        "name": "Custom Test Syntax Check",
-                        "input": raw_input or "(None)",
-                        "expected": "(Valid Python Syntax)",
-                        "actual": f"SyntaxError line {syn_err.lineno}: {syn_err.msg}",
-                        "passed": False,
-                        "error": str(syn_err),
-                        "duration": "0ms"
-                    }],
-                    console_output=f"> Python Compilation Error:\n  Line {syn_err.lineno}: {syn_err.text or ''}\n  SyntaxError: {syn_err.msg}",
-                    execution_ms=0.0,
-                    memory_mb=0.0,
-                    compilation_error=f"Line {syn_err.lineno}: {syn_err.msg}"
-                )
-
-            # 2. Execution with Tracing & IO Redirection
-            stdout_capture = io.StringIO()
-            stderr_capture = io.StringIO()
-            tracemalloc.start()
-
-            # Attempt literal or JSON parse of custom input
-            parsed_arg = raw_input
-            if raw_input:
-                try:
-                    parsed_arg = json.loads(raw_input)
-                except Exception:
-                    try:
-                        parsed_arg = ast.literal_eval(raw_input)
-                    except Exception:
-                        parsed_arg = raw_input
-
-            scope = {}
-            ret_val = None
-            runtime_err = None
-
-            try:
-                with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
-                    exec(code, scope, scope)
-                    # Find entrypoint
-                    target_fn = scope.get("solve") or scope.get("fix")
-                    if not target_fn:
-                        for k, v in scope.items():
-                            if callable(v) and not k.startswith("__"):
-                                target_fn = v
-                                break
-                    if target_fn:
-                        if raw_input:
-                            ret_val = target_fn(parsed_arg)
-                        else:
-                            ret_val = target_fn()
-                    else:
-                        ret_val = "(Code executed successfully without defining a callable solve() or fix() function)"
-            except Exception as e:
-                runtime_err = f"{type(e).__name__}: {str(e)}"
-                stderr_capture.write(f"\n{traceback.format_exc()}")
-            finally:
-                _, peak_mem = tracemalloc.get_traced_memory()
-                tracemalloc.stop()
-                exec_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                memory_mb = round((peak_mem / (1024 * 1024)) + 18.2, 2)
-
-            out_str = stdout_capture.getvalue()
-            err_str = stderr_capture.getvalue()
-
-            console_lines = [
-                f"> Python 3.11 Sandbox Runner: Custom Test Execution",
-                f"> Input: {raw_input or '(None)'}",
-                f"> Execution Time: {exec_ms}ms | Peak Memory: {memory_mb}MB"
-            ]
-            if out_str.strip():
-                console_lines.append(f"> Standard Output:\n{out_str.strip()}")
-            if ret_val is not None:
-                console_lines.append(f"> Return Value:\n{repr(ret_val)}")
-            if runtime_err:
-                console_lines.append(f"> Runtime Error:\n{runtime_err}")
-
-            passed = (runtime_err is None)
-            return CodeRunResponse(
-                all_passed=passed,
-                passed_count=1 if passed else 0,
-                total_count=1,
-                test_results=[{
-                    "id": 1,
-                    "name": "Custom Test Execution",
-                    "input": raw_input or "(None)",
-                    "expected": "(Custom input - evaluate output)",
-                    "actual": repr(ret_val) if ret_val is not None else "(Exception)",
-                    "passed": passed,
-                    "error": runtime_err,
-                    "duration": f"{exec_ms}ms"
-                }],
-                console_output="\n".join(console_lines),
-                execution_ms=exec_ms,
-                memory_mb=memory_mb,
-                runtime_error=runtime_err
-            )
-
-        elif lang in ["javascript", "typescript"]:
-            # JavaScript runner via isolated Node process
-            input_json = json.dumps(raw_input)
-            runner_script = f"""
-const process = require('process');
-let rawInput = {input_json};
-let parsedInput = rawInput;
-try {{ parsedInput = JSON.parse(rawInput); }} catch(e) {{}}
-
-{code}
-
-let targetFn = typeof solve === 'function' ? solve : (typeof fix === 'function' ? fix : null);
-let retVal = undefined;
-if (targetFn) {{
-    retVal = rawInput ? targetFn(parsedInput) : targetFn();
-}}
-const heapMb = (process.memoryUsage().heapUsed / (1024 * 1024)).toFixed(2);
-console.log('__RET__' + JSON.stringify(retVal));
-console.log('__MEM__' + heapMb);
-"""
-            try:
-                proc = subprocess.run(
-                    ["node", "-e", runner_script],
-                    capture_output=True,
-                    text=True,
-                    timeout=6
-                )
-                exec_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                if proc.returncode == 0:
-                    lines = proc.stdout.split("\n")
-                    ret_str = ""
-                    mem_mb = 26.5
-                    clean_out = []
-                    for line in lines:
-                        if line.startswith("__RET__"):
-                            ret_str = line[7:]
-                        elif line.startswith("__MEM__"):
-                            try:
-                                mem_mb = float(line[7:])
-                            except:
-                                pass
-                        elif line:
-                            clean_out.append(line)
-
-                    return CodeRunResponse(
-                        all_passed=True,
-                        passed_count=1,
-                        total_count=1,
-                        test_results=[{
-                            "id": 1,
-                            "name": "Custom Test Execution",
-                            "input": raw_input or "(None)",
-                            "expected": "(Custom input - evaluate output)",
-                            "actual": ret_str or "(undefined)",
-                            "passed": True,
-                            "duration": f"{exec_ms}ms"
-                        }],
-                        console_output=f"> Node.js v20 Sandbox Runner: Custom Test Execution\n> Input: {raw_input}\n> Execution Time: {exec_ms}ms | Memory: {mem_mb}MB\n" + ("\n> Stdout:\n" + "\n".join(clean_out) if clean_out else "") + f"\n> Return Value: {ret_str}",
-                        execution_ms=exec_ms,
-                        memory_mb=mem_mb
-                    )
-                else:
-                    err_msg = (proc.stderr or proc.stdout).strip()
-                    first_line = err_msg.split("\n")[0] if err_msg else "Execution Error"
-                    is_syntax = "SyntaxError" in err_msg
-                    return CodeRunResponse(
-                        all_passed=False,
-                        passed_count=0,
-                        total_count=1,
-                        test_results=[{
-                            "id": 1,
-                            "name": "Custom Test Execution",
-                            "input": raw_input or "(None)",
-                            "expected": "(Valid Execution)",
-                            "actual": first_line,
-                            "passed": False,
-                            "error": first_line,
-                            "duration": f"{exec_ms}ms"
-                        }],
-                        console_output=f"> Node.js Execution Error:\n{err_msg}",
-                        execution_ms=exec_ms,
-                        memory_mb=28.0,
-                        compilation_error=first_line if is_syntax else None,
-                        runtime_error=first_line if not is_syntax else None
-                    )
-            except subprocess.TimeoutExpired:
-                return CodeRunResponse(
-                    all_passed=False,
-                    passed_count=0,
-                    total_count=1,
-                    test_results=[{"id": 1, "name": "Custom Test", "passed": False, "error": "Execution timed out (>6000ms)"}],
-                    console_output="> Execution timed out (>6000ms). Check for infinite loops or recursion.",
-                    execution_ms=6000.0,
-                    memory_mb=32.0,
-                    runtime_error="TimeoutExpired (>6000ms)"
-                )
-            except Exception as e:
-                return CodeRunResponse(
-                    all_passed=False,
-                    passed_count=0,
-                    total_count=1,
-                    test_results=[{"id": 1, "name": "Custom Test", "passed": False, "error": str(e)}],
-                    console_output=f"> Runner Error: {e}",
-                    execution_ms=0.0,
-                    runtime_error=str(e)
-                )
-
-        elif lang == "sql":
-            con = None
-            try:
-                con = sqlite3.connect(":memory:")
-                con.row_factory = sqlite3.Row
-                cur = con.cursor()
-                default_ddl = (
-                    "CREATE TABLE IF NOT EXISTS employees (\n"
-                    "    id INTEGER PRIMARY KEY,\n"
-                    "    name TEXT NOT NULL,\n"
-                    "    department TEXT NOT NULL,\n"
-                    "    salary REAL NOT NULL,\n"
-                    "    status TEXT NOT NULL\n"
-                    ");\n"
-                    "INSERT INTO employees (id, name, department, salary, status) VALUES\n"
-                    "(1, 'Alice Smith', 'Engineering', 95000, 'Active'),\n"
-                    "(2, 'Bob Jones', 'Engineering', 88000, 'Active'),\n"
-                    "(3, 'Charlie Brown', 'HR', 65000, 'Active'),\n"
-                    "(4, 'Diana Prince', 'Engineering', 105000, 'Active'),\n"
-                    "(5, 'Evan Wright', 'Marketing', 72000, 'Active'),\n"
-                    "(6, 'Frank Wright', 'Finance', 90000, 'Terminated');"
-                )
-                cur.executescript(default_ddl)
-                target_sql = raw_input if (raw_input and ("SELECT" in raw_input.upper() or "INSERT" in raw_input.upper() or "UPDATE" in raw_input.upper())) else code
-                cleaned_sql = "\n".join([l for l in target_sql.splitlines() if not l.strip().startswith(("--", "/*"))]).strip()
-                if not cleaned_sql:
-                    raise ValueError("No executable SQL statements found.")
-
-                cur.execute(cleaned_sql)
-                exec_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                if cur.description:
-                    col_names = [d[0] for d in cur.description]
-                    rows = [dict(r) for r in cur.fetchall()]
-                    table_str = AssessmentController._format_ascii_table(col_names, rows)
-                    actual_summary = f"{len(rows)} row(s) returned"
-                    console_out = f"> SQLite 3.50 Database Runner: Custom SQL Execution ({exec_ms}ms)\n> Query: {cleaned_sql}\n\n{table_str}"
-                else:
-                    actual_summary = f"{cur.rowcount} row(s) affected"
-                    console_out = f"> SQLite 3.50 Database Runner: Statement executed ({exec_ms}ms). {actual_summary}."
-
-                con.close()
-                return CodeRunResponse(
-                    all_passed=True,
-                    passed_count=1,
-                    total_count=1,
-                    test_results=[{
-                        "id": 1,
-                        "name": "Custom SQL Query",
-                        "input": raw_input or "(Active SQL Query)",
-                        "expected": "(Valid SQL Execution)",
-                        "actual": actual_summary,
-                        "passed": True,
-                        "duration": f"{exec_ms}ms"
-                    }],
-                    console_output=console_out,
-                    execution_ms=exec_ms,
-                    memory_mb=18.5
-                )
-            except Exception as sql_err:
-                exec_ms = round((time.perf_counter() - start_time) * 1000, 2)
-                if con:
-                    con.close()
-                return CodeRunResponse(
-                    all_passed=False,
-                    passed_count=0,
-                    total_count=1,
-                    test_results=[{
-                        "id": 1,
-                        "name": "Custom SQL Query",
-                        "input": raw_input or "(Active SQL Query)",
-                        "expected": "(Valid SQL Execution)",
-                        "actual": str(sql_err),
-                        "passed": False,
-                        "error": str(sql_err),
-                        "duration": f"{exec_ms}ms"
-                    }],
-                    console_output=f"> SQLite 3.50 Execution Error:\n  {str(sql_err)}",
-                    execution_ms=exec_ms,
-                    memory_mb=18.5,
-                    compilation_error=str(sql_err)
-                )
-
-        else:
-            # Other languages
-            return CodeRunResponse(
-                all_passed=True,
-                passed_count=1,
-                total_count=1,
-                test_results=[{
-                    "id": 1,
-                    "name": f"Custom Test ({lang.upper()})",
-                    "input": raw_input,
-                    "expected": "(Static Analysis Verified)",
-                    "actual": "(Preserved for recruiter evaluation)",
-                    "passed": True,
-                    "duration": "1ms"
-                }],
-                console_output=f"> {lang.upper()} Static Runner: Custom test preserved for recruiter assessment.",
-                execution_ms=1.0,
-                memory_mb=20.0
-            )
+        return SandboxRunner.get_instance().run_code(
+            code=code,
+            language=lang,
+            test_cases=[],
+            task_id=task_id,
+            custom_input=custom_input,
+            is_custom_test=True
+        )
 
     @staticmethod
     def _run_python_tests(code: str, test_cases: list, task_id: str, logs: list) -> Tuple[list, list, Optional[str], Optional[str], float]:
-        results = []
-        compilation_error = None
-        runtime_error = None
-        memory_mb = 24.5
-
-        # 1. AST Parsing / Syntax Check
-        try:
-            ast.parse(code)
-            logs.append("> Python AST parsing: Valid syntax (0 syntax errors).")
-        except SyntaxError as syn_err:
-            compilation_error = f"SyntaxError: Line {syn_err.lineno}: {syn_err.msg}"
-            logs.append(f"  [FAIL] Python Syntax Error: {compilation_error}")
-            for idx, tc in enumerate(test_cases):
-                results.append({
-                    "id": idx + 1,
-                    "name": tc.get("name", f"Test {idx+1}"),
-                    "input": tc.get("input", ""),
-                    "expected": tc.get("expected", ""),
-                    "passed": False,
-                    "error": compilation_error,
-                    "duration": "0ms"
-                })
-            return results, logs, compilation_error, None, 0.0
-
-        # Check for starter code or TODO in Python
-        clean_code = (code or "").strip()
-        is_starter = bool(re.search(r"#\s*TODO\b", clean_code, re.IGNORECASE)) or "TODO: Implement" in clean_code
-
-        # 2. Execute test cases
-        tracemalloc.start()
-        try:
-            for idx, tc in enumerate(test_cases):
-                scope = {}
-                assertion_py = tc.get("assertion_py", "")
-                t0 = time.perf_counter()
-                try:
-                    if is_starter:
-                        raise AssertionError("Default starter code detected with unresolved TODO. Solution must be implemented.")
-
-                    if assertion_py:
-                        test_script = f"{code}\n{assertion_py}"
-                        exec(test_script, scope, scope)
-                    else:
-                        exec(code, scope, scope)
-                        target_fn = scope.get("solve") or scope.get("fix")
-                        if not target_fn:
-                            raise AssertionError("Solution must define a callable solve() or fix() function.")
-                        res = target_fn()
-                        if res is None:
-                            raise AssertionError("Function returned None (starter placeholder).")
-
-                    dur = round((time.perf_counter() - t0) * 1000, 2)
-                    results.append({
-                        "id": idx + 1,
-                        "name": tc.get("name", f"Test {idx+1}"),
-                        "input": tc.get("input", ""),
-                        "expected": tc.get("expected", ""),
-                        "actual": tc.get("expected", ""),
-                        "passed": True,
-                        "duration": f"{dur}ms"
-                    })
-                    logs.append(f"  [PASS] Test #{idx+1}: {tc.get('name')}")
-                except AssertionError as a_err:
-                    dur = round((time.perf_counter() - t0) * 1000, 2)
-                    err_msg = str(a_err) if str(a_err) else "AssertionError: returned output did not match expected criteria."
-                    results.append({
-                        "id": idx + 1,
-                        "name": tc.get("name", f"Test {idx+1}"),
-                        "input": tc.get("input", ""),
-                        "expected": tc.get("expected", ""),
-                        "actual": "Output mismatch / Unimplemented",
-                        "passed": False,
-                        "error": err_msg,
-                        "duration": f"{dur}ms"
-                    })
-                    logs.append(f"  [FAIL] Test #{idx+1}: {err_msg}")
-                except Exception as e:
-                    dur = round((time.perf_counter() - t0) * 1000, 2)
-                    err_msg = str(e) or type(e).__name__
-                    if not runtime_error:
-                        runtime_error = err_msg
-                    results.append({
-                        "id": idx + 1,
-                        "name": tc.get("name", f"Test {idx+1}"),
-                        "input": tc.get("input", ""),
-                        "expected": tc.get("expected", ""),
-                        "actual": f"Error: {err_msg}",
-                        "passed": False,
-                        "error": err_msg,
-                        "duration": f"{dur}ms"
-                    })
-                    logs.append(f"  [FAIL] Test #{idx+1}: Runtime error - {err_msg}")
-        finally:
-            _, peak_mem = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
-            memory_mb = round((peak_mem / (1024 * 1024)) + 22.4, 2)
-
-        return results, logs, compilation_error, runtime_error, memory_mb
+        """
+        Delegates Python test execution to the isolated SandboxRunner subprocess.
+        Completely eliminates in-process exec from the FastAPI server.
+        """
+        resp = SandboxRunner.get_instance().run_code(
+            code=code,
+            language="python",
+            test_cases=test_cases,
+            task_id=task_id
+        )
+        if resp.console_output:
+            logs.append(resp.console_output)
+        return resp.test_results, logs, getattr(resp, "compilation_error", None), getattr(resp, "runtime_error", None), resp.memory_mb or 24.5
 
     @staticmethod
     def _run_js_tests(code: str, test_cases: list, task_id: str, logs: list) -> Tuple[list, list, Optional[str], Optional[str], float]:
-        results = []
-        compilation_error = None
-        runtime_error = None
-        memory_mb = 28.5
-        logs.append("> JavaScript/Node.js Sandbox: Initializing isolated V8 runner...")
-
-        clean_code = (code or "").strip()
-        is_starter = bool(re.search(r"//\s*TODO\b", clean_code, re.IGNORECASE)) or "TODO: Implement" in clean_code
-
-        for idx, tc in enumerate(test_cases):
-            assertion_js = tc.get("assertion_js", "")
-            if is_starter:
-                assertion_js = "throw new Error('Default starter template detected with unresolved TODO. Solution must be implemented.');"
-            elif not assertion_js:
-                assertion_js = "let target = typeof solve === 'function' ? solve : (typeof fix === 'function' ? fix : null); if (!target) throw new Error('Missing solve() or fix() function'); let val = target(); if (val === null || val === undefined) throw new Error('Function returned null or undefined');"
-
-            script = f"const assert = require('assert');\n{code}\n{assertion_js}"
-            t0 = time.perf_counter()
-            try:
-                proc = subprocess.run(
-                    ["node", "-e", script],
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
-                dur = round((time.perf_counter() - t0) * 1000, 2)
-                if proc.returncode == 0:
-                    results.append({
-                        "id": idx + 1,
-                        "name": tc.get("name", f"Test {idx+1}"),
-                        "input": tc.get("input", ""),
-                        "expected": tc.get("expected", ""),
-                        "actual": tc.get("expected", ""),
-                        "passed": True,
-                        "duration": f"{dur}ms"
-                    })
-                    logs.append(f"  [PASS] Test #{idx+1}: {tc.get('name')}")
-                else:
-                    err_msg = (proc.stderr or proc.stdout or "Test assertion failed").strip()
-                    first_err = err_msg.split("\n")[0] if err_msg else "AssertionError"
-                    if "SyntaxError" in err_msg and not compilation_error:
-                        compilation_error = first_err
-                    elif not runtime_error:
-                        runtime_error = first_err
-                    results.append({
-                        "id": idx + 1,
-                        "name": tc.get("name", f"Test {idx+1}"),
-                        "input": tc.get("input", ""),
-                        "expected": tc.get("expected", ""),
-                        "actual": first_err,
-                        "passed": False,
-                        "error": first_err,
-                        "duration": f"{dur}ms"
-                    })
-                    logs.append(f"  [FAIL] Test #{idx+1}: {first_err}")
-            except subprocess.TimeoutExpired:
-                results.append({
-                    "id": idx + 1,
-                    "name": tc.get("name", f"Test {idx+1}"),
-                    "passed": False,
-                    "error": "Execution timed out (>5000ms)",
-                    "duration": ">5000ms"
-                })
-                logs.append(f"  [FAIL] Test #{idx+1}: Execution timed out.")
-            except Exception as e:
-                results.append({
-                    "id": idx + 1,
-                    "name": tc.get("name", f"Test {idx+1}"),
-                    "passed": False,
-                    "error": str(e),
-                    "duration": "0ms"
-                })
-                logs.append(f"  [FAIL] Test #{idx+1}: Runner error - {e}")
-
-        return results, logs, compilation_error, runtime_error, memory_mb
+        """
+        Delegates JavaScript/Node.js test execution to the isolated SandboxRunner subprocess.
+        """
+        resp = SandboxRunner.get_instance().run_code(
+            code=code,
+            language="javascript",
+            test_cases=test_cases,
+            task_id=task_id
+        )
+        if resp.console_output:
+            logs.append(resp.console_output)
+        return resp.test_results, logs, getattr(resp, "compilation_error", None), getattr(resp, "runtime_error", None), resp.memory_mb or 28.5
 
     @staticmethod
     def _run_compiled_tests(code: str, test_cases: list, lang: str, task_id: str, logs: list) -> Tuple[list, list]:
@@ -1186,13 +794,27 @@ console.log('__MEM__' + heapMb);
 
         # Check if candidate has already submitted
         assessment_data = candidate.assessment_data or {}
-        if assessment_data.get("is_completed"):
+        if candidate.assessment_status in ["submitted", "evaluated"] or assessment_data.get("is_completed"):
             return None, "Assessment has already been submitted and is currently under review."
 
         # Verify candidate authorization: must be scheduled or advanced by recruiter
         authorized, auth_err = AssessmentController._is_candidate_authorized_for_assessment(candidate)
         if not authorized:
             return None, auth_err
+
+        # Mark candidate assessment as submitted immediately
+        old_assess_status = candidate.assessment_status or "in_progress"
+        candidate.assessment_status = "submitted"
+        candidate.assessment_submitted_at = datetime.utcnow()
+        log_state_change(
+            db=db,
+            candidate_id=candidate.id,
+            dimension="assessment_status",
+            from_state=old_assess_status,
+            to_state="submitted",
+            triggered_by="candidate",
+            reason="Candidate submitted assessment answers and practical work"
+        )
 
         target_job_id = getattr(payload, "job_id", None) or candidate.job_id or assessment_data.get("job_id")
         job = db.query(JobModel).filter(JobModel.id == target_job_id).first()
@@ -1447,17 +1069,46 @@ console.log('__MEM__' + heapMb);
             "overall": overall
         }
 
-        # Candidate status is placed Under Review for human recruiter evaluation
-        decision = "Under Review"
-        candidate.status = decision
-        candidate.final_decision = decision
+        # Evaluation complete - transition to evaluated
+        candidate.assessment_status = "evaluated"
+        candidate.assessment_evaluated_at = datetime.utcnow()
+        log_state_change(
+            db=db,
+            candidate_id=candidate.id,
+            dimension="assessment_status",
+            from_state="submitted",
+            to_state="evaluated",
+            triggered_by="system",
+            reason=f"Automated evaluation completed with score {overall}/100"
+        )
+
+        # Advance stage to review if current stage is assessment
+        if candidate.stage == STAGE_ASSESSMENT:
+            old_stage = candidate.stage
+            candidate.stage = STAGE_REVIEW
+            candidate.stage_updated_at = datetime.utcnow()
+            log_state_change(
+                db=db,
+                candidate_id=candidate.id,
+                dimension="stage",
+                from_state=old_stage,
+                to_state=STAGE_REVIEW,
+                triggered_by="system",
+                reason="Assessment evaluated; application in review stage"
+            )
+
         candidate.interview_summary = (
             f"Candidate completed dynamic 4-category Assessment with automated score {overall}/100 "
             f"(MCQs: {tech_score}%, Scenario: {scenario_score}%, Practical: {hands_score}%, Troubleshooting: {trouble_score}%). "
             f"Language/Deliverable: {chosen_lang.upper()}."
         )
 
+        # Project legacy fields without touching hiring_decision
+        candidate.status = project_legacy_status(candidate.stage, candidate.assessment_status, candidate.interview_status, candidate.hiring_decision)
+        candidate.final_decision = project_legacy_final_decision(candidate.stage, candidate.hiring_decision)
+
         db.commit()
+        db.refresh(candidate)
 
         return AssessmentSubmitResponse(
             success=True,

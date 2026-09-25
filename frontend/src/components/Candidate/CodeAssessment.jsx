@@ -28,7 +28,9 @@ import {
   Lock
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { normalizeWorkflow } from '../../utils/workflowContract';
 import CandidateIDE from './CandidateIDE';
+import { Button, Badge } from '../ui/Primitives';
 
 export default function CodeAssessment() {
   const navigate = useNavigate();
@@ -40,8 +42,11 @@ export default function CodeAssessment() {
     currentInterviewSession, 
     completeInterviewAndEvaluate,
     userRole,
-    myApplications
+    myApplications,
+    jobs
   } = useRecruitment();
+
+  const isRecruiterTesting = userRole === 'recruiter';
 
   // Resolve candidate and application
   const activeCandidate = (routeCandidateId && candidates.find(c => String(c.id) === String(routeCandidateId))) ||
@@ -60,21 +65,17 @@ export default function CodeAssessment() {
     activeCandidate?.id ||
     activeApp?.id ||
     candidates.find(c => c.email === currentUser?.email)?.id || 
-    currentUser?.id ||
+    (isRecruiterTesting ? 'demo-recruiter-preview' : currentUser?.id) ||
     null;
 
-  const isRecruiterTesting = userRole === 'recruiter';
+  const candRecord = activeCandidate || activeApp || {};
+  const wf = normalizeWorkflow(candRecord);
   const isScheduledOrAdvanced = Boolean(
-    activeCandidate?.interviewScheduledAt ||
-    activeCandidate?.interview_scheduled_at ||
-    activeCandidate?.interviewStatus === 'Interview Scheduled' ||
-    activeCandidate?.interview_status === 'Interview Scheduled' ||
-    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeCandidate?.status) ||
-    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeCandidate?.finalDecision) ||
-    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeCandidate?.final_decision) ||
-    activeApp?.interviewScheduledAt ||
-    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeApp?.status) ||
-    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(activeApp?.finalDecision)
+    isRecruiterTesting ||
+    ['invited', 'in_progress', 'submitted', 'evaluated'].includes(wf.assessmentStatus) ||
+    ['assessment', 'interview', 'review', 'completed'].includes(wf.stage) ||
+    candRecord.interviewScheduledAt ||
+    ['Interview', 'Interview Scheduled', 'Shortlisted', 'Selected', 'Offered', 'Assessment Scheduled'].includes(candRecord.status)
   );
 
   // 4 Categories: 'technical' | 'scenario' | 'hands_on' | 'troubleshooting'
@@ -122,7 +123,7 @@ export default function CodeAssessment() {
       }
       setIsLoading(true);
       try {
-        const targetJobId = activeJob?.id || currentInterviewSession?.jobId || candidates.find(c => c.id === candidateId)?.jobId;
+        const targetJobId = activeJob?.id || currentInterviewSession?.jobId || candidates.find(c => c.id === candidateId)?.jobId || (jobs && jobs.length > 0 ? jobs[0]?.id : null);
         const data = await api.getAssessment(candidateId, targetJobId);
         if (isMounted && data?.bundle) {
           setAssessmentBundle(data.bundle);
@@ -234,7 +235,9 @@ export default function CodeAssessment() {
     sessionStorage.setItem(startKey, 'true');
     sessionStorage.setItem(`${startKey}_time`, String(Date.now()));
     setHasStarted(true);
-    confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
+    if (candidateId) {
+      api.startAssessment(candidateId).catch(err => console.warn('startAssessment error:', err));
+    }
   };
 
   // Handle switching language in Hands-on
@@ -277,10 +280,6 @@ export default function CodeAssessment() {
     setHandsOnConsole(res?.console_output || '> Validation finished.');
     setHandsOnTelemetry({ execution_ms: res?.execution_ms, memory_mb: res?.memory_mb });
     setIsRunningHandsOn(false);
-
-    if (res?.all_passed) {
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-    }
   };
 
   // Execute Troubleshooting Bug Fix / Validate Anomaly Resolution
@@ -303,10 +302,6 @@ export default function CodeAssessment() {
     setTroubleConsole(res?.console_output || '> Validation finished.');
     setTroubleTelemetry({ execution_ms: res?.execution_ms, memory_mb: res?.memory_mb });
     setIsRunningTrouble(false);
-
-    if (res?.all_passed) {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 } });
-    }
   };
 
   // Final Submission across all 4 categories
@@ -332,6 +327,16 @@ export default function CodeAssessment() {
         test_results: troubleResults || []
       }
     };
+
+    if (isRecruiterTesting) {
+      setIsSubmitting(true);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setSubmissionSuccess(true);
+        confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      }, 500);
+      return;
+    }
 
     const res = await api.submitAssessment(candidateId, payload);
     setIsSubmitting(false);
@@ -444,35 +449,35 @@ export default function CodeAssessment() {
   if (submissionSuccess) {
     return (
       <div className="max-w-2xl mx-auto space-y-6 py-12 px-4 text-center">
-        <div className="glass-card p-8 sm:p-10 rounded-3xl border border-slate-200 dark:border-white/[0.08] shadow-2xl relative overflow-hidden space-y-6">
-          <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-500 mx-auto shadow-xl">
-            <CheckCircle2 className="w-10 h-10" />
+        <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card relative overflow-hidden space-y-6">
+          <div className="w-14 h-14 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto shadow-subtle">
+            <CheckCircle2 className="w-7 h-7" />
           </div>
 
           <div className="space-y-2">
-            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <Check className="w-3.5 h-3.5" />
               <span>Assessment Completed</span>
             </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               Assessment Submitted Successfully
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-lg mx-auto leading-relaxed font-normal">
               Your assessment responses have been recorded and received. Your submission is now officially advancing through the recruitment evaluation process.
             </p>
           </div>
 
           {/* Current Application Status Card */}
-          <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-left space-y-3">
+          <div className="p-5 rounded-xl bg-slate-50/80 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 text-left space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Application Status</span>
-              <span className="px-3 py-1 rounded-xl text-xs font-black bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 flex items-center space-x-1.5">
-                <Clock className="w-3.5 h-3.5 animate-pulse" />
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-mono">Application Status</span>
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 flex items-center space-x-1.5">
+                <Clock className="w-3.5 h-3.5" />
                 <span>Under Review</span>
               </span>
             </div>
 
-            <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800 text-xs space-y-1">
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 text-xs space-y-1">
               <div className="flex justify-between">
                 <span className="text-slate-500">Role:</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">{activeJob?.title || 'Applied Position'}</span>
@@ -483,8 +488,8 @@ export default function CodeAssessment() {
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-900/30 text-[11px] text-slate-600 dark:text-slate-300 flex items-start space-x-2">
-              <Sparkles className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-lg bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200/50 dark:border-brand-900/30 text-xs text-slate-600 dark:text-slate-300 flex items-start space-x-2">
+              <Sparkles className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
               <span>
                 Our hiring committee is reviewing your application alongside interview telemetry and assessment benchmarks. You will be notified regarding next steps.
               </span>
@@ -496,7 +501,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => navigate('/my-applications')}
-              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/25 flex items-center justify-center space-x-2"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition shadow-subtle flex items-center justify-center space-x-2"
             >
               <span>View My Applications</span>
               <ArrowRight className="w-4 h-4" />
@@ -504,7 +509,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => navigate('/jobs')}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition"
             >
               Browse Open Positions
             </button>
@@ -605,26 +610,43 @@ export default function CodeAssessment() {
   if (!hasStarted) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 pb-12 text-slate-900 dark:text-slate-100">
+        {isRecruiterTesting && (
+          <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-indigo-950 dark:text-indigo-200 shadow-sm">
+            <div className="flex items-center space-x-3 text-xs sm:text-sm">
+              <span className="px-2.5 py-1 rounded-md bg-indigo-600 text-white font-mono font-bold text-[11px] uppercase tracking-wider shadow-sm">
+                Recruiter Sandbox Preview
+              </span>
+              <span className="font-semibold">
+                Simulating candidate assessment environment for <span className="underline decoration-indigo-400 font-bold">{activeJob?.title || 'Selected Role'}</span>
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('/recruiter/assessment-studio')}
+              className="px-3 py-1.5 rounded-lg bg-white dark:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-200 text-xs font-bold transition flex items-center space-x-1.5 shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Assessment Studio</span>
+            </button>
+          </div>
+        )}
         {/* Header Hero */}
-        <div className="glass-card p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-white/[0.08] shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-          
+        <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card relative overflow-hidden">
           <div className="relative z-10 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
                 {isTechRole ? 'Autonomous Technical Evaluation' : 'Autonomous Professional Evaluation'}
               </span>
               <span className="text-slate-400">•</span>
-              <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{activeJob?.companyName || 'SparkX Technologies'}</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{activeJob?.companyName || 'SparkX Technologies'}</span>
               <span className="text-slate-400">•</span>
-              <span className="text-xs text-slate-500">{activeJob?.department || 'Finance & Operations'}</span>
+              <span className="text-xs text-slate-500">{activeJob?.department || 'Engineering & Product'}</span>
             </div>
 
             <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {activeJob?.title || (isTechRole ? 'Software Engineer' : 'Professional Candidate')}
               </h1>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-normal">
                 {isTechRole 
                   ? 'Comprehensive 4-Pillar Autonomous Engineering Evaluation calibrating technical architecture, hands-on coding, and bug troubleshooting.'
                   : 'Comprehensive 4-Pillar Professional Competency Evaluation calibrating domain standards, strategic scenarios, practical deliverables, and anomaly resolution.'}
@@ -633,40 +655,40 @@ export default function CodeAssessment() {
 
             {/* Quick Specs Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
-                <div className="flex items-center space-x-1.5 text-indigo-500 mb-1">
+              <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center space-x-1.5 text-brand-500 mb-1">
                   <Clock className="w-4 h-4" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Duration</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Duration</span>
                 </div>
-                <div className="text-base font-black text-slate-900 dark:text-white font-mono">45:00</div>
-                <div className="text-[10px] text-slate-400">Timed countdown</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white font-mono">45:00</div>
+                <div className="text-xs text-slate-400">Timed countdown</div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+              <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center space-x-1.5 text-purple-500 mb-1">
                   <Layers className="w-4 h-4" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Structure</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Structure</span>
                 </div>
-                <div className="text-base font-black text-slate-900 dark:text-white">4 Pillars</div>
-                <div className="text-[10px] text-slate-400">End-to-end evaluation</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">4 Pillars</div>
+                <div className="text-xs text-slate-400">End-to-end evaluation</div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+              <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center space-x-1.5 text-emerald-500 mb-1">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Format</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Format</span>
                 </div>
-                <div className="text-base font-black text-slate-900 dark:text-white">Autonomous</div>
-                <div className="text-[10px] text-slate-400">Real-time validation</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">Autonomous</div>
+                <div className="text-xs text-slate-400">Real-time validation</div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.06]">
+              <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800">
                 <div className="flex items-center space-x-1.5 text-amber-500 mb-1">
                   <Sparkles className="w-4 h-4" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Telemetry</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Telemetry</span>
                 </div>
-                <div className="text-base font-black text-slate-900 dark:text-white">AI Scoring</div>
-                <div className="text-[10px] text-slate-400">Domain-weighted</div>
+                <div className="text-base font-bold text-slate-900 dark:text-white">AI Scoring</div>
+                <div className="text-xs text-slate-400">Domain-weighted</div>
               </div>
             </div>
           </div>
@@ -674,23 +696,23 @@ export default function CodeAssessment() {
 
         {/* 4 Pillars Breakdown Cards */}
         <div className="space-y-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1 font-mono">
             Evaluation Curriculum & Structure
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Pillar 1 */}
-            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-2.5">
+            <div className="p-5 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
+                <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-semibold text-xs">
                   <FileQuestion className="w-4 h-4" />
                   <span>Pillar 1: {isTechRole ? 'Technical MCQs' : 'Core Knowledge & Principles'}</span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                   {assessmentBundle.technical_mcqs?.length || 3} Questions
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                 {isTechRole 
                   ? 'Core computer science, architecture patterns, concurrency, and cloud infrastructure knowledge.'
                   : `Core domain standards, regulatory compliance, GAAP/IFRS principles, and operational best practices for ${activeJob?.title || 'this role'}.`}
@@ -698,17 +720,17 @@ export default function CodeAssessment() {
             </div>
 
             {/* Pillar 2 */}
-            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-2.5">
+            <div className="p-5 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-purple-600 dark:text-purple-400 font-bold text-xs">
+                <div className="flex items-center space-x-2 text-purple-600 dark:text-purple-400 font-semibold text-xs">
                   <HelpCircle className="w-4 h-4" />
                   <span>Pillar 2: Real-World Scenario</span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
                   Strategic Case
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                 {isTechRole
                   ? 'High-stakes architectural triage, trade-off evaluations, and resilient production systems strategy.'
                   : 'Critical operational scenario requiring structured root-cause analysis, corrective action steps, and internal governance safeguards.'}
@@ -716,17 +738,17 @@ export default function CodeAssessment() {
             </div>
 
             {/* Pillar 3 */}
-            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-2.5">
+            <div className="p-5 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
                   {isTechRole ? <Code2 className="w-4 h-4" /> : <Briefcase className="w-4 h-4" />}
                   <span>Pillar 3: {isTechRole ? 'Hands-on Coding Sandbox' : 'Practical Task Simulation'}</span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                   {isTechRole ? 'Live Tests' : 'Deliverable Validation'}
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                 {isTechRole
                   ? 'Write, test, and refine code in Python, JavaScript, Java, C++, TypeScript, or SQL with instant test suite assertions.'
                   : 'Draft structured professional deliverables (schedules, journal entries, balance reconciliations, or plans) with instant automated checks.'}
@@ -734,17 +756,17 @@ export default function CodeAssessment() {
             </div>
 
             {/* Pillar 4 */}
-            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-2.5">
+            <div className="p-5 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400 font-bold text-xs">
+                <div className="flex items-center space-x-2 text-amber-600 dark:text-amber-400 font-semibold text-xs">
                   <Wrench className="w-4 h-4" />
                   <span>Pillar 4: {isTechRole ? 'Live Code Troubleshooting' : 'Anomaly Resolution & Remediation'}</span>
                 </div>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   Defect Triage
                 </span>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                 {isTechRole
                   ? 'Locate and fix defects in live buggy code with real-time regression verification until all invariants pass.'
                   : 'Isolate root cause from incident data and unrecorded variances, formulating actionable corrective and preventive remedies.'}
@@ -754,25 +776,27 @@ export default function CodeAssessment() {
         </div>
 
         {/* Readiness Instructions & Start Action Footer */}
-        <div className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-xl">
+        <div className="p-6 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-card">
           <div className="space-y-1 max-w-xl">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-amber-500" />
               <span>Assessment Guidelines & Timer Instructions</span>
             </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Clicking the button below will start the official <strong>45-minute countdown timer</strong>. You can navigate between all 4 sections freely and validate your solutions before final submission.
             </p>
           </div>
 
-          <button
+          <Button
+            variant="primary"
+            size="lg"
+            icon={Play}
+            iconRight={ArrowRight}
             onClick={handleStartEvaluation}
-            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:opacity-95 text-white font-bold text-sm shadow-xl shadow-indigo-600/35 transition flex items-center justify-center space-x-3 group shrink-0"
+            className="shrink-0"
           >
-            <Play className="w-5 h-5 fill-current transition group-hover:scale-110" />
-            <span>Start Evaluation & Begin Timer</span>
-            <ArrowRight className="w-4 h-4 transition group-hover:translate-x-1" />
-          </button>
+            Start Evaluation & Begin Timer
+          </Button>
         </div>
       </div>
     );
@@ -791,53 +815,68 @@ export default function CodeAssessment() {
 
   return (
     <div className="space-y-6 pb-16 text-slate-900 dark:text-slate-100">
+      {isRecruiterTesting && (
+        <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-indigo-950 dark:text-indigo-200 shadow-sm">
+          <div className="flex items-center space-x-3 text-xs sm:text-sm">
+            <span className="px-2.5 py-1 rounded-md bg-indigo-600 text-white font-mono font-bold text-[11px] uppercase tracking-wider shadow-sm">
+              Recruiter Preview Mode
+            </span>
+            <span className="font-semibold">
+              Interactive Candidate Assessment Sandbox for <span className="underline decoration-indigo-400 font-bold">{activeJob?.title || 'Selected Role'}</span>
+            </span>
+          </div>
+          <button
+            onClick={() => navigate('/recruiter/assessment-studio')}
+            className="px-3 py-1.5 rounded-lg bg-white dark:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-700 hover:bg-indigo-100 dark:hover:bg-indigo-800 text-indigo-700 dark:text-indigo-200 text-xs font-bold transition flex items-center space-x-1.5 shrink-0"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Return to Assessment Studio</span>
+          </button>
+        </div>
+      )}
       
       {/* Executive Header */}
-      <div className="glass-card p-4 sm:p-5 rounded-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-200 dark:border-white/[0.08] shadow-xl">
+      <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2">
-            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-              {isTechRole ? 'Comprehensive Technical Assessment' : 'Comprehensive Competency Assessment'}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider font-mono">
+              {isTechRole ? 'Technical Assessment' : 'Competency Assessment'}
             </span>
-            <span className="text-slate-400">•</span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
             <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{activeJob?.title || (isTechRole ? 'Software Engineering' : 'Professional Evaluation')}</span>
-            <span className="text-slate-400">•</span>
-            <span className="text-[11px] text-slate-500">{activeJob?.companyName || 'SparkX Technologies'}</span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+            <span className="text-xs text-slate-400 font-medium">{activeJob?.companyName || 'SparkX Technologies'}</span>
           </div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mt-0.5">
             {isTechRole ? '4-Pillar Engineering Evaluation' : '4-Pillar Professional Evaluation'}
           </h2>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <div className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-mono shadow-sm transition-colors ${
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono shadow-subtle transition-colors ${
             timeLeft < 300 
               ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 animate-pulse' 
-              : 'bg-slate-100 dark:bg-[#06080E] border-slate-200 dark:border-white/[0.08] text-slate-700 dark:text-slate-300'
+              : 'bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
           }`}>
-            <Clock className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-rose-500' : 'text-indigo-500'}`} />
-            <span className="font-bold">Time Remaining: {formatTime(timeLeft)}</span>
+            <Clock className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-rose-500' : 'text-brand-500'}`} />
+            <span className="font-semibold">Remaining: {formatTime(timeLeft)}</span>
           </div>
 
-          <button
+          <Button
+            variant="primary"
+            size="sm"
+            isLoading={isSubmitting}
+            icon={submissionSuccess ? CheckCircle2 : Check}
             onClick={handleFinalSubmit}
             disabled={isSubmitting || submissionSuccess}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-600 hover:opacity-95 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-lg shadow-indigo-600/30"
           >
-            {isSubmitting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : submissionSuccess ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-            ) : (
-              <Check className="w-3.5 h-3.5" />
-            )}
-            <span>{isSubmitting ? 'Evaluating...' : submissionSuccess ? 'Submitted!' : 'Submit All 4 Categories'}</span>
-          </button>
+            {isSubmitting ? 'Evaluating...' : submissionSuccess ? 'Submitted!' : 'Submit All 4 Categories'}
+          </Button>
         </div>
       </div>
 
       {/* 4 Category Navigation Tabs */}
-      <div className="glass-card p-1.5 rounded-2xl border border-slate-200 dark:border-white/[0.08] flex items-center overflow-x-auto space-x-1.5 shadow-sm">
+      <div className="p-1.5 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 flex items-center overflow-x-auto gap-1.5 shadow-card">
         {categories.map((cat, idx) => {
           const Icon = cat.icon;
           const isActive = activeCategory === cat.id;
@@ -852,10 +891,10 @@ export default function CodeAssessment() {
             <button
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`flex-1 min-w-[150px] py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-between space-x-2 ${
+              className={`flex-1 min-w-[150px] py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-between space-x-2 ${
                 isActive
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]'
+                  ? 'bg-brand-600 text-white shadow-subtle'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60'
               }`}
             >
               <div className="flex items-center space-x-2">
@@ -875,15 +914,15 @@ export default function CodeAssessment() {
       ───────────────────────────────────────────────────────────────────────────── */}
       {activeCategory === 'technical' && (
         <div className="space-y-6">
-          <div className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-3">
+          <div className="p-5 sm:p-6 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
+              <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-semibold text-xs uppercase tracking-wider font-mono">
                 <FileQuestion className="w-4 h-4" />
                 <span>Part 1: {isTechRole ? 'Conceptual Technical Mastery' : 'Core Domain & Regulatory Knowledge'} ({assessmentBundle.technical_mcqs.length} Questions)</span>
               </div>
               <span className="text-xs text-slate-500">Auto-calibrated for {activeJob?.title || 'this role'}</span>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400">
+            <p className="text-xs text-slate-600 dark:text-slate-400 font-normal">
               {isTechRole 
                 ? 'Select the most technically accurate answer for each core computer science & architecture question.'
                 : `Select the most accurate response for each ${activeJob?.title || 'domain'} standard practice and regulatory question.`}
@@ -892,17 +931,17 @@ export default function CodeAssessment() {
 
           <div className="space-y-4">
             {assessmentBundle.technical_mcqs.map((q, idx) => (
-              <div key={q.id} className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-white/[0.08] space-y-3 shadow-sm">
+              <div key={q.id} className="p-5 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="w-6 h-6 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold border border-indigo-200 dark:border-indigo-800">
+                  <div className="flex items-center space-x-2.5">
+                    <span className="w-6 h-6 rounded-md bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center text-xs font-bold border border-brand-200 dark:border-brand-800 font-mono">
                       Q{idx+1}
                     </span>
                     <h3 className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white">
                       {q.question}
                     </h3>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                     {q.difficulty}
                   </span>
                 </div>
@@ -915,18 +954,18 @@ export default function CodeAssessment() {
                         key={optKey}
                         type="button"
                         onClick={() => setTechnicalAnswers(prev => ({ ...prev, [q.id]: optKey }))}
-                        className={`p-3 rounded-xl text-left text-xs transition border flex items-start space-x-2.5 ${
+                        className={`p-3 rounded-lg text-left text-xs transition border flex items-start space-x-2.5 ${
                           isSelected
-                            ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-500 text-indigo-900 dark:text-indigo-200 ring-1 ring-indigo-500 shadow-sm'
-                            : 'bg-white dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800/80 border-slate-200 dark:border-white/[0.06] text-slate-700 dark:text-slate-300'
+                            ? 'bg-brand-50 dark:bg-brand-950/70 border-brand-500 text-brand-900 dark:text-brand-200 ring-1 ring-brand-500 shadow-subtle'
+                            : 'bg-slate-50 dark:bg-[#080A10] hover:bg-slate-100 dark:hover:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
                         }`}
                       >
-                        <span className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 ${
-                          isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        <span className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-xs shrink-0 font-mono ${
+                          isSelected ? 'bg-brand-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
                         }`}>
                           {optKey}
                         </span>
-                        <span className="leading-relaxed">{optText}</span>
+                        <span className="leading-relaxed font-normal">{optText}</span>
                       </button>
                     );
                   })}
@@ -939,7 +978,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => setActiveCategory('scenario')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-indigo-600/30"
+              className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-subtle"
             >
               <span>Next: Real-World Scenario</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -953,13 +992,13 @@ export default function CodeAssessment() {
       ───────────────────────────────────────────────────────────────────────────── */}
       {activeCategory === 'scenario' && (
         <div className="space-y-6">
-          <div className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-4 shadow-sm">
+          <div className="p-5 sm:p-6 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
+              <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-semibold text-xs uppercase tracking-wider font-mono">
                 <HelpCircle className="w-4 h-4" />
                 <span>Part 2: {isTechRole ? 'Real-World Engineering Scenario' : 'Real-World Professional Scenario'}</span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
                 {assessmentBundle.scenario.difficulty}
               </span>
             </div>
@@ -968,11 +1007,11 @@ export default function CodeAssessment() {
               {assessmentBundle.scenario.title}
             </h3>
 
-            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal bg-slate-50 dark:bg-[#06080E] p-4 rounded-2xl border border-slate-200 dark:border-white/[0.06]">
+            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal bg-slate-50 dark:bg-[#080A10] p-4 rounded-xl border border-slate-200 dark:border-slate-800">
               {assessmentBundle.scenario.prompt}
             </p>
 
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-300 flex items-start space-x-2">
+            <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-start space-x-2">
               <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Evaluation Guidance: </span>
@@ -991,11 +1030,11 @@ export default function CodeAssessment() {
                 placeholder={isTechRole 
                   ? "1. Root Cause Analysis: ...\n2. Immediate Production Mitigation: ...\n3. Long-Term Architecture & Monitoring: ..."
                   : "1. Root Cause & Materiality Analysis: ...\n2. Immediate Corrective Action: ...\n3. Internal Safeguards & Compliance Controls: ..."}
-                className="w-full p-4 rounded-2xl bg-white dark:bg-[#06080E] border border-slate-300 dark:border-slate-700/80 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:border-indigo-500 leading-relaxed shadow-inner"
+                className="w-full p-4 rounded-lg bg-white dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 leading-relaxed shadow-inner"
               />
-              <div className="flex justify-between text-[11px] text-slate-400">
+              <div className="flex justify-between text-xs text-slate-400">
                 <span>{isTechRole ? 'Structured responses covering root causes, mitigation, and resiliency score highest.' : 'Structured responses addressing accounting standards, journal impact, and governance score highest.'}</span>
-                <span>{scenarioAnswer.length} characters</span>
+                <span className="font-mono">{scenarioAnswer.length} characters</span>
               </div>
             </div>
           </div>
@@ -1004,7 +1043,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => setActiveCategory('technical')}
-              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition flex items-center space-x-1"
+              className="px-3.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold transition flex items-center space-x-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Previous: {isTechRole ? 'Technical MCQs' : 'Core Knowledge'}</span>
@@ -1012,7 +1051,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => setActiveCategory('hands_on')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-indigo-600/30"
+              className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-subtle"
             >
               <span>Next: {isTechRole ? 'Hands-on Coding Challenge' : 'Practical Task Simulation'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -1160,7 +1199,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => setActiveCategory('scenario')}
-              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition flex items-center space-x-1"
+              className="px-3.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold transition flex items-center space-x-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Previous: Scenario</span>
@@ -1168,7 +1207,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => setActiveCategory('troubleshooting')}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center space-x-1.5 shadow-md shadow-indigo-600/30"
+              className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-subtle"
             >
               <span>Next: {isTechRole ? 'Code Troubleshooting' : 'Anomaly Resolution'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -1326,7 +1365,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => setActiveCategory('hands_on')}
-              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-bold transition flex items-center space-x-1"
+              className="px-3.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold transition flex items-center space-x-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Previous: {isTechRole ? 'Hands-on Coding' : 'Practical Deliverable'}</span>
@@ -1336,7 +1375,7 @@ export default function CodeAssessment() {
               type="button"
               onClick={handleFinalSubmit}
               disabled={isSubmitting || submissionSuccess}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-600/35 transition flex items-center space-x-2"
+              className="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-subtle transition flex items-center space-x-2"
             >
               {isSubmitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

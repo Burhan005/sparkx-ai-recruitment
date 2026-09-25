@@ -6,8 +6,10 @@ Routes:
   GET  /api/auth/google/callback - Handle OAuth callback (exchange code for tokens)
   POST /api/auth/google/disconnect - Disconnect Google account
 """
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import RedirectResponse, HTMLResponse
+from auth_dependencies import require_recruiter
+from models.db_models import UserModel
 from google_meet_service import (
     is_google_configured,
     get_connection_status,
@@ -81,7 +83,7 @@ def google_callback(code: str = "", error: str = ""):
         """, status_code=400)
 
 @router.post("/disconnect")
-def google_disconnect():
+def google_disconnect(current_user: UserModel = Depends(require_recruiter)):
     """Remove stored Google tokens."""
     success = disconnect_google()
     if success:

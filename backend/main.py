@@ -16,6 +16,9 @@ from views.preset_views import router as preset_router
 from views.auth_views import router as auth_router
 from views.assessment_views import router as assessment_router
 from views.google_auth_views import router as google_auth_router
+from views.copilot_views import router as copilot_router
+
+from controllers.auth_controller import check_jwt_production_guard
 
 # (M) Create all DB tables & ensure schema columns
 Base.metadata.create_all(bind=engine)
@@ -36,6 +39,7 @@ def auto_seed():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    check_jwt_production_guard()
     auto_seed()
     yield
 
@@ -46,10 +50,18 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Parse explicit allowed CORS origins from environment
+raw_cors = os.environ.get(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
+)
+allowed_origins = [orig.strip() for orig in raw_cors.split(",") if orig.strip()]
+has_wildcard = "*" in allowed_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=allowed_origins if not has_wildcard else ["*"],
+    allow_credentials=not has_wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -62,6 +74,7 @@ app.include_router(interview_router)
 app.include_router(preset_router)
 app.include_router(assessment_router)
 app.include_router(google_auth_router)
+app.include_router(copilot_router)
 
 @app.get("/api/health")
 def health_check():

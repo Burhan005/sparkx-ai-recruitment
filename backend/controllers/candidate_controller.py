@@ -3,22 +3,127 @@
 """
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
-from models.db_models import CandidateModel, JobModel
-from schemas import CandidateApply, CandidateStatusUpdate, CandidateScheduleRequest, EmailSendRequest
+from models.db_models import CandidateModel, JobModel, CandidateStateLogModel, UserModel
+from schemas import (
+    CandidateApply, CandidateStatusUpdate, CandidateScheduleRequest, 
+    EmailSendRequest, CandidateStageUpdate, HiringDecisionUpdate, AssessmentInviteRequest
+)
 from email_service import send_email, create_ics_calendar_event, parse_slot_to_datetime
 from ai_engine import calculate_resume_job_match
 from google_meet_service import is_google_connected, create_google_meet_event
+from services.compensation_service import (
+    analyze_candidate_application,
+    format_job_compensation,
+    format_candidate_expectation
+)
+from workflow_contract import (
+    STAGE_APPLIED, STAGE_SCREENING, STAGE_ASSESSMENT, STAGE_INTERVIEW, STAGE_REVIEW, STAGE_COMPLETED,
+    ASSESS_NOT_INVITED, ASSESS_INVITED, ASSESS_IN_PROGRESS, ASSESS_SUBMITTED, ASSESS_EVALUATED,
+    INTERVIEW_NOT_SCHEDULED, INTERVIEW_SCHEDULED, INTERVIEW_IN_PROGRESS, INTERVIEW_COMPLETED,
+    DECISION_UNDECIDED, DECISION_SHORTLISTED, DECISION_SELECTED, DECISION_REJECTED,
+    validate_stage_transition, validate_decision_transition,
+    project_legacy_status, project_legacy_final_decision
+)
 
 class CandidateController:
     @staticmethod
-    def get_all_candidates(db: Session):
-        return db.query(CandidateModel).all()
+    def _enrich_candidate(c: CandidateModel) -> CandidateModel:
+        if c:
+            job = getattr(c, "job", None)
+            c.compensation_analysis = analyze_candidate_application(c, job)
+        return c
+
+    @staticmethod
+    def get_all_candidates(
+        db: Session,
+        skip: int = 0,
+        limit: int = 100,
+        job_id: str = None,
+        compensation_status: str = None,
+        min_expected_ctc: float = None,
+        max_expected_ctc: float = None,
+        q: str = None
+    ):
+        query = db.query(CandidateModel)
+        if job_id and job_id != "ALL":
+            query = query.filter(CandidateModel.job_id == job_id)
+        if q and q.strip():
+            term = f"%{q.strip()}%"
+            query = query.filter(or_(CandidateModel.name.ilike(term), CandidateModel.email.ilike(term)))
+        if min_expected_ctc is not None:
+            query = query.filter(CandidateModel.expected_ctc_min >= min_expected_ctc)
+        if max_expected_ctc is not None:
+            query = query.filter(CandidateModel.expected_ctc_max <= max_expected_ctc)
+
+        candidates = query.all()
+        for c in candidates:
+            CandidateController._enrich_candidate(c)
+
+        if compensation_status and compensation_status != "All":
+            norm_status = compensation_status.lower().strip()
+            candidates = [
+                c for c in candidates
+                if c.compensation_analysis and (
+                    c.compensation_analysis["relationship"] == norm_status or
+                    norm_status in c.compensation_analysis["relationship"]
+                )
+            ]
+
+        return candidates[skip : skip + limit]
 
     @staticmethod
     def get_candidate_by_id(candidate_id: str, db: Session):
-        return db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        cand = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        return CandidateController._enrich_candidate(cand) if cand else None
+
+    @staticmethod
+    def log_state_change(
+        candidate_id: str = None,
+        dimension: str = None,
+        from_val: str = None,
+        to_val: str = None,
+        changed_by: str = None,
+        notes: str = None,
+        db: Session = None,
+        *,
+        from_value: str = None,
+        to_value: str = None,
+        from_state: str = None,
+        to_state: str = None,
+        triggered_by: str = None,
+        reason: str = None,
+        **kwargs
+    ):
+        f_val = from_val if from_val is not None else (from_value if from_value is not None else from_state)
+        t_val = to_val if to_val is not None else (to_value if to_value is not None else to_state)
+        actor = changed_by or triggered_by or "system"
+        note = notes if notes is not None else (reason if reason is not None else "")
+        session = db or kwargs.get("session")
+        c_id = candidate_id or kwargs.get("candidate_id")
+        dim = dimension or kwargs.get("dimension")
+        if not session or not c_id:
+            return
+        try:
+            log_entry = CandidateStateLogModel(
+                id=f"stlog-{uuid.uuid4().hex[:8]}",
+                candidate_id=c_id,
+                dimension=dim,
+                from_value=f_val,
+                to_value=t_val,
+                changed_by=actor,
+                notes=note,
+                created_at=datetime.utcnow()
+            )
+            session.add(log_entry)
+        except Exception as e:
+            print(f"[StateAudit] Warning: Could not log state change: {e}")
+
+    @staticmethod
+    def get_state_logs(candidate_id: str, db: Session):
+        return db.query(CandidateStateLogModel).filter(CandidateStateLogModel.candidate_id == candidate_id).order_by(CandidateStateLogModel.created_at.desc()).all()
 
     @staticmethod
     def apply_candidate(payload: CandidateApply, db: Session):
@@ -49,7 +154,7 @@ class CandidateController:
 
         match_result = calculate_resume_job_match(job_data, candidate_data)
         match_score = match_result.get("match_score", 0)
-        match_details = match_result
+        match_details = match_result.get("match_details", {})
 
         comp_name = getattr(job, "company_name", "SparkX Technologies") or payload.company_name or "SparkX Technologies"
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
@@ -60,8 +165,13 @@ class CandidateController:
             CandidateModel.email == payload.email.strip().lower()
         ).first()
 
+        matching_user = db.query(UserModel).filter(UserModel.email == payload.email.strip().lower()).first()
+
         if existing:
             # Update existing application with latest resume/details
+            if not existing.user_id and matching_user:
+                existing.user_id = matching_user.id
+            existing.version = (existing.version or 1) + 1
             existing.name = payload.name
             existing.phone = payload.phone or existing.phone
             existing.skills = payload.skills
@@ -76,25 +186,44 @@ class CandidateController:
                 existing.resume_filename = payload.resume_filename
             if payload.resume_text:
                 existing.resume_text = payload.resume_text
+            # Candidate application compensation persistence
+            if payload.current_ctc is not None:
+                existing.current_ctc = payload.current_ctc
+            if payload.expected_ctc_min is not None:
+                existing.expected_ctc_min = payload.expected_ctc_min
+            if payload.expected_ctc_max is not None:
+                existing.expected_ctc_max = payload.expected_ctc_max
+            if payload.expected_ctc_type:
+                existing.expected_ctc_type = payload.expected_ctc_type
+            if payload.ctc_currency:
+                existing.ctc_currency = payload.ctc_currency.upper()
             db.commit()
             db.refresh(existing)
+            CandidateController._enrich_candidate(existing)
             return existing, None
 
-        cand_id = f"cand-{uuid.uuid4().hex[:6]}"
+        cid = f"cand-{uuid.uuid4().hex[:6]}"
+        job_title = job.title if job else "Technical Role"
 
         # Initial automated confirmation email
         initial_email = {
-            "id": f"eml-{uuid.uuid4().hex[:6]}",
             "type": "application_received",
-            "subject": f"Application Received — {job.title} at {comp_name}",
+            "subject": f"Application Received: {job_title}",
             "sent_at": now_str,
             "recipient": payload.email,
-            "body": f"Dear {payload.name},\n\nThank you for applying for the position of {job.title} at {comp_name}. Your application and resume have been received and placed in our recruiter screening pipeline.\n\nYour application is currently Under Review.\n\nBest regards,\nSparkX AI Talent Acquisition Team"
+            "body": (
+                f"Hello {payload.name},\n\n"
+                f"Thank you for applying to the {job_title} position at SparkX Technologies.\n"
+                f"Our recruitment committee is reviewing your application against role requirements.\n\n"
+                f"Best regards,\nSparkX AI Recruitment Team"
+            )
         }
 
         new_candidate = CandidateModel(
-            id=cand_id,
-            job_id=job.id,
+            id=cid,
+            user_id=matching_user.id if matching_user else None,
+            version=1,
+            job_id=payload.job_id,
             company_name=comp_name,
             name=payload.name,
             email=payload.email.strip().lower(),
@@ -108,116 +237,301 @@ class CandidateController:
             resume_filename=payload.resume_filename,
             resume_text=payload.resume_text,
             fraud_flags=payload.fraud_flags or [],
-            status="Applied",
-            final_decision="Applied",
-            interview_status="Applied",
+            # Authoritative Candidate Application Compensation Expectations
+            current_ctc=payload.current_ctc,
+            expected_ctc_type=payload.expected_ctc_type or "range",
+            expected_ctc_min=payload.expected_ctc_min,
+            expected_ctc_max=payload.expected_ctc_max,
+            ctc_currency=(payload.ctc_currency or "INR").upper(),
+            # Authoritative 4-Dimensional State Fields
+            stage=STAGE_APPLIED,
+            assessment_status=ASSESS_NOT_INVITED,
+            interview_status=INTERVIEW_NOT_SCHEDULED,
+            hiring_decision=DECISION_UNDECIDED,
+            stage_updated_at=datetime.utcnow(),
+            decision_updated_at=None,
+            # Read-only legacy projections
+            status=project_legacy_status(STAGE_APPLIED, DECISION_UNDECIDED),
+            final_decision=project_legacy_final_decision(STAGE_APPLIED, DECISION_UNDECIDED),
             email_logs=[initial_email]
         )
 
         db.add(new_candidate)
+        CandidateController.log_state_change(
+            candidate_id=cid,
+            dimension="stage",
+            from_val=None,
+            to_val=STAGE_APPLIED,
+            changed_by="candidate",
+            notes="Application submitted",
+            db=db
+        )
         db.commit()
         db.refresh(new_candidate)
+        CandidateController._enrich_candidate(new_candidate)
         return new_candidate, None
 
     @staticmethod
-    def update_status(candidate_id: str, payload: CandidateStatusUpdate, db: Session):
+    def update_stage(candidate_id: str, new_stage: str, notes: str = "", changed_by: str = "recruiter", db: Session = None):
+        """Authoritatively advance or adjust the application stage with FSM transition guards."""
         candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
         if not candidate:
-            return False
+            return None, "Candidate not found"
 
-        # Status normalization to the 6 shared standard statuses:
-        # "Applied", "Under Review", "Shortlisted", "Interview", "Selected", "Rejected"
-        raw_status = payload.status.strip().lower()
-        status_map = {
-            "applied": "Applied",
-            "screening": "Applied",
-            "under review": "Under Review",
-            "evaluated": "Under Review",
-            "shortlisted": "Shortlisted",
-            "interview": "Interview",
-            "interview scheduled": "Interview",
-            "scheduled": "Interview",
-            "selected": "Selected",
-            "offered": "Selected",
-            "offer": "Selected",
-            "rejected": "Rejected"
-        }
-        canonical_status = status_map.get(raw_status, payload.status.strip())
+        norm_stage = new_stage.lower().strip()
+        valid, err = validate_stage_transition(candidate.stage, norm_stage)
+        if not valid:
+            return None, err
 
-        # ONE shared status reflected for both candidate and recruiter
-        candidate.status = canonical_status
-        candidate.final_decision = canonical_status
+        old_stage = candidate.stage
+        candidate.stage = norm_stage
+        candidate.stage_updated_at = datetime.utcnow()
+        candidate.version = (candidate.version or 1) + 1
+        # Update legacy read projection
+        candidate.status = project_legacy_status(candidate.stage, candidate.hiring_decision)
 
-        if canonical_status == "Interview":
-            candidate.interview_status = "Interview Scheduled"
-            if not candidate.interview_scheduled_at:
-                candidate.interview_scheduled_at = "Upcoming Slot"
-            if not candidate.interview_meeting_url:
-                short_id = candidate.id.replace("cand-", "")[:6]
-                candidate.interview_meeting_url = f"https://meet.google.com/spk-{short_id[:3]}-{short_id[3:] or 'rec'}"
-        elif canonical_status == "Applied":
-            candidate.interview_status = "Applied"
-            candidate.interview_scheduled_at = None
-            candidate.interview_meeting_url = None
-        elif canonical_status == "Selected":
-            candidate.interview_status = "Offer Sent"
-        elif canonical_status == "Rejected":
-            candidate.interview_status = "Rejected"
+        CandidateController.log_state_change(
+            candidate_id=candidate.id,
+            dimension="stage",
+            from_val=old_stage,
+            to_val=norm_stage,
+            changed_by=changed_by,
+            notes=notes,
+            db=db
+        )
+        db.commit()
+        db.refresh(candidate)
+        return candidate, None
 
-        if payload.hr_notes is not None:
-            candidate.hr_notes = payload.hr_notes
+    @staticmethod
+    def update_hiring_decision(
+        candidate_id: str,
+        new_decision: str = None,
+        recruiter_score: Optional[int] = None,
+        rejection_reason: Optional[str] = None,
+        rejection_category: Optional[str] = None,
+        hr_notes: Optional[str] = None,
+        changed_by: str = "recruiter",
+        db: Session = None,
+        *,
+        decision: str = None,
+        reason: str = None,
+        **kwargs
+    ):
+        """Authoritatively record a hiring decision without corrupting transient workflow stages."""
+        candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not candidate:
+            return None, "Candidate not found"
 
-        if payload.recruiter_score is not None:
-            candidate.recruiter_score = payload.recruiter_score
+        target_decision = new_decision or decision or ""
+        norm_decision = target_decision.lower().strip()
+        valid, err = validate_decision_transition(candidate.hiring_decision, norm_decision)
+        if not valid:
+            return None, err
 
-        if payload.rejection_reason is not None:
-            candidate.rejection_reason = payload.rejection_reason
+        if reason and not rejection_reason and norm_decision == DECISION_REJECTED:
+            rejection_reason = reason
+        if reason and not hr_notes:
+            hr_notes = reason
 
-        if payload.rejection_category is not None:
-            candidate.rejection_category = payload.rejection_category
+        old_decision = candidate.hiring_decision
+        candidate.hiring_decision = norm_decision
+        candidate.decision_updated_at = datetime.utcnow()
+        candidate.version = (candidate.version or 1) + 1
+
+        if recruiter_score is not None:
+            candidate.recruiter_score = recruiter_score
+        if rejection_reason is not None:
+            candidate.rejection_reason = rejection_reason
+        if rejection_category is not None:
+            candidate.rejection_category = rejection_category
+        if hr_notes is not None:
+            candidate.hr_notes = hr_notes
+
+        # Terminal decisions (selected, rejected) finalize the pipeline stage to completed
+        if norm_decision in [DECISION_SELECTED, DECISION_REJECTED]:
+            candidate.stage = STAGE_COMPLETED
+            candidate.stage_updated_at = datetime.utcnow()
+
+        # Update legacy read projections
+        candidate.status = project_legacy_status(candidate.stage, candidate.hiring_decision)
+        candidate.final_decision = project_legacy_final_decision(candidate.stage, candidate.hiring_decision)
+
+        CandidateController.log_state_change(
+            candidate_id=candidate.id,
+            dimension="hiring_decision",
+            from_val=old_decision,
+            to_val=norm_decision,
+            changed_by=changed_by,
+            notes=rejection_reason or hr_notes or "",
+            db=db
+        )
+        db.commit()
+        db.refresh(candidate)
+        return candidate, None
+
+    @staticmethod
+    def invite_assessment(candidate_id: str, custom_message: str = "", changed_by: str = "recruiter", db: Session = None):
+        """
+        Idempotent assessment invitation:
+        Enables candidate technical assessment access, records invitation timestamp,
+        advances pipeline stage to 'assessment', and dispatches notification.
+        """
+        candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not candidate:
+            return None, "Candidate not found"
+
+        # Idempotency check: if already invited or further along, return safely without resetting
+        if candidate.assessment_status in [ASSESS_INVITED, ASSESS_IN_PROGRESS, ASSESS_SUBMITTED, ASSESS_EVALUATED]:
+            return candidate, None
+
+        old_status = candidate.assessment_status
+        candidate.assessment_status = ASSESS_INVITED
+        candidate.assessment_invited_at = datetime.utcnow()
+
+        # Advance stage to assessment if currently in applied or screening
+        if candidate.stage in [STAGE_APPLIED, STAGE_SCREENING]:
+            candidate.stage = STAGE_ASSESSMENT
+            candidate.stage_updated_at = datetime.utcnow()
+            candidate.status = project_legacy_status(candidate.stage, candidate.hiring_decision)
+
+        CandidateController.log_state_change(
+            candidate_id=candidate.id,
+            dimension="assessment_status",
+            from_val=old_status,
+            to_val=ASSESS_INVITED,
+            changed_by=changed_by,
+            notes=custom_message or "Technical assessment invitation",
+            db=db
+        )
+
+        job_title = candidate.job.title if candidate.job else "Target Role"
+        try:
+            send_email(
+                to_email=candidate.email,
+                subject=f"[SparkX] Technical Assessment Invitation: {job_title}",
+                body_text=(
+                    f"Hello {candidate.name},\n\n"
+                    f"You have been officially invited to complete the technical assessment for {job_title}.\n"
+                    f"Please log in to your SparkX portal and navigate to 'Role Assessment' to begin your assessment.\n\n"
+                    f"{custom_message}\n\n"
+                    f"Best regards,\nSparkX AI Recruitment Team"
+                )
+            )
+        except Exception as e:
+            print(f"[Warning] Failed to send assessment invitation email: {e}")
 
         db.commit()
-        return True
+        db.refresh(candidate)
+        return candidate, None
+
+    @staticmethod
+    def update_status(candidate_id: str, payload: CandidateStatusUpdate, db: Session):
+        """Legacy compatibility adapter: routes legacy status strings to decoupled dimensions."""
+        raw_status = (payload.status or "").strip().lower()
+        
+        # Decision mappings
+        if raw_status in ["selected", "offered", "offer"]:
+            cand, _ = CandidateController.update_hiring_decision(
+                candidate_id, DECISION_SELECTED, payload.recruiter_score, 
+                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db
+            )
+            return bool(cand)
+        elif raw_status == "rejected":
+            cand, _ = CandidateController.update_hiring_decision(
+                candidate_id, DECISION_REJECTED, payload.recruiter_score, 
+                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db
+            )
+            return bool(cand)
+        elif raw_status == "shortlisted":
+            cand, _ = CandidateController.update_hiring_decision(
+                candidate_id, DECISION_SHORTLISTED, payload.recruiter_score, 
+                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db
+            )
+            return bool(cand)
+        
+        # Stage mappings
+        stage_map = {
+            "applied": STAGE_APPLIED,
+            "screening": STAGE_SCREENING,
+            "assessment": STAGE_ASSESSMENT,
+            "under review": STAGE_REVIEW,
+            "evaluated": STAGE_REVIEW,
+            "interview": STAGE_INTERVIEW,
+            "interview scheduled": STAGE_INTERVIEW,
+            "scheduled": STAGE_INTERVIEW
+        }
+        target_stage = stage_map.get(raw_status, STAGE_SCREENING)
+        cand, _ = CandidateController.update_stage(candidate_id, target_stage, payload.hr_notes or "", "recruiter", db)
+        return bool(cand)
 
     @staticmethod
     def get_candidate_applications(email: str, db: Session):
+        """Authoritative candidate application list: reads exact persisted states (zero heuristics)."""
         clean_email = email.strip().lower()
         applications = db.query(CandidateModel).filter(CandidateModel.email.ilike(clean_email)).order_by(CandidateModel.created_at.desc()).all()
         result = []
         for app in applications:
             job = app.job
             comp_name = app.company_name or (job.company_name if job else "SparkX Technologies")
-            disp_status = app.status or app.final_decision or "Under Review"
-
-            assess_data = app.assessment_data or {}
-            is_assess_completed = bool(assess_data.get("is_completed") or (app.coding_score is not None and app.coding_score > 0) or (app.status and app.status not in ["Applied", "Screening"]))
-            assess_status = "Completed" if is_assess_completed else "Pending"
 
             result.append({
                 "id": app.id,
+                "name": app.name,
+                "email": app.email,
                 "job_id": app.job_id,
                 "job_title": job.title if job else "Technical Role",
                 "company_name": comp_name,
                 "department": job.department if job else "Engineering",
                 "location": job.location if job else "Remote",
                 "applied_date": app.applied_date,
-                "status": disp_status,
-                "final_decision": disp_status,
+                # 4 Decoupled Authoritative Dimensions
+                "stage": app.stage or STAGE_APPLIED,
+                "assessment_status": app.assessment_status or ASSESS_NOT_INVITED,
+                "assessment_invited_at": app.assessment_invited_at.isoformat() if app.assessment_invited_at else None,
+                "assessment_started_at": app.assessment_started_at.isoformat() if app.assessment_started_at else None,
+                "assessment_submitted_at": app.assessment_submitted_at.isoformat() if app.assessment_submitted_at else None,
+                "assessment_evaluated_at": app.assessment_evaluated_at.isoformat() if app.assessment_evaluated_at else None,
+                "interview_status": app.interview_status or INTERVIEW_NOT_SCHEDULED,
+                "interview_scheduled_at": app.interview_scheduled_at,
+                "interview_meeting_url": app.interview_meeting_url,
+                "interview_started_at": app.interview_started_at.isoformat() if app.interview_started_at else None,
+                "interview_completed_at": app.interview_completed_at.isoformat() if app.interview_completed_at else None,
+                "hiring_decision": app.hiring_decision or DECISION_UNDECIDED,
+                # Read-only legacy projections
+                "status": project_legacy_status(app.stage, app.hiring_decision),
+                "final_decision": project_legacy_final_decision(app.stage, app.hiring_decision),
                 "match_score": None,
                 "experience_years": app.experience_years,
                 "skills": app.skills or [],
                 "resume_filename": app.resume_filename,
                 "resume_summary": app.resume_summary,
-                "interview_scheduled_at": app.interview_scheduled_at,
-                "interview_meeting_url": app.interview_meeting_url,
-                "interview_status": app.interview_status or "Applied",
-                "assessment_status": assess_status,
+                "scores": app.scores or {},
+                "skill_gaps": app.skill_gaps or {},
                 "coding_score": None,
                 "recruiter_score": None,
                 "rejection_reason": app.rejection_reason,
                 "rejection_category": app.rejection_category,
                 "hr_notes": app.hr_notes,
-                "match_details": None
+                "match_details": None,
+                # Candidate-facing compensation context (zero private recruiter leakage)
+                "current_ctc": float(app.current_ctc) if app.current_ctc is not None else None,
+                "expected_ctc_type": app.expected_ctc_type or "range",
+                "expected_ctc_min": float(app.expected_ctc_min) if app.expected_ctc_min is not None else None,
+                "expected_ctc_max": float(app.expected_ctc_max) if app.expected_ctc_max is not None else None,
+                "ctc_currency": app.ctc_currency or "INR",
+                "job_budget_formatted": format_job_compensation(
+                    job.ctc_min if job else None,
+                    job.ctc_max if job else None,
+                    job.ctc_type if job else "range",
+                    job.ctc_currency if job else "INR"
+                ),
+                "candidate_expectation_formatted": format_candidate_expectation(
+                    app.expected_ctc_min,
+                    app.expected_ctc_max,
+                    app.expected_ctc_type,
+                    app.ctc_currency or "INR"
+                )
             })
         return result
 
@@ -227,8 +541,38 @@ class CandidateController:
         if not candidate:
             return None, "Candidate not found"
 
+        previous_slot = candidate.interview_scheduled_at
+        old_interview_status = candidate.interview_status
+        is_reschedule = bool(previous_slot and old_interview_status == INTERVIEW_SCHEDULED)
+
         candidate.interview_scheduled_at = payload.scheduled_at
-        candidate.interview_status = "Interview Scheduled"
+        candidate.interview_status = INTERVIEW_SCHEDULED
+
+        # Progress pipeline stage to 'interview' if currently in an earlier stage or review
+        if candidate.stage in [STAGE_APPLIED, STAGE_SCREENING, STAGE_ASSESSMENT, STAGE_REVIEW]:
+            old_stage = candidate.stage
+            candidate.stage = STAGE_INTERVIEW
+            candidate.stage_updated_at = datetime.utcnow()
+            candidate.status = project_legacy_status(candidate.stage, candidate.hiring_decision)
+            CandidateController.log_state_change(
+                candidate_id=candidate.id,
+                dimension="stage",
+                from_val=old_stage,
+                to_val=STAGE_INTERVIEW,
+                changed_by="recruiter",
+                notes=f"Interview {'rescheduled' if is_reschedule else 'scheduled'} for {payload.scheduled_at}",
+                db=db
+            )
+
+        CandidateController.log_state_change(
+            candidate_id=candidate.id,
+            dimension="interview_status",
+            from_val=old_interview_status or INTERVIEW_NOT_SCHEDULED,
+            to_val=INTERVIEW_SCHEDULED,
+            changed_by="recruiter",
+            notes=f"Interview rescheduled from {previous_slot} to {payload.scheduled_at}" if is_reschedule else f"Interview scheduled for {payload.scheduled_at}",
+            db=db
+        )
 
         now_str = datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
         job_title = candidate.job.title if candidate.job else "Target Position"
@@ -328,10 +672,10 @@ class CandidateController:
                 f"• Meeting Link: {meet_url}\n"
             )
 
-        subject = f"[SPARKX CONFIRMED] AI Video Interview: {job_title}"
+        subject = f"[SPARKX RESCHEDULED] AI Video Interview: {job_title}" if is_reschedule else f"[SPARKX CONFIRMED] AI Video Interview: {job_title}"
         body = (
             f"Dear {candidate.name},\n\n"
-            f"Your AI Video Interview for the position of {job_title} has been officially confirmed!\n\n"
+            f"Your AI Video Interview for the position of {job_title} has been officially {'rescheduled to a revised time slot' if is_reschedule else 'confirmed'}!\n\n"
             f"INTERVIEW DETAILS:\n"
             f"• Target Position: {job_title}\n"
             f"• Assessed Competencies: {skills_str}\n"
@@ -354,9 +698,9 @@ class CandidateController:
           <div style="margin-bottom: 20px;">
             <span style="font-size: 20px; font-weight: 800; color: #818cf8; font-family: Arial, sans-serif;">SparkX AI Recruitment</span>
           </div>
-          <h2 style="color: #ffffff; margin-top: 0; font-size: 22px; font-family: Arial, sans-serif;">AI Video Interview Confirmed</h2>
+          <h2 style="color: #ffffff; margin-top: 0; font-size: 22px; font-family: Arial, sans-serif;">{'AI Video Interview Rescheduled' if is_reschedule else 'AI Video Interview Confirmed'}</h2>
           <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; font-family: Arial, sans-serif;">Hello <strong>{candidate.name}</strong>,</p>
-          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; font-family: Arial, sans-serif;">Your interview for <strong>{job_title}</strong> has been officially scheduled.</p>
+          <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; font-family: Arial, sans-serif;">Your interview for <strong>{job_title}</strong> has been officially {'rescheduled to an updated time slot' if is_reschedule else 'scheduled'}.</p>
           
           <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin: 20px 0;">
             <div style="margin-bottom: 12px;">
@@ -424,7 +768,7 @@ class CandidateController:
         ics_data = create_ics_calendar_event(
             event_id=candidate.id,
             summary=f"SparkX AI Video Interview: {job_title}",
-            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nGoogle Meet Call: {meet_url}\nMeeting ID: {meet_code} | Passcode: {pin_code}\nPortal URL: http://localhost:3000\n{notes_line}",
+            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nGoogle Meet Call: {meet_url}\nMeeting Code: {meet_code}\nPortal URL: http://localhost:3000\n{notes_line}",
             start_dt=start_dt,
             candidate_name=candidate.name,
             candidate_email=candidate.email,
@@ -469,9 +813,11 @@ class CandidateController:
             meet_url = candidate.interview_meeting_url
             clean_part = meet_url.split("?")[0].rstrip("/")
             meet_code = clean_part.split("/")[-1] if "/" in clean_part else meet_url
+            meet_line = f"• Meeting Link: {meet_url}\n"
         else:
-            meet_code = f"spk-{candidate.id[-4:]}-rec"
-            meet_url = f"https://meet.google.com/{meet_code}"
+            meet_code = "Pending schedule"
+            meet_url = ""
+            meet_line = "• Meeting Link: To be shared prior to interview\n"
 
         if payload.template_type == "interview_invitation":
             subject = f"[SPARKX INTERVIEW] Invitation for {job_title}"
@@ -479,7 +825,7 @@ class CandidateController:
                 f"Dear {candidate.name},\n\n"
                 f"You are invited to an AI Video Interview for the position of {job_title} at SparkX AI.\n\n"
                 f"• Scheduled Slot: {scheduled_slot}\n"
-                f"• Google Meet Link: {meet_url}\n"
+                f"{meet_line}"
                 f"• SparkX Portal URL: http://localhost:3000\n\n"
                 f"{payload.custom_message or 'Please join at the scheduled time using the link above.'}\n\n"
                 f"Best regards,\nSparkX AI Recruitment Team"
@@ -490,7 +836,7 @@ class CandidateController:
                 f"Dear {candidate.name},\n\n"
                 f"This is a reminder for your upcoming AI Video Interview for {job_title}.\n\n"
                 f"• Scheduled Time: {scheduled_slot}\n"
-                f"• Google Meet Link: {meet_url}\n"
+                f"{meet_line}"
                 f"• SparkX Portal URL: http://localhost:3000\n\n"
                 f"{payload.custom_message or 'Please ensure your camera and microphone are ready before joining.'}\n\n"
                 f"Best regards,\nSparkX AI Recruitment Team"
@@ -585,14 +931,25 @@ class CandidateController:
         send_email(email_event["recipient"], email_event["subject"], email_event["body"], html)
 
         if payload.template_type == "offer_letter":
-            candidate.final_decision = "Offered"
-            candidate.status = "Offered"
+            CandidateController.update_hiring_decision(
+                candidate_id=candidate.id,
+                new_decision=DECISION_SELECTED,
+                notes="Offer letter sent via email notification",
+                changed_by="recruiter",
+                db=db
+            )
         elif payload.template_type == "rejection_notice":
-            candidate.final_decision = "Rejected"
-            candidate.status = "Rejected"
+            CandidateController.update_hiring_decision(
+                candidate_id=candidate.id,
+                new_decision=DECISION_REJECTED,
+                notes="Rejection notice sent via email notification",
+                changed_by="recruiter",
+                db=db
+            )
+        else:
+            db.commit()
+            db.refresh(candidate)
 
-        db.commit()
-        db.refresh(candidate)
         return email_event, None
 
     @staticmethod
@@ -717,3 +1074,5 @@ class CandidateController:
                 "resume_text": text
             }
         }
+
+log_state_change = CandidateController.log_state_change

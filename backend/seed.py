@@ -114,7 +114,12 @@ def seed(force=False):
                     {"name": "Separate distinct events", "input": "Events separated by 5s", "expected": "2 distinct events"}
                 ]
             },
-            status="Active"
+            status="Active",
+            ctc_min=20.0,
+            ctc_max=30.0,
+            ctc_currency="INR",
+            ctc_type="range",
+            ctc_period="annual"
         )
 
         job2 = JobModel(
@@ -156,7 +161,12 @@ def seed(force=False):
                     {"name": "Handles camera permission denial cleanly", "input": "NotAllowedError", "expected": "Returns descriptive error message"}
                 ]
             },
-            status="Active"
+            status="Active",
+            ctc_min=12.0,
+            ctc_max=18.0,
+            ctc_currency="INR",
+            ctc_type="range",
+            ctc_period="annual"
         )
 
         db.add(job1)
@@ -176,7 +186,7 @@ def seed(force=False):
             experience_years=4.5,
             education="B.Tech Computer Science, IIT Roorkee (2022)",
             skills=["Python", "FastAPI", "React", "PyTorch", "PostgreSQL", "LangChain", "Docker", "System Design"],
-            resume_summary="4+ years building distributed AI products. Led development of an automated document intelligence pipeline serving 50k requests/day with FastAPI and PyTorch.",
+            resume_summary="Senior AI & Distributed Systems Engineer with 4.5+ years architecting enterprise machine learning pipelines, low-latency microservices, and agentic workflows.\n\nKey Achievements & Production Deliverables:\n• Spearheaded high-throughput automated document intelligence pipeline processing 50k+ daily transactions with FastAPI, PyTorch, and Docker.\n• Integrated asynchronous pgvector semantic search with HNSW indexing, reducing retrieval latency from 240ms to under 75ms.\n• Led architecture of resilient decoupled workers utilizing Celery/Redis and Server-Sent Events (SSE) for streaming LLM reasoning traces.\n• Maintained 99.95% system uptime and authored automated unit and integration suites achieving 92% code coverage.",
             fraud_flags=[],
             integrity_score=96,
             integrity_risk="Low",
@@ -207,7 +217,7 @@ def seed(force=False):
             experience_years=3.2,
             education="B.E. Information Technology, Pune University (2023)",
             skills=["Python", "FastAPI", "React", "TypeScript", "PostgreSQL", "Tailwind CSS"],
-            resume_summary="Full-stack developer with 3 years building cloud dashboards and RESTful microservices. Solid frontend skills with growing AI integration experience.",
+            resume_summary="Full-Stack Engineer with 3.2+ years designing cloud microservices, responsive web dashboards, and AI-assisted workflows.\n\nKey Achievements & Production Deliverables:\n• Built scalable RESTful services using FastAPI and PostgreSQL, supporting 20k+ daily active frontend sessions.\n• Developed rich analytics dashboards with React, TypeScript, and Tailwind CSS, improving recruiter operational efficiency by 35%.\n• Integrated client-side streaming consumption via ReadableStream APIs to render real-time AI responses with zero UI stutter.\n• Collaborated on containerized deployments using Docker and GitHub Actions for continuous zero-downtime releases.",
             fraud_flags=[],
             integrity_score=88,
             integrity_risk="Low",
@@ -265,7 +275,7 @@ def seed(force=False):
             experience_years=3.5,
             education="B.Tech Computer Science, BITS Pilani (2022)",
             skills=["Python", "FastAPI", "Docker", "PostgreSQL", "LangChain", "Kubernetes"],
-            resume_summary="Backend AI engineer with 3.5 years of experience deploying microservices, Dockerizing LLM chains, and designing RESTful APIs.",
+            resume_summary="Cloud Backend & AI Systems Engineer with 3.5+ years building distributed API gateways, asynchronous message queues, and production LLM orchestration.\n\nKey Achievements & Production Deliverables:\n• Architected scalable microservices handling large-scale text ingestion and vector indexing using Python, FastAPI, and PostgreSQL.\n• Containerized multi-agent LLM pipelines with Docker and Kubernetes, reducing compute resource consumption by 28%.\n• Designed robust database schemas, transactional integrity checks, and high-concurrency connection pooling.",
             fraud_flags=[],
             integrity_score=100,
             integrity_risk="Low",
@@ -293,7 +303,7 @@ def seed(force=False):
             experience_years=4.8,
             education="M.Tech AI & Data Systems, IIIT Hyderabad (2021)",
             skills=["Python", "FastAPI", "React", "PyTorch", "pgvector", "LangChain", "System Design"],
-            resume_summary="Lead ML platform engineer specializing in agentic workflows, low-latency streaming endpoints, and vector index tuning.",
+            resume_summary="Lead ML Platform Engineer with 4.8+ years designing scalable agentic workflows, high-frequency inference endpoints, and vector search systems.\n\nKey Achievements & Production Deliverables:\n• Designed real-time LLM inference pipelines delivering streaming token output with sub-90ms time-to-first-token (TTFT).\n• Implemented custom HNSW vector indices on pgvector with periodic re-indexing and memory caching layers.\n• Authored system design specifications for enterprise AI platforms handling multi-modal document and audio inputs.",
             fraud_flags=[],
             integrity_score=100,
             integrity_risk="Low",
@@ -321,7 +331,7 @@ def seed(force=False):
             experience_years=4.0,
             education="B.E. Computer Engineering, Delhi Technological University (2022)",
             skills=["React", "TypeScript", "Tailwind CSS", "Canvas API", "Web Speech API", "Micro-frontends"],
-            resume_summary="Senior Frontend Engineer with 4 years building high-frequency telemetry dashboards, real-time video canvases, and accessible design systems.",
+            resume_summary="Staff Frontend & Systems Engineer with 4.0+ years architecting high-frequency telemetry dashboards, real-time video canvases, and accessible design systems.\n\nKey Achievements & Production Deliverables:\n• Architected 60fps real-time computer vision overlays using Web Workers, OffscreenCanvas, and double-buffered render pipelines.\n• Built comprehensive enterprise design systems in React and Tailwind CSS with strict WCAG 2.1 AA accessibility standards.\n• Reduced frontend bundle sizes by 45% through aggressive code-splitting and dynamic route-based asset delivery.",
             fraud_flags=[],
             integrity_score=98,
             integrity_risk="Low",

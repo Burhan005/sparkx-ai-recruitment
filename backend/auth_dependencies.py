@@ -32,7 +32,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserMod
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-    payload = verify_access_token(raw_token)
+    payload = verify_access_token(raw_token, db=db)
     if not payload or not payload.get("uid"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -55,7 +55,7 @@ def get_optional_current_user(request: Request, db: Session = Depends(get_db)) -
     raw_token = get_token_from_header(request)
     if not raw_token:
         return None
-    payload = verify_access_token(raw_token)
+    payload = verify_access_token(raw_token, db=db)
     if not payload or not payload.get("uid"):
         return None
     return db.query(UserModel).filter(UserModel.id == payload["uid"]).first()

@@ -197,7 +197,19 @@ export function RecruitmentProvider({ children }) {
       if (activeRole === 'recruiter' && currentUser?.role === 'recruiter') {
         const dbCandidates = await api.getCandidates();
         const safeCands = (dbCandidates && dbCandidates.length > 0) ? dbCandidates : [];
-        setCandidates(safeCands);
+        const enrichedCands = safeCands.map(c => {
+          const matchingJob = safeJobs.find(j => String(j.id) === String(c.job_id || c.jobId));
+          const resolvedTitle = matchingJob?.title || c.job_title || c.jobTitle || c.jobRole || 'Software Engineer';
+          return {
+            ...c,
+            jobId: c.job_id || c.jobId,
+            job_id: c.job_id || c.jobId,
+            jobTitle: resolvedTitle,
+            jobRole: resolvedTitle,
+            job: matchingJob ? { ...matchingJob, title: resolvedTitle } : { title: resolvedTitle }
+          };
+        });
+        setCandidates(enrichedCands);
       } else if (activeRole === 'candidate' || currentUser?.role === 'candidate') {
         setCandidates([]);
         if (currentUser?.email) {
@@ -326,93 +338,92 @@ export function RecruitmentProvider({ children }) {
     return savedJob;
   };
 
+  const updateJob = async (jobId, updatedJobData) => {
+    const savedJob = await api.updateJob(jobId, updatedJobData);
+    if (!savedJob) {
+      toastBus.emit('Failed to update job — please verify input values', 'error');
+      return null;
+    }
+    setJobs(prev => prev.map(j => j.id === jobId ? savedJob : j));
+    setCandidates(prev => prev.map(c => {
+      if (String(c.job_id || c.jobId) === String(jobId)) {
+        return {
+          ...c,
+          job: { ...(c.job || {}), ...savedJob },
+          jobBudgetFormatted: savedJob.formattedCompensation || savedJob.formatted_compensation || c.jobBudgetFormatted,
+        };
+      }
+      return c;
+    }));
+    toastBus.emit(`Job "${savedJob.title}" updated successfully!`, 'success');
+    return savedJob;
+  };
+
+  const updateCandidateStage = async (candidateId, newStage, notes = '') => {
+    try {
+      const updatedCand = await api.updateCandidateStage(candidateId, newStage, notes);
+      if (updatedCand) {
+        setCandidates(prev => prev.map(c => c.id === candidateId ? updatedCand : c));
+        setMyApplications(prev => prev.map(a => a.id === candidateId ? { ...a, ...updatedCand } : a));
+        if (selectedCandidate?.id === candidateId) setSelectedCandidate(updatedCand);
+        toastBus.emit(`Stage moved to ${newStage}`, 'success');
+        return updatedCand;
+      }
+    } catch (err) {
+      toastBus.emit(err.message || 'Failed to update stage', 'error');
+      throw err;
+    }
+  };
+
+  const updateHiringDecision = async (candidateId, decision, extra = {}) => {
+    try {
+      const updatedCand = await api.updateHiringDecision(candidateId, decision, extra);
+      if (updatedCand) {
+        setCandidates(prev => prev.map(c => c.id === candidateId ? updatedCand : c));
+        setMyApplications(prev => prev.map(a => a.id === candidateId ? { ...a, ...updatedCand } : a));
+        if (selectedCandidate?.id === candidateId) setSelectedCandidate(updatedCand);
+        const emoji = decision === 'selected' ? '🤝' : (decision === 'rejected' ? '❌' : (decision === 'shortlisted' ? '🎉' : '📋'));
+        toastBus.emit(`${emoji} Decision updated to ${decision}`, decision === 'rejected' ? 'warning' : 'success');
+        return updatedCand;
+      }
+    } catch (err) {
+      toastBus.emit(err.message || 'Failed to update decision', 'error');
+      throw err;
+    }
+  };
+
+  const inviteAssessment = async (candidateId, customMessage = '') => {
+    try {
+      const updatedCand = await api.inviteAssessment(candidateId, customMessage);
+      if (updatedCand) {
+        setCandidates(prev => prev.map(c => c.id === candidateId ? updatedCand : c));
+        setMyApplications(prev => prev.map(a => a.id === candidateId ? { ...a, ...updatedCand } : a));
+        if (selectedCandidate?.id === candidateId) setSelectedCandidate(updatedCand);
+        toastBus.emit(`Candidate invited to Technical Assessment!`, 'success');
+        return updatedCand;
+      }
+    } catch (err) {
+      toastBus.emit(err.message || 'Failed to invite to assessment', 'error');
+      throw err;
+    }
+  };
+
   const updateCandidateStatus = async (candidateId, newStatus, hrNotes = '', recruiterScore = null, rejectionReason = null, rejectionCategory = null) => {
     await api.updateCandidateStatus(candidateId, newStatus, hrNotes, recruiterScore, rejectionReason, rejectionCategory);
-
-    const statusMap = {
-      applied: 'Applied',
-      screening: 'Applied',
-      'under review': 'Under Review',
-      evaluated: 'Under Review',
-      interview: 'Interview',
-      'interview scheduled': 'Interview',
-      scheduled: 'Interview',
-      shortlisted: 'Shortlisted',
-      selected: 'Selected',
-      offered: 'Selected',
-      offer: 'Selected',
-      rejected: 'Rejected'
-    };
-    const canonical = statusMap[(newStatus || '').toLowerCase()] || newStatus;
-    let scheduledAt = null;
-    let meetingUrl = null;
-
-    if (canonical === 'Interview') {
-      scheduledAt = 'Upcoming Slot';
-      const shortId = (candidateId || '').replace('cand-', '').slice(0, 6);
-      meetingUrl = `https://meet.google.com/spk-${shortId.slice(0, 3)}-${shortId.slice(3) || 'rec'}`;
+    const updated = await api.getCandidateById(candidateId);
+    if (updated) {
+      setCandidates(prev => prev.map(c => c.id === candidateId ? updated : c));
+      setMyApplications(prev => prev.map(a => a.id === candidateId ? { ...a, ...updated } : a));
+      if (selectedCandidate?.id === candidateId) setSelectedCandidate(updated);
     }
-
-    setCandidates(prev => prev.map(c => {
-      if (c.id !== candidateId) return c;
-      return {
-        ...c,
-        status: canonical,
-        finalDecision: canonical,
-        hrNotes: hrNotes || c.hrNotes,
-        recruiterScore: (recruiterScore !== null && recruiterScore !== undefined && recruiterScore !== '') ? Number(recruiterScore) : c.recruiterScore,
-        rejectionReason: rejectionReason !== null && rejectionReason !== undefined ? rejectionReason : c.rejectionReason,
-        rejectionCategory: rejectionCategory !== null && rejectionCategory !== undefined ? rejectionCategory : c.rejectionCategory,
-        interviewScheduledAt: canonical === 'Interview' ? (c.interviewScheduledAt || scheduledAt) : (canonical === 'Applied' ? null : c.interviewScheduledAt),
-        interviewMeetingUrl: canonical === 'Interview' ? (c.interviewMeetingUrl || meetingUrl) : (canonical === 'Applied' ? null : c.interviewMeetingUrl),
-      };
-    }));
-
-    setMyApplications(prev => prev.map(app => {
-      if (app.id !== candidateId) return app;
-      return {
-        ...app,
-        status: canonical,
-        finalDecision: canonical,
-        recruiterScore: (recruiterScore !== null && recruiterScore !== undefined && recruiterScore !== '') ? Number(recruiterScore) : app.recruiterScore,
-        rejectionReason: rejectionReason !== null && rejectionReason !== undefined ? rejectionReason : app.rejectionReason,
-        rejectionCategory: rejectionCategory !== null && rejectionCategory !== undefined ? rejectionCategory : app.rejectionCategory,
-        interviewScheduledAt: canonical === 'Interview' ? (app.interviewScheduledAt || scheduledAt) : (canonical === 'Applied' ? null : app.interviewScheduledAt),
-        interviewMeetingUrl: canonical === 'Interview' ? (app.interviewMeetingUrl || meetingUrl) : (canonical === 'Applied' ? null : app.interviewMeetingUrl),
-      };
-    }));
-
-    if (selectedCandidate?.id === candidateId) {
-      setSelectedCandidate(p => ({
-        ...p,
-        status: canonical,
-        finalDecision: canonical,
-        hrNotes: hrNotes || p?.hrNotes,
-        recruiterScore: (recruiterScore !== null && recruiterScore !== undefined && recruiterScore !== '') ? Number(recruiterScore) : p?.recruiterScore,
-        rejectionReason: rejectionReason !== null && rejectionReason !== undefined ? rejectionReason : p?.rejectionReason,
-        rejectionCategory: rejectionCategory !== null && rejectionCategory !== undefined ? rejectionCategory : p?.rejectionCategory,
-        interviewScheduledAt: canonical === 'Interview' ? (p?.interviewScheduledAt || scheduledAt) : (canonical === 'Applied' ? null : p?.interviewScheduledAt),
-        interviewMeetingUrl: canonical === 'Interview' ? (p?.interviewMeetingUrl || meetingUrl) : (canonical === 'Applied' ? null : p?.interviewMeetingUrl),
-      }));
-    }
-
-    const emojiMap = {
-      Shortlisted: '🎉',
-      Selected: '🤝',
-      Rejected: '❌',
-      'Under Review': '📋',
-      Interview: '📅',
-      Applied: '📨'
-    };
-    const emoji = emojiMap[canonical] || '📋';
-    toastBus.emit(`${emoji} Moved to ${canonical} — saved to database!`, canonical === 'Rejected' ? 'warning' : 'success');
+    toastBus.emit(`Status updated to ${newStatus}`, 'success');
   };
 
   const scheduleInterview = async (candidateId, scheduledAt, notes = '', meetingUrl = '') => {
     const updatedCand = await api.scheduleInterview(candidateId, scheduledAt, notes, meetingUrl);
     if (updatedCand) {
       setCandidates(prev => prev.map(c => c.id === candidateId ? updatedCand : c));
-      setMyApplications(prev => prev.map(a => a.id === candidateId ? { ...a, finalDecision: 'Interview', interviewScheduledAt: scheduledAt, interviewMeetingUrl: updatedCand.interviewMeetingUrl } : a));
+      setMyApplications(prev => prev.map(a => a.id === candidateId ? { ...a, ...updatedCand } : a));
       if (selectedCandidate?.id === candidateId) setSelectedCandidate(updatedCand);
       toastBus.emit(`Interview scheduled for ${scheduledAt} — Confirmation email sent!`, 'success');
       return updatedCand;
@@ -431,7 +442,10 @@ export function RecruitmentProvider({ children }) {
   };
 
   // ── Candidate Actions ──────────────────────────────────────────────────────
-  const applyForJob = async ({ jobId, name, email, phone, experienceYears, education, skills, resumeSummary, resumeFilename, resumeText, fraudFlags = [] }) => {
+  const applyForJob = async ({ 
+    jobId, name, email, phone, experienceYears, education, skills, resumeSummary, resumeFilename, resumeText, fraudFlags = [],
+    currentCtc = null, expectedCtcType = 'range', expectedCtcMin = null, expectedCtcMax = null, ctcCurrency = 'INR'
+  }) => {
     const targetJob = jobs.find(j => j.id === jobId) || jobs[0];
     if (!targetJob) {
       toastBus.emit('No jobs found — is the backend running?', 'error');
@@ -462,6 +476,11 @@ export function RecruitmentProvider({ children }) {
       resumeFilename: resumeFilename || null,
       resumeText: resumeText || null,
       fraudFlags,
+      currentCtc: currentCtc != null && currentCtc !== '' ? Number(currentCtc) : null,
+      expectedCtcType,
+      expectedCtcMin: expectedCtcMin != null && expectedCtcMin !== '' ? Number(expectedCtcMin) : null,
+      expectedCtcMax: expectedCtcMax != null && expectedCtcMax !== '' ? Number(expectedCtcMax) : null,
+      ctcCurrency: ctcCurrency || 'INR',
       integrityScore: 100, integrityRisk: 'Low', integrityEvents: [],
       scores: { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
       interviewSummary: 'Application received and entered into recruiter screening pipeline.',
@@ -594,7 +613,8 @@ export function RecruitmentProvider({ children }) {
       currentView, setCurrentView,
       selectedCandidate, setSelectedCandidate,
       activeJob, setActiveJobId,
-      createJob, updateCandidateStatus, applyForJob,
+      createJob, updateJob, updateCandidateStatus, applyForJob,
+      updateCandidateStage, updateHiringDecision, inviteAssessment,
       scheduleInterview, sendEmail,
       currentInterviewSession, setCurrentInterviewSession,
       completeInterviewAndEvaluate,
