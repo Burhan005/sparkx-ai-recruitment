@@ -531,9 +531,250 @@ class CandidateController:
                     app.expected_ctc_max,
                     app.expected_ctc_type,
                     app.ctc_currency or "INR"
-                )
+                ),
+                # Post-Interview Update Date & Timeline Telemetry
+                "expected_update_date": app.expected_update_date,
+                "update_notes": app.update_notes,
+                "update_status": app.update_status or "not_set",
+                "update_sent_at": app.update_sent_at.isoformat() if app.update_sent_at else None,
+                "reminder_sent_flags": app.reminder_sent_flags or {}
             })
         return result
+
+    @staticmethod
+    def set_expected_update_date(
+        candidate_id: str,
+        expected_update_date: str,
+        update_notes: str,
+        notify_candidate: bool,
+        db: Session
+    ):
+        candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not candidate:
+            return None, "Candidate not found"
+
+        clean_date = (expected_update_date or "").strip()
+        try:
+            datetime.strptime(clean_date, "%Y-%m-%d")
+        except ValueError:
+            return None, "Invalid date format. Expected YYYY-MM-DD."
+
+        prev_date = candidate.expected_update_date
+        candidate.expected_update_date = clean_date
+        candidate.update_notes = update_notes or ""
+
+        # Set status: timeline_changed if modified, otherwise expected_update_date_set
+        new_status = "timeline_changed" if (prev_date and prev_date != clean_date) else "expected_update_date_set"
+        candidate.update_status = new_status
+        candidate.reminder_sent_flags = {"due_tomorrow": False, "due_today": False}
+
+        CandidateController.log_state_change(
+            db=db,
+            candidate_id=candidate.id,
+            dimension="update_status",
+            from_val=prev_date or "none",
+            to_val=clean_date,
+            changed_by="recruiter",
+            notes=f"Expected update date set to {clean_date}. Notes: {update_notes or 'None'}"
+        )
+
+        if notify_candidate and candidate.email:
+            try:
+                job_title = candidate.job.title if candidate.job else "Applied Position"
+                subj = f"[SPARKX TIMELINE] Update Timeline for {job_title}"
+                portal_url = os.environ.get("FRONTEND_BASE_URL", "http://localhost:5173")
+                body = (
+                    f"Dear {candidate.name},\n\n"
+                    f"Thank you for interviewing with our team for {job_title}.\n\n"
+                    f"Our evaluation team is actively reviewing your interview and assessment performance.\n"
+                    f"• Expected Next Decision / Feedback Date: {clean_date}\n\n"
+                )
+                if update_notes:
+                    body += f"Message from Hiring Team:\n{update_notes}\n\n"
+                body += f"You can track your application status at: {portal_url}\n\nBest regards,\nSparkX Talent Acquisition"
+                
+                send_email(
+                    to_email=candidate.email,
+                    subject=subj,
+                    body_text=body,
+                    background=True
+                )
+                logs = list(candidate.email_logs or [])
+                logs.append({
+                    "id": f"mail-{uuid.uuid4().hex[:6]}",
+                    "type": "timeline_update",
+                    "sent_at": datetime.utcnow().isoformat(),
+                    "recipient": candidate.email,
+                    "subject": subj,
+                    "expected_update_date": clean_date,
+                    "notes": update_notes
+                })
+                candidate.email_logs = logs
+            except Exception as mail_err:
+                print(f"[Warning] Failed to send candidate timeline notification: {mail_err}")
+
+        db.commit()
+        db.refresh(candidate)
+        return candidate, None
+
+    @staticmethod
+    def send_recruiter_update(
+        candidate_id: str,
+        message: str,
+        timeline_status: str,
+        db: Session
+    ):
+        candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not candidate:
+            return None, "Candidate not found"
+
+        candidate.update_status = timeline_status or "update_sent"
+        candidate.update_sent_at = datetime.utcnow()
+        candidate.reminder_sent_flags = {"due_tomorrow": True, "due_today": True}
+
+        if candidate.email:
+            try:
+                job_title = candidate.job.title if candidate.job else "Applied Position"
+                subj = f"[SPARKX UPDATE] Hiring Status for {job_title}"
+                send_email(
+                    to_email=candidate.email,
+                    subject=subj,
+                    body_text=message,
+                    background=True
+                )
+                logs = list(candidate.email_logs or [])
+                logs.append({
+                    "id": f"mail-{uuid.uuid4().hex[:6]}",
+                    "type": "recruiter_update",
+                    "sent_at": datetime.utcnow().isoformat(),
+                    "recipient": candidate.email,
+                    "subject": subj,
+                    "message": message
+                })
+                candidate.email_logs = logs
+            except Exception as mail_err:
+                print(f"[Warning] Failed to send recruiter update email: {mail_err}")
+
+        CandidateController.log_state_change(
+            db=db,
+            candidate_id=candidate.id,
+            dimension="update_status",
+            from_val=candidate.update_status,
+            to_val="update_sent",
+            changed_by="recruiter",
+            notes=message[:120] if message else "Recruiter update dispatched"
+        )
+
+        db.commit()
+        db.refresh(candidate)
+        return candidate, None
+
+    @staticmethod
+    def get_update_timeline(db: Session) -> Dict[str, Any]:
+        today = datetime.utcnow().date()
+        candidates = db.query(CandidateModel).all()
+
+        due_today = []
+        due_tomorrow = []
+        upcoming = []
+        overdue = []
+        completed = []
+        awaiting_update_date = []
+
+        dirty = False
+        for c in candidates:
+            is_post_interview = (
+                c.interview_status == "completed" or 
+                c.stage in [STAGE_REVIEW, STAGE_COMPLETED] or 
+                getattr(c, "interview_completed_at", None) is not None
+            )
+
+            if not c.expected_update_date:
+                if is_post_interview and getattr(c, "hiring_decision", DECISION_UNDECIDED) == DECISION_UNDECIDED:
+                    awaiting_update_date.append({
+                        "id": c.id,
+                        "name": c.name,
+                        "email": c.email,
+                        "job_id": c.job_id,
+                        "job_title": c.job_title,
+                        "stage": c.stage,
+                        "interview_status": c.interview_status,
+                        "interview_completed_at": c.interview_completed_at.isoformat() if c.interview_completed_at else None,
+                        "update_status": "awaiting_update_date"
+                    })
+                continue
+
+            try:
+                exp_date = datetime.strptime(c.expected_update_date, "%Y-%m-%d").date()
+                delta_days = (exp_date - today).days
+            except Exception:
+                continue
+
+            cand_info = {
+                "id": c.id,
+                "name": c.name,
+                "email": c.email,
+                "job_id": c.job_id,
+                "job_title": c.job_title,
+                "stage": c.stage,
+                "interview_status": c.interview_status,
+                "expected_update_date": c.expected_update_date,
+                "days_remaining": delta_days,
+                "update_notes": c.update_notes,
+                "update_status": c.update_status,
+                "update_sent_at": c.update_sent_at.isoformat() if c.update_sent_at else None,
+                "hiring_decision": c.hiring_decision
+            }
+
+            if c.update_status == "update_sent" or c.hiring_decision in [DECISION_SELECTED, DECISION_REJECTED]:
+                completed.append(cand_info)
+            elif delta_days < 0:
+                cand_info["update_status"] = "update_overdue"
+                if c.update_status != "update_overdue":
+                    c.update_status = "update_overdue"
+                    dirty = True
+                overdue.append(cand_info)
+            elif delta_days == 0:
+                cand_info["update_status"] = "due_today"
+                flags = dict(c.reminder_sent_flags or {})
+                if not flags.get("due_today"):
+                    flags["due_today"] = True
+                    c.reminder_sent_flags = flags
+                    dirty = True
+                due_today.append(cand_info)
+            elif delta_days == 1:
+                cand_info["update_status"] = "due_tomorrow"
+                flags = dict(c.reminder_sent_flags or {})
+                if not flags.get("due_tomorrow"):
+                    flags["due_tomorrow"] = True
+                    c.reminder_sent_flags = flags
+                    dirty = True
+                due_tomorrow.append(cand_info)
+            else:
+                upcoming.append(cand_info)
+
+        if dirty:
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
+        return {
+            "summary": {
+                "due_today_count": len(due_today),
+                "due_tomorrow_count": len(due_tomorrow),
+                "upcoming_count": len(upcoming),
+                "overdue_count": len(overdue),
+                "completed_count": len(completed),
+                "awaiting_date_count": len(awaiting_update_date)
+            },
+            "due_today": due_today,
+            "due_tomorrow": due_tomorrow,
+            "upcoming": upcoming,
+            "overdue": overdue,
+            "completed": completed,
+            "awaiting_update_date": awaiting_update_date
+        }
 
     @staticmethod
     def schedule_interview(candidate_id: str, payload: CandidateScheduleRequest, db: Session):
@@ -764,11 +1005,11 @@ class CandidateController:
 
         # Generate automatic iCalendar (.ics) meeting invite with Google Meet integration
         start_dt = parse_slot_to_datetime(scheduled_slot)
-        organizer = os.environ.get("SMTP_FROM_EMAIL", "bkapasi472@rku.ac.in")
+        organizer = os.environ.get("SMTP_FROM_EMAIL", "")
         ics_data = create_ics_calendar_event(
             event_id=candidate.id,
             summary=f"SparkX AI Video Interview: {job_title}",
-            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nGoogle Meet Call: {meet_url}\nMeeting Code: {meet_code}\nPortal URL: http://localhost:3000\n{notes_line}",
+            description=f"AI Video Interview for {job_title} at SparkX AI.\nAssessed Competencies: {skills_str}\nGoogle Meet Call: {meet_url}\nMeeting Code: {meet_code}\nPortal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n{notes_line}",
             start_dt=start_dt,
             candidate_name=candidate.name,
             candidate_email=candidate.email,
@@ -826,7 +1067,7 @@ class CandidateController:
                 f"You are invited to an AI Video Interview for the position of {job_title} at SparkX AI.\n\n"
                 f"• Scheduled Slot: {scheduled_slot}\n"
                 f"{meet_line}"
-                f"• SparkX Portal URL: http://localhost:3000\n\n"
+                f"• SparkX Portal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n\n"
                 f"{payload.custom_message or 'Please join at the scheduled time using the link above.'}\n\n"
                 f"Best regards,\nSparkX AI Recruitment Team"
             )
@@ -837,7 +1078,7 @@ class CandidateController:
                 f"This is a reminder for your upcoming AI Video Interview for {job_title}.\n\n"
                 f"• Scheduled Time: {scheduled_slot}\n"
                 f"{meet_line}"
-                f"• SparkX Portal URL: http://localhost:3000\n\n"
+                f"• SparkX Portal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n\n"
                 f"{payload.custom_message or 'Please ensure your camera and microphone are ready before joining.'}\n\n"
                 f"Best regards,\nSparkX AI Recruitment Team"
             )
@@ -847,7 +1088,7 @@ class CandidateController:
                 f"Dear {candidate.name},\n\n"
                 f"Congratulations! We are delighted to officially offer you the position of {job_title} at SparkX AI.\n\n"
                 f"{payload.custom_message or 'Our recruitment team was highly impressed with your interview performance and technical competencies.'}\n\n"
-                f"Please log in to your candidate portal at http://localhost:3000 to view your formal offer details.\n\n"
+                f"Please log in to your candidate portal at {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')} to view your formal offer details.\n\n"
                 f"Warmest regards,\nSparkX AI Talent Acquisition"
             )
         elif payload.template_type == "rejection_notice":
@@ -866,7 +1107,7 @@ class CandidateController:
             body = (
                 f"Dear {candidate.name},\n\n"
                 f"{payload.custom_message or f'Thank you for your interest in the {job_title} position. This is an update regarding your application status.'}\n\n"
-                f"Portal URL: http://localhost:3000\n\n"
+                f"Portal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n\n"
                 f"Best regards,\nSparkX AI Recruitment Team"
             )
 
@@ -902,7 +1143,7 @@ class CandidateController:
                 <table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" style="margin: 0 auto;">
                   <tr>
                     <td align="center" style="background-color: #4f46e5; border-radius: 10px;">
-                      <a href="http://localhost:3000" target="_blank" style="background-color: #4f46e5; color: #ffffff; padding: 13px 28px; border-radius: 10px; text-decoration: none; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; display: inline-block; text-align: center; border: 1px solid #4f46e5;">Open Candidate Portal</a>
+                      <a href="{os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}" target="_blank" style="background-color: #4f46e5; color: #ffffff; padding: 13px 28px; border-radius: 10px; text-decoration: none; font-family: Arial, sans-serif; font-weight: bold; font-size: 13px; display: inline-block; text-align: center; border: 1px solid #4f46e5;">Open Candidate Portal</a>
                     </td>
                   </tr>
                 </table>
@@ -1003,7 +1244,7 @@ class CandidateController:
                 name = email.split("@")[0].replace(".", " ").replace("_", " ").title()
 
         # Experience
-        current_year = 2026
+        current_year = datetime.now().year
         ranges = re.findall(r'\b(20\d\d)\s*[-–—to]+\s*(present|current|now|20\d\d)\b', text.lower())
         total_exp = 0.0
         for s_yr, e_yr in ranges:

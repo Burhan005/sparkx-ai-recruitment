@@ -351,6 +351,58 @@ class CopilotController:
                     "candidate_name": target_cand.name
                 }
 
+            # ── 3G. Candidate Expected Update Date & Timeline Inquiry ──
+            # e.g., "what is her update date?", "when will she hear back?", "has she received an update?"
+            is_timeline_inquiry = any(w in q_lower for w in [
+                "update date", "expected update", "feedback date", "decision date", "when will", "timeline",
+                "update sent", "got update", "received update", "update status", "status update", "hearing back"
+            ])
+            if is_timeline_inquiry:
+                today = datetime.utcnow().date()
+                exp_date_str = target_cand.expected_update_date
+                delta_str = "Not yet scheduled"
+                if exp_date_str:
+                    try:
+                        exp_d = datetime.strptime(exp_date_str, "%Y-%m-%d").date()
+                        d = (exp_d - today).days
+                        if d < 0:
+                            delta_str = f"Overdue by {abs(d)} day(s)"
+                        elif d == 0:
+                            delta_str = "Due Today"
+                        elif d == 1:
+                            delta_str = "Due Tomorrow"
+                        else:
+                            delta_str = f"Due in {d} day(s) ({exp_date_str})"
+                    except Exception:
+                        delta_str = exp_date_str
+
+                facts = [
+                    f"Candidate: {target_cand.name} ({target_cand.job_title})",
+                    f"Interview Status: {wf_interview.replace('_', ' ').title()}",
+                    f"Expected Update Date: {exp_date_str or 'Not yet set by recruiter'}",
+                    f"Update Status: {getattr(target_cand, 'update_status', 'not_set').replace('_', ' ').title()}",
+                    f"Timeline Status: {delta_str}",
+                    f"Update Sent At: {target_cand.update_sent_at.isoformat() if target_cand.update_sent_at else 'No update sent yet'}",
+                    f"Current Decision: {wf_decision.title()}"
+                ]
+                metrics = [
+                    f"Expected Date: {exp_date_str or 'Pending'}",
+                    f"Timeline: {delta_str}"
+                ]
+                interp = (
+                    f"For **{target_cand.name}**, the post-interview expected update date is **{exp_date_str or 'not yet scheduled'}** ({delta_str}). "
+                    + (f"Recruiter update was sent on {target_cand.update_sent_at.strftime('%Y-%m-%d')}." if target_cand.update_sent_at else "No formal hiring update has been dispatched yet.")
+                )
+                return {
+                    "text": f"Recruitment Timeline & Decision Follow-Up for **{target_cand.name}**:",
+                    "database_facts": facts,
+                    "metrics": metrics,
+                    "ai_interpretation": interp,
+                    "uncertainty": "Timeline dates are persisted against candidate application records and reflect recruiter scheduling.",
+                    "candidate_id": str(target_cand.id),
+                    "candidate_name": target_cand.name
+                }
+
             # ── 3F. Comprehensive Candidate Intelligence Briefing (Default for Candidate) ──
             facts = [
                 f"Candidate: {target_cand.name} (Requisition: {target_cand.job_title})",
@@ -810,6 +862,50 @@ class CopilotController:
                     f"{metrics_data['within_range_count']} candidate(s) fit strictly within budget, while {metrics_data['above_range_count']} exceed the cap."
                 ),
                 "uncertainty": f"{metrics_data['unprovided_count']} applicant(s) have not provided compensation data." if metrics_data['unprovided_count'] > 0 else ""
+            }
+
+        # ── 5B. RECRUITER UPDATE TIMELINE & REMINDERS ──
+        if any(w in q_lower for w in [
+            "awaiting update", "awaiting updates", "due today", "due tomorrow", "overdue update",
+            "overdue updates", "expected update", "update date", "candidate updates", "remind", "follow-up", "follow up",
+            "due soon", "updates pending"
+        ]):
+            from controllers.candidate_controller import CandidateController
+            timeline_data = CandidateController.get_update_timeline(db)
+
+            due_today = timeline_data.get("due_today", [])
+            due_tomorrow = timeline_data.get("due_tomorrow", [])
+            overdue = timeline_data.get("overdue", [])
+            awaiting = timeline_data.get("awaiting_update_date", [])
+            completed_updates = timeline_data.get("completed", [])
+
+            facts = [
+                f"Updates Due Today: {len(due_today)} candidate(s)" + (f" ({', '.join(c['name'] for c in due_today)})" if due_today else ""),
+                f"Updates Due Tomorrow: {len(due_tomorrow)} candidate(s)" + (f" ({', '.join(c['name'] for c in due_tomorrow)})" if due_tomorrow else ""),
+                f"Overdue Updates: {len(overdue)} candidate(s)" + (f" ({', '.join(c['name'] for c in overdue)})" if overdue else ""),
+                f"Post-Interview Awaiting Update Date: {len(awaiting)} candidate(s)" + (f" ({', '.join(c['name'] for c in awaiting)})" if awaiting else ""),
+                f"Completed Updates: {len(completed_updates)} candidate(s)"
+            ]
+
+            metrics = [
+                f"Due Today: {len(due_today)}",
+                f"Due Tomorrow: {len(due_tomorrow)}",
+                f"Overdue: {len(overdue)}",
+                f"Awaiting Date: {len(awaiting)}"
+            ]
+
+            interp = (
+                f"Recruiter Candidate Update Status: You have **{len(due_today)}** update(s) due today, "
+                f"**{len(due_tomorrow)}** update(s) due tomorrow, and **{len(overdue)}** overdue update(s) requiring immediate action. "
+                + (f"Additionally, {len(awaiting)} candidate(s) completed interviews but have not been assigned an expected feedback date." if awaiting else "All post-interview candidates have scheduled update timelines.")
+            )
+
+            return {
+                "text": "Recruiter Candidate Update Timeline & Reminder Status:",
+                "database_facts": facts,
+                "metrics": metrics,
+                "ai_interpretation": interp,
+                "uncertainty": "Calculated synchronously from candidate application expected_update_date records."
             }
 
         # ── 6. ACTION REQUIRED / PENDING TRIAGE ──

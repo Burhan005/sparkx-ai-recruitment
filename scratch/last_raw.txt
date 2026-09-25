@@ -1,0 +1,90 @@
+{
+  "technical_mcqs": [
+    {
+      "id": "mcq_1",
+      "question": "An application running on EC2 instances in a private subnet needs to access an Amazon S3 bucket securely without traversing the public internet. Which VPC feature provides the most secure and cost-effective solution?",
+      "options": [
+        "A) Configure a NAT Gateway in a public subnet and route S3 traffic through it.",
+        "B) Create a Gateway VPC Endpoint for S3 and update the private subnet route table.",
+        "C) Establish an AWS Site-to-Site VPN and route S3 traffic back through the on-premises firewalls.",
+        "D) Deploy an Interface VPC Endpoint (AWS PrivateLink) for S3 in the private subnet."
+      ],
+      "correct_answer": "B) Create a Gateway VPC Endpoint for S3 and update the private subnet route table.",
+      "explanation": "Gateway Endpoints for S3 and DynamoDB are free of charge and keep traffic entirely within the AWS network using route tables. Interface Endpoints for S3 work as well but incur hourly and data processing charges."
+    },
+    {
+      "id": "mcq_2",
+      "question": "A team uses AWS KMS with Customer Managed Keys (CMK) for encrypting sensitive data in S3. Cross-account IAM roles are granted `kms:Decrypt` permissions, but cross-account read requests still fail with Access Denied. What is the most likely cause?",
+      "options": [
+        "A) The S3 bucket policy does not explicitly allow `kms:Decrypt` actions.",
+        "B) KMS keys do not support cross-account permissions under any circumstance.",
+        "C) The KMS Key Policy does not explicitly grant permissions to the external account or role.",
+        "D) AWS KMS automatic key rotation is enabled, breaking cross-account permission trust."
+      ],
+      "correct_answer": "C) The KMS Key Policy does not explicitly grant permissions to the external account or role.",
+      "explanation": "Cross-account KMS access requires explicit permission in BOTH the identity-based policy (IAM) of the requesting account AND the resource-based policy (Key Policy) of the KMS key."
+    },
+    {
+      "id": "mcq_3",
+      "question": "An Amazon DynamoDB table experiences throttling on write requests during peak traffic spikes, despite auto-scaling being enabled for Provisioned Capacity. What is the primary architectural cause?",
+      "options": [
+        "A) DynamoDB auto-scaling takes hours to trigger metric updates.",
+        "B) Hot partition issues due to a poorly chosen partition key with low cardinality.",
+        "C) DynamoDB global tables were not configured across multiple regions.",
+        "D) Auto-scaling cannot scale provisioned capacity beyond 100 WCU."
+      ],
+      "correct_answer": "B) Hot partition issues due to a poorly chosen partition key with low cardinality.",
+      "explanation": "DynamoDB distributes throughput across partitions. If write requests heavily target a single partition key value ('hot partition'), that specific partition's capacity limit will be exceeded and throttled regardless of total provisioned capacity."
+    },
+    {
+      "id": "mcq_4",
+      "question": "Which Service Control Policy (SCP) behavior is correct when applied within an AWS Organization?",
+      "options": [
+        "A) SCPs grant permissions directly to IAM users and roles in member accounts.",
+        "B) SCPs set explicit boundaries on maximum permissions, but require an IAM policy to actually grant access.",
+        "C) SCPs override local IAM 'Explicit Deny' statements if configured at the Root OU.",
+        "D) SCPs apply to the AWS account Management account as well as all Member accounts."
+      ],
+      "correct_answer": "B) SCPs set explicit boundaries on maximum permissions, but require an IAM policy to actually grant access.",
+      "explanation": "SCPs act as permission guardrails specifying maximum allowed actions. They do not grant permissions on their own; an IAM policy in the target account must still explicitly grant the permission."
+    }
+  ],
+  "scenario": {
+    "title": "Enterprise Multi-Account Landing Zone & Cross-Region Disaster Recovery",
+    "context": "A financial services company is migrating a critical legacy web application to AWS. The architecture must satisfy strict compliance requirements: dedicated isolation between Development, Staging, and Production environments, centralized audit logging, automated cross-region failover, and zero public S3 bucket exposure.",
+    "requirements": [
+      "Design an AWS Organizations account structure following security best practices (Landing Zone layout).",
+      "Architect a multi-region highly available deployment (Primary: us-east-1, Secondary DR: us-west-2) for a containerized application (ECS/EKS) backed by a relational database.",
+      "Implement centralized logging and security monitoring strategy across all accounts.",
+      "Define the DNS failover strategy using Amazon Route 53 with automated health checks."
+    ],
+    "evaluation_criteria": [
+      "Appropriate usage of Organizational Units (OUs) like Security, Workloads, and Infrastructure.",
+      "Use of AWS Control Tower / GuardDuty / CloudTrail with centralized S3 bucket aggregation and KMS key access controls.",
+      "Implementation of Aurora Global Database or Multi-Region Active-Passive / Active-Active patterns.",
+      "Clear design of Route 53 Routing Controls, Health Checks, and ARC (Application Recovery Controller)."
+    ]
+  },
+  "hands_on": {
+    "title": "Terraform Infrastructure Deployment - Secure VPC & Encrypted Application Tier",
+    "objective": "Write modular, production-ready Infrastructure as Code (Terraform) to deploy a secure 2-tier architecture.",
+    "deliverables": [
+      "VPC module creating 2 Public Subnets and 2 Private Subnets across 2 Availability Zones with NAT Gateways.",
+      "Auto Scaling Group (ASG) of EC2 instances running inside private subnets attached to an Application Load Balancer (ALB) in public subnets.",
+      "Security Groups following least-privilege principles (ALB accepts port 443 from anywhere; EC2 accepts port 80/8080 strictly from ALB Security Group).",
+      "KMS Encrypted EBS volumes for EC2 instances using dynamic launch templates."
+    ],
+    "starter_code_or_instructions": "Provide valid HCL (Terraform) configuration files (`main.tf`, `variables.tf`, `outputs.tf`) containing resource blocks for `aws_vpc`, `aws_lb`, `aws_launch_template`, `aws_autoscaling_group`, and `aws_security_group` with parameterized inputs."
+  },
+  "troubleshooting": {
+    "title": "ECS Fargate Task Failing Launch Cycle (CrashLoopBackOff / Pending to Stopped)",
+    "issue_description": "An Amazon ECS Service on Fargate running in a Private Subnet fails to start tasks. Tasks transition from PROVISIONING to PENDING, and then immediately move to STOPPED without printing any application logs to Amazon CloudWatch.",
+    "environment_details": "VPC contains 2 Private Subnets. Routes point to a NAT Gateway located in a Public Subnet. Security Group attached to ECS Task permits all outbound traffic (0.0.0.0/0). Container image hosted on Amazon ECR (`123456789012.dkr.ecr.us-east-1.amazonaws.com/my-app:latest`). Execution Role and Task Role are attached.",
+    "error_logs": "Stopped Reason: 'ResourceInitializationError: unable to pull secrets or raw image: pull image manifest: cannot connect to ECR endpoint... context deadline exceeded'",
+    "tasks": [
+      "Identify the root cause of the network connectivity failure preventing ECS from fetching the container image.",
+      "List step-by-step diagnostic CLI commands or VPC verification steps to pinpoint the failure point (Route Table, Subnet, NAT Gateway status, VPC Endpoints).",
+      "Propose two alternative resolution paths: (1) fixing public internet path via NAT Gateway / Subnet configuration, and (2) implementing a private interface using AWS PrivateLink VPC Endpoints for ECR and CloudWatch."
+    ]
+  }
+}

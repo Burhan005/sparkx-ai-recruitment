@@ -44,12 +44,91 @@ class BaseSandboxRunner(ABC):
         """Execute candidate code and return normalized CodeRunResponse."""
         pass
 
+    @abstractmethod
+    def get_supported_languages(self) -> List[Dict[str, Any]]:
+        """Return list of languages genuinely supported by this execution sandbox."""
+        pass
+
 
 class LocalSubprocessSandbox(BaseSandboxRunner):
     """
     Subprocess-based sandbox runner.
     Executes code in a fresh, isolated temporary directory with a scrubbed environment.
     """
+
+    def get_supported_languages(self) -> List[Dict[str, Any]]:
+        """
+        Dynamically detects available execution runtimes on the host machine.
+        Authoritative source of truth for genuine execution capabilities.
+        """
+        py_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        langs = [
+            {
+                "id": "python",
+                "label": "Python 3",
+                "version": f"Python {py_version}",
+                "monaco_lang": "python",
+                "executable": True,
+                "engine": "Python Subprocess Sandbox",
+                "ext": ".py",
+                "starter_code": "def solve(data):\n    # Write your solution here\n    return data\n"
+            },
+            {
+                "id": "sql",
+                "label": "SQL (Relational Engine)",
+                "version": "SQLite Native Sandbox",
+                "monaco_lang": "sql",
+                "executable": True,
+                "engine": "In-Memory Relational Engine",
+                "ext": ".sql",
+                "starter_code": "-- Write your SQL query here\nSELECT * FROM employees;\n"
+            }
+        ]
+
+        # Check Node.js
+        node_bin = shutil.which("node")
+        if node_bin:
+            try:
+                proc = subprocess.run([node_bin, "--version"], capture_output=True, text=True, timeout=2)
+                node_ver = proc.stdout.strip() if proc.returncode == 0 else "v20 LTS"
+            except Exception:
+                node_ver = "v20 LTS"
+
+            langs.append({
+                "id": "javascript",
+                "label": "JavaScript (Node.js)",
+                "version": f"Node.js {node_ver}",
+                "monaco_lang": "javascript",
+                "executable": True,
+                "engine": "Node.js Subprocess Sandbox",
+                "ext": ".js",
+                "starter_code": "function solve(data) {\n  // Write your solution here\n  return data;\n}\nmodule.exports = { solve };\n"
+            })
+            langs.append({
+                "id": "typescript",
+                "label": "TypeScript",
+                "version": f"TypeScript ({node_ver})",
+                "monaco_lang": "typescript",
+                "executable": True,
+                "engine": "Node.js Subprocess Sandbox",
+                "ext": ".ts",
+                "starter_code": "export function solve(data: any): any {\n  // Write your solution here\n  return data;\n}\n"
+            })
+
+        bash_bin = shutil.which("bash") or shutil.which("sh")
+        if bash_bin:
+            langs.append({
+                "id": "bash",
+                "label": "Bash / Shell",
+                "version": "GNU Bash",
+                "monaco_lang": "shell",
+                "executable": True,
+                "engine": "Shell Subprocess Sandbox",
+                "ext": ".sh",
+                "starter_code": "#!/usr/bin/env bash\n# Write your solution here\necho \"Execution successful\"\n"
+            })
+
+        return langs
 
     def _get_scrubbed_env(self, temp_dir: str) -> Dict[str, str]:
         """
@@ -813,3 +892,8 @@ class SandboxRunner:
     @classmethod
     def set_instance(cls, runner: BaseSandboxRunner):
         cls._instance = runner
+
+    @classmethod
+    def get_supported_languages(cls) -> List[Dict[str, Any]]:
+        return cls.get_instance().get_supported_languages()
+

@@ -95,6 +95,8 @@ def ensure_schema_columns():
                     "company_name": "VARCHAR DEFAULT 'SparkX Technologies'",
                     "coding_difficulty": "VARCHAR DEFAULT 'Mid-Level'",
                     "assessment_pool": "JSON DEFAULT '{}'",
+                    "assessment_version": "INTEGER DEFAULT 1",
+                    "competency_blueprint": "JSON DEFAULT '{}'",
                     "ctc_type": "VARCHAR DEFAULT 'range'",
                     "ctc_min": "NUMERIC(10, 2)",
                     "ctc_max": "NUMERIC(10, 2)",
@@ -143,7 +145,15 @@ def ensure_schema_columns():
                     "stage_updated_at": "TIMESTAMP",
                     "decision_updated_at": "TIMESTAMP",
                     "user_id": "VARCHAR",
-                    "version": "INTEGER DEFAULT 1"
+                    "version": "INTEGER DEFAULT 1",
+                    # Expected Update Date & Timeline Telemetry
+                    "expected_update_date": "VARCHAR",
+                    "update_notes": "TEXT",
+                    "update_status": "VARCHAR DEFAULT 'not_set'",
+                    "update_sent_at": "TIMESTAMP",
+                    "reminder_sent_flags": "JSON DEFAULT '{}'",
+                    "assessment_version": "INTEGER DEFAULT 1",
+                    "assessment_blueprint": "JSON DEFAULT '{}'"
                 }
                 for col, col_type in new_cand_cols.items():
                     if col not in cand_cols:

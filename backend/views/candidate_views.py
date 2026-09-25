@@ -10,13 +10,24 @@ from database import get_db
 from schemas import (
     CandidateApply, CandidateResponse, CandidateStatusUpdate, CandidateScheduleRequest,
     EmailSendRequest, CandidateApplicationItem, CandidateStageUpdate, HiringDecisionUpdate,
-    AssessmentInviteRequest
+    AssessmentInviteRequest, ExpectedUpdateDateRequest, CandidateUpdateNotificationRequest
 )
 from controllers.candidate_controller import CandidateController
 from models.db_models import UserModel
 from auth_dependencies import get_current_user, require_recruiter, get_optional_current_user
 
 router = APIRouter(prefix="/api/candidates", tags=["Candidates"])
+
+@router.get("/recruiter/update-timeline")
+def get_recruiter_update_timeline(
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Recruiter-only: lists candidates by expected update timeline
+    (due today, due tomorrow, upcoming, overdue, completed, awaiting date).
+    """
+    return CandidateController.get_update_timeline(db)
 
 @router.get("", response_model=List[CandidateResponse])
 def get_candidates(
@@ -127,6 +138,49 @@ def invite_assessment(
         candidate_id=candidate_id,
         custom_message=payload.custom_message,
         changed_by=current_user.email,
+        db=db
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return cand
+
+@router.post("/{candidate_id}/expected-update-date", response_model=CandidateResponse)
+def set_expected_update_date(
+    candidate_id: str,
+    payload: ExpectedUpdateDateRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Recruiter-only: sets the post-interview expected update date.
+    Stores timeline state, resets reminder flags, and informs candidate.
+    """
+    cand, err = CandidateController.set_expected_update_date(
+        candidate_id=candidate_id,
+        expected_update_date=payload.expected_update_date,
+        update_notes=payload.update_notes or "",
+        notify_candidate=payload.notify_candidate if payload.notify_candidate is not None else True,
+        db=db
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return cand
+
+@router.post("/{candidate_id}/send-recruiter-update", response_model=CandidateResponse)
+def send_recruiter_update(
+    candidate_id: str,
+    payload: CandidateUpdateNotificationRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Recruiter-only: dispatches an active status/decision update communication to the candidate.
+    Updates candidate timeline state to 'update_sent' and stops future reminders.
+    """
+    cand, err = CandidateController.send_recruiter_update(
+        candidate_id=candidate_id,
+        message=payload.message,
+        timeline_status=payload.timeline_status or "update_sent",
         db=db
     )
     if err:

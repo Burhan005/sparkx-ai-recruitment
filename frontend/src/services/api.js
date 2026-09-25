@@ -840,15 +840,83 @@ export const api = {
   },
 
   // ─── Recruiter Assessment Studio: AI Config Generator ─────────────────────
-  async generateStudioConfig(jobId) {
+  async generateStudioConfig(jobId, mcqCount = 5, interviewQCount = 3, difficulty = 'Mid-Level') {
     try {
-      const res = await authFetch(`${API_BASE_URL}/assessment/studio/job/${jobId}`, {
+      const params = new URLSearchParams({
+        mcq_count: mcqCount,
+        interview_q_count: interviewQCount,
+        difficulty,
+      });
+      const res = await authFetch(`${API_BASE_URL}/assessment/studio/job/${jobId}?${params}`, {
         signal: AbortSignal.timeout(60000), // LLM may take a moment
       });
       if (!res.ok) throw new Error(`Studio config generation failed: ${res.status}`);
       return await res.json();
     } catch (err) {
       console.warn('generateStudioConfig error:', err);
+      return null;
+    }
+  },
+
+  // ─── Supported Languages: Sandbox-detected authoritative list ─────────────
+  async getSupportedLanguages() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/assessment/supported-languages`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getSupportedLanguages failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getSupportedLanguages error:', err);
+      return [
+        { id: 'python', name: 'Python', isExecutable: true, monacoLang: 'python', icon: '🐍' },
+        { id: 'sql', name: 'SQL', isExecutable: true, monacoLang: 'sql', icon: '🗄️' },
+      ];
+    }
+  },
+
+  // ─── Recruiter: Expected Update Date ──────────────────────────────────────
+  async setExpectedUpdateDate(candidateId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/expected-update-date`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`setExpectedUpdateDate failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('setExpectedUpdateDate error:', err);
+      return null;
+    }
+  },
+
+  // ─── Recruiter: Send candidate communication update ───────────────────────
+  async sendRecruiterUpdate(candidateId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/send-recruiter-update`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) throw new Error(`sendRecruiterUpdate failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('sendRecruiterUpdate error:', err);
+      return null;
+    }
+  },
+
+  // ─── Recruiter: Update Timeline (due today / tomorrow / overdue) ──────────
+  async getUpdateTimeline() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/recruiter/update-timeline`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) throw new Error(`getUpdateTimeline failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getUpdateTimeline error:', err);
       return null;
     }
   },

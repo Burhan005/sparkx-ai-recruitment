@@ -1,6 +1,7 @@
 """
 (V) Assessment Views - HTTP Endpoints for 4-Category Technical Assessments
 """
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -13,12 +14,29 @@ from models.db_models import UserModel, CandidateModel, JobModel
 
 router = APIRouter(prefix="/api/assessment", tags=["Technical Assessment"])
 
+@router.get("/supported-languages")
+def get_supported_languages():
+    """
+    Authoritative source of available programming languages genuinely supported
+    by the backend execution sandbox infrastructure.
+    """
+    from services.sandbox_runner import SandboxRunner
+    return SandboxRunner.get_supported_languages()
+
+
 @router.get("/studio/job/{job_id}")
-def get_studio_config_for_job(job_id: str, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_studio_config_for_job(
+    job_id: str,
+    mcq_count: int = 5,
+    interview_q_count: int = 3,
+    difficulty: Optional[str] = "Mid-Level",
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
     Generate a domain-appropriate Assessment Studio configuration for a recruiter.
     Uses real job data (title, department, description, skills) to determine what
-    evaluation methods are appropriate. No hardcoded assessment structure.
+    evaluation methods and competencies are appropriate. Recruiter controls question counts.
     Requires recruiter role.
     """
     if current_user.role != "recruiter":
@@ -36,7 +54,10 @@ def get_studio_config_for_job(job_id: str, current_user: UserModel = Depends(get
         optional_criteria=job.optional_criteria or "",
         experience=job.experience or "",
         languages=job.languages or [],
-        job_id=job_id
+        job_id=job_id,
+        mcq_count=mcq_count,
+        interview_q_count=interview_q_count,
+        difficulty=difficulty or (job.coding_difficulty or "Mid-Level")
     )
     return config
 

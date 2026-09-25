@@ -25,6 +25,8 @@ class JobModel(Base):
     coding_assessment = Column(JSON, default=dict)
     coding_difficulty = Column(String, default="Mid-Level")
     assessment_pool = Column(JSON, default=dict)
+    assessment_version = Column(Integer, default=1)
+    competency_blueprint = Column(JSON, default=dict)
     
     # Authoritative Employer Compensation Specification (Production-Safe Numeric)
     ctc_type = Column(String, default="range", nullable=True) # "fixed" | "range" | "starting_from"
@@ -116,6 +118,17 @@ class CandidateModel(Base):
     hiring_decision = Column(String, default="undecided", index=True)
     stage_updated_at = Column(DateTime, default=datetime.utcnow)
     decision_updated_at = Column(DateTime, nullable=True)
+
+    # Post-Interview Recruiter Expected Update Date & Timeline Telemetry
+    expected_update_date = Column(String, nullable=True) # "YYYY-MM-DD"
+    update_notes = Column(Text, nullable=True)
+    update_status = Column(String, default="not_set", index=True) # "not_set" | "expected_update_date_set" | "update_sent" | "timeline_changed" | "update_overdue"
+    update_sent_at = Column(DateTime, nullable=True)
+    reminder_sent_flags = Column(JSON, default=dict) # {"due_tomorrow": bool, "due_today": bool}
+
+    # Assessment Versioning & Immutability Snapshot
+    assessment_version = Column(Integer, default=1, nullable=False)
+    assessment_blueprint = Column(JSON, default=dict)
 
     # Concurrency control
     version = Column(Integer, default=1, nullable=False)

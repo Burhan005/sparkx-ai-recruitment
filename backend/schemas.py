@@ -21,6 +21,8 @@ class JobCreate(BaseModel):
     coding_assessment: Optional[Dict[str, Any]] = None
     coding_difficulty: Optional[str] = "Mid-Level"
     assessment_pool: Optional[Dict[str, Any]] = None
+    assessment_version: Optional[int] = 1
+    competency_blueprint: Optional[Dict[str, Any]] = None
 
     # Authoritative Employer Compensation Specification
     ctc_type: Optional[str] = "range" # "fixed" | "range" | "starting_from"
@@ -93,6 +95,8 @@ class JobUpdate(BaseModel):
     coding_assessment: Optional[Dict[str, Any]] = None
     coding_difficulty: Optional[str] = None
     assessment_pool: Optional[Dict[str, Any]] = None
+    assessment_version: Optional[int] = None
+    competency_blueprint: Optional[Dict[str, Any]] = None
     status: Optional[str] = None
 
     # Compensation updates
@@ -284,6 +288,17 @@ class CandidateResponse(BaseModel):
     stage_updated_at: Optional[Any] = None
     decision_updated_at: Optional[Any] = None
 
+    # Expected Update Date & Timeline Telemetry
+    expected_update_date: Optional[str] = None
+    update_notes: Optional[str] = None
+    update_status: Optional[str] = "not_set"
+    update_sent_at: Optional[Any] = None
+    reminder_sent_flags: Optional[Dict[str, Any]] = None
+
+    # Assessment Versioning
+    assessment_version: Optional[int] = 1
+    assessment_blueprint: Optional[Dict[str, Any]] = None
+
     class Config:
         from_attributes = True
 
@@ -456,6 +471,36 @@ class CandidateApplicationItem(BaseModel):
     ctc_currency: Optional[str] = "INR"
     job_budget_formatted: Optional[str] = None
     candidate_expectation_formatted: Optional[str] = None
+    expected_update_date: Optional[str] = None
+    update_notes: Optional[str] = None
+    update_status: Optional[str] = "not_set"
+    update_sent_at: Optional[str] = None
+
+class ExpectedUpdateDateRequest(BaseModel):
+    expected_update_date: str # "YYYY-MM-DD"
+    update_notes: Optional[str] = ""
+    notify_candidate: Optional[bool] = True
+
+class CandidateUpdateNotificationRequest(BaseModel):
+    message: str
+    timeline_status: Optional[str] = "update_sent"
+
+class StudioAssessmentGenerateRequest(BaseModel):
+    job_id: str
+    mcq_count: Optional[int] = 5
+    interview_q_count: Optional[int] = 3
+    include_hands_on: Optional[bool] = None
+    difficulty: Optional[str] = None
+
+class SupportedLanguageItem(BaseModel):
+    id: str
+    label: str
+    version: str
+    monaco_lang: str
+    executable: bool
+    engine: str
+    ext: str
+    starter_code: Optional[str] = None
 
 class InterviewStartRequest(BaseModel):
     candidate_id: str

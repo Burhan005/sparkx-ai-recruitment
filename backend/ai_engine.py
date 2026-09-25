@@ -3762,12 +3762,16 @@ def generate_studio_assessment_config(
     optional_criteria: str = "",
     experience: str = "",
     languages: Optional[List[str]] = None,
-    job_id: str = ""
+    job_id: str = "",
+    mcq_count: int = 5,
+    interview_q_count: int = 3,
+    difficulty: str = "Mid-Level"
 ) -> Dict[str, Any]:
     """
     Produces a domain-appropriate recruiter Assessment Studio configuration
     driven entirely by real job data. No hardcoded assessment categories.
     The LLM decides what evaluation methods apply to this role.
+    Respects recruiter-supplied mcq_count, interview_q_count, and difficulty.
     """
     skills_str = ", ".join(required_skills[:8]) if required_skills else "General professional skills"
     desc_snippet = job_description[:800] if job_description else ""
@@ -3780,7 +3784,8 @@ def generate_studio_assessment_config(
     llm_prompt = (
         "You are a Principal Talent Assessment Architect. Design a recruiter assessment config for this specific job.\n"
         "Based on the REAL job data below, determine what evaluation methods are meaningful.\n"
-        "RULES: No coding challenges for non-technical roles. No finance tasks for engineers. All questions must be specific to this job. English only.\n\n"
+        f"RULES: Generate EXACTLY {mcq_count} MCQs and EXACTLY {interview_q_count} interview questions at {difficulty} difficulty. "
+        "No coding challenges for non-technical roles. No finance tasks for engineers. All questions must be specific to this job. English only.\n\n"
         f"JOB: Title={job_title}, Dept={department}, Exp={experience}\n"
         f"Skills: {skills_str}\nLanguages: {langs_str}\nOptional: {optional_str}\nDescription: {desc_snippet}\n\n"
         "Return ONLY strictly valid JSON (no markdown fences):\n"
@@ -3788,32 +3793,33 @@ def generate_studio_assessment_config(
         '"is_coding":<true if role requires writing/debugging executable code>,'
         '"domain_rationale":"<1 sentence based on job data>",'
         '"supported_eval_types":["<applicable types only: coding_challenge|sql_challenge|infrastructure_task|data_analysis_task|written_case_study|financial_modeling|mcq_knowledge|scenario_judgment|interview_questions|compliance_scenario|writing_sample|system_design>"],'
-        '"interview_questions":['
-        '{"id":"iq_1","type":"<competency>","prompt":"<rigorous question specific to this job>","rubric":["<c1>","<c2>","<c3>"],"follow_up_vague":"<probing follow-up>","follow_up_expert":"<deep-dive>"},'
-        '{"id":"iq_2","type":"<competency>","prompt":"<question>","rubric":["<c1>","<c2>","<c3>"],"follow_up_vague":"<fu>","follow_up_expert":"<dfu>"},'
-        '{"id":"iq_3","type":"<competency>","prompt":"<question>","rubric":["<c1>","<c2>","<c3>"],"follow_up_vague":"<fu>","follow_up_expert":"<dfu>"}'
-        '],'
+        + f'"interview_questions":['
+        + ','.join(
+            f'{{"id":"iq_{i+1}","type":"<competency>","prompt":"<rigorous question #{i+1} specific to this job>","rubric":["<c1>","<c2>","<c3>"],"follow_up_vague":"<probing follow-up>","follow_up_expert":"<deep-dive>"}}'
+            for i in range(interview_q_count)
+        )
+        + '],'
         '"assessment_pool":{'
         '"domain":"<domain>","is_coding":<true/false>,'
-        '"technical_mcqs":['
-        '{"id":"mcq_1","question":"<MCQ testing a required skill for this specific job>","options":{"A":"<opt>","B":"<opt>","C":"<opt>","D":"<opt>"},"correct_option":"<A/B/C/D>","explanation":"<why>","difficulty":"<Mid-Level/Senior>"},'
-        '{"id":"mcq_2","question":"<question>","options":{"A":"<opt>","B":"<opt>","C":"<opt>","D":"<opt>"},"correct_option":"<A/B/C/D>","explanation":"<exp>","difficulty":"<diff>"},'
-        '{"id":"mcq_3","question":"<question>","options":{"A":"<opt>","B":"<opt>","C":"<opt>","D":"<opt>"},"correct_option":"<A/B/C/D>","explanation":"<exp>","difficulty":"<diff>"}'
-        '],'
+        + '"technical_mcqs":['
+        + ','.join(
+            f'{{"id":"mcq_{i+1}","question":"<MCQ #{i+1} testing a required skill for this specific job>","options":{{"A":"<opt>","B":"<opt>","C":"<opt>","D":"<opt>"}},"correct_option":"<A/B/C/D>","explanation":"<why>","difficulty":"{difficulty}"}}'
+            for i in range(mcq_count)
+        )
+        + '],'
         '"scenario":{"id":"scenario_1","title":"<realistic title>","prompt":"<realistic problem person faces in this job>","guidance":"<what strong answer references>","difficulty":"Senior","ideal_keywords":["<kw1>","<kw2>","<kw3>","<kw4>"]},'
-        '"hands_on":{"id":"hands_on_1","title":"<task title>","is_coding":<true/false>,'
+        + f'"hands_on":{{"id":"hands_on_1","title":"<task title>","is_coding":<true/false>,'
         '"task_type":"<coding|sql|infrastructure|data_analysis|financial_modeling|written_case_study|writing_sample|system_design>",'
         '"instructions":"<specific task relevant to this job - NO PLACEHOLDERS>",'
-        '"difficulty":"Mid-Level","deliverable_description":"<what candidate must produce>",'
+        + f'"difficulty":"{difficulty}","deliverable_description":"<what candidate must produce>",'
         '"supported_languages":<["python","bash","sql","javascript"] if is_coding else []>,'
         '"starter_code":<{"python":"def solve(data):\n    pass\n"} if is_coding else {}>,'
         '"sample_test_cases":<[{"name":"test","input":"in","expected":"out"}] if is_coding else []>,'
         '"hidden_test_cases":<[{"name":"hidden","input":"in","expected":"out"}] if is_coding else []>'
-        '}'
+        '}}'
         '}'
         '}'
     )
-
     llm_res = call_llm(
         llm_prompt,
         "You are an expert talent assessment architect. Output strictly valid JSON only. All text in English.",
@@ -3881,6 +3887,6 @@ def generate_studio_assessment_config(
                 {"id":"mcq_3","question":f"What most distinguishes high performance in a {job_title} role handling {skill_list_str} under deadline?","options":{"A":"Completing tasks quickly by skipping documentation.","B":"Applying domain frameworks while maintaining quality, traceability, and stakeholder communication.","C":"Delegating critical decisions to avoid accountability.","D":"Waiting for instructions in ambiguous situations."},"correct_option":"B","explanation":f"High performers in {job_title} demonstrate structured thinking and domain expertise under pressure.","difficulty":"Senior"}
             ],
             "scenario": {"id":"scenario_1","title":f"Critical Escalation — {p_skill} in {job_title}","prompt":f"You are a {job_title}. A critical issue in {p_skill} has downstream impact on {s_skill} and organizational compliance. You have 48 hours before a senior leadership review. Detail your prioritization, mitigation, root cause investigation, and stakeholder communication plan.","guidance":f"Strong answers reference domain-specific standards for {p_skill} and {s_skill}, risk methodology, escalation protocols, and a structured remediation plan.","difficulty":"Senior","ideal_keywords":[p_skill.lower(),s_skill.lower(),"root cause","mitigation","stakeholder","escalation","framework"]},
-            "hands_on": {"id":"hands_on_1","title":f"Practical Task — {task_type_label.replace('_',' ').title()} for {job_title}","is_coding":is_coding,"task_type":task_type_label,"instructions":f"Using your knowledge of {skill_list_str}, complete a practical task relevant to the {job_title} role demonstrating actual day-to-day proficiency. Document your approach, methodology, assumptions, and deliverable.","difficulty":"Mid-Level","deliverable_description":f"Complete solution demonstrating mastery of {p_skill} in a realistic {job_title} scenario.","supported_languages":lang_list if is_coding else [],"starter_code":{"python":f"# {job_title} Solution\ndef solve(data):\n    pass\n"} if is_coding else {},"sample_test_cases":[{"name":"Basic case","input":"sample_input","expected":"expected_output"}] if is_coding else [],"hidden_test_cases":[{"name":"Edge case","input":"edge_input","expected":"edge_output"}] if is_coding else []}
+            "hands_on": {"id":"hands_on_1","title":f"Practical Task — {task_type_label.replace('_',' ').title()} for {job_title}","is_coding":is_coding,"task_type":task_type_label,"instructions":f"Using your knowledge of {skill_list_str}, complete a practical task relevant to the {job_title} role demonstrating actual day-to-day proficiency. Document your approach, methodology, assumptions, and deliverable.",f"difficulty":"{difficulty}","deliverable_description":f"Complete solution demonstrating mastery of {p_skill} in a realistic {job_title} scenario.","supported_languages":lang_list if is_coding else [],"starter_code":{"python":f"# {job_title} Solution\ndef solve(data):\n    pass\n"} if is_coding else {},"sample_test_cases":[{"name":"Basic case","input":"sample_input","expected":"expected_output"}] if is_coding else [],"hidden_test_cases":[{"name":"Edge case","input":"edge_input","expected":"edge_output"}] if is_coding else []}
         }
     }

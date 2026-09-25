@@ -86,6 +86,21 @@ export default function CodeAssessment() {
   const [submissionSuccess, setSubmissionSuccess] = useState(false);
   const [accessDeniedMessage, setAccessDeniedMessage] = useState(null);
 
+  // Sandbox-supported languages (fetched from backend on mount)
+  const [sandboxLanguages, setSandboxLanguages] = useState(null); // null = not loaded yet
+
+  // On mount: fetch the authoritative list of executable languages from backend sandbox
+  useEffect(() => {
+    api.getSupportedLanguages().then(langs => {
+      if (langs && langs.length > 0) setSandboxLanguages(langs);
+    }).catch(() => {}); // graceful fallback - sandboxLanguages stays null
+  }, []);
+
+  // Derive the list of executable language IDs (what the sandbox can actually run)
+  const executableLanguageIds = sandboxLanguages
+    ? sandboxLanguages.filter(l => l.isExecutable).map(l => l.id)
+    : null; // null = not loaded yet, CandidateIDE will use assessment bundle's own list
+
   // Timer & Evaluation Start State
   const [hasStarted, setHasStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(45 * 60); // 45:00 minutes
@@ -1074,7 +1089,15 @@ export default function CodeAssessment() {
               examples={assessmentBundle.hands_on.examples || []}
               constraints={assessmentBundle.hands_on.constraints || []}
               functionSignatures={assessmentBundle.hands_on.function_signature || {}}
-              supportedLanguages={assessmentBundle.hands_on.supported_languages || ['python', 'javascript', 'typescript', 'java', 'cpp', 'sql']}
+              supportedLanguages={(() => {
+                  const bundleLangs = assessmentBundle.hands_on.supported_languages || ['python', 'javascript', 'typescript', 'java', 'cpp', 'sql'];
+                  if (executableLanguageIds) {
+                    // Intersect bundle langs with what the sandbox can actually run
+                    const filtered = bundleLangs.filter(l => executableLanguageIds.includes(l));
+                    return filtered.length > 0 ? filtered : ['python'];
+                  }
+                  return bundleLangs;
+                })()}
               starterCodes={assessmentBundle.hands_on.starter_code || {}}
               code={handsOnCode}
               language={handsOnLang}
@@ -1230,7 +1253,14 @@ export default function CodeAssessment() {
               examples={assessmentBundle.troubleshooting.examples || []}
               constraints={assessmentBundle.troubleshooting.constraints || []}
               functionSignatures={assessmentBundle.troubleshooting.function_signature || {}}
-              supportedLanguages={assessmentBundle.troubleshooting.supported_languages || ['python', 'javascript', 'typescript', 'java', 'cpp', 'sql']}
+              supportedLanguages={(() => {
+                  const bundleLangs = assessmentBundle.troubleshooting.supported_languages || ['python', 'javascript', 'typescript', 'java', 'cpp', 'sql'];
+                  if (executableLanguageIds) {
+                    const filtered = bundleLangs.filter(l => executableLanguageIds.includes(l));
+                    return filtered.length > 0 ? filtered : ['python'];
+                  }
+                  return bundleLangs;
+                })()}
               starterCodes={assessmentBundle.troubleshooting.broken_code || {}}
               code={troubleCode}
               language={troubleLang}
