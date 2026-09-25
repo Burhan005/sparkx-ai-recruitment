@@ -93,7 +93,7 @@ export default function CustomDropdown({
   return (
     <div 
       ref={containerRef} 
-      className={`relative inline-block text-left ${isOpen ? 'z-50' : 'z-10'} ${className}`}
+      className={`relative block text-left ${isOpen ? 'z-50' : 'z-10'} ${className}`}
       onKeyDown={handleKeyDown}
       title={title}
     >

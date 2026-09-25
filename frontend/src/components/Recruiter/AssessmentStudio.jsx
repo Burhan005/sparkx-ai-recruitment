@@ -341,44 +341,46 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            <div className="w-52 sm:w-60">
-              <CustomDropdown
-                value={selectedJobId}
-                onChange={(val) => {
-                  setSelectedJobId(val);
-                  setActiveJobId(val);
-                }}
-                options={jobOptions}
-                icon={Briefcase}
-                menuWidth="w-80"
-                align="right"
-                title="Select Job Requisition"
-              />
+          <div className="flex flex-col items-stretch lg:items-end gap-2 shrink-0 lg:min-w-[260px]">
+            {/* Row 1: Job selector */}
+            <CustomDropdown
+              value={selectedJobId}
+              onChange={(val) => {
+                setSelectedJobId(val);
+                setActiveJobId(val);
+              }}
+              options={jobOptions}
+              icon={Briefcase}
+              menuWidth="w-80"
+              align="right"
+              title="Select Job Requisition"
+            />
+
+            {/* Row 2: Action buttons — always on their own row, always fully visible */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={isGeneratingAI ? Loader2 : RefreshCw}
+                onClick={handleRegenerateWithAI}
+                disabled={isGeneratingAI || isLoadingConfig}
+                className={`flex-1 lg:flex-none ${isGeneratingAI ? 'opacity-70' : ''}`}
+                title="Re-analyze job requirements and regenerate evaluation plan"
+              >
+                {isGeneratingAI ? 'Generating…' : 'Regenerate with AI'}
+              </Button>
+
+              <Button
+                variant="primary"
+                size="sm"
+                icon={Save}
+                onClick={handleSaveConfiguration}
+                disabled={isSaving || isLoadingConfig || !studioConfig}
+                className="flex-1 lg:flex-none shadow-sm shadow-brand-500/20"
+              >
+                {isSaving ? 'Publishing…' : 'Save & Publish'}
+              </Button>
             </div>
-
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={isGeneratingAI ? Loader2 : RefreshCw}
-              onClick={handleRegenerateWithAI}
-              disabled={isGeneratingAI || isLoadingConfig}
-              className={isGeneratingAI ? 'opacity-70' : ''}
-              title="Re-analyze job requirements and regenerate evaluation plan"
-            >
-              {isGeneratingAI ? 'Generating…' : 'Regenerate with AI'}
-            </Button>
-
-            <Button
-              variant="primary"
-              size="sm"
-              icon={Save}
-              onClick={handleSaveConfiguration}
-              disabled={isSaving || isLoadingConfig || !studioConfig}
-              className="shadow-sm shadow-brand-500/20"
-            >
-              {isSaving ? 'Publishing…' : 'Save & Publish'}
-            </Button>
           </div>
         </div>
 
