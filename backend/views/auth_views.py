@@ -36,6 +36,7 @@ def get_me(request: Request, current_user = Depends(get_current_user)):
         "name": current_user.name,
         "email": current_user.email,
         "role": current_user.role,
+        "organization_id": getattr(current_user, "organization_id", "org-sparkx-default") or "org-sparkx-default",
         "token": raw_token,
         "phone": current_user.phone,
         "job_role": current_user.job_role,
@@ -49,8 +50,24 @@ def get_me(request: Request, current_user = Depends(get_current_user)):
 
 @router.get("/profile/{user_id}", response_model=UserResponse)
 def get_profile(user_id: str, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "recruiter" and current_user.id != user_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to user profile")
+    if current_user.id != user_id:
+        if current_user.role != "recruiter":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied to user profile")
+        from models.db_models import UserModel, CandidateModel
+        target_user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        if not target_user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        rec_org = getattr(current_user, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+        target_org = getattr(target_user, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+        if target_user.role == "recruiter" and target_org != rec_org:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-tenant access forbidden: Cannot view recruiter profile from another organization.")
+        elif target_user.role == "candidate":
+            has_app = db.query(CandidateModel).filter(
+                CandidateModel.email == target_user.email,
+                CandidateModel.organization_id == rec_org
+            ).first()
+            if not has_app:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-tenant access forbidden: Candidate has no applications in your organization.")
     user, err = AuthController.get_user_profile(user_id, db)
     if err:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=err)
@@ -58,7 +75,7 @@ def get_profile(user_id: str, current_user = Depends(get_current_user), db: Sess
 
 @router.put("/profile/{user_id}", response_model=UserResponse)
 def update_profile(user_id: str, payload: UserProfileUpdate, current_user = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "recruiter" and current_user.id != user_id:
+    if current_user.id != user_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Cannot edit another user's profile")
     user, err = AuthController.update_user_profile(user_id, payload, db)
     if err:

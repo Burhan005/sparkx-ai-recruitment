@@ -108,8 +108,8 @@ def run_tests():
     print("\n--- TEST 3: Full End-to-End Candidate Lifecycle in Database ---")
     db = SessionLocal()
     try:
-        # Create or fetch a test job
-        job = db.query(JobModel).first()
+        # Create or fetch an active test job
+        job = db.query(JobModel).filter(JobModel.status == "Active").first()
         if not job:
             job = JobModel(
                 title="Workflow Test Engineer",
@@ -295,6 +295,44 @@ def run_tests():
         assert cand.hiring_decision == DECISION_SELECTED
         assert cand.stage == STAGE_COMPLETED
         print("✓ Step 3.10: Final decision 'selected', stage 'completed'.")
+
+        # 3.11: Immutability Guard — Block Stage Regression & Decision Mutability when Final
+        print("\n--- TEST: Final Decision Immutability Guard ---")
+        cand_moved, blocked_err = CandidateController.update_stage(cand.id, STAGE_INTERVIEW, db=db)
+        assert cand_moved is None
+        assert blocked_err is not None
+        assert "final hiring decision" in blocked_err.lower() or "final decision" in blocked_err.lower()
+        print(f"✓ Blocked stage change on finalized candidate: '{blocked_err}'")
+
+        cand_decided, blocked_dec_err = CandidateController.update_hiring_decision(cand.id, DECISION_SHORTLISTED, db=db)
+        assert cand_decided is None
+        assert blocked_dec_err is not None
+        assert "final decision" in blocked_dec_err.lower() or "immutable" in blocked_dec_err.lower()
+        print(f"✓ Blocked backward decision change on finalized candidate: '{blocked_dec_err}'")
+
+        # 3.12: Controlled Reopening Workflow
+        print("\n--- TEST: Controlled Reopening Workflow ---")
+        # Attempt with short reason (< 10 chars)
+        reopened_cand, short_reason_err = CandidateController.reopen_application(cand.id, reason="Too short", changed_by="recruiter@sparkx.ai", db=db)
+        assert reopened_cand is None
+        assert short_reason_err is not None
+        assert "10 characters" in short_reason_err
+        print("✓ Blocked reopening with short reason (< 10 chars)")
+
+        # Valid reopening
+        valid_reason = "New technical evidence reviewed by engineering director. Candidate eligible for re-evaluation."
+        reopened_cand, reopen_err = CandidateController.reopen_application(cand.id, reason=valid_reason, changed_by="lead_recruiter@sparkx.ai", db=db)
+        assert reopened_cand is not None
+        assert reopen_err is None
+
+        db.refresh(cand)
+        assert cand.hiring_decision == DECISION_UNDECIDED
+        assert cand.stage == STAGE_REVIEW
+        assert cand.previous_final_decision == DECISION_SELECTED
+        assert cand.reopen_reason == valid_reason
+        assert cand.reopened_by == "lead_recruiter@sparkx.ai"
+        assert cand.reopened_at is not None
+        print(f"✓ Application successfully reopened. Stage: '{cand.stage}', Decision: '{cand.hiring_decision}', Previous Final: '{cand.previous_final_decision}'")
 
         # 3.11: Verify Complete Audit Log Trail
         final_logs = CandidateController.get_state_logs(cand.id, db)

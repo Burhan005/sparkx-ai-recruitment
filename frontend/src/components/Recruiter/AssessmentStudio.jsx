@@ -25,8 +25,15 @@ import {
   PenLine,
   DollarSign,
   Cpu,
+  Globe,
+  ExternalLink,
+  Link2,
+  Layers,
 } from 'lucide-react';
 import { Button, Badge, CustomDropdown } from '../ui/Primitives';
+import { useToast } from '../ui/Toast';
+import ProblemBankManager from './ProblemBankManager';
+import MCQBankManager from './MCQBankManager';
 
 // Map supported_eval_types to friendly tab definitions
 const EVAL_TYPE_TO_TAB = {
@@ -35,16 +42,17 @@ const EVAL_TYPE_TO_TAB = {
   infrastructure_task: { id: 'assessment',  label: 'Infrastructure Task',       icon: Cpu,          color: 'text-brand-600' },
   data_analysis_task:  { id: 'assessment',  label: 'Data Analysis Task',        icon: BarChart3,    color: 'text-brand-600' },
   financial_modeling:  { id: 'assessment',  label: 'Financial Modeling Task',   icon: DollarSign,   color: 'text-amber-600' },
-  written_case_study:  { id: 'assessment',  label: 'Written Case Study',        icon: PenLine,      color: 'text-indigo-600' },
-  writing_sample:      { id: 'assessment',  label: 'Writing Assignment',        icon: PenLine,      color: 'text-indigo-600' },
+  written_case_study:  { id: 'assessment',  label: 'Written Case Study',        icon: PenLine,      color: 'text-brand-600' },
+  writing_sample:      { id: 'assessment',  label: 'Writing Assignment',        icon: PenLine,      color: 'text-brand-600' },
   compliance_scenario: { id: 'assessment',  label: 'Compliance Scenario',       icon: Award,        color: 'text-rose-600' },
   system_design:       { id: 'assessment',  label: 'System Design Task',        icon: Cpu,          color: 'text-brand-600' },
+  external_platforms:  { id: 'external',    label: 'External Coding Platforms', icon: Globe,        color: 'text-brand-600' },
   mcq_knowledge:       { id: 'mcq',         label: 'Knowledge MCQs',            icon: FileText,     color: 'text-slate-600' },
   scenario_judgment:   { id: 'scenario',    label: 'Scenario & Judgment',       icon: AlertTriangle, color: 'text-amber-600' },
   interview_questions: { id: 'interview',   label: 'AI Interview Questions',    icon: Video,        color: 'text-purple-600' },
 };
 
-function getTabsFromEvalTypes(evalTypes) {
+function getTabsFromEvalTypes(evalTypes, isCoding = true) {
   const seen = new Set();
   const tabs = [];
   for (const evalType of (evalTypes || [])) {
@@ -57,6 +65,22 @@ function getTabsFromEvalTypes(evalTypes) {
   // Always ensure interview tab is present
   if (!seen.has('interview')) {
     tabs.push({ id: 'interview', label: 'AI Interview Questions', icon: Video, color: 'text-purple-600', evalType: 'interview_questions' });
+    seen.add('interview');
+  }
+  // Always ensure MCQ Question Bank tab is present
+  if (!seen.has('mcq_bank')) {
+    tabs.push({ id: 'mcq_bank', label: 'MCQ Bank & Authoring', icon: FileText, color: 'text-brand-600', evalType: 'mcq_knowledge' });
+    seen.add('mcq_bank');
+  }
+  // Always ensure Coding Problem Bank tab is present for technical/coding roles
+  if (!seen.has('problem_bank') && (isCoding || !evalTypes || evalTypes.includes('external_platforms') || evalTypes.includes('coding_challenge') || evalTypes.includes('system_design') || evalTypes.includes('infrastructure_task') || evalTypes.includes('sql_challenge'))) {
+    tabs.push({ id: 'problem_bank', label: 'Problem Bank & Authoring', icon: Layers, color: 'text-brand-600', evalType: 'coding_challenge' });
+    seen.add('problem_bank');
+  }
+  // Always ensure external platforms (LeetCode, HackerRank, CodeSignal) tab is present for technical/coding roles
+  if (!seen.has('external') && (isCoding || !evalTypes || evalTypes.includes('external_platforms') || evalTypes.includes('coding_challenge') || evalTypes.includes('system_design') || evalTypes.includes('infrastructure_task') || evalTypes.includes('sql_challenge'))) {
+    tabs.push({ id: 'external', label: 'External Coding Platforms', icon: Globe, color: 'text-brand-600', evalType: 'external_platforms' });
+    seen.add('external');
   }
   return tabs;
 }
@@ -71,6 +95,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
     updateJob, 
     userRole 
   } = useRecruitment();
+  const toast = useToast();
 
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || defaultTab);
 
@@ -128,10 +153,45 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
   const [newTestOutput, setNewTestOutput] = useState('');
   const [newTestIsHidden, setNewTestIsHidden] = useState(false);
 
+  // ── External Platforms Integration State ──
+  const [platformsConfig, setPlatformsConfig] = useState([]);
+  const [selectedPlatform, setSelectedPlatform] = useState('hackerrank');
+  const [extQuery, setExtQuery] = useState('');
+  const [extDifficulty, setExtDifficulty] = useState('');
+  const [availableExtQuestions, setAvailableExtQuestions] = useState([]);
+  const [selectedExtQuestions, setSelectedExtQuestions] = useState([]);
+  const [isLoadingExt, setIsLoadingExt] = useState(false);
+
+  // Fetch supported external platforms configuration status on mount
+  useEffect(() => {
+    api.getExternalPlatforms().then(res => {
+      if (Array.isArray(res)) setPlatformsConfig(res);
+    }).catch(() => {});
+  }, []);
+
+  // Fetch questions when on external tab or search filters change
+  useEffect(() => {
+    if (activeTab !== 'external') return;
+    setIsLoadingExt(true);
+    const debounce = setTimeout(() => {
+      api.searchExternalQuestions(selectedPlatform, extQuery, extDifficulty)
+        .then(qList => setAvailableExtQuestions(Array.isArray(qList) ? qList : []))
+        .catch(() => setAvailableExtQuestions([]))
+        .finally(() => setIsLoadingExt(false));
+    }, 200);
+    return () => clearTimeout(debounce);
+  }, [selectedPlatform, extQuery, extDifficulty, activeTab]);
+
   // Derived domain flags
   const domain = studioConfig?.domain || 'unknown';
-  const isCoding = studioConfig?.is_coding ?? false;
-  const availableTabs = useMemo(() => getTabsFromEvalTypes(studioConfig?.supported_eval_types), [studioConfig]);
+  const isCoding = Boolean(
+    studioConfig?.is_coding ?? (
+      currentJob?.coding_difficulty ||
+      currentJob?.languages?.length ||
+      /engineer|developer|fullstack|frontend|backend|devops|data|ai|software|cloud|architect|systems|coder|programmer/i.test(currentJob?.title || '')
+    )
+  );
+  const availableTabs = useMemo(() => getTabsFromEvalTypes(studioConfig?.supported_eval_types, isCoding), [studioConfig, isCoding]);
 
   // ── Load studio config from backend when job changes ──
   const loadStudioConfig = useCallback(async (jobId) => {
@@ -157,6 +217,8 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
       );
       setHandsOnTask(pool.hands_on || null);
       setScenarioData(pool.scenario || null);
+      if (pool.external_platform) setSelectedPlatform(pool.external_platform);
+      if (Array.isArray(pool.external_questions)) setSelectedExtQuestions(pool.external_questions);
       // Default question type based on domain
       setNewQuestionType(config.domain ? `${config.domain.replace(/_/g, ' ')} — Core Competency` : 'Core Competency');
     } catch (err) {
@@ -171,7 +233,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
     if (!currentJob) return;
 
     const existingPool = currentJob.assessment_pool || {};
-    const hasExistingPool = existingPool.domain && (existingPool.technical_mcqs || existingPool.hands_on || existingPool.scenario);
+    const hasExistingPool = existingPool.domain && (existingPool.technical_mcqs || existingPool.hands_on || existingPool.scenario || existingPool.external_platform);
 
     if (hasExistingPool && currentJob.questions && currentJob.questions.length > 0) {
       // Use cached config from job record
@@ -191,6 +253,8 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
       setMcqList(existingPool.technical_mcqs || []);
       setHandsOnTask(existingPool.hands_on || null);
       setScenarioData(existingPool.scenario || null);
+      if (existingPool.external_platform) setSelectedPlatform(existingPool.external_platform);
+      if (Array.isArray(existingPool.external_questions)) setSelectedExtQuestions(existingPool.external_questions);
       setNewQuestionType(cachedConfig.domain ? `${cachedConfig.domain.replace(/_/g, ' ')} — Core Competency` : 'Core Competency');
     } else {
       // Generate fresh from backend
@@ -203,18 +267,29 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
     if (!currentJob || isGeneratingAI) return;
     setIsGeneratingAI(true);
     try {
-      const config = await api.generateStudioConfig(currentJob.id);
+      const config = await api.generateStudioConfig(
+        currentJob.id,
+        5,
+        3,
+        currentJob.coding_difficulty || 'Mid-Level',
+        true
+      );
       if (config) {
         setStudioConfig(config);
         const pool = config.assessment_pool || {};
-        setInterviewQuestions(config.interview_questions || []);
-        setMcqList(pool.technical_mcqs || []);
+        const newIqs = config.interview_questions || [];
+        const newMcqs = pool.technical_mcqs || [];
+        setInterviewQuestions(newIqs);
+        setMcqList(newMcqs);
         setHandsOnTask(pool.hands_on || null);
         setScenarioData(pool.scenario || null);
+        if (pool.external_platform) setSelectedPlatform(pool.external_platform);
+        if (Array.isArray(pool.external_questions)) setSelectedExtQuestions(pool.external_questions);
         setNewQuestionType(config.domain ? `${config.domain.replace(/_/g, ' ')} — Core Competency` : 'Core Competency');
+        toast.success(`Regenerated assessment with AI (${newIqs.length} interview questions, ${newMcqs.length} MCQs)`);
       }
     } catch (err) {
-      alert('Failed to regenerate: ' + (err.message || 'Unknown error'));
+      toast.error('Failed to regenerate: ' + (err.message || 'Unknown error'));
     } finally {
       setIsGeneratingAI(false);
     }
@@ -235,15 +310,18 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
         technical_mcqs: mcqList,
         scenario: scenarioData,
         hands_on: handsOnTask,
+        external_platform: selectedPlatform,
+        external_questions: selectedExtQuestions,
       };
       await updateJob(currentJob.id, {
         questions: interviewQuestions,
         assessment_pool: pool,
       });
       setSaveSuccess(true);
+      toast.success('Assessment configuration saved & published to candidates');
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err) {
-      alert('Error saving: ' + (err.message || 'Unknown error'));
+      toast.error('Error saving: ' + (err.message || 'Unknown error'));
     } finally {
       setIsSaving(false);
     }
@@ -266,17 +344,48 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
   };
 
   // ── Add custom MCQ ──
-  const handleAddCustomMcq = (e) => {
+  const handleAddCustomMcq = async (e) => {
     e.preventDefault();
     if (!newMcqQuestion.trim() || !newMcqOptA.trim() || !newMcqOptB.trim()) return;
-    setMcqList(prev => [...prev, {
-      id: `mcq_custom_${Date.now()}`,
-      question: newMcqQuestion.trim(),
-      options: { A: newMcqOptA.trim(), B: newMcqOptB.trim(), C: newMcqOptC.trim() || 'N/A', D: newMcqOptD.trim() || 'N/A' },
-      correct_option: newMcqCorrect,
-      explanation: newMcqExplanation.trim() || 'Correct answer per domain standards.',
-      is_recruiter_custom: true
-    }]);
+    try {
+      const created = await api.createMCQQuestion({
+        question_text: newMcqQuestion.trim(),
+        category: studioConfig?.domain || 'technical',
+        difficulty: currentJob?.coding_difficulty || 'Medium',
+        explanation: newMcqExplanation.trim() || 'Correct answer per domain standards.',
+        options: {
+          A: newMcqOptA.trim(),
+          B: newMcqOptB.trim(),
+          C: newMcqOptC.trim() || 'N/A',
+          D: newMcqOptD.trim() || 'N/A'
+        },
+        correct_option: newMcqCorrect
+      });
+      setMcqList(prev => [...prev, {
+        id: created.id,
+        question: created.question_text,
+        options: {
+          A: newMcqOptA.trim(),
+          B: newMcqOptB.trim(),
+          C: newMcqOptC.trim() || 'N/A',
+          D: newMcqOptD.trim() || 'N/A'
+        },
+        correct_option: newMcqCorrect,
+        explanation: created.explanation,
+        is_recruiter_custom: true
+      }]);
+      toast.success('Custom MCQ saved to database');
+    } catch (err) {
+      console.warn('Fallback local MCQ authoring:', err);
+      setMcqList(prev => [...prev, {
+        id: `mcq_custom_${Date.now()}`,
+        question: newMcqQuestion.trim(),
+        options: { A: newMcqOptA.trim(), B: newMcqOptB.trim(), C: newMcqOptC.trim() || 'N/A', D: newMcqOptD.trim() || 'N/A' },
+        correct_option: newMcqCorrect,
+        explanation: newMcqExplanation.trim() || 'Correct answer per domain standards.',
+        is_recruiter_custom: true
+      }]);
+    }
     setNewMcqQuestion(''); setNewMcqOptA(''); setNewMcqOptB(''); setNewMcqOptC(''); setNewMcqOptD(''); setNewMcqExplanation('');
     setIsAddingMcq(false);
   };
@@ -320,10 +429,10 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
     : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800';
 
   return (
-    <div className="space-y-6 pb-20 animate-fade-in-up">
+    <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-20 animate-fade-in-up">
 
       {/* ── Studio Header ── */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card">
+      <div className="p-4 sm:p-6 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -434,7 +543,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
 
       {/* ── Loading / Error State ── */}
       {isLoadingConfig && (
-        <div className="p-10 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-4 text-center">
+        <div className="p-10 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-4 text-center">
           <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
           <div>
             <p className="font-semibold text-slate-900 dark:text-white text-sm">Analyzing job requirements…</p>
@@ -444,7 +553,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
       )}
 
       {!isLoadingConfig && configLoadError && (
-        <div className="p-6 rounded-2xl bg-white dark:bg-[#0E121E] border border-rose-200 dark:border-rose-900 flex items-center gap-4">
+        <div className="p-6 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-rose-200 dark:border-rose-900 flex items-center gap-4">
           <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-rose-700 dark:text-rose-400">{configLoadError}</p>
@@ -464,8 +573,10 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
               let count = 0;
               if (tab.id === 'interview') count = interviewQuestions.length;
               else if (tab.id === 'mcq') count = mcqList.length;
+              else if (tab.id === 'problem_bank') count = 'Bank';
               else if (tab.id === 'assessment') count = 1;
               else if (tab.id === 'scenario') count = scenarioData ? 1 : 0;
+              else if (tab.id === 'external') count = selectedExtQuestions.length;
               return (
                 <button
                   key={tab.id}
@@ -473,7 +584,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
                   onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs sm:text-sm font-semibold transition border-b-2 whitespace-nowrap ${
                     isActive
-                      ? 'border-brand-600 text-brand-600 dark:text-brand-400 bg-white dark:bg-[#0E121E] shadow-xs'
+                      ? 'border-brand-600 text-brand-600 dark:text-brand-400 bg-[#FDFCFA] dark:bg-[#1A1714] shadow-xs'
                       : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/40'
                   }`}
                 >
@@ -492,7 +603,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
           {/* ── TAB: AI INTERVIEW QUESTIONS ── */}
           {activeTab === 'interview' && (
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-3">
+              <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-3">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Plus className="w-4 h-4 text-brand-600" />
                   <span>Add Custom Interview Question</span>
@@ -552,13 +663,13 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
                   </div>
                 )}
                 {interviewQuestions.map((q, idx) => (
-                  <div key={q.id || idx} className="p-4 rounded-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-xs space-y-2 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+                  <div key={q.id || idx} className="p-4 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-xs space-y-2 transition-all hover:border-slate-300 dark:hover:border-slate-700">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold font-mono text-slate-600 dark:text-slate-300 flex items-center justify-center">
                           {idx + 1}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
                           {q.type}
                         </span>
                         {q.is_recruiter_custom ? (
@@ -599,7 +710,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
           {/* ── TAB: KNOWLEDGE MCQs ── */}
           {activeTab === 'mcq' && (
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
+              <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -608,9 +719,14 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
                     </h3>
                     <p className="text-xs text-slate-500">Multiple-choice questions evaluate conceptual mastery, standards, and domain knowledge specific to this role.</p>
                   </div>
-                  <Button variant="outline" size="xs" icon={Plus} onClick={() => setIsAddingMcq(prev => !prev)}>
-                    {isAddingMcq ? 'Cancel' : '+ Add Custom MCQ'}
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Button variant="outline" size="xs" icon={Layers} onClick={() => handleTabChange('mcq_bank')}>
+                      Browse Question Bank
+                    </Button>
+                    <Button variant="outline" size="xs" icon={Plus} onClick={() => setIsAddingMcq(prev => !prev)}>
+                      {isAddingMcq ? 'Cancel' : '+ Add Custom MCQ'}
+                    </Button>
+                  </div>
                 </div>
 
                 {isAddingMcq && (
@@ -685,7 +801,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
           {/* ── TAB: PRACTICAL TASK (Coding / Hands-On / Financial / Written) ── */}
           {activeTab === 'assessment' && (
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
+              <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
                 {handsOnTask ? (
                   <>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -750,7 +866,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
                           {(handsOnTask.sample_test_cases || []).map((tc, idx) => (
                             <div key={idx} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs flex items-center justify-between gap-3">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">Public #{idx + 1}</span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">Public #{idx + 1}</span>
                                 <span className="font-mono text-slate-600 dark:text-slate-300 truncate">Input: <code className="text-slate-900 dark:text-white">{tc.input}</code> → Expected: <code className="text-emerald-600 dark:text-emerald-400">{tc.expected || tc.expected_output}</code></span>
                               </div>
                               <button type="button" onClick={() => setHandsOnTask(prev => ({ ...prev, sample_test_cases: prev.sample_test_cases.filter((_, i) => i !== idx) }))} className="text-slate-400 hover:text-rose-500 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -789,7 +905,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
 
           {/* ── TAB: SCENARIO & JUDGMENT ── */}
           {activeTab === 'scenario' && (
-            <div className="p-5 rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
+            <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -827,6 +943,203 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
               ) : (
                 <div className="p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400">
                   No scenario configured. Regenerate with AI to generate a domain-appropriate scenario for this role.
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── TAB: MCQ QUESTION BANK & RECRUITER AUTHORING ── */}
+          {activeTab === 'mcq_bank' && (
+            <MCQBankManager
+              activeJob={currentJob}
+              onAttachMCQs={(attached) => {
+                setMcqList(attached.map(a => ({
+                  id: a.mcq_question_id,
+                  question: a.question_text,
+                  difficulty: a.difficulty,
+                  category: a.category,
+                  weight: a.weight
+                })));
+              }}
+            />
+          )}
+
+          {/* ── TAB: PROBLEM BANK & RECRUITER AUTHORING ── */}
+          {activeTab === 'problem_bank' && (
+            <ProblemBankManager
+              activeJob={currentJob}
+              onAttachProblems={(attached) => {
+                setHandsOnTask(prev => ({
+                  ...prev,
+                  attached_problem_bank: attached
+                }));
+              }}
+            />
+          )}
+
+          {/* ── TAB: EXTERNAL CODING PLATFORMS ── */}
+          {activeTab === 'external' && (
+            <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-6">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-brand-500" />
+                    <span>External Coding Platforms Integration</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Recruiters can select questions from external platforms (LeetCode, HackerRank, CodeSignal) alongside AI-generated and custom questions.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 font-bold">
+                    {selectedExtQuestions.length} Selected
+                  </span>
+                </div>
+              </div>
+
+              {/* Platform Selector */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Target External Platform</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { id: 'hackerrank', name: 'HackerRank for Work', desc: 'REST API v3 · Org Question Bank & Sync' },
+                    { id: 'leetcode',   name: 'LeetCode Challenge',   desc: 'Verified Tracked Links · 2500+ DSA Problems' },
+                    { id: 'codesignal', name: 'CodeSignal Enterprise', desc: 'Arcade & Coding Tasks · Scorecard Sync' },
+                  ].map(p => {
+                    const isSelected = selectedPlatform === p.id;
+                    const platConfig = platformsConfig.find(c => c.id === p.id);
+                    const isConfigured = platConfig ? platConfig.configured : (p.id === 'leetcode');
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => setSelectedPlatform(p.id)}
+                        className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
+                          isSelected
+                            ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 shadow-xs'
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-slate-900 dark:text-white">{p.name}</span>
+                          <span className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded ${
+                            isConfigured
+                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                          }`}>
+                            {isConfigured ? 'Ready' : 'Setup Required'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 leading-snug">{p.desc}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Filters Bar */}
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-3">
+                <input
+                  type="text"
+                  placeholder={`Search ${selectedPlatform} questions by topic/keyword...`}
+                  value={extQuery}
+                  onChange={(e) => setExtQuery(e.target.value)}
+                  className="flex-1 min-w-[200px] px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                />
+                <select
+                  value={extDifficulty}
+                  onChange={(e) => setExtDifficulty(e.target.value)}
+                  className="px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                >
+                  <option value="">All Difficulties</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+                {isLoadingExt && <Loader2 className="w-4 h-4 text-brand-500 animate-spin" />}
+              </div>
+
+              {/* Questions Catalog */}
+              <div className="space-y-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Available Questions</span>
+                <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                  {availableExtQuestions.length > 0 ? (
+                    availableExtQuestions.map(q => {
+                      const isChecked = selectedExtQuestions.some(sq => sq.id === q.id || sq === q.id);
+                      return (
+                        <div
+                          key={q.id}
+                          className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs transition ${
+                            isChecked
+                              ? 'border-brand-500/60 bg-brand-50/40 dark:bg-brand-950/20'
+                              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedExtQuestions(prev => [...prev, q]);
+                                } else {
+                                  setSelectedExtQuestions(prev => prev.filter(sq => (sq.id || sq) !== q.id));
+                                }
+                              }}
+                              className="rounded text-brand-600 focus:ring-brand-500 cursor-pointer"
+                            />
+                            <div className="min-w-0">
+                              <span className="font-semibold text-slate-900 dark:text-white truncate block">{q.title}</span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className={`text-[10px] font-bold ${
+                                  q.difficulty === 'Easy' ? 'text-emerald-600' :
+                                  q.difficulty === 'Hard' ? 'text-rose-500' : 'text-amber-600'
+                                }}`}>{q.difficulty}</span>
+                                <span className="text-slate-400">•</span>
+                                <span className="text-[10px] font-mono text-slate-400">{q.type || 'coding'}</span>
+                              </div>
+                            </div>
+                          </div>
+                          {q.url && (
+                            <a
+                              href={q.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-slate-400 hover:text-brand-500 flex items-center gap-1 shrink-0 text-[11px]"
+                            >
+                              <span>Inspect</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-8 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+                      {isLoadingExt ? 'Searching catalog…' : 'No questions found for the selected filters.'}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Selected Questions Summary Banner */}
+              {selectedExtQuestions.length > 0 && (
+                <div className="p-4 rounded-xl bg-brand-50/60 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-brand-900 dark:text-brand-300">
+                      {selectedExtQuestions.length} {selectedPlatform.toUpperCase()} question(s) will be attached to this assessment.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedExtQuestions([])}
+                      className="text-xs text-rose-500 hover:underline"
+                    >
+                      Clear Selection
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Click "Save & Publish" at the top to save this external configuration into the requisition blueprint.
+                  </p>
                 </div>
               )}
             </div>

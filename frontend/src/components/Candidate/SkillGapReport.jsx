@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { CustomDropdown } from '../ui/Primitives';
 import { 
   Award, 
   CheckCircle2, 
@@ -156,6 +157,7 @@ export default function SkillGapReport() {
     selectedCandidate, 
     candidates = [],
     currentUser,
+    userRole,
     activeJob, 
     myApplications = [],
     refreshMyApplications,
@@ -178,55 +180,56 @@ export default function SkillGapReport() {
     }
   }, [currentUser?.email, myApplications.length, refreshMyApplications]);
 
-  // Find target candidate or application record
-  const cand = 
-    (activeAppId && myApplications.find(a => String(a.id) === String(activeAppId))) ||
-    (activeAppId && candidates.find(c => String(c.id) === String(activeAppId))) ||
-    (routeCandidateId && myApplications.find(a => String(a.id) === String(routeCandidateId))) ||
-    (routeCandidateId && candidates.find(c => String(c.id) === String(routeCandidateId))) ||
-    myApplications.find(a => a.id === currentUser?.id || a.email === currentUser?.email) ||
-    candidates.find(c => c.email === currentUser?.email || c.id === currentUser?.id) ||
-    selectedCandidate || 
-    (myApplications.length > 0 ? myApplications[0] : null) ||
-    (candidates.length > 0 ? candidates[0] : null);
+  // Resolve target candidate or application record with strict role awareness
+  const cand = userRole === 'candidate'
+    ? (myApplications.find(a => String(a.id) === String(activeAppId)) ||
+       myApplications.find(a => a.email?.toLowerCase() === currentUser?.email?.toLowerCase()) ||
+       candidates.find(c => c.email?.toLowerCase() === currentUser?.email?.toLowerCase()) ||
+       (myApplications.length > 0 ? myApplications[0] : null))
+    : ((activeAppId && candidates.find(c => String(c.id) === String(activeAppId))) ||
+       (routeCandidateId && candidates.find(c => String(c.id) === String(routeCandidateId))) ||
+       selectedCandidate || 
+       (candidates.length > 0 ? candidates[0] : null));
 
   // Candidate identity details
-  const candidateName = cand?.name || cand?.candidateName || currentUser?.name || 'Candidate';
-  const candidateEmail = cand?.email || currentUser?.email || '';
+  const candidateName = cand?.name || cand?.candidateName || (userRole === 'candidate' ? currentUser?.name : 'Candidate');
+  const candidateEmail = cand?.email || (userRole === 'candidate' ? currentUser?.email : '') || '';
   const targetRoleTitle = cand?.jobTitle || cand?.job?.title || activeJob?.title || 'Applied Position';
-  const companyName = cand?.companyName || cand?.company_name || activeJob?.companyName || 'SparkX Technologies';
-  const department = cand?.department || activeJob?.department || 'Engineering';
+  const companyName = cand?.companyName || cand?.company_name || activeJob?.companyName || '';
+  const department = cand?.department || activeJob?.department || 'General';
 
-  // Target job skills
-  const activeJobSkills = activeJob?.requiredSkills || cand?.job?.requiredSkills || ["Python", "FastAPI", "React", "System Design", "Kubernetes", "PostgreSQL"];
+  // Target job skills - zero hardcoding
+  const activeJobSkills = activeJob?.requiredSkills || cand?.job?.requiredSkills || cand?.skills || [];
 
-  if (!cand && myApplications.length === 0) {
+  if (!cand) {
     return (
-      <div className="w-full max-w-5xl mx-auto space-y-6 pb-20 py-16 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500 mx-auto shadow-sm">
+      <div className="w-full max-w-5xl mx-auto space-y-6 pb-20 py-16 text-center animate-page-enter">
+        <div className="w-16 h-16 rounded-2xl bg-brand-500/10 border border-brand-500/20 flex items-center justify-center text-brand-600 dark:text-brand-400 mx-auto shadow-sm">
           <Award className="w-8 h-8" />
         </div>
         <div className="space-y-2">
           <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            No Application Dossier Found
+            {userRole === 'recruiter' ? 'No Candidate Selected' : 'No Application Dossier Found'}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-            Apply to open roles or complete an assessment to generate your autonomous skill gap analysis and personalized learning roadmap.
+            {userRole === 'recruiter'
+              ? 'Select a candidate from your pipeline or applicant queue to view their competency matrix and learning roadmap.'
+              : 'Apply to open roles or complete an assessment to generate your autonomous skill gap analysis and personalized learning roadmap.'}
           </p>
         </div>
         <div className="pt-2">
           <button
-            onClick={() => navigate('/jobs')}
-            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-600 hover:opacity-95 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/25"
+            onClick={() => navigate(userRole === 'recruiter' ? '/recruiter' : '/jobs')}
+            className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition shadow-sm"
           >
-            Explore Job Openings
+            {userRole === 'recruiter' ? 'Go to Candidate Pipeline' : 'Explore Job Openings'}
           </button>
         </div>
       </div>
     );
   }
 
-  // Scores and telemetry
+  // Scores and telemetry - genuine data without arbitrary multipliers
   const scores = cand?.scores || {};
   const overall = typeof scores.overall === 'number' 
     ? scores.overall 
@@ -235,14 +238,14 @@ export default function SkillGapReport() {
 
   const technicalScore = typeof scores.technicalScore === 'number' 
     ? scores.technicalScore 
-    : (isEvaluated && overall > 0 ? (typeof cand?.coding_score === 'number' ? cand.coding_score : Math.round(overall * 0.9)) : 0);
+    : (typeof cand?.coding_score === 'number' ? cand.coding_score : (scores.codingScore ?? (isEvaluated ? overall : 0)));
   const problemSolving = typeof scores.problemSolving === 'number' 
     ? scores.problemSolving 
-    : (isEvaluated && overall > 0 ? Math.round(overall * 0.85) : 0);
+    : (scores.scenarioScore ?? (isEvaluated ? overall : 0));
   const communication = typeof scores.communication === 'number' 
     ? scores.communication 
-    : (isEvaluated && overall > 0 ? (overall >= 70 ? 82 : 65) : 0);
-  const integrity = cand?.integrityScore ?? cand?.integrity_score ?? 100;
+    : (scores.interviewScore ?? (isEvaluated ? overall : 0));
+  const integrity = cand?.integrityScore ?? cand?.integrity_score ?? null;
 
   // Genuine skill gaps calculation
   const rawGaps = cand?.skillGaps || cand?.skill_gaps || {};
@@ -271,14 +274,68 @@ export default function SkillGapReport() {
 
   const readinessColor = 
     overall >= 80 ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/80 dark:border-emerald-500/20' :
-    overall >= 50 ? 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200/80 dark:border-indigo-500/20' :
+    overall >= 50 ? 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/10 border-brand-200/80 dark:border-brand-500/20' :
     'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
 
+  const candidateOptions = useMemo(() => {
+    return (candidates || []).map((c) => ({
+      value: String(c.id),
+      label: c.name,
+      description: c.jobTitle || c.role || 'Applicant',
+      badge: `${c.matchScore || c.scores?.overall || 0}% match`,
+      icon: User
+    }));
+  }, [candidates]);
+
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20">
+    <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 animate-page-enter">
       
-      {/* Multi-application Switcher Tab Bar (if candidate applied to multiple positions) */}
-      {myApplications.length > 1 && (
+      {/* Recruiter Candidate Selector & Toolbar */}
+      {userRole === 'recruiter' && candidates.length > 0 && (
+        <div className="relative z-30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-white/95 dark:bg-stone-900/95 border border-stone-200/90 dark:border-stone-800 shadow-card backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/recruiter')}
+              className="px-3 py-1.5 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 transition text-xs font-semibold flex items-center gap-1.5 border border-stone-200 dark:border-stone-700 shadow-xs"
+            >
+              <span>← Pipeline</span>
+            </button>
+            <div className="h-4 w-px bg-stone-200 dark:bg-stone-800" />
+            <span className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+              <span>Candidate Dossier:</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+            <CustomDropdown
+              value={String(cand?.id || '')}
+              onChange={(targetId) => {
+                const found = candidates.find(c => String(c.id) === String(targetId));
+                setActiveAppId(targetId);
+                if (found?.job_id || found?.jobId) setActiveJobId(found.job_id || found.jobId);
+              }}
+              options={candidateOptions}
+              icon={User}
+              className="w-72 sm:w-80"
+              menuWidth="w-80 sm:w-96"
+              align="right"
+              placeholder="Select candidate..."
+            />
+
+            <button
+              onClick={() => navigate(`/recruiter?candidate=${cand?.id || ''}`)}
+              className="px-3.5 py-2 rounded-xl bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 border border-brand-200/80 dark:border-brand-800/80 text-xs font-bold transition flex items-center gap-1.5 shrink-0 shadow-xs"
+            >
+              <span>Workspace</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-application Switcher Tab Bar (for candidate role) */}
+      {userRole === 'candidate' && myApplications.length > 1 && (
         <div className="flex items-center space-x-2 overflow-x-auto pb-2 border-b border-slate-200 dark:border-slate-800">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1">
             Application:
@@ -294,8 +351,8 @@ export default function SkillGapReport() {
                 }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition flex items-center space-x-2 border ${
                   isSelected 
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-400'
+                    ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400'
                 }`}
               >
                 <Briefcase className="w-3.5 h-3.5" />
@@ -308,14 +365,14 @@ export default function SkillGapReport() {
       )}
 
       {/* Hero Header & Executive Calibration Banner */}
-      <div className="glass-card p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-white/[0.08] shadow-sm bg-white dark:bg-slate-900/90 relative">
+      <div className="animate-fade-in-up delay-100 glass-card p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-white/[0.08] shadow-sm bg-white dark:bg-slate-900/90 relative z-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           
           {/* Identity & Role Info */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border shadow-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex items-center space-x-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 <span>Competency & Growth Dossier</span>
               </span>
               <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border shadow-xs ${readinessColor}`}>
@@ -357,7 +414,7 @@ export default function SkillGapReport() {
                   d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                 />
                 <path
-                  className={overall >= 80 ? "text-emerald-600 dark:text-emerald-400" : "text-indigo-600 dark:text-indigo-400"}
+                  className={overall >= 80 ? "text-emerald-600 dark:text-emerald-400" : "text-brand-600 dark:text-brand-400"}
                   strokeDasharray={`${Math.max(5, overall)}, 100`}
                   strokeLinecap="round"
                   strokeWidth="3.5"
@@ -385,7 +442,7 @@ export default function SkillGapReport() {
               </p>
               <div className="flex items-center space-x-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-medium pt-0.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>Verified ({integrity}% Integrity)</span>
+                <span>{integrity !== null ? `Verified (${integrity}% Integrity)` : 'Integrity Verified'}</span>
               </div>
             </div>
           </div>
@@ -398,14 +455,14 @@ export default function SkillGapReport() {
           <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-white/[0.06] shadow-xs">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
               <span className="font-semibold text-slate-600 dark:text-slate-400">Technical Depth</span>
-              <Code2 className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <Code2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
             </div>
             <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
               {technicalScore > 0 ? `${technicalScore}%` : 'Calibrating'}
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
               <div 
-                className="bg-indigo-600 dark:bg-indigo-500 h-full rounded-full transition-all duration-700" 
+                className="bg-brand-600 dark:bg-brand-500 h-full rounded-full transition-all duration-700 ease-out" 
                 style={{ width: `${Math.max(10, technicalScore)}%` }} 
               />
             </div>
@@ -414,14 +471,14 @@ export default function SkillGapReport() {
           <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-white/[0.06] shadow-xs">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
               <span className="font-semibold text-slate-600 dark:text-slate-400">Problem Solving</span>
-              <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <Layers className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
             </div>
             <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
               {problemSolving > 0 ? `${problemSolving}%` : 'Calibrating'}
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
               <div 
-                className="bg-indigo-600 dark:bg-indigo-500 h-full rounded-full transition-all duration-700" 
+                className="bg-brand-600 dark:bg-brand-500 h-full rounded-full transition-all duration-700 ease-out" 
                 style={{ width: `${Math.max(10, problemSolving)}%` }} 
               />
             </div>
@@ -430,14 +487,14 @@ export default function SkillGapReport() {
           <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-white/[0.06] shadow-xs">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
               <span className="font-semibold text-slate-600 dark:text-slate-400">Scenario Calibration</span>
-              <Target className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <Target className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
             </div>
             <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
               {communication > 0 ? `${communication}%` : 'Validated'}
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
               <div 
-                className="bg-indigo-600 dark:bg-indigo-500 h-full rounded-full transition-all duration-700" 
+                className="bg-brand-600 dark:bg-brand-500 h-full rounded-full transition-all duration-700 ease-out" 
                 style={{ width: `${Math.max(10, communication)}%` }} 
               />
             </div>
@@ -449,12 +506,12 @@ export default function SkillGapReport() {
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-              {integrity}%
+              {typeof integrity === 'number' ? `${integrity}%` : '100%'}
             </div>
             <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
               <div 
-                className="bg-emerald-600 dark:bg-emerald-500 h-full rounded-full transition-all duration-700" 
-                style={{ width: `${integrity}%` }} 
+                className="bg-emerald-600 dark:bg-emerald-500 h-full rounded-full transition-all duration-700 ease-out" 
+                style={{ width: `${typeof integrity === 'number' ? integrity : 100}%` }} 
               />
             </div>
           </div>
@@ -464,7 +521,7 @@ export default function SkillGapReport() {
       </div>
 
       {/* Main 2-Column Competency & Skill Gap Analysis */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in-up delay-200">
         
         {/* Left Column: Validated Strengths */}
         <div className="glass-card p-6 sm:p-7 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-5 shadow-xl bg-white dark:bg-slate-900/80">
@@ -524,11 +581,11 @@ export default function SkillGapReport() {
         {/* Right Column: Targeted Upskilling Areas */}
         <div className="glass-card p-6 sm:p-7 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-5 shadow-xl bg-white dark:bg-slate-900/80">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
+            <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-bold text-xs uppercase tracking-wider">
               <TrendingUp className="w-4 h-4" />
               <span>Targeted Upskilling & Growth Areas</span>
             </div>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
               {missingSkills.length} Action Items
             </span>
           </div>
@@ -544,7 +601,7 @@ export default function SkillGapReport() {
                 className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.05] flex items-center justify-between"
               >
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 font-bold text-xs">
+                  <div className="w-8 h-8 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-600 dark:text-brand-400 shrink-0 font-bold text-xs">
                     {i + 1}
                   </div>
                   <div>
@@ -556,7 +613,7 @@ export default function SkillGapReport() {
                     </span>
                   </div>
                 </div>
-                <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+                <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400 px-2.5 py-1 rounded-lg bg-brand-500/10 border border-brand-500/20">
                   Curriculum Below ↓
                 </span>
               </div>
@@ -567,11 +624,11 @@ export default function SkillGapReport() {
       </div>
 
       {/* Dynamic Personalized Career & Learning Roadmap */}
-      <div className="glass-card p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-6 shadow-xl bg-white dark:bg-slate-900/80">
+      <div className="animate-fade-in-up delay-300 glass-card p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-6 shadow-xl bg-white dark:bg-slate-900/80">
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
           <div className="space-y-1">
-            <div className="flex items-center space-x-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase tracking-wider">
+            <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-bold text-xs uppercase tracking-wider">
               <BookOpen className="w-4 h-4" />
               <span>Personalized Career & Learning Roadmap</span>
             </div>
@@ -597,18 +654,18 @@ export default function SkillGapReport() {
             return (
               <div 
                 key={index} 
-                className="p-5 sm:p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-white/[0.06] hover:border-indigo-500/40 transition-all duration-300 space-y-4 shadow-sm"
+                className="p-5 sm:p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-white/[0.06] hover:border-brand-500/40 transition-all duration-300 space-y-4 shadow-sm"
               >
                 
                 {/* Header row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div className="flex items-center space-x-3">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-md shadow-indigo-600/30">
+                    <div className="w-9 h-9 rounded-xl bg-brand-600 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
                       0{index + 1}
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
                           {curriculum.phase}
                         </span>
                         <span className="text-slate-300 dark:text-slate-600">•</span>
@@ -626,7 +683,7 @@ export default function SkillGapReport() {
                   <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg border self-start sm:self-auto ${
                     curriculum.priority === 'High Priority'
                       ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25'
-                      : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25'
+                      : 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/25'
                   }`}>
                     {curriculum.priority}
                   </span>
@@ -639,7 +696,7 @@ export default function SkillGapReport() {
 
                 {/* Hands-on Project Challenge */}
                 <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/[0.08] flex items-start space-x-3">
-                  <Target className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                  <Target className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
                   <div className="text-xs">
                     <span className="font-bold text-slate-900 dark:text-white mr-1.5">
                       Hands-On Challenge:
@@ -677,29 +734,52 @@ export default function SkillGapReport() {
 
       {/* Bottom Navigation & Action Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-        <button
-          onClick={() => navigate('/my-applications')}
-          className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition shadow-sm text-center"
-        >
-          ← Return to My Applications
-        </button>
+        {userRole === 'recruiter' ? (
+          <>
+            <button
+              onClick={() => navigate('/recruiter')}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition shadow-sm text-center"
+            >
+              ← Back to Candidate Pipeline
+            </button>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button
-            onClick={() => navigate('/jobs')}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition shadow-sm text-center"
-          >
-            Explore Open Roles
-          </button>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => navigate(`/recruiter?candidate=${cand?.id || ''}`)}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm transition flex items-center justify-center space-x-2"
+              >
+                <span>Open Candidate Workspace</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={() => navigate('/my-applications')}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition shadow-sm text-center"
+            >
+              ← Return to My Applications
+            </button>
 
-          <button
-            onClick={() => navigate(cand?.id ? `/assessment/${cand.id}` : '/assessment')}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-cyan-500 hover:opacity-95 text-white text-xs font-bold shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2"
-          >
-            <span>Practice Technical Assessment</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => navigate('/jobs')}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition shadow-sm text-center"
+              >
+                Explore Open Roles
+              </button>
+
+              <button
+                onClick={() => navigate(cand?.id ? `/assessment/${cand.id}` : '/assessment')}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm transition flex items-center justify-center space-x-2"
+              >
+                <span>Practice Technical Assessment</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
     </div>

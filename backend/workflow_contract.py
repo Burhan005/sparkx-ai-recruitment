@@ -71,16 +71,23 @@ VALID_HIRING_DECISIONS = [
     DECISION_REJECTED,
 ]
 
+# Terminal final decisions (immutable without authorized reopening)
+FINAL_DECISIONS = [DECISION_SELECTED, DECISION_REJECTED]
+
+def is_final_decision(decision: str) -> bool:
+    """Returns True if the decision is a terminal final decision (selected or rejected)."""
+    return (decision or "").lower().strip() in FINAL_DECISIONS
+
 # ── 5. State Transition Guard Rules ──────────────────────────────────────────
 
 # Permitted stage transitions
 ALLOWED_STAGE_TRANSITIONS: Dict[str, List[str]] = {
-    STAGE_APPLIED: [STAGE_SCREENING, STAGE_ASSESSMENT, STAGE_INTERVIEW, STAGE_COMPLETED],
-    STAGE_SCREENING: [STAGE_APPLIED, STAGE_ASSESSMENT, STAGE_INTERVIEW, STAGE_REVIEW, STAGE_COMPLETED],
-    STAGE_ASSESSMENT: [STAGE_SCREENING, STAGE_INTERVIEW, STAGE_REVIEW, STAGE_COMPLETED],
-    STAGE_INTERVIEW: [STAGE_SCREENING, STAGE_ASSESSMENT, STAGE_REVIEW, STAGE_COMPLETED],
-    STAGE_REVIEW: [STAGE_ASSESSMENT, STAGE_INTERVIEW, STAGE_COMPLETED],
-    STAGE_COMPLETED: [STAGE_SCREENING, STAGE_REVIEW], # Can only be reopened explicitly
+    STAGE_APPLIED: [STAGE_SCREENING],
+    STAGE_SCREENING: [STAGE_ASSESSMENT, STAGE_INTERVIEW, STAGE_REVIEW],
+    STAGE_ASSESSMENT: [STAGE_INTERVIEW, STAGE_REVIEW],
+    STAGE_INTERVIEW: [STAGE_REVIEW],
+    STAGE_REVIEW: [STAGE_INTERVIEW, STAGE_COMPLETED],
+    STAGE_COMPLETED: [], # Terminal stage: cannot regress through ordinary controls; requires authorized reopening
 }
 
 # Permitted assessment transitions
@@ -106,29 +113,58 @@ ALLOWED_INTERVIEW_TRANSITIONS: Dict[str, List[str]] = {
 ALLOWED_DECISION_TRANSITIONS: Dict[str, List[str]] = {
     DECISION_UNDECIDED: [DECISION_SHORTLISTED, DECISION_SELECTED, DECISION_REJECTED],
     DECISION_SHORTLISTED: [DECISION_UNDECIDED, DECISION_SELECTED, DECISION_REJECTED],
-    DECISION_SELECTED: [DECISION_UNDECIDED, DECISION_REJECTED],
-    DECISION_REJECTED: [DECISION_UNDECIDED, DECISION_SHORTLISTED], # Recruiter can reconsider
+    DECISION_SELECTED: [], # Terminal: cannot overwrite without authorized reopening
+    DECISION_REJECTED: [], # Terminal: cannot overwrite without authorized reopening
 }
 
-def validate_stage_transition(current: str, target: str) -> Tuple[bool, Optional[str]]:
-    current = (current or STAGE_APPLIED).lower()
-    target = (target or "").lower()
+def validate_stage_transition(current: str, target: str, current_decision: str = None, candidate: Any = None) -> Tuple[bool, Optional[str]]:
+    current = (current or STAGE_APPLIED).lower().strip()
+    target = (target or "").lower().strip()
+    dec = (current_decision or "").lower().strip()
+
+    # CRITICAL: Prevent ordinary regression of finalized applications
+    if dec in FINAL_DECISIONS and target != STAGE_COMPLETED and current != target:
+        return False, f"Cannot alter stage of an application with a recorded final decision ('{dec}'). Finalized applications cannot regress through ordinary controls. Use authorized Reopen Application."
+
+    if current == STAGE_COMPLETED and target != STAGE_COMPLETED:
+        return False, "Cannot move a completed application backward through ordinary controls. Use authorized Reopen Application."
+
     if target not in VALID_STAGES:
         return False, f"Invalid stage '{target}'. Must be one of: {VALID_STAGES}"
     if current == target:
         return True, None
+
+    # Cross-dimensional validation guards
+    if candidate:
+        if getattr(candidate, "interview_status", "") == INTERVIEW_COMPLETED and target in [STAGE_APPLIED, STAGE_SCREENING, STAGE_ASSESSMENT]:
+            return False, f"Illegal regression: Candidate interview has already been completed; cannot regress stage to '{target}'."
+        if getattr(candidate, "assessment_status", "") in [ASSESS_EVALUATED, ASSESS_SUBMITTED] and target in [STAGE_APPLIED, STAGE_SCREENING]:
+            return False, f"Illegal regression: Candidate technical assessment is already {candidate.assessment_status}; cannot regress stage to '{target}'."
+        if getattr(candidate, "hiring_decision", "") in FINAL_DECISIONS and target in [STAGE_APPLIED, STAGE_SCREENING, STAGE_ASSESSMENT, STAGE_INTERVIEW]:
+            return False, f"Illegal transition: Candidate application is finalized with decision '{candidate.hiring_decision}'; cannot move stage to '{target}'."
+
     allowed = ALLOWED_STAGE_TRANSITIONS.get(current, [])
     if target not in allowed:
         return False, f"Illegal stage transition from '{current}' to '{target}'"
     return True, None
 
-def validate_assessment_transition(current: str, target: str) -> Tuple[bool, Optional[str]]:
+def validate_assessment_transition(current: str, target: str, candidate: Any = None) -> Tuple[bool, Optional[str]]:
     current = (current or ASSESS_NOT_INVITED).lower()
     target = (target or "").lower()
     if target not in VALID_ASSESSMENT_STATUSES:
         return False, f"Invalid assessment status '{target}'. Must be one of: {VALID_ASSESSMENT_STATUSES}"
     if current == target:
         return True, None
+
+    # Cross-dimensional validation guards
+    if candidate:
+        if getattr(candidate, "hiring_decision", "") in FINAL_DECISIONS:
+            return False, f"Cannot alter assessment: Candidate application has a recorded final decision ('{candidate.hiring_decision}')."
+        if getattr(candidate, "interview_status", "") == INTERVIEW_COMPLETED:
+            return False, "Cannot alter assessment: Candidate interview is already completed."
+        if getattr(candidate, "stage", "") == STAGE_COMPLETED:
+            return False, "Cannot alter assessment: application is completed."
+
     allowed = ALLOWED_ASSESSMENT_TRANSITIONS.get(current, [])
     if target not in allowed:
         return False, f"Illegal assessment status transition from '{current}' to '{target}'"
@@ -147,8 +183,13 @@ def validate_interview_transition(current: str, target: str) -> Tuple[bool, Opti
     return True, None
 
 def validate_decision_transition(current: str, target: str) -> Tuple[bool, Optional[str]]:
-    current = (current or DECISION_UNDECIDED).lower()
-    target = (target or "").lower()
+    current = (current or DECISION_UNDECIDED).lower().strip()
+    target = (target or "").lower().strip()
+
+    # CRITICAL: Prevent ordinary regression or reset of final decisions
+    if current in FINAL_DECISIONS and current != target:
+        return False, f"Final hiring decision ('{current}') is immutable and cannot be overwritten through standard decision controls. Use authorized Reopen Application with mandatory audit reason."
+
     if target not in VALID_HIRING_DECISIONS:
         return False, f"Invalid hiring decision '{target}'. Must be one of: {VALID_HIRING_DECISIONS}"
     if current == target:
@@ -156,6 +197,24 @@ def validate_decision_transition(current: str, target: str) -> Tuple[bool, Optio
     allowed = ALLOWED_DECISION_TRANSITIONS.get(current, [])
     if target not in allowed:
         return False, f"Illegal hiring decision transition from '{current}' to '{target}'"
+    return True, None
+
+def validate_reopen_application(current_stage: str, current_decision: str, reason: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validates controlled reopening:
+    1. Application must be finalized (decision in FINAL_DECISIONS or stage == STAGE_COMPLETED).
+    2. Reopen reason is strictly mandatory (minimum 10 characters).
+    """
+    dec = (current_decision or "").lower().strip()
+    stg = (current_stage or "").lower().strip()
+
+    if dec not in FINAL_DECISIONS and stg != STAGE_COMPLETED:
+        return False, "Application is not in a finalized state. Reopening is only permitted for completed/finalized applications."
+
+    clean_reason = (reason or "").strip()
+    if not clean_reason or len(clean_reason) < 10:
+        return False, "A detailed reopening justification is mandatory (minimum 10 characters required for audit trail)."
+
     return True, None
 
 def validate_transition(dimension: str, current: str, target: str) -> Tuple[bool, Optional[str]]:

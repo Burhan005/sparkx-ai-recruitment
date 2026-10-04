@@ -41,46 +41,45 @@ export default function ResumeViewerModal({ candidate, isOpen, onClose }) {
       return candidate.resumeText.trim();
     }
 
-    const exp = candidate?.experience_years ?? candidate?.experienceYears ?? 3;
-    const match = candidate?.matchScore ?? candidate?.match_score ?? 85;
+    const exp = candidate?.experience_years ?? candidate?.experienceYears;
+    const match = candidate?.matchScore ?? candidate?.match_score;
+    const techScore = candidate?.scores?.technicalScore ?? candidate?.codingScore;
+    const probScore = candidate?.scores?.problemSolving;
+    const integScore = candidate?.integrityScore ?? candidate?.integrity_score;
 
     return `================================================================================
-CANDIDATE CURRICULUM VITAE & VERIFIED DOSSIER
+CANDIDATE APPLICATION DOSSIER (AUTHENTIC EVIDENCE)
 ================================================================================
 Name        : ${candidateName}
-Email       : ${candidate?.email || 'verified@candidate.sparkx'}
-Phone       : ${candidate?.phone || '+91 98000 00000'}
+Email       : ${candidate?.email || 'Not provided'}
+Phone       : ${candidate?.phone || 'Not provided'}
 Applied Role: ${roleTitle}
-Experience  : ${exp} Years
-Match Score : ${match}%
-Education   : ${candidate?.education || 'B.Tech in Computer Science / Engineering'}
+Experience  : ${exp != null ? `${exp} Years` : 'Not specified'}
+Match Score : ${match != null ? `${match}%` : 'Pending evaluation'}
+Education   : ${candidate?.education || 'Not specified'}
 
 --------------------------------------------------------------------------------
-1. PROFESSIONAL SUMMARY
+1. EXTRACTED PROFESSIONAL SUMMARY
 --------------------------------------------------------------------------------
-${candidate?.resume_summary || candidate?.resumeSummary || `${candidateName} is an experienced ${roleTitle} with ${exp}+ years of background delivering scalable software solutions, modern architectural patterns, and production systems.`}
+${candidate?.resume_summary || candidate?.resumeSummary || 'No professional summary extracted from application document.'}
 
 --------------------------------------------------------------------------------
-2. CORE TECHNICAL COMPETENCIES
+2. VERIFIED SKILLS & COMPETENCIES
 --------------------------------------------------------------------------------
-* Languages & Frameworks : ${skillsList.join(', ')}
-* System Architecture   : Distributed Microservices, Asynchronous Workflows, REST & GraphQL APIs
-* Databases & Storage   : Relational SQL, NoSQL, In-Memory Caching, Schema Migrations
-* Infrastructure & Cloud : Containerization (Docker), CI/CD Automation, Cloud Services
+${skillsList.length > 0 ? `* Skills : ${skillsList.join(', ')}` : '* Skills : None recorded on application'}
 
 --------------------------------------------------------------------------------
 3. EDUCATION & CREDENTIALS
 --------------------------------------------------------------------------------
-* Degree     : ${candidate?.education || 'Bachelor of Technology in Computer Science'}
-* Institution: Accredited University / Technical Institution
-* Status     : Fully Verified Candidate Profile
+* Degree     : ${candidate?.education || 'Not specified'}
+* Status     : Application Record
 
 --------------------------------------------------------------------------------
-4. SPARKX AUTONOMOUS EVALUATION TELEMETRY
+4. VERIFIED EVALUATION TELEMETRY
 --------------------------------------------------------------------------------
-* Technical Depth Score : ${candidate?.scores?.technicalScore ?? candidate?.codingScore ?? match}%
-* Problem Solving Score : ${candidate?.scores?.problemSolving ?? 88}%
-* Integrity Rating      : ${candidate?.integrityScore ?? 98}% (Proctor Verified)
+* Technical Score      : ${techScore != null ? `${techScore}%` : 'Pending'}
+* Problem Solving Score: ${probScore != null ? `${probScore}%` : 'Pending'}
+* Integrity Score      : ${integScore != null ? `${integScore}%` : 'Pending'}
 ================================================================================`;
   }, [candidate, candidateName, roleTitle, skillsList]);
 
@@ -114,26 +113,26 @@ ${candidate?.resume_summary || candidate?.resumeSummary || `${candidateName} is 
       }}
     >
       <div 
-        className="relative w-full max-w-4xl bg-white dark:bg-[#0D131F] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-popover overflow-hidden my-auto flex flex-col max-h-[92vh] text-slate-900 dark:text-slate-100 animate-scale-in"
+        className="relative w-full max-w-4xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-popover overflow-hidden my-auto flex flex-col max-h-[92vh] text-stone-900 dark:text-stone-100 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 bg-slate-50/90 dark:bg-[#080A10] border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4 shrink-0">
+        <div className="p-4 sm:p-5 bg-stone-50/90 dark:bg-[#14110F] border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 flex items-center justify-center text-brand-600 dark:text-brand-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-300 shrink-0">
               <FileText className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white truncate">
+                <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 truncate">
                   {candidateName}’s Resume & Dossier
                 </h2>
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   Verified Candidate
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {roleTitle} • {candidate.email || 'No email provided'} • {candidate.experience_years ?? candidate.experienceYears ?? 3}+ yrs exp
+              <p className="text-xs text-stone-500 dark:text-stone-400 truncate">
+                {roleTitle} • {candidate.email || 'No email provided'} • {(candidate.experience_years ?? candidate.experienceYears) != null ? `${candidate.experience_years ?? candidate.experienceYears}+ yrs exp` : 'Exp unlisted'}
               </p>
             </div>
           </div>
@@ -189,19 +188,19 @@ ${candidate?.resume_summary || candidate?.resumeSummary || `${candidateName} is 
         </div>
 
         {/* Resume Content Viewport */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-950 text-slate-200 font-mono text-xs leading-relaxed select-text scrollbar-thin">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-[#0C0A09] text-stone-200 font-mono text-xs leading-relaxed select-text scrollbar-thin">
           <pre className="whitespace-pre-wrap break-words">{filteredLines}</pre>
         </div>
 
         {/* Footer */}
-        <div className="p-3 px-5 bg-slate-50 dark:bg-[#080A10] border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 shrink-0">
+        <div className="p-3 px-5 bg-stone-50 dark:bg-[#14110F] border-t border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between text-xs text-stone-500 shrink-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span>Authoritative record synced from candidate submission</span>
           </div>
           <button
             type="button"
-            onClick={handleDownload}
+            onClick={handleDownloadPDF}
             className="text-brand-600 dark:text-brand-400 font-semibold hover:underline flex items-center gap-1"
           >
             <span>Save offline copy</span>

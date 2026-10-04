@@ -39,7 +39,10 @@ class BaseSandboxRunner(ABC):
         custom_input: Optional[str] = None,
         is_custom_test: bool = False,
         schema_ddl: Optional[str] = None,
-        expected_rows: Optional[List[Dict[str, Any]]] = None
+        expected_rows: Optional[List[Dict[str, Any]]] = None,
+        execution_mode: str = "function",
+        entry_point: Optional[str] = None,
+        function_signature: Optional[Dict[str, Any]] = None
     ) -> CodeRunResponse:
         """Execute candidate code and return normalized CodeRunResponse."""
         pass
@@ -158,7 +161,10 @@ class LocalSubprocessSandbox(BaseSandboxRunner):
         custom_input: Optional[str] = None,
         is_custom_test: bool = False,
         schema_ddl: Optional[str] = None,
-        expected_rows: Optional[List[Dict[str, Any]]] = None
+        expected_rows: Optional[List[Dict[str, Any]]] = None,
+        execution_mode: str = "function",
+        entry_point: Optional[str] = None,
+        function_signature: Optional[Dict[str, Any]] = None
     ) -> CodeRunResponse:
         lang = (language or "python").lower().strip()
 
@@ -198,7 +204,8 @@ class LocalSubprocessSandbox(BaseSandboxRunner):
             with open(payload_path, "w", encoding="utf-8") as f:
                 json.dump(harness_data, f)
 
-            # Isolated harness script executed strictly inside the child process
+            temp_dir_repr = repr(os.path.realpath(temp_dir))
+            # Isolated harness script executed strictly inside the child process with runtime security audit hook
             harness_code = """import sys
 import os
 import json
@@ -208,7 +215,38 @@ import traceback
 import io
 import contextlib
 
+SANDBOX_TEMP_DIR = os.path.realpath(__SANDBOX_TEMP_DIR__)
+
+def _sandbox_audit_hook(event, args):
+    if event in ('os.system', 'subprocess.Popen', '_winapi.CreateProcess', 'os.posix_spawn', 'os.spawn') or event.startswith('os.spawn'):
+        raise PermissionError(f"Security Violation: Process execution is prohibited in sandbox ({event})")
+    if event.startswith('socket.') or event.startswith('urllib.') or event.startswith('http.'):
+        raise PermissionError(f"Security Violation: Network connectivity is prohibited in sandbox ({event})")
+    if event.startswith('ctypes.') or event.startswith('winreg.'):
+        raise PermissionError(f"Security Violation: Native system operations prohibited ({event})")
+    if event == 'open':
+        path = args[0]
+        if isinstance(path, str):
+            try:
+                abs_p = os.path.realpath(os.path.abspath(path)).lower()
+            except Exception:
+                abs_p = str(path).lower()
+            mode = str(args[1]) if len(args) > 1 else 'r'
+            if any(m in mode for m in ('w', 'a', '+', 'x')):
+                if not abs_p.startswith(SANDBOX_TEMP_DIR.lower()):
+                    raise PermissionError(f"Security Violation: File write outside sandbox prohibited: {path}")
+            restricted_patterns = (
+                '.env', '.db', '.sqlite', 'win.ini', 'id_rsa', 'id_ed25519',
+                'sam', 'system32\\\\config', 'etc\\\\passwd', 'etc\\\\shadow'
+            )
+            for pat in restricted_patterns:
+                if pat in abs_p:
+                    raise PermissionError(f"Security Violation: Restricted file access prohibited: {path}")
+
+sys.addaudithook(_sandbox_audit_hook)
+""".replace("__SANDBOX_TEMP_DIR__", temp_dir_repr) + """
 def execute():
+    start_time = time.perf_counter()
     with open("payload.json", "r", encoding="utf-8") as f:
         data = json.load(f)
 
@@ -237,7 +275,7 @@ def execute():
                 "error": err_msg,
                 "duration": "0ms"
             }],
-            "console_output": f"> Python Compilation Error:\n  Line {e.lineno}: {e.text or ''}\n  SyntaxError: {e.msg}",
+            "console_output": f"> Python Compilation Error:\\n  Line {e.lineno}: {e.text or ''}\\n  SyntaxError: {e.msg}",
             "execution_ms": 0.0,
             "memory_mb": 0.0,
             "compilation_error": err_msg,
@@ -298,10 +336,19 @@ def execute():
         try:
             with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
                 exec(code, scope, scope)
-                target_fn = scope.get("solve") or scope.get("fix")
+                target_fn = scope.get("solve") or scope.get("fix") or scope.get("solution") or scope.get("addTwoNumbers") or scope.get("twoSum") or scope.get("solveMeFirst")
+                if not target_fn and "Solution" in scope and isinstance(scope["Solution"], type):
+                    try:
+                        sol_inst = scope["Solution"]()
+                        for m in dir(sol_inst):
+                            if not m.startswith("_") and callable(getattr(sol_inst, m)):
+                                target_fn = getattr(sol_inst, m)
+                                break
+                    except Exception:
+                        pass
                 if not target_fn:
                     for k, v in scope.items():
-                        if callable(v) and not k.startswith("__"):
+                        if callable(v) and not isinstance(v, type) and not k.startswith("__"):
                             target_fn = v
                             break
                 if target_fn:
@@ -368,16 +415,127 @@ def execute():
         actual_val = None
 
         try:
-            if assertion_py:
-                test_script = f"{code}\\n{assertion_py}"
-                exec(test_script, scope, scope)
+            stdout_capture = io.StringIO()
+            with contextlib.redirect_stdout(stdout_capture):
+                if assertion_py:
+                    test_script = f"{code}\\n{assertion_py}"
+                    exec(test_script, scope, scope)
+                    tc_passed = True
+                else:
+                    exec(code, scope, scope)
+                    target_fn = scope.get("solve") or scope.get("fix") or scope.get("solution") or scope.get("addTwoNumbers") or scope.get("twoSum") or scope.get("solveMeFirst")
+                    if not target_fn and "Solution" in scope and isinstance(scope["Solution"], type):
+                        try:
+                            sol_inst = scope["Solution"]()
+                            for m in dir(sol_inst):
+                                if not m.startswith("_") and callable(getattr(sol_inst, m)):
+                                    target_fn = getattr(sol_inst, m)
+                                    break
+                        except Exception:
+                            pass
+                    if not target_fn:
+                        for k, v in scope.items():
+                            if callable(v) and not isinstance(v, type) and not k.startswith("__"):
+                                target_fn = v
+                                break
+
+                    raw_tc_input = tc.get("input", "")
+                    parsed_tc_arg = None
+                    if raw_tc_input is not None and str(raw_tc_input).strip():
+                        try:
+                            parsed_tc_arg = json.loads(str(raw_tc_input))
+                        except Exception:
+                            try:
+                                parsed_tc_arg = ast.literal_eval(str(raw_tc_input))
+                            except Exception:
+                                parsed_tc_arg = str(raw_tc_input).strip()
+
+                    if target_fn:
+                        import inspect
+                        try:
+                            sig = inspect.signature(target_fn)
+                            p_cnt = len(sig.parameters)
+                        except Exception:
+                            p_cnt = 1
+
+                        def _to_list_node(arr):
+                            if not isinstance(arr, list) or not scope.get("ListNode"):
+                                return arr
+                            LN = scope["ListNode"]
+                            dummy = LN(0)
+                            cur = dummy
+                            for item in arr:
+                                cur.next = LN(item)
+                                cur = cur.next
+                            return dummy.next
+
+                        if isinstance(parsed_tc_arg, list) and scope.get("ListNode"):
+                            param_names = [p.name.lower() for p in sig.parameters.values()] if 'sig' in locals() else []
+                            if any(p.startswith('l') or 'node' in p or 'head' in p for p in param_names) or getattr(target_fn, "__name__", "") in ("addTwoNumbers", "mergeTwoLists", "reverseList"):
+                                parsed_tc_arg = [_to_list_node(x) if isinstance(x, list) else x for x in parsed_tc_arg]
+
+                        if parsed_tc_arg is None:
+                            actual_val = target_fn() if p_cnt == 0 else target_fn("")
+                        elif isinstance(parsed_tc_arg, list) and p_cnt == len(parsed_tc_arg) and p_cnt > 1:
+                            actual_val = target_fn(*parsed_tc_arg)
+                        elif isinstance(parsed_tc_arg, dict) and p_cnt > 1 and all(k in parsed_tc_arg for k in sig.parameters.keys()):
+                            actual_val = target_fn(**parsed_tc_arg)
+                        elif p_cnt == 0:
+                            actual_val = target_fn()
+                        else:
+                            actual_val = target_fn(parsed_tc_arg)
+
+                        if hasattr(actual_val, "val") and hasattr(actual_val, "next"):
+                            node_vals = []
+                            curr_node = actual_val
+                            seen_nodes = set()
+                            while curr_node is not None and hasattr(curr_node, "val"):
+                                if id(curr_node) in seen_nodes or len(node_vals) > 500:
+                                    break
+                                seen_nodes.add(id(curr_node))
+                                node_vals.append(curr_node.val)
+                                curr_node = getattr(curr_node, "next", None)
+                            actual_val = node_vals
+                    else:
+                        actual_val = stdout_capture.getvalue().strip()
+
+            expected_out = tc.get("expected")
+            captured_stdout = stdout_capture.getvalue().strip()
+
+            if expected_out is not None and str(expected_out).strip():
+                def _inline_compare(a, b):
+                    sa = str(a).replace("\\r\\n", "\\n").rstrip()
+                    sb = str(b).replace("\\r\\n", "\\n").rstrip()
+                    if sa == sb:
+                        return True, None
+                    try:
+                        ja = json.loads(sa)
+                        jb = json.loads(sb)
+                        if ja == jb:
+                            return True, None
+                    except Exception:
+                        pass
+                    return False, f"Expected '{sb}', got '{sa}'"
+
+                matched = False
+                diff = None
+                if actual_val is not None:
+                    is_match, diff = _inline_compare(actual_val, expected_out)
+                    if is_match:
+                        matched = True
+                if not matched and captured_stdout:
+                    is_match, diff = _inline_compare(captured_stdout, expected_out)
+                    if is_match:
+                        matched = True
+                        actual_val = captured_stdout
+
+                if matched or assertion_py:
+                    tc_passed = True
+                else:
+                    tc_passed = False
+                    tc_err = diff or f"Expected '{expected_out}', got '{actual_val or captured_stdout}'"
             else:
-                exec(code, scope, scope)
-                target_fn = scope.get("solve") or scope.get("fix")
-                if not target_fn:
-                    raise AssertionError("Solution must define a callable solve() or fix() function.")
-                actual_val = target_fn()
-            tc_passed = True
+                tc_passed = True
         except AssertionError as ae:
             tc_err = str(ae) or "Assertion failed"
         except Exception as ex:
@@ -534,21 +692,23 @@ if __name__ == "__main__":
         node_bin = shutil.which("node")
         if not node_bin:
             return CodeRunResponse(
-                all_passed=True,
-                passed_count=len(test_cases) or 1,
-                total_count=len(test_cases) or 1,
+                all_passed=False,
+                passed_count=0,
+                total_count=max(1, len(test_cases)),
                 test_results=[{
                     "id": 1,
-                    "name": "JavaScript Code Recorded",
+                    "name": "JavaScript Execution Unavailable",
                     "input": "(JavaScript)",
-                    "expected": "(Node.js runner optional)",
-                    "actual": "(Solution preserved for recruiter scorecard review)",
-                    "passed": True,
-                    "duration": "1ms"
+                    "expected": "Node.js runtime required",
+                    "actual": "Node.js not installed on this server",
+                    "passed": False,
+                    "error": "Node.js runtime not found. JavaScript/TypeScript automated execution is unavailable. Code preserved for manual review.",
+                    "duration": "0ms"
                 }],
-                console_output="> Solution submitted for recruiter scorecard evaluation (Node.js runner not configured on host).",
-                execution_ms=1.0,
-                memory_mb=12.0
+                console_output="> JavaScript Execution Error: Node.js runtime is not installed on this server.\n> Your code has been saved and will be reviewed manually by the technical evaluation team.",
+                execution_ms=0.0,
+                memory_mb=0.0,
+                runtime_error="Node.js runtime not available"
             )
 
         temp_dir = tempfile.mkdtemp(prefix="sparkx_sandbox_js_")
@@ -607,8 +767,15 @@ if (isStarter && !isCustom) {
 }
 
 try {
+    const FORBIDDEN_MODULES = new Set(['child_process', 'fs', 'net', 'http', 'https', 'dgram', 'dns', 'tls', 'cluster', 'worker_threads', 'v8', 'vm']);
+    const safeRequire = (mod) => {
+        if (FORBIDDEN_MODULES.has(mod)) {
+            throw new Error(`Security Violation: Module '${mod}' is forbidden in sandbox execution.`);
+        }
+        return require(mod);
+    };
     const wrapped = new Function('require', 'module', 'exports', code + '; if (typeof solve === "function") return solve; if (typeof fix === "function") return fix; return null;');
-    const fn = wrapped(require, {}, {});
+    const fn = wrapped(safeRequire, {}, {});
 
     if (isCustom) {
         let parsedInput;
@@ -808,24 +975,50 @@ try {
             if cur.description:
                 col_names = [d[0] for d in cur.description]
                 rows = [dict(r) for r in cur.fetchall()]
+                exec_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 actual_summary = f"{len(rows)} row(s) returned"
-                table_lines = [f"> SQLite Isolated Memory Runner: Query executed ({exec_ms}ms)", f"> Query: {cleaned_sql[:80]}...", f"> Rows: {len(rows)}"]
+                table_lines = [
+                    f"> SQLite Isolated Memory Runner: Query executed ({exec_ms}ms)",
+                    f"> Columns: {', '.join(col_names)}",
+                    f"> Rows returned: {len(rows)}"
+                ]
+
+                # Compare to expected_rows if provided
+                if expected_rows and isinstance(expected_rows, list):
+                    def _norm(r):
+                        return {str(k).lower(): str(v).strip() for k, v in r.items()}
+                    actual_norm = sorted([str(_norm(r)) for r in rows])
+                    expected_norm = sorted([str(_norm(r)) for r in expected_rows])
+                    passed = actual_norm == expected_norm
+                    err_msg = None if passed else f"Row mismatch: expected {len(expected_rows)} rows, got {len(rows)}."
+                    if not passed:
+                        table_lines.append(f"> MISMATCH: expected rows do not match actual rows.")
+                else:
+                    # No expected_rows: pass if query executed and returned some data
+                    passed = True
+                    err_msg = None
+
             else:
+                exec_ms = round((time.perf_counter() - start_time) * 1000, 2)
+                rows = []
                 actual_summary = f"{cur.rowcount} row(s) affected"
                 table_lines = [f"> SQLite Isolated Memory Runner: Statement executed ({exec_ms}ms). {actual_summary}."]
+                passed = True
+                err_msg = None
 
             con.close()
             return CodeRunResponse(
-                all_passed=True,
-                passed_count=1,
+                all_passed=passed,
+                passed_count=1 if passed else 0,
                 total_count=1,
                 test_results=[{
                     "id": 1,
                     "name": "SQL Query Execution",
-                    "input": target_sql[:60] if target_sql else "(Active SQL)",
-                    "expected": "Valid query execution",
+                    "input": target_sql[:80] if target_sql else "(Active SQL)",
+                    "expected": "Valid query execution" if not expected_rows else f"{len(expected_rows)} expected rows",
                     "actual": actual_summary,
-                    "passed": True,
+                    "passed": passed,
+                    "error": err_msg,
                     "duration": f"{exec_ms}ms"
                 }],
                 console_output="\n".join(table_lines),
@@ -855,27 +1048,31 @@ try {
                 runtime_error=str(sql_err)
             )
 
+    def _get_node_bin(self) -> Optional[str]:
+        return shutil.which("node")
+
     def _run_unsupported_language(self, code: str, lang: str, task_id: str) -> CodeRunResponse:
         return CodeRunResponse(
             all_passed=False,
             passed_count=0,
-            total_count=0,
+            total_count=1,
             test_results=[{
                 "id": 1,
-                "name": f"Manual Evaluation ({lang.upper()})",
+                "name": f"{lang.upper()} Execution Not Configured",
                 "input": f"{lang} source code",
-                "expected": "Recruiter manual review",
-                "actual": "Solution preserved without automated execution",
+                "expected": "Judge0 API or local compiler required",
+                "actual": "Runtime not available on this host",
                 "passed": False,
+                "status": "unavailable",
+                "error": f"Automated execution for {lang.upper()} requires Judge0 API configuration (JUDGE0_API_KEY or JUDGE0_BASE_URL).",
                 "duration": "0ms"
             }],
             console_output=(
-                f"> NOTICE: Automated execution is not available for {lang.upper()}.\n"
-                f"> Supported automated sandbox runtimes are Python, JavaScript, TypeScript, and SQL.\n"
-                f"> Your code has been safely saved and will be reviewed manually by the technical evaluation team."
+                f"> Execution Notice: Automated execution is not configured for {lang.upper()}.\n"
+                f"> Connect Judge0 API or install the local compiler to enable automated execution."
             ),
             execution_ms=0.0,
-            memory_mb=0.0
+            memory_mb=None
         )
 
 
@@ -886,8 +1083,25 @@ class SandboxRunner:
     @classmethod
     def get_instance(cls) -> BaseSandboxRunner:
         if cls._instance is None:
-            cls._instance = LocalSubprocessSandbox()
+            # Check if Judge0 is available or configured
+            try:
+                from services.judge0_runner import Judge0Runner
+                judge0 = Judge0Runner()
+                if judge0.is_configured():
+                    cls._instance = judge0
+                else:
+                    cls._instance = LocalSubprocessSandbox()
+            except Exception:
+                cls._instance = LocalSubprocessSandbox()
         return cls._instance
+
+    @classmethod
+    def get_instance_with_judge0(cls) -> BaseSandboxRunner:
+        try:
+            from services.judge0_runner import Judge0Runner
+            return Judge0Runner()
+        except Exception:
+            return cls.get_instance()
 
     @classmethod
     def set_instance(cls, runner: BaseSandboxRunner):
@@ -896,4 +1110,5 @@ class SandboxRunner:
     @classmethod
     def get_supported_languages(cls) -> List[Dict[str, Any]]:
         return cls.get_instance().get_supported_languages()
+
 

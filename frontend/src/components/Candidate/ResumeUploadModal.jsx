@@ -231,7 +231,7 @@ export default function ResumeUploadModal({ job, onClose }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-md p-4 overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative w-full max-w-3xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-popover text-slate-900 dark:text-slate-100 my-auto max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-3xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-popover text-slate-900 dark:text-slate-100 my-auto max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* Pinned Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 pb-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
@@ -268,7 +268,7 @@ export default function ResumeUploadModal({ job, onClose }) {
             </div>
 
             {/* Lifecycle Explainer */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 text-left max-w-md mx-auto space-y-3 text-xs shadow-subtle">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 text-left max-w-md mx-auto space-y-3 text-xs shadow-subtle">
               <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">
                 <span className="font-semibold text-slate-800 dark:text-slate-200">Official Hiring Workflow</span>
                 <span className="text-brand-600 dark:text-brand-400 font-bold font-mono">Stage 1 of 4</span>
@@ -335,7 +335,7 @@ export default function ResumeUploadModal({ job, onClose }) {
           <>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               {/* Demo Presets — fetched from backend /api/presets */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 shadow-subtle">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 shadow-subtle">
                 <div className="flex items-center justify-between mb-2.5">
                   <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5 font-mono">
                     <Zap className="w-3.5 h-3.5 text-brand-500 dark:text-brand-400" />
@@ -351,7 +351,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {presets.map((preset, idx) => (
                       <button key={idx} type="button" onClick={() => applyPreset(preset)}
-                        className="text-left p-2.5 rounded-lg bg-white dark:bg-[#0E121E] hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200 dark:border-slate-800 hover:border-brand-500 transition text-xs group shadow-subtle">
+                        className="text-left p-2.5 rounded-lg bg-white dark:bg-[#1A1714] hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200 dark:border-slate-800 hover:border-brand-500 transition text-xs group shadow-subtle">
                         <div className="font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 line-clamp-1">{preset.name}</div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{preset.experience} yrs • {preset.skills[0]}</div>
                       </button>
@@ -361,7 +361,7 @@ export default function ResumeUploadModal({ job, onClose }) {
               </div>
 
               {/* Upload Dropzone */}
-              <div className="relative border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 rounded-xl p-5 text-center transition bg-slate-50/60 dark:bg-[#080A10]/60 group">
+              <div className="relative border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 rounded-xl p-5 text-center transition bg-slate-50/60 dark:bg-[#14110F]/60 group">
                 <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                 <div className="flex flex-col items-center justify-center space-y-2">
                   <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-800 shrink-0">
@@ -373,7 +373,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">AI parses skills, education, dates, and cross-checks for timeline anomalies.</p>
                 </div>
                 {isScanning && (
-                  <div className="absolute inset-0 bg-white/95 dark:bg-[#080A10]/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center space-y-2 z-20">
+                  <div className="absolute inset-0 bg-white/95 dark:bg-[#14110F]/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center space-y-2 z-20">
                     <Loader2 className="w-6 h-6 text-brand-600 dark:text-brand-400 animate-spin" />
                     <div className="text-xs font-bold text-slate-900 dark:text-white tracking-wide">AI Extracting Profile & Matching Criteria...</div>
                   </div>
@@ -465,7 +465,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition border ${
                     expectedCtcType === 'range'
                       ? 'bg-brand-600 text-white border-brand-600 shadow-subtle'
-                      : 'bg-white dark:bg-[#080A10] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400'
+                      : 'bg-white dark:bg-[#14110F] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400'
                   }`}
                 >
                   Range (Min – Max)
@@ -476,7 +476,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition border ${
                     expectedCtcType === 'fixed'
                       ? 'bg-brand-600 text-white border-brand-600 shadow-subtle'
-                      : 'bg-white dark:bg-[#080A10] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400'
+                      : 'bg-white dark:bg-[#14110F] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400'
                   }`}
                 >
                   Exact Figure
@@ -499,7 +499,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                       value={currentCtc}
                       onChange={e => setCurrentCtc(e.target.value)}
                       placeholder="e.g. 8.5"
-                      className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
+                      className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#14110F] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
                     />
                   </div>
                 </div>
@@ -518,7 +518,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                       value={expectedCtcMin}
                       onChange={e => setExpectedCtcMin(e.target.value)}
                       placeholder="e.g. 10.0"
-                      className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
+                      className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#14110F] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
                     />
                   </div>
                 </div>
@@ -538,7 +538,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                         value={expectedCtcMax}
                         onChange={e => setExpectedCtcMax(e.target.value)}
                         placeholder="e.g. 14.0"
-                        className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
+                        className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#14110F] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
                       />
                     </div>
                   </div>
@@ -563,7 +563,7 @@ export default function ResumeUploadModal({ job, onClose }) {
           </div>
 
           {/* Pinned Footer Actions */}
-          <div className="p-4 sm:p-6 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#0E121E]">
+          <div className="p-4 sm:p-6 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#1A1714]">
             <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition">
               Cancel
             </button>

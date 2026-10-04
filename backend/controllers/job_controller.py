@@ -7,6 +7,7 @@ from models.db_models import JobModel
 from schemas import JobCreate, JobUpdate, JobMatchRequest, BatchJobMatchRequest
 from ai_engine import generate_job_questions, calculate_resume_job_match
 from services.compensation_service import format_job_compensation
+from services.organization_service import ensure_organization
 
 class JobController:
     @staticmethod
@@ -25,8 +26,16 @@ class JobController:
         return j
 
     @staticmethod
-    def get_all_jobs(db: Session, skip: int = 0, limit: int = 100):
-        jobs = db.query(JobModel).offset(skip).limit(limit).all()
+    def get_all_jobs(db: Session, skip: int = 0, limit: int = 100, status_filter: str = None, organization_id: str = None):
+        query = db.query(JobModel)
+        if organization_id:
+            query = query.filter(JobModel.organization_id == organization_id)
+        if status_filter and status_filter.strip().lower() != "all":
+            valid_statuses = ["Active", "Paused", "Closed"]
+            norm = next((s for s in valid_statuses if s.lower() == status_filter.strip().lower()), None)
+            if norm:
+                query = query.filter(JobModel.status == norm)
+        jobs = query.offset(skip).limit(limit).all()
         for j in jobs:
             JobController._enrich_job(j)
         return jobs
@@ -96,7 +105,7 @@ class JobController:
         return {"matches": results}
 
     @staticmethod
-    def create_new_job(payload: JobCreate, db: Session):
+    def create_new_job(payload: JobCreate, db: Session, organization_id: str = "org-sparkx-default"):
         job_id = f"job-{uuid.uuid4().hex[:6]}"
         questions = payload.questions
         if not questions:
@@ -114,9 +123,14 @@ class JobController:
         # If not provided, leave it empty — the AI engine will generate dynamically per candidate.
         final_assessment = payload.coding_assessment or {"is_coding": is_coding, "domain_category": domain_cat}
 
+        org = organization_id or getattr(payload, "organization_id", None) or "org-sparkx-default"
+        ensure_organization(db, org, name=payload.company_name or "SparkX Technologies")
+
         new_job = JobModel(
             id=job_id,
             title=payload.title,
+            company_name=payload.company_name or "SparkX Technologies",
+            organization_id=org,
             department=payload.department,
             location=payload.location,
             min_experience_years=payload.min_experience_years,
@@ -130,6 +144,8 @@ class JobController:
             coding_assessment=final_assessment,
             coding_difficulty=payload.coding_difficulty if is_coding else None,
             assessment_pool=payload.assessment_pool or {},
+            assessment_version=payload.assessment_version or 1,
+            competency_blueprint=payload.competency_blueprint or {},
             # Production-safe compensation persistence
             ctc_type=payload.ctc_type or "range",
             ctc_min=payload.ctc_min,
@@ -149,15 +165,19 @@ class JobController:
 
 
     @staticmethod
-    def update_job(job_id: str, payload: JobUpdate, db: Session):
+    def update_job(job_id: str, payload: JobUpdate, db: Session, organization_id: str = None):
         """
         Recruiter-only: Updates existing job specification & compensation budget.
-        CRITICAL ARCHITECTURAL GUARANTEE: Does NOT mutate candidate-submitted expectations.
-        Historical candidate application records remain 100% intact.
+        Enforces tenant isolation: verifies recruiter's organization matches job's organization.
         """
         job = db.query(JobModel).filter(JobModel.id == job_id).first()
         if not job:
             return None, "Job not found"
+
+        if organization_id:
+            job_org = getattr(job, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+            if job_org != organization_id:
+                return None, "Cross-tenant access forbidden: Job belongs to another organization."
 
         update_data = payload.model_dump(exclude_unset=True) if hasattr(payload, "model_dump") else payload.dict(exclude_unset=True)
 
@@ -176,5 +196,44 @@ class JobController:
         db.refresh(job)
         JobController._enrich_job(job)
         return job, None
+
+    @staticmethod
+    def change_job_status(job_id: str, new_status: str, closure_reason: str = None, recruiter_email: str = None, db: Session = None, organization_id: str = None):
+        """
+        Recruiter-only: Updates single authoritative job lifecycle state (Active, Paused, Closed).
+        Enforces tenant isolation and preserves all historical candidate applications & assessments.
+        """
+        from datetime import datetime
+        job = db.query(JobModel).filter(JobModel.id == job_id).first()
+        if not job:
+            return None, "Job not found"
+
+        if organization_id:
+            job_org = getattr(job, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+            if job_org != organization_id:
+                return None, "Cross-tenant access forbidden: Job belongs to another organization."
+
+        valid_statuses = ["Active", "Paused", "Closed"]
+        normalized_status = next((s for s in valid_statuses if s.lower() == (new_status or "").lower()), None)
+        if not normalized_status:
+            return None, f"Invalid status '{new_status}'. Valid statuses: Active, Paused, Closed"
+
+        job.status = normalized_status
+
+        if normalized_status == "Closed":
+            job.closed_at = datetime.utcnow()
+            job.closed_by = recruiter_email or "recruiter"
+            if closure_reason:
+                job.closure_reason = closure_reason
+        elif normalized_status == "Paused":
+            job.paused_at = datetime.utcnow()
+        elif normalized_status == "Active":
+            pass
+
+        db.commit()
+        db.refresh(job)
+        JobController._enrich_job(job)
+        return job, None
+
 
 

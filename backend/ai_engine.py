@@ -11,6 +11,7 @@ import json
 import time
 import hashlib
 import random
+import uuid
 import urllib.request
 import urllib.error
 from typing import List, Dict, Any, Optional
@@ -35,13 +36,13 @@ def get_llm_status() -> Dict[str, Any]:
     grok_key = os.environ.get("GROK_API_KEY", "").strip()
 
     if gemini_key:
-        return {"active": True, "provider": "Google Gemini", "model": "gemini-2.5-flash", "has_key": True, "mode": "live_llm"}
+        return {"active": True, "provider": "Google Gemini", "model": "gemini-flash-lite-latest", "has_key": True, "mode": "live_llm"}
+    elif grok_key:
+        return {"active": True, "provider": "xAI Grok", "model": "grok-2-latest", "has_key": True, "mode": "live_llm"}
     elif groq_key:
         return {"active": True, "provider": "Groq", "model": "llama-3.3-70b-versatile", "has_key": True, "mode": "live_llm"}
     elif deepseek_key:
         return {"active": True, "provider": "DeepSeek", "model": "deepseek-chat", "has_key": True, "mode": "live_llm"}
-    elif grok_key:
-        return {"active": True, "provider": "xAI Grok", "model": "grok-beta", "has_key": True, "mode": "live_llm"}
     elif openai_key:
         return {"active": True, "provider": "OpenAI", "model": "gpt-4o-mini", "has_key": True, "mode": "live_llm"}
     else:
@@ -111,12 +112,20 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
 
 def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """Direct call to Google Gemini with auto-fallback across verified active models."""
-    candidate_models = ["gemini-3.6-flash", "gemini-2.5-pro", "gemini-flash-latest"]
+    candidate_models = [
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.5-flash",
+        "gemini-flash-lite-latest",
+        "gemini-flash-latest",
+        "gemini-2.5-flash-lite",
+        "gemini-2.5-flash"
+    ]
 
     payload: Dict[str, Any] = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
-            "temperature": 0.3,
+            "temperature": 0.7,
             "maxOutputTokens": max_tokens
         }
     }
@@ -149,7 +158,7 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", ma
             continue
         except (urllib.error.URLError, TimeoutError, OSError) as e:
             print(f"[AI Engine] Gemini connection error: {e}")
-            continue
+            return None
         except Exception as e:
             print(f"[AI Engine] Gemini {model} error: {e}")
             continue
@@ -258,43 +267,51 @@ def _call_deepseek_api(api_key: str, prompt: str, system_instruction: str = "", 
     return None
 
 def _call_grok_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
-    """Direct call to xAI Grok API (OpenAI-compatible endpoint). Free tier available via console.x.ai."""
+    """Direct call to xAI Grok API (OpenAI-compatible endpoint)."""
     url = "https://api.x.ai/v1/chat/completions"
     messages = []
     if system_instruction:
         messages.append({"role": "system", "content": system_instruction})
     messages.append({"role": "user", "content": prompt})
 
-    payload = {
-        "model": "grok-beta",
-        "messages": messages,
-        "temperature": 0.3,
-        "max_tokens": max_tokens
-    }
-    try:
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            },
-            method="POST"
-        )
-        with urllib.request.urlopen(req, timeout=15) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            choices = res_data.get("choices", [])
-            if choices and "message" in choices[0]:
-                return choices[0]["message"].get("content", "").strip()
-    except Exception as e:
-        print(f"[AI Engine] Grok error: {e}")
-        return None
+    models_to_try = ["grok-2-latest", "grok-beta", "grok-2-1212"]
+    for model_name in models_to_try:
+        payload = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": max_tokens
+        }
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=12) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                choices = res_data.get("choices", [])
+                if choices and "message" in choices[0]:
+                    return choices[0]["message"].get("content", "").strip()
+        except urllib.error.HTTPError as e:
+            # If 403 or 429, don't spam, return None to trigger fallback
+            print(f"[AI Engine] xAI Grok {model_name} HTTP {e.code}: {e.reason}")
+            if e.code in (403, 401):
+                return None
+            continue
+        except Exception as e:
+            print(f"[AI Engine] Grok {model_name} error: {e}")
+            continue
     return None
 
 def call_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """
     Unified Real-Time LLM dispatcher.
-    Checks providers in order: Gemini -> Groq -> DeepSeek -> Grok (xAI) -> OpenAI.
+    Checks providers in order: Gemini -> Grok (xAI) -> Groq -> DeepSeek -> OpenAI.
     Returns live response text from LLM, or None if no keys or network error.
     """
     gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
@@ -305,6 +322,15 @@ def call_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) 
                 return res
         except Exception as e:
             print(f"[AI Engine] Gemini call failed: {e}")
+
+    grok_key = os.environ.get("GROK_API_KEY", "").strip()
+    if grok_key:
+        try:
+            res = _call_grok_api(grok_key, prompt, system_instruction, max_tokens=max_tokens)
+            if res:
+                return res
+        except Exception as e:
+            print(f"[AI Engine] Grok call failed: {e}")
 
     groq_key = os.environ.get("GROQ_API_KEY", "").strip()
     if groq_key:
@@ -323,15 +349,6 @@ def call_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) 
                 return res
         except Exception as e:
             print(f"[AI Engine] DeepSeek call failed: {e}")
-
-    grok_key = os.environ.get("GROK_API_KEY", "").strip()
-    if grok_key:
-        try:
-            res = _call_grok_api(grok_key, prompt, system_instruction, max_tokens=max_tokens)
-            if res:
-                return res
-        except Exception as e:
-            print(f"[AI Engine] Grok call failed: {e}")
 
     openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
     if openai_key:
@@ -489,14 +506,18 @@ DB_RUNTIMES = {
 
 def classify_job_domain(role_title: str, job_skills: List[str], job_description: str = "") -> Tuple[bool, str, List[str]]:
     """
-    Classifies job into:
-    - is_coding: bool (True for software, infra, data engineering; False for non-technical roles)
-    - domain: str ("finance", "hr", "marketing", "sales", "operations", "technical")
-    - dynamic_technologies: List[str] (derived technologies from actual job requirements)
+    Purely requirement-driven job classification.
+    Derives:
+    - is_coding: bool (True ONLY if job requirements/skills explicitly require executable code/scripting/queries)
+    - domain: str ("finance", "hr", "marketing", "sales", "operations", "legal", "technical", "business")
+    - dynamic_technologies: List[str] (technologies derived from actual job requirements)
     """
-    combined = f"{role_title} {' '.join(job_skills)} {job_description}".lower()
+    title_text = (role_title or "").strip()
+    skills_text = " ".join(job_skills or [])
+    desc_text = (job_description or "").strip()
+    combined = f"{title_text} {skills_text} {desc_text}".lower()
 
-    # Explicit technology extraction from job skills/description across all 15 language families
+    # 1. Technology extraction across all execution engines
     known_tech_map = {
         "c": "c",
         "c++": "cpp",
@@ -553,45 +574,42 @@ def classify_job_domain(role_title: str, job_skills: List[str], job_description:
             if v not in detected_tech:
                 detected_tech.append(v)
 
-    # Prioritize explicit technical engineering role titles
-    title_lower = (role_title or "").lower()
-    is_explicit_tech = any(re.search(r'\b' + re.escape(t) + r'\b', title_lower) for t in [
-        "developer", "engineer", "architect", "programmer", "devops", "cloud", "sre",
-        "full stack", "backend", "frontend", "data scientist", "machine learning", "ai",
-        "software", "infrastructure", "systems", "dba", "qa automation", "coder", "database"
-    ]) or bool(detected_tech)
+    # 2. Check for explicit software/scripting/data engineering execution indicators in requirements
+    code_execution_indicators = [
+        "developer", "engineer", "programmer", "coding", "software engineering", "scripting",
+        "devops", "full stack", "backend", "frontend", "qa automation", "sysadmin", "cloud architect",
+        "data engineer", "machine learning engineer", "database administrator", "dba"
+    ]
+    has_code_requirement = bool(detected_tech) or any(re.search(r'\b' + re.escape(ind) + r'\b', combined) for ind in code_execution_indicators)
 
-    # Check non-technical domains ONLY if NOT an explicit technical engineering role
-    if not is_explicit_tech:
-        if any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["accountant", "accounting", "auditor", "bookkeeper", "tax", "cpa", "financial analyst", "controller", "finance", "ledger"]):
-            return False, "finance", []
-        elif any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["human resources", "hr manager", "recruiter", "talent acquisition", "people ops", "employee relations", "talent partner"]):
-            return False, "hr", []
-        elif any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["marketing", "seo", "content writer", "social media", "copywriter", "growth manager", "brand manager", "campaign"]):
-            return False, "marketing", []
-        elif any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["sales", "business development", "account executive", "bdr", "sdr", "sales director", "inside sales"]):
-            return False, "sales", []
-        elif any(re.search(r'\b' + re.escape(k) + r'\b', title_lower) for k in ["operations", "supply chain", "logistics", "procurement", "inventory manager", "warehouse manager"]):
-            return False, "operations", []
+    is_coding = has_code_requirement
 
-    # Check technical indicators across combined text
-    is_tech = is_explicit_tech or any(re.search(r'\b' + re.escape(k) + r'\b', combined) for k in [
-        "developer", "engineer", "architect", "programmer", "devops", "cloud", "sre",
-        "full stack", "backend", "frontend", "data scientist", "machine learning", "ai",
-        "software", "infrastructure", "systems", "dba", "qa automation", "database"
-    ]) or bool(detected_tech)
+    # 3. Domain frequency scoring across combined job specification
+    domain_keywords = {
+        "finance": ["finance", "accounting", "auditing", "tax", "ifrs", "gaap", "ledger", "bookkeeping", "budgeting", "financial modeling", "cpa", "valuation", "balance sheet", "payroll"],
+        "hr": ["human resources", "talent acquisition", "recruiting", "sourcing", "people ops", "employee relations", "performance management", "onboarding", "hris"],
+        "marketing": ["marketing", "seo", "sem", "copywriting", "content strategy", "brand", "social media", "campaigns", "growth marketing", "digital marketing"],
+        "sales": ["sales", "business development", "account management", "lead generation", "crm", "pipeline", "quota", "bdr", "sdr"],
+        "legal": ["legal", "compliance", "regulatory", "contracts", "governance", "ip", "litigation", "paralegal"],
+        "operations": ["operations", "supply chain", "logistics", "inventory", "procurement", "fulfillment", "warehouse"],
+        "technical": ["software", "engineering", "developer", "architecture", "devops", "cloud", "database", "analytics", "infrastructure", "systems"]
+    }
 
-    if is_tech:
-        is_network = bool(re.search(r'\b(network|routing|switching|cisco|juniper|arista|firewall|palo\s*alto|fortinet|ccna|ccnp|ccie|tcp\/ip|bgp|ospf|lan\/wan|subnets?|cidr)\b', combined))
-        if is_network:
-            network_langs = [l for l in detected_tech if l in ["python", "bash"]] if detected_tech else ["python", "bash"]
-            if not network_langs:
-                network_langs = ["python", "bash"]
-            return True, "network", network_langs
-        langs = detected_tech if detected_tech else ["python", "javascript", "typescript", "java", "cpp"]
-        return True, "technical", langs
+    scores = {d: 0 for d in domain_keywords}
+    for d, kws in domain_keywords.items():
+        for kw in kws:
+            matches = len(re.findall(r'\b' + re.escape(kw) + r'\b', combined))
+            scores[d] += matches
 
-    return False, "business", []
+    top_domain = max(scores, key=scores.get)
+    assigned_domain = top_domain if scores[top_domain] > 0 else ("technical" if is_coding else "business")
+
+    # If domain is network / infra specific
+    if is_coding and any(k in combined for k in ["network", "cisco", "juniper", "firewall", "router"]):
+        assigned_domain = "network"
+
+    langs = detected_tech if detected_tech else (["python", "javascript"] if is_coding else [])
+    return is_coding, assigned_domain, langs
 
 def _get_default_starter_code(lang: str, title: str, skills: List[str]) -> str:
     s_primary = skills[0] if skills else "Task"
@@ -3046,7 +3064,7 @@ def evaluate_adaptive_answer(
                 "needs_follow_up": bool(data.get("needs_follow_up", False)),
                 "follow_up_question": data.get("follow_up_question"),
                 "quality": data.get("quality", "solid"),
-                "score": int(data.get("score", 70)),
+                "score": int(data.get("score", 0)),
                 "feedback": data.get("feedback", "Evaluated dynamically by Live AI Engine."),
                 "engine": "live_llm"
             }
@@ -3755,17 +3773,18 @@ JSON format:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def generate_studio_assessment_config(
-    job_title: str,
-    department: str,
-    job_description: str,
-    required_skills: List[str],
+    job_title: str = "",
+    department: str = "",
+    job_description: str = "",
+    required_skills: Optional[List[str]] = None,
     optional_criteria: str = "",
     experience: str = "",
     languages: Optional[List[str]] = None,
     job_id: str = "",
     mcq_count: int = 5,
     interview_q_count: int = 3,
-    difficulty: str = "Mid-Level"
+    difficulty: str = "Mid-Level",
+    **kwargs
 ) -> Dict[str, Any]:
     """
     Produces a domain-appropriate recruiter Assessment Studio configuration
@@ -3773,6 +3792,11 @@ def generate_studio_assessment_config(
     The LLM decides what evaluation methods apply to this role.
     Respects recruiter-supplied mcq_count, interview_q_count, and difficulty.
     """
+    # Normalize aliases if passed
+    job_title = job_title or kwargs.get("role_title") or "Role"
+    job_description = job_description or kwargs.get("description") or ""
+    if required_skills is None:
+        required_skills = kwargs.get("skills") or []
     skills_str = ", ".join(required_skills[:8]) if required_skills else "General professional skills"
     desc_snippet = job_description[:800] if job_description else ""
     langs_str = ", ".join(languages) if languages else "Not specified"
@@ -3781,9 +3805,11 @@ def generate_studio_assessment_config(
     s_skill = required_skills[1] if len(required_skills) > 1 else p_skill
     skill_list_str = ", ".join(required_skills[:5]) if required_skills else job_title
 
+    nonce = uuid.uuid4().hex[:8]
     llm_prompt = (
-        "You are a Principal Talent Assessment Architect. Design a recruiter assessment config for this specific job.\n"
-        "Based on the REAL job data below, determine what evaluation methods are meaningful.\n"
+        f"You are a Principal Talent Assessment Architect. (Request Nonce: {nonce})\n"
+        "Design a fresh, unique recruiter assessment config for this specific job.\n"
+        "Every generation must be distinct, highly specific, and creative.\n"
         f"RULES: Generate EXACTLY {mcq_count} MCQs and EXACTLY {interview_q_count} interview questions at {difficulty} difficulty. "
         "No coding challenges for non-technical roles. No finance tasks for engineers. All questions must be specific to this job. English only.\n\n"
         f"JOB: Title={job_title}, Dept={department}, Exp={experience}\n"
@@ -3792,7 +3818,7 @@ def generate_studio_assessment_config(
         '{"domain":"<cloud_infrastructure|financial_accounting|frontend_engineering|data_science|hr_operations|marketing|devops|backend_engineering|legal|etc>",'
         '"is_coding":<true if role requires writing/debugging executable code>,'
         '"domain_rationale":"<1 sentence based on job data>",'
-        '"supported_eval_types":["<applicable types only: coding_challenge|sql_challenge|infrastructure_task|data_analysis_task|written_case_study|financial_modeling|mcq_knowledge|scenario_judgment|interview_questions|compliance_scenario|writing_sample|system_design>"],'
+        '"supported_eval_types":["<applicable types only: coding_challenge|sql_challenge|infrastructure_task|external_platforms|data_analysis_task|written_case_study|financial_modeling|mcq_knowledge|scenario_judgment|interview_questions|compliance_scenario|writing_sample|system_design>"],'
         + f'"interview_questions":['
         + ','.join(
             f'{{"id":"iq_{i+1}","type":"<competency>","prompt":"<rigorous question #{i+1} specific to this job>","rubric":["<c1>","<c2>","<c3>"],"follow_up_vague":"<probing follow-up>","follow_up_expert":"<deep-dive>"}}'
@@ -3828,9 +3854,27 @@ def generate_studio_assessment_config(
     if llm_res:
         parsed = parse_llm_json(llm_res)
         if parsed and isinstance(parsed, dict) and parsed.get("domain") and parsed.get("assessment_pool"):
+            # Ensure unique IDs for questions so UI reacts immediately
+            iqs = parsed.get("interview_questions") or []
+            for idx, q in enumerate(iqs):
+                q["id"] = f"iq_{uuid.uuid4().hex[:6]}"
+            parsed["interview_questions"] = iqs
+
             pool = parsed.get("assessment_pool", {})
+            mcqs = pool.get("technical_mcqs") or []
+            for idx, m in enumerate(mcqs):
+                m["id"] = f"mcq_{uuid.uuid4().hex[:6]}"
+            pool["technical_mcqs"] = mcqs
+
+            is_coding = parsed.get("is_coding", False)
             if "is_coding" not in pool:
-                pool["is_coding"] = parsed.get("is_coding", False)
+                pool["is_coding"] = is_coding
+
+            eval_types = parsed.get("supported_eval_types") or []
+            if is_coding and "external_platforms" not in eval_types:
+                eval_types.append("external_platforms")
+            parsed["supported_eval_types"] = eval_types
+
             parsed["assessment_pool"] = pool
             parsed["generated_by"] = "llm"
             parsed["job_id"] = job_id
@@ -3842,28 +3886,199 @@ def generate_studio_assessment_config(
     if is_coding:
         lang_list = detected_langs or (languages or ["python"])
         task_type_label = "coding"
-        eval_types = ["coding_challenge", "mcq_knowledge", "scenario_judgment", "interview_questions"]
+        eval_types = ["coding_challenge", "external_platforms", "mcq_knowledge", "scenario_judgment", "interview_questions"]
         if any(x in skill_list_str.lower() for x in ["aws","kubernetes","terraform","docker","linux","cloud","network","azure","gcp","infra"]):
-            eval_types = ["infrastructure_task", "mcq_knowledge", "scenario_judgment", "interview_questions"]
+            eval_types = ["infrastructure_task", "external_platforms", "mcq_knowledge", "scenario_judgment", "interview_questions"]
             task_type_label = "infrastructure_task"
         elif any(x in skill_list_str.lower() for x in ["sql","postgres","mysql","database","bigquery","snowflake"]):
-            eval_types = ["sql_challenge","coding_challenge","mcq_knowledge","scenario_judgment","interview_questions"]
+            eval_types = ["sql_challenge", "coding_challenge", "external_platforms", "mcq_knowledge", "scenario_judgment", "interview_questions"]
     else:
         lang_list = []
-        eval_types = ["mcq_knowledge","scenario_judgment","interview_questions"]
+        eval_types = ["mcq_knowledge", "scenario_judgment", "interview_questions"]
         task_type_label = "written_case_study"
-        if any(x in domain_category.lower() for x in ["finance","account"]):
-            eval_types = ["mcq_knowledge","financial_modeling","scenario_judgment","interview_questions"]
+        if any(x in domain_category.lower() for x in ["finance", "account"]):
+            eval_types = ["financial_modeling", "mcq_knowledge", "scenario_judgment", "interview_questions"]
             task_type_label = "financial_modeling"
         elif "data" in domain_category.lower():
-            eval_types = ["mcq_knowledge","data_analysis_task","scenario_judgment","interview_questions"]
+            eval_types = ["data_analysis_task", "mcq_knowledge", "scenario_judgment", "interview_questions"]
             task_type_label = "data_analysis_task"
-        elif any(x in domain_category.lower() for x in ["marketing","content"]):
-            eval_types = ["mcq_knowledge","writing_sample","scenario_judgment","interview_questions"]
+        elif any(x in domain_category.lower() for x in ["marketing", "content"]):
+            eval_types = ["writing_sample", "mcq_knowledge", "scenario_judgment", "interview_questions"]
             task_type_label = "writing_sample"
-        elif any(x in domain_category.lower() for x in ["legal","compliance"]):
-            eval_types = ["mcq_knowledge","compliance_scenario","scenario_judgment","interview_questions"]
+        elif any(x in domain_category.lower() for x in ["legal", "compliance"]):
+            eval_types = ["compliance_scenario", "mcq_knowledge", "scenario_judgment", "interview_questions"]
             task_type_label = "compliance_scenario"
+
+    # Dynamic randomized pool generation
+    skill_pool = [s.strip() for s in (required_skills or []) if s.strip()]
+    if len(skill_pool) < 4:
+        if is_coding:
+            skill_pool.extend(["System Architecture", "API Reliability", "Data Structures", "Testing & Automation", "Performance Optimization"])
+        else:
+            skill_pool.extend(["Strategic Planning", "Stakeholder Communication", "Quality Assurance", "Regulatory Compliance", "Risk Management"])
+    random.shuffle(skill_pool)
+
+    interview_archetypes = [
+        {
+            "prefix": "Core Competency",
+            "prompt": "Walk through the most complex project or initiative you led utilizing {skill} in a {job_title} environment. What core architectural or strategic trade-offs did you make, and how did you measure success?",
+            "rubric": ["{skill} mastery", "Strategic trade-offs", "Measurable impact", "Execution rigor"],
+            "vague": "Can you elaborate on the technical or operational nuances of how {skill} was directly applied?",
+            "expert": "If user volume, transaction load, or team scale multiplied 10x, how would your design around {skill} hold up?"
+        },
+        {
+            "prefix": "Cross-Functional Leadership",
+            "prompt": "Describe an instance where conflicting priorities or stakeholder requirements threatened a milestone involving {skill}. How did you align the team and protect deliverable quality as a {job_title}?",
+            "rubric": ["Stakeholder negotiation", "Prioritization", "{skill} alignment", "Crisis communication"],
+            "vague": "What specific resistance did you encounter, and what was your concession strategy?",
+            "expert": "What long-term governance framework did you establish to prevent similar alignment friction?"
+        },
+        {
+            "prefix": "Incident Response & Root Cause",
+            "prompt": "Recall a high-severity production, operational, or deliverable breakdown involving {skill} during your career as a {job_title}. Detail your step-by-step diagnostic workflow, immediate mitigation, and permanent preventative measures.",
+            "rubric": ["Root cause analysis", "Incident containment", "Corrective actions", "Post-mortem reporting"],
+            "vague": "What early warning metrics or indicators were initially overlooked before escalation?",
+            "expert": "How did you automate detection or build fail-safes so this class of issue is caught proactively?"
+        },
+        {
+            "prefix": "Scalability & Quality Engineering",
+            "prompt": "When standardizing {skill} practices across an organization, what automated quality gates, linting/verification pipelines, or peer review standards do you mandate as a {job_title}?",
+            "rubric": ["Automated verification", "Quality standards", "Maintainability", "Continuous improvement"],
+            "vague": "How did you balance developer or operational velocity against strict compliance gates?",
+            "expert": "What was the measurable decrease in production defect or revision rate after rolling out these standards?"
+        },
+        {
+            "prefix": "System Redesign & Modernization",
+            "prompt": "If given full technical and strategic ownership to rebuild the legacy {skill} foundation for this {job_title} role from the ground up, what architectural pattern would you champion and why?",
+            "rubric": ["System architecture", "Legacy migration", "{skill} modernization", "Risk containment"],
+            "vague": "What would be your phased rollout plan to avoid service disruption?",
+            "expert": "How would you handle backward compatibility and data migration without downtime?"
+        },
+        {
+            "prefix": "Resource & Performance Optimization",
+            "prompt": "Detail a scenario where you identified and eliminated significant latency, compute bottlenecks, or resource waste within a {skill} pipeline as a {job_title}.",
+            "rubric": ["Performance profiling", "Resource efficiency", "Bottleneck resolution", "Quantitative gains"],
+            "vague": "What profiling tools and benchmark metrics did you use to pinpoint the bottleneck?",
+            "expert": "What were the before-and-after p99 latency or cost figures following your intervention?"
+        },
+        {
+            "prefix": "Security, Governance & Compliance",
+            "prompt": "How do you systematically audit and enforce security, data privacy, and principle-of-least-privilege across {skill} implementations in your {job_title} duties?",
+            "rubric": ["Security by design", "Compliance posture", "Vulnerability remediation", "Threat modeling"],
+            "vague": "What specific compliance or threat vector concerned you most in that deployment?",
+            "expert": "How do you continuously verify that access controls and configurations have not drifted over time?"
+        },
+        {
+            "prefix": "Innovation & Future-Proofing",
+            "prompt": "How do you evaluate emerging technologies, libraries, or methodologies related to {skill} before integrating them into a {job_title} production workflow?",
+            "rubric": ["Technology evaluation", "Risk assessment", "Prototyping rigor", "Long-term maintainability"],
+            "vague": "What criteria decide whether a new tool is mature enough for adoption?",
+            "expert": "How do you prevent vendor lock-in or technical debt when introducing cutting-edge tooling?"
+        }
+    ]
+    random.shuffle(interview_archetypes)
+
+    procedural_iqs = []
+    for i in range(max(1, interview_q_count)):
+        archetype = interview_archetypes[i % len(interview_archetypes)]
+        skill_i = skill_pool[i % len(skill_pool)]
+        procedural_iqs.append({
+            "id": f"iq_{uuid.uuid4().hex[:6]}",
+            "type": f"{archetype['prefix']} — {skill_i}",
+            "prompt": archetype["prompt"].format(skill=skill_i, job_title=job_title),
+            "rubric": [r.format(skill=skill_i) for r in archetype["rubric"]],
+            "follow_up_vague": archetype["vague"].format(skill=skill_i),
+            "follow_up_expert": archetype["expert"].format(skill=skill_i)
+        })
+
+    # MCQ Archetypes
+    mcq_archetypes = [
+        {
+            "q": "When deploying or configuring {skill} in a production {job_title} environment, what is considered the primary best practice?",
+            "correct": "Implement automated validation, observability, and reproducible infrastructure-as-code.",
+            "distractors": [
+                "Deploy directly to production to shorten feedback loops without telemetry.",
+                "Hardcode credentials and access endpoints inside source repositories for simplicity.",
+                "Disable all error logging to maximize server input/output throughput."
+            ],
+            "exp": "Automated validation, observability, and reproducible infrastructure are fundamental standards for resilient {skill} operations."
+        },
+        {
+            "q": "In a {job_title} role, an unexplained regression or performance drop is observed in the {skill} pipeline. What is the recommended first diagnostic action?",
+            "correct": "Isolate the component, inspect distributed traces/logs, and identify the root cause before taking corrective action.",
+            "distractors": [
+                "Immediately scale compute resources 10x without examining error logs.",
+                "Silently suppress client-facing exceptions and wait for off-peak hours.",
+                "Roll back all company-wide deployments indiscriminately without investigation."
+            ],
+            "exp": "Systematic root cause analysis via observability data prevents compounding errors during an incident."
+        },
+        {
+            "q": "Which architectural approach best ensures high availability and horizontal scalability when designing systems around {skill}?",
+            "correct": "Stateless processing nodes coupled with decoupled messaging and managed persistence.",
+            "distractors": [
+                "A monolithic single-node instance storing all transactional state in local memory.",
+                "Synchronous tight coupling between all external microservices.",
+                "Manual server provisioning whenever traffic thresholds are exceeded."
+            ],
+            "exp": "Stateless architectures and asynchronous decoupling allow workloads to scale horizontally under dynamic traffic."
+        },
+        {
+            "q": "What is the primary objective of automated regression testing and linting when standardizing {skill} codebases?",
+            "correct": "Prevent regressions, enforce consistency, and catch bugs before deployment.",
+            "distractors": [
+                "Increase compile time to justify additional cloud spending.",
+                "Eliminate the need for developer documentation and system architecture diagrams.",
+                "Guarantee that no security audits will ever be required."
+            ],
+            "exp": "Continuous automated validation catches regressions early in the lifecycle and ensures code maintainability."
+        },
+        {
+            "q": "When handling sensitive customer data or compliance requirements within {skill}, which security model should a {job_title} enforce?",
+            "correct": "Zero-trust architecture with end-to-end encryption and principle-of-least-privilege RBAC.",
+            "distractors": [
+                "Granting administrative privileges to all internal team members for convenience.",
+                "Relying solely on network firewalls without authenticating internal microservice calls.",
+                "Storing sensitive tokens in public configuration files."
+            ],
+            "exp": "Zero-trust and least-privilege RBAC are the universal security standard for modern enterprise deployments."
+        },
+        {
+            "q": "How should a {job_title} approach technical debt and refactoring within a critical {skill} system?",
+            "correct": "Prioritize high-risk bottlenecks with test coverage and incremental refactoring.",
+            "distractors": [
+                "Ignore all technical debt until the entire system suffers an unrecoverable crash.",
+                "Halt all feature delivery indefinitely to rewrite the system from scratch without tests.",
+                "Delegate all architecture refactoring exclusively to junior interns."
+            ],
+            "exp": "Pragmatic, test-driven incremental refactoring minimizes regression risk while continually reducing technical debt."
+        }
+    ]
+    random.shuffle(mcq_archetypes)
+
+    procedural_mcqs = []
+    opt_keys = ["A", "B", "C", "D"]
+    for i in range(max(1, mcq_count)):
+        archetype = mcq_archetypes[i % len(mcq_archetypes)]
+        skill_i = skill_pool[i % len(skill_pool)]
+        q_text = archetype["q"].format(skill=skill_i, job_title=job_title)
+        exp_text = archetype["exp"].format(skill=skill_i)
+
+        choices = [archetype["correct"]] + archetype["distractors"]
+        random.shuffle(choices)
+        correct_idx = choices.index(archetype["correct"])
+        correct_opt = opt_keys[correct_idx]
+
+        options_dict = {opt_keys[idx]: ch for idx, ch in enumerate(choices)}
+
+        procedural_mcqs.append({
+            "id": f"mcq_{uuid.uuid4().hex[:6]}",
+            "question": q_text,
+            "options": options_dict,
+            "correct_option": correct_opt,
+            "explanation": exp_text,
+            "difficulty": difficulty
+        })
 
     return {
         "domain": domain_category,
@@ -3873,20 +4088,31 @@ def generate_studio_assessment_config(
         "generated_by": "procedural_fallback",
         "job_id": job_id,
         "job_title": job_title,
-        "interview_questions": [
-            {"id":"iq_1","type":f"Core Competency — {p_skill}","prompt":f"Describe the most complex challenge you resolved using {p_skill} in a {job_title} role. What was your methodology?","rubric":[p_skill,"Structured problem-solving","Measurable outcome","Stakeholder impact"],"follow_up_vague":f"How exactly was {p_skill} applied?","follow_up_expert":f"How did you ensure the {p_skill} solution was scalable?"},
-            {"id":"iq_2","type":f"Cross-Functional — {s_skill}","prompt":f"Describe coordinating stakeholders to deliver a critical outcome involving {s_skill} under constraints in a {job_title} context.","rubric":[s_skill,"Stakeholder management","Communication under pressure","Delivery"],"follow_up_vague":"What made this coordination difficult?","follow_up_expert":"What systemic improvements followed?"},
-            {"id":"iq_3","type":"Operational Failure & Root Cause","prompt":f"Walk through the most significant failure you handled as a {job_title}. What was your investigation and what changed?","rubric":["Root cause identification","Corrective action","Preventive controls","Leadership communication"],"follow_up_vague":"What early warnings did you miss?","follow_up_expert":"How did you redesign the process to prevent recurrence?"}
-        ],
+        "interview_questions": procedural_iqs,
         "assessment_pool": {
             "domain": domain_category,
             "is_coding": is_coding,
-            "technical_mcqs": [
-                {"id":"mcq_1","question":f"What is the primary responsibility of a {job_title} when overseeing {p_skill}?","options":{"A":f"Delegate all {p_skill} decisions without oversight.","B":f"Ensure {p_skill} activities align with organizational standards and compliance.","C":f"Address {p_skill} issues only when externally escalated.","D":f"Apply {p_skill} practices only during annual reviews."},"correct_option":"B","explanation":f"A {job_title} proactively governs {p_skill} in alignment with organizational and regulatory requirements.","difficulty":"Mid-Level"},
-                {"id":"mcq_2","question":f"When {s_skill} produces an unexpected result in a {job_title} context, what is the correct first step?","options":{"A":"Ignore if variance is below a threshold.","B":"Immediately escalate without investigation.","C":"Conduct root cause analysis before corrective action.","D":"Apply the previous resolution without review."},"correct_option":"C","explanation":"Root cause analysis ensures corrective actions address underlying causes rather than symptoms.","difficulty":"Mid-Level"},
-                {"id":"mcq_3","question":f"What most distinguishes high performance in a {job_title} role handling {skill_list_str} under deadline?","options":{"A":"Completing tasks quickly by skipping documentation.","B":"Applying domain frameworks while maintaining quality, traceability, and stakeholder communication.","C":"Delegating critical decisions to avoid accountability.","D":"Waiting for instructions in ambiguous situations."},"correct_option":"B","explanation":f"High performers in {job_title} demonstrate structured thinking and domain expertise under pressure.","difficulty":"Senior"}
-            ],
-            "scenario": {"id":"scenario_1","title":f"Critical Escalation — {p_skill} in {job_title}","prompt":f"You are a {job_title}. A critical issue in {p_skill} has downstream impact on {s_skill} and organizational compliance. You have 48 hours before a senior leadership review. Detail your prioritization, mitigation, root cause investigation, and stakeholder communication plan.","guidance":f"Strong answers reference domain-specific standards for {p_skill} and {s_skill}, risk methodology, escalation protocols, and a structured remediation plan.","difficulty":"Senior","ideal_keywords":[p_skill.lower(),s_skill.lower(),"root cause","mitigation","stakeholder","escalation","framework"]},
-            "hands_on": {"id":"hands_on_1","title":f"Practical Task — {task_type_label.replace('_',' ').title()} for {job_title}","is_coding":is_coding,"task_type":task_type_label,"instructions":f"Using your knowledge of {skill_list_str}, complete a practical task relevant to the {job_title} role demonstrating actual day-to-day proficiency. Document your approach, methodology, assumptions, and deliverable.",f"difficulty":"{difficulty}","deliverable_description":f"Complete solution demonstrating mastery of {p_skill} in a realistic {job_title} scenario.","supported_languages":lang_list if is_coding else [],"starter_code":{"python":f"# {job_title} Solution\ndef solve(data):\n    pass\n"} if is_coding else {},"sample_test_cases":[{"name":"Basic case","input":"sample_input","expected":"expected_output"}] if is_coding else [],"hidden_test_cases":[{"name":"Edge case","input":"edge_input","expected":"edge_output"}] if is_coding else []}
+            "technical_mcqs": procedural_mcqs,
+            "scenario": {
+                "id": f"scenario_{uuid.uuid4().hex[:6]}",
+                "title": f"Critical Escalation — {skill_pool[0]} in {job_title}",
+                "prompt": f"You are a {job_title}. A critical issue in {skill_pool[0]} has downstream impact on organizational compliance and user experience. You have 48 hours before an executive leadership review. Detail your prioritization, mitigation, root cause investigation, and stakeholder communication plan.",
+                "guidance": f"Strong answers reference domain-specific standards for {skill_pool[0]}, risk methodology, escalation protocols, and a structured remediation plan.",
+                "difficulty": difficulty,
+                "ideal_keywords": [skill_pool[0].lower(), "root cause", "mitigation", "stakeholder", "escalation", "framework"]
+            },
+            "hands_on": {
+                "id": f"hands_on_{uuid.uuid4().hex[:6]}",
+                "title": f"Practical Task — {task_type_label.replace('_',' ').title()} for {job_title}",
+                "is_coding": is_coding,
+                "task_type": task_type_label,
+                "instructions": f"Using your knowledge of {skill_list_str}, complete a practical task relevant to the {job_title} role demonstrating actual day-to-day proficiency. Document your approach, methodology, assumptions, and deliverable.",
+                "difficulty": difficulty,
+                "deliverable_description": f"Complete solution demonstrating mastery of {skill_pool[0]} in a realistic {job_title} scenario.",
+                "supported_languages": lang_list if is_coding else [],
+                "starter_code": {"python": f"# {job_title} Solution\ndef solve(data):\n    pass\n"} if is_coding else {},
+                "sample_test_cases": [{"name": "Basic case", "input": "sample_input", "expected": "expected_output"}] if is_coding else [],
+                "hidden_test_cases": [{"name": "Edge case", "input": "edge_input", "expected": "edge_output"}] if is_coding else []
+            }
         }
     }

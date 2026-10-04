@@ -1,79 +1,49 @@
 /**
  * SparkX AI Recruitment - Professional Resume PDF Exporter
- * Generates an executive-grade, beautifully formatted printable Curriculum Vitae / Candidate Dossier
- * and triggers high-resolution vector PDF export via the browser's native print engine.
+ * Generates a clean, authentic printable Candidate Dossier using ONLY genuine candidate evidence.
+ * Zero hardcoded companies, zero fabricated scores, zero fake employers.
  */
 
 export function generateResumeHTML(candidate) {
   if (!candidate) return '';
 
   const name = candidate.name || 'Candidate';
-  const email = candidate.email || 'verified@candidate.sparkx.ai';
-  const phone = candidate.phone || '+91 98000 00000';
-  const role = candidate.jobTitle || candidate.job?.title || 'Senior Technical Specialist';
-  const experienceYears = candidate.experienceYears ?? candidate.experience_years ?? 4;
-  const matchScore = candidate.matchScore ?? candidate.match_score ?? 88;
-  const education = candidate.education || 'Bachelor of Technology in Computer Science & Engineering';
-  const location = candidate.location || 'Bengaluru, India (Open to Hybrid / Remote)';
+  const email = candidate.email || 'Not provided';
+  const phone = candidate.phone || 'Not provided';
+  const role = candidate.jobTitle || candidate.job?.title || 'Applicant';
+  const experienceYears = candidate.experienceYears ?? candidate.experience_years;
+  const matchScore = candidate.matchScore ?? candidate.match_score;
+  const education = candidate.education || 'Not specified';
+  const location = candidate.location || 'Not specified';
 
-  // Process skills list
+  // Genuine skills list
   let skills = [];
   if (Array.isArray(candidate.skills)) {
     skills = candidate.skills;
   } else if (typeof candidate.skills === 'string') {
     skills = candidate.skills.split(',').map(s => s.trim()).filter(Boolean);
   }
-  if (skills.length === 0) {
-    skills = ['Python', 'FastAPI', 'React', 'TypeScript', 'PostgreSQL', 'Docker', 'System Design'];
-  }
 
-  // Summary
+  // Genuine summary
   const summary = candidate.resumeSummary || candidate.resume_summary || 
-    `${name} is a results-driven ${role} with ${experienceYears}+ years of hands-on expertise building scalable distributed architectures, resilient API systems, and modern full-stack web applications. Proven track record in rapid product iterations, clean engineering best practices, and collaborative leadership.`;
+    (candidate.resumeText ? candidate.resumeText.slice(0, 300) + '...' : 'Profile details extracted from candidate application.');
 
-  // Career experience timeline
-  const currentYear = new Date().getFullYear();
-  const startYear = currentYear - experienceYears;
-  const midYear = Math.max(startYear + 2, currentYear - 1);
+  // Genuine raw resume text if available
+  const resumeText = candidate.resumeText || candidate.resume_text || '';
 
-  const experiences = [
-    {
-      title: role,
-      company: 'HyperScale Platforms & Systems',
-      period: `${midYear} — Present`,
-      location: 'Bengaluru, India',
-      highlights: [
-        `Architected high-throughput backend services handling 10k+ RPM with sub-50ms latency using ${skills.slice(0, 3).join(', ')}.`,
-        'Led modular system refactoring that improved overall continuous deployment velocity by 40%.',
-        'Implemented comprehensive proctoring integrity and telemetry pipelines with automated error monitoring.'
-      ]
-    },
-    {
-      title: 'Software Development Engineer',
-      company: 'NextGen Engineering Labs',
-      period: `${startYear} — ${midYear}`,
-      location: 'Bengaluru, India',
-      highlights: [
-        'Developed mission-critical web applications and reusable frontend components with high test coverage.',
-        'Optimized relational query performance and indexing strategies, reducing median query execution time by 60%.',
-        'Mentored junior engineers and contributed to company-wide technical documentation and coding standards.'
-      ]
-    }
-  ];
-
-  // Scores
-  const techScore = candidate.scores?.technicalScore ?? candidate.codingScore ?? matchScore;
-  const problemSolvingScore = candidate.scores?.problemSolving ?? 92;
-  const integrityScore = candidate.integrityScore ?? 98;
-  const integrityRisk = candidate.integrityRisk || 'Low';
+  // Actual scores
+  const techScore = candidate.scores?.technicalScore ?? candidate.codingScore;
+  const problemSolvingScore = candidate.scores?.problemSolving;
+  const integrityScore = candidate.integrityScore ?? candidate.integrity_score;
+  const integrityRisk = candidate.integrityRisk || candidate.integrity_risk || 'Standard';
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${name} - Executive Resume & Technical Dossier</title>
+  <title>${name} - Verified Candidate Dossier</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
     
     * {
       box-sizing: border-box;
@@ -87,93 +57,95 @@ export function generateResumeHTML(candidate) {
     }
     
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: #0F172A;
-      background: #FFFFFF;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #F8FAFC;
+      color: #1E293B;
       line-height: 1.5;
       font-size: 13px;
-      -webkit-font-smoothing: antialiased;
     }
     
     .container {
-      max-width: 800px;
+      max-width: 820px;
       margin: 0 auto;
-      padding: 24px;
+      background: #FFFFFF;
+      padding: 32px 36px;
+      border: 1px solid #E2E8F0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
     
-    /* Header */
     .header {
-      border-bottom: 2px solid #E2E8F0;
-      padding-bottom: 16px;
-      margin-bottom: 20px;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+      border-bottom: 2px solid #0D9488;
+      padding-bottom: 18px;
+      margin-bottom: 22px;
+      gap: 16px;
     }
     
     .header-left h1 {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 800;
       color: #0F172A;
-      letter-spacing: -0.03em;
+      letter-spacing: -0.5px;
       margin-bottom: 4px;
     }
     
     .header-left .role {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
-      color: #4F46E5;
-      margin-bottom: 8px;
+      color: #0D9488;
+      margin-bottom: 10px;
     }
     
     .contact-bar {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      font-size: 11px;
-      color: #64748B;
+      gap: 12px 18px;
+      font-size: 11.5px;
+      color: #475569;
     }
     
     .contact-item {
       display: flex;
       align-items: center;
-      gap: 4px;
-    }
-    
-    .header-right {
-      text-align: right;
+      gap: 5px;
     }
     
     .score-badge {
-      display: inline-block;
-      background: #EEF2FF;
-      border: 1px solid #C7D2FE;
-      color: #3730A3;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-size: 12px;
+      background: #F0FDFA;
+      border: 1.5px solid #0D9488;
+      border-radius: 10px;
+      padding: 10px 16px;
+      text-align: center;
+      min-width: 100px;
+      font-size: 11px;
       font-weight: 700;
+      color: #0D9488;
     }
     
     .score-badge span {
-      font-size: 18px;
-      color: #4F46E5;
       display: block;
+      font-size: 22px;
+      font-weight: 800;
+      color: #0F766E;
+      line-height: 1;
+      margin-bottom: 2px;
+      font-family: 'JetBrains Mono', monospace;
     }
     
-    /* Sections */
     .section {
-      margin-bottom: 18px;
+      margin-bottom: 20px;
     }
     
     .section-title {
       font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #475569;
+      letter-spacing: 0.8px;
+      color: #0D9488;
       border-bottom: 1px solid #E2E8F0;
-      padding-bottom: 4px;
+      padding-bottom: 6px;
       margin-bottom: 10px;
     }
     
@@ -183,7 +155,6 @@ export function generateResumeHTML(candidate) {
       line-height: 1.6;
     }
     
-    /* Skills */
     .skills-grid {
       display: flex;
       flex-wrap: wrap;
@@ -193,58 +164,28 @@ export function generateResumeHTML(candidate) {
     .skill-pill {
       background: #F1F5F9;
       color: #334155;
-      border: 1px solid #E2E8F0;
-      padding: 3px 8px;
+      border: 1px solid #CBD5E1;
       border-radius: 6px;
+      padding: 3px 9px;
       font-size: 11px;
       font-weight: 600;
     }
     
-    /* Experience */
-    .exp-item {
-      margin-bottom: 14px;
-    }
-    
-    .exp-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 4px;
-    }
-    
-    .exp-title {
-      font-size: 13.5px;
-      font-weight: 700;
-      color: #0F172A;
-    }
-    
-    .exp-company {
-      font-weight: 600;
-      color: #4F46E5;
-    }
-    
-    .exp-period {
+    .resume-raw-box {
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: 'JetBrains Mono', monospace;
       font-size: 11px;
-      font-weight: 600;
-      color: #64748B;
-      font-family: monospace;
-    }
-    
-    .exp-list {
-      list-style-type: disc;
-      padding-left: 18px;
+      line-height: 1.6;
       color: #334155;
-      font-size: 12px;
-      margin-top: 4px;
+      white-space: pre-wrap;
+      max-height: 380px;
+      overflow-y: auto;
     }
     
-    .exp-list li {
-      margin-bottom: 3px;
-      line-height: 1.5;
-    }
-    
-    /* Telemetry / Proctor box */
-    .telemetry-box {
+    .telemetry-grid {
       background: #F8FAFC;
       border: 1px solid #E2E8F0;
       border-radius: 8px;
@@ -268,9 +209,10 @@ export function generateResumeHTML(candidate) {
     }
     
     .telemetry-value {
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
       color: #0F172A;
+      font-family: 'JetBrains Mono', monospace;
     }
     
     .footer {
@@ -290,6 +232,8 @@ export function generateResumeHTML(candidate) {
       .container {
         padding: 0;
         max-width: 100%;
+        border: none;
+        box-shadow: none;
       }
       .no-print {
         display: none !important;
@@ -300,12 +244,12 @@ export function generateResumeHTML(candidate) {
 <body>
   <div class="container">
     <!-- Top Action Bar (hidden when printing) -->
-    <div class="no-print" style="margin-bottom: 18px; padding: 12px; background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 12px; font-weight: 600; color: #3730A3;">
-        📄 SparkX Verified Candidate Dossier — Ready to Save as PDF
+    <div class="no-print" style="margin-bottom: 18px; padding: 12px; background: #F0FDFA; border: 1px solid #CCFBF1; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 12px; font-weight: 600; color: #0F766E;">
+        Verified Candidate Application Dossier — Ready to Print / Save as PDF
       </span>
       <div style="display: flex; gap: 8px;">
-        <button onclick="window.print()" style="background: #4F46E5; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;">
+        <button onclick="window.print()" style="background: #0D9488; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;">
           Save / Print as PDF
         </button>
         <button onclick="window.close()" style="background: white; color: #475569; border: 1px solid #CBD5E1; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer;">
@@ -320,122 +264,90 @@ export function generateResumeHTML(candidate) {
         <h1>${name}</h1>
         <div class="role">${role}</div>
         <div class="contact-bar">
-          <div class="contact-item">📧 ${email}</div>
-          <div class="contact-item">📱 ${phone}</div>
-          <div class="contact-item">📍 ${location}</div>
-          <div class="contact-item">⏱️ ${experienceYears}+ Yrs Experience</div>
+          <div class="contact-item">Email: ${email}</div>
+          <div class="contact-item">Phone: ${phone}</div>
+          <div class="contact-item">Location: ${location}</div>
+          ${experienceYears != null ? `<div class="contact-item">Experience: ${experienceYears} Yrs</div>` : ''}
         </div>
       </div>
       <div class="header-right">
         <div class="score-badge">
-          <span>${matchScore}%</span>
+          <span>${matchScore != null ? `${matchScore}%` : 'N/A'}</span>
           Role Match
         </div>
       </div>
     </div>
 
-    <!-- Executive Summary -->
+    <!-- Professional Summary -->
     <div class="section">
-      <div class="section-title">1. Executive Summary</div>
+      <div class="section-title">1. Professional Summary</div>
       <div class="summary-text">${summary}</div>
     </div>
 
     <!-- Core Competencies -->
+    ${skills.length > 0 ? `
     <div class="section">
-      <div class="section-title">2. Core Technical Competencies</div>
+      <div class="section-title">2. Verified Skills & Competencies</div>
       <div class="skills-grid">
         ${skills.map(s => `<span class="skill-pill">${s}</span>`).join('')}
       </div>
-    </div>
+    </div>` : ''}
 
-    <!-- Professional Experience -->
+    <!-- Education & Credentials -->
     <div class="section">
-      <div class="section-title">3. Verified Professional Experience</div>
-      ${experiences.map(exp => `
-        <div class="exp-item">
-          <div class="exp-header">
-            <div>
-              <span class="exp-title">${exp.title}</span> — 
-              <span class="exp-company">${exp.company}</span>
-            </div>
-            <span class="exp-period">${exp.period}</span>
-          </div>
-          <ul class="exp-list">
-            ${exp.highlights.map(h => `<li>${h}</li>`).join('')}
-          </ul>
-        </div>
-      `).join('')}
-    </div>
-
-    <!-- Education -->
-    <div class="section">
-      <div class="section-title">4. Education & Credentials</div>
-      <div style="font-size: 12.5px; color: #334155;">
-        <strong>${education}</strong> — Accredited University (Verified Profile)
+      <div class="section-title">3. Education & Credentials</div>
+      <div class="summary-text">
+        <strong>Education:</strong> ${education}
       </div>
     </div>
 
-    <!-- SparkX AI Telemetry & Evaluation Scorecard -->
+    <!-- Extracted Resume Text -->
+    ${resumeText.trim() ? `
     <div class="section">
-      <div class="section-title">5. SparkX Autonomous Evaluation Scorecard</div>
-      <div class="telemetry-box">
+      <div class="section-title">4. Extracted Resume Content</div>
+      <div class="resume-raw-box">${resumeText.trim()}</div>
+    </div>` : ''}
+
+    <!-- Evaluation Telemetry -->
+    <div class="section">
+      <div class="section-title">5. Evaluation Telemetry</div>
+      <div class="telemetry-grid">
         <div class="telemetry-item">
-          <span class="telemetry-label">Technical Assessment</span>
-          <span class="telemetry-value" style="color: #4F46E5;">${techScore} / 100</span>
+          <span class="telemetry-label">Technical Code Score</span>
+          <span class="telemetry-value">${techScore != null ? `${techScore}%` : 'Pending'}</span>
         </div>
         <div class="telemetry-item">
-          <span class="telemetry-label">Problem Solving Depth</span>
-          <span class="telemetry-value" style="color: #059669;">${problemSolvingScore} / 100</span>
+          <span class="telemetry-label">Problem Solving</span>
+          <span class="telemetry-value">${problemSolvingScore != null ? `${problemSolvingScore}%` : 'Pending'}</span>
         </div>
         <div class="telemetry-item">
-          <span class="telemetry-label">Proctor Integrity Score</span>
-          <span class="telemetry-value" style="color: #0284C7;">${integrityScore}% (${integrityRisk} Risk)</span>
+          <span class="telemetry-label">Integrity Verification</span>
+          <span class="telemetry-value">${integrityScore != null ? `${integrityScore}% (${integrityRisk})` : 'Pending'}</span>
         </div>
       </div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      <span>SparkX Autonomous Recruitment Platform • Verified Candidate Dossier</span>
-      <span>Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+      <span>Generated by SparkX AI Recruitment Operating System</span>
+      <span>Confidential Evaluation Record — Authoritative Database Grounding</span>
     </div>
   </div>
-
-  <script>
-    // Automatically trigger system print-to-pdf dialog on load
-    window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 400);
-    };
-  </script>
 </body>
 </html>`;
 }
 
-/**
- * Dispatches an authentic, styled PDF export for the candidate
- */
 export function exportResumeAsPDF(candidate) {
-  if (!candidate) return;
-  
   const htmlContent = generateResumeHTML(candidate);
-  const printWindow = window.open('', '_blank', 'width=860,height=960,toolbar=0,location=0,menubar=0');
-  
-  if (printWindow) {
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-  } else {
-    // If popups are blocked, download as standalone HTML report that triggers PDF print
-    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${(candidate.name || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_')}_Resume_Dossier.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  if (!htmlContent) return;
+
+  const printWindow = window.open('', '_blank', 'width=900,height=1000');
+  if (!printWindow) {
+    alert('Please allow popups to export the candidate resume PDF.');
+    return;
   }
+
+  printWindow.document.open();
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
 }

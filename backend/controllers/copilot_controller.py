@@ -25,7 +25,7 @@ from services.compensation_service import (
 
 class CopilotController:
     @staticmethod
-    def process_query(payload: CopilotQueryRequest, db: Session) -> Dict[str, Any]:
+    def process_query(payload: CopilotQueryRequest, db: Session, organization_id: Optional[str] = None) -> Dict[str, Any]:
         query = (payload.query or "").strip()
         q_lower = query.lower()
 
@@ -60,9 +60,9 @@ class CopilotController:
                     "metrics": [],
                     "ai_interpretation": (
                         "Here is what you can ask me:\n"
-                        "• **Application Status**: Ask 'Which profiles have I applied for?' or 'What is my current stage?'\n"
+                        "• **Application Status**: Ask 'Which positions have I applied for?' or 'What is my current stage?'\n"
                         "• **Interview Guidance**: Ask 'How should I prepare for my AI interview?'\n"
-                        "• **Skill Advice**: Ask 'What skills are needed for AWS Cloud Engineer?'\n"
+                        "• **Skill Advice**: Ask 'What skills are needed for my applied position?'\n"
                         "• **Assessment Tips**: Ask 'What should I review before the coding challenge?'"
                     ),
                     "uncertainty": ""
@@ -73,18 +73,23 @@ class CopilotController:
                 "metrics": [],
                 "ai_interpretation": (
                     "Here is what I can do for you:\n"
-                    "• **Candidate Deep-Dives**: Ask 'Tell me about Aarav Sharma' or 'What are Aarav's skill gaps?'\n"
+                    "• **Candidate Deep-Dives**: Ask 'Tell me about [Candidate Name]' or 'What are their skill gaps?'\n"
                     "• **Action Items**: Ask 'Which candidates need action today?' or 'Who is waiting for review?'\n"
-                    "• **Skill Matching**: Ask 'Which applicants know Python and React?'\n"
+                    "• **Skill Matching**: Ask 'Which applicants match our required technical stack?'\n"
                     "• **Integrity Audits**: Ask 'Are there any high-risk proctor flags?'\n"
-                    "• **Pipeline Bottlenecks**: Ask 'Where are candidates getting stuck?'"
+                    "• **Pipeline Bottlenecks**: Ask 'Where are candidates currently distributed across stages?'"
                 ),
                 "uncertainty": ""
             }
 
-        # Load live database context
-        candidates: List[CandidateModel] = db.query(CandidateModel).all()
-        jobs: List[JobModel] = db.query(JobModel).all()
+        # Load live database context with multi-tenant isolation
+        cand_query = db.query(CandidateModel)
+        job_query = db.query(JobModel)
+        if organization_id:
+            cand_query = cand_query.filter(CandidateModel.organization_id == organization_id)
+            job_query = job_query.filter(JobModel.organization_id == organization_id)
+        candidates: List[CandidateModel] = cand_query.all()
+        jobs: List[JobModel] = job_query.all()
 
         # ── 3. CANDIDATE SELF-QUERY: "who am i", "which profiles have i applied to", "my applications" ──
         is_self_query = any(phrase in q_lower for phrase in [
@@ -954,7 +959,10 @@ class CopilotController:
             }
 
         # ── 6. PIPELINE OVERVIEW (ONLY WHEN SPECIFICALLY REQUESTED) ──
-        if any(w in q_lower for w in ["pipeline", "overview", "summary", "database", "stats", "how many"]):
+        if any(w in q_lower for w in ["pipeline", "overview", "summary", "database", "stats", "how many", "job", "jobs"]):
+            active_jobs = [j for j in jobs if getattr(j, 'status', 'Active') == 'Active']
+            paused_jobs = [j for j in jobs if getattr(j, 'status', 'Active') == 'Paused']
+            closed_jobs = [j for j in jobs if getattr(j, 'status', 'Active') == 'Closed']
             stages_count = {
                 "applied": len([c for c in candidates if getattr(c, 'stage', '') == 'applied']),
                 "screening": len([c for c in candidates if getattr(c, 'stage', '') == 'screening']),
@@ -969,14 +977,16 @@ class CopilotController:
             return {
                 "text": "Live Recruitment Pipeline Intelligence Summary:",
                 "database_facts": [
-                    f"Total Candidates: {len(candidates)} across {len(jobs)} active jobs",
+                    f"Total Requisitions: {len(jobs)} ({len(active_jobs)} active, {len(paused_jobs)} paused, {len(closed_jobs)} closed)",
+                    f"Total Candidates: {len(candidates)} across all requisitions",
                     f"Stage Breakdown: Inbound: {stages_count['applied']}, Screening: {stages_count['screening']}, Assessment: {stages_count['assessment']}, Interview: {stages_count['interview']}, Review: {stages_count['review']}, Completed: {stages_count['completed']}"
                 ],
                 "metrics": [
+                    f"Active Jobs: {len(active_jobs)}",
                     f"High-Match Candidates (>=85%): {high_match}",
                     f"Integrity Flags: {high_risk}"
                 ],
-                "ai_interpretation": f"Your pipeline currently tracks {len(candidates)} candidates. {stages_count['applied']} applicants are in Inbound triage, and {stages_count['review']} are awaiting committee decisions.",
+                "ai_interpretation": f"Your platform currently tracks {len(active_jobs)} active open requisition(s) ({len(paused_jobs)} paused, {len(closed_jobs)} closed) with {len(candidates)} candidate(s) in total. {stages_count['applied']} applicants are in Inbound triage, and {stages_count['review']} are awaiting committee decisions.",
                 "uncertainty": "Synchronous database status as of current query timestamp."
             }
 

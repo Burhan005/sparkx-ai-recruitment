@@ -45,8 +45,8 @@ export default function AIOrb({
       ctx.clearRect(0, 0, size, size);
 
       let speed = 0.04;
-      let primaryColor = '79, 107, 255'; // cobalt
-      let secondaryColor = '99, 102, 241'; // indigo
+      let primaryColor = '15, 118, 110'; // teal-700 (brand hover)
+      let secondaryColor = '13, 148, 136'; // teal (brand)
       let waveCount = 3;
       let amplitude = 2.5;
 

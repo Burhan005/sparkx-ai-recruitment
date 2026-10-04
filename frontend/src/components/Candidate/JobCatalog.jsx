@@ -27,10 +27,10 @@ export default function JobCatalog() {
   const navigate = useNavigate();
   const { jobId } = useParams();
   const { jobs, setActiveJobId, currentUser } = useRecruitment();
-  const [selectedJobForApply, setSelectedJobForApply] = useState(null);
-  const [filterScope, setFilterScope] = useState('ALL'); // 'ALL' | 'BEST_MATCH'
+  const [filterScope, setFilterScope] = useState('ACTIVE'); // 'ACTIVE' | 'ALL' | 'PAUSED_CLOSED' | 'BEST_MATCH'
   const [backendMatches, setBackendMatches] = useState({});
   const [isMatchingLoading, setIsMatchingLoading] = useState(false);
+  const [selectedJobForApply, setSelectedJobForApply] = useState(null);
 
   // Sync route jobId param to modal
   useEffect(() => {
@@ -44,6 +44,7 @@ export default function JobCatalog() {
   }, [jobId, jobs, setActiveJobId]);
 
   const handleApplyClick = (job) => {
+    if (job.status !== 'Active') return;
     setActiveJobId(job.id);
     navigate(`/jobs/${job.id}/apply`);
   };
@@ -148,45 +149,54 @@ export default function JobCatalog() {
     });
   }, [jobs, backendMatches, hasCandidateProfile, candidateSkills, candidateExp, candidateRole]);
 
+  const activeJobsCount = useMemo(() => jobs.filter(j => j.status === 'Active').length, [jobs]);
+  const pausedClosedCount = useMemo(() => jobs.filter(j => j.status === 'Paused' || j.status === 'Closed').length, [jobs]);
+
   const displayedJobs = useMemo(() => {
+    if (filterScope === 'ACTIVE') {
+      return rankedJobs.filter(j => j.status === 'Active');
+    }
+    if (filterScope === 'PAUSED_CLOSED') {
+      return rankedJobs.filter(j => j.status === 'Paused' || j.status === 'Closed');
+    }
     if (filterScope === 'BEST_MATCH') {
-      return rankedJobs.filter(j => j.matchScore !== null && j.matchScore >= 75);
+      return rankedJobs.filter(j => j.status === 'Active' && j.matchScore !== null && j.matchScore >= 75);
     }
     return rankedJobs;
   }, [rankedJobs, filterScope]);
 
   return (
-    <div className="space-y-10 pb-16">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-10 pb-16 animate-page-enter">
       
       {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] p-6 sm:p-10 shadow-subtle text-center">
+      <div className="relative overflow-hidden rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] p-6 sm:p-10 shadow-subtle text-center">
         <div className="relative z-10 max-w-3xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-[#E8E8E4] dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-medium font-mono">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 dark:bg-[#231F1B] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 text-xs font-medium font-mono">
+            <Sparkles className="w-3.5 h-3.5 text-teal-700 dark:text-teal-300" />
             <span>AI Talent Intelligence Platform</span>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
             Explore Open Roles & Verified Assessments
           </h1>
 
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-normal leading-relaxed">
+          <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 max-w-2xl mx-auto font-normal leading-relaxed">
             Apply with automated resume parsing, complete live interactive assessments, and track every stage of your application in real-time.
           </p>
 
           {/* Quick Metrics */}
           <div className="pt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-lg mx-auto">
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-slate-200 dark:border-slate-800">
-              <div className="text-base font-bold text-slate-900 dark:text-white font-mono">&lt; 3 Mins</div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Automated Parsing</div>
+            <div className="p-3 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
+              <div className="text-base font-bold text-stone-900 dark:text-stone-100 font-mono">&lt; 3 Mins</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Automated Parsing</div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-slate-200 dark:border-slate-800">
-              <div className="text-base font-bold text-blue-600 dark:text-blue-400 font-mono">Adaptive AI</div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Technical & Scenario Fit</div>
+            <div className="p-3 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
+              <div className="text-base font-bold text-teal-700 dark:text-teal-300 font-mono">Adaptive AI</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Technical & Scenario Fit</div>
             </div>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-slate-200 dark:border-slate-800 col-span-2 sm:col-span-1">
+            <div className="p-3 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] col-span-2 sm:col-span-1">
               <div className="text-base font-bold text-emerald-600 dark:text-emerald-400 font-mono">Zero Bias</div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Objective Scoring</div>
+              <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Objective Scoring</div>
             </div>
           </div>
         </div>
@@ -197,18 +207,28 @@ export default function JobCatalog() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Open Technical & Product Roles</h2>
+              <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">Open Technical & Product Roles</h2>
               {candidateSkills.length > 0 && (
-                <span className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                  <Target className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                <span className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                  <Target className="w-3 h-3 text-teal-700 dark:text-teal-300" />
                   <span>Ranked by Your Resume Skills</span>
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Select a position to test automatic resume parsing and live AI interview assessment.</p>
+            <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">Select a position to test automatic resume parsing and live AI interview assessment.</p>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setFilterScope('ACTIVE')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                filterScope === 'ACTIVE'
+                  ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/20'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              Active ({activeJobsCount})
+            </button>
             <button
               onClick={() => setFilterScope('ALL')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
@@ -217,8 +237,20 @@ export default function JobCatalog() {
                   : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
               }`}
             >
-              All Roles ({jobs.length})
+              All ({jobs.length})
             </button>
+            {pausedClosedCount > 0 && (
+              <button
+                onClick={() => setFilterScope('PAUSED_CLOSED')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  filterScope === 'PAUSED_CLOSED'
+                    ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/20'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                }`}
+              >
+                Inactive ({pausedClosedCount})
+              </button>
+            )}
             {hasCandidateProfile && (
               <button
                 onClick={() => setFilterScope('BEST_MATCH')}
@@ -229,7 +261,7 @@ export default function JobCatalog() {
                 }`}
               >
                 <Flame className="w-3.5 h-3.5 text-amber-500" />
-                <span>Best Matches ({rankedJobs.filter(j => j.matchScore !== null && j.matchScore >= 75).length})</span>
+                <span>Best Matches ({rankedJobs.filter(j => j.status === 'Active' && j.matchScore !== null && j.matchScore >= 75).length})</span>
               </button>
             )}
           </div>
@@ -238,12 +270,12 @@ export default function JobCatalog() {
         {/* Jobs Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {displayedJobs.map((job, idx) => (
-            <FadeInUp key={job.id} delay={idx * 80}>
+            <div key={job.id} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(idx * 60, 360)}ms` }}>
             <div
-              className={`p-5 sm:p-6 rounded-2xl bg-white dark:bg-[#14161F] border flex flex-col justify-between space-y-4 h-full relative group shadow-subtle hover:shadow-depth-2 transition-all duration-150 ${
+              className={`interactive-card p-5 sm:p-6 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border flex flex-col justify-between space-y-4 h-full relative group shadow-subtle hover:shadow-depth-2 transition-all duration-150 ${
                 job.hasStrongMatch 
-                  ? 'border-blue-500/80 dark:border-blue-500/70' 
-                  : 'border-[#E8E8E4] dark:border-[#222634] hover:border-slate-400 dark:hover:border-slate-600'
+                  ? 'border-brand-500/80 dark:border-brand-500/70 ring-1 ring-brand-500/30' 
+                  : 'border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400 dark:hover:border-brand-600'
               }`}
             >
 
@@ -251,20 +283,26 @@ export default function JobCatalog() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                      <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider">
                         {job.department}
                       </span>
                       <span>•</span>
-                      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center space-x-1">
-                        <Building2 className="w-3 h-3 text-slate-400" />
+                      <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 flex items-center space-x-1">
+                        <Building2 className="w-3 h-3 text-stone-400" />
                         <span>{job.companyName || 'SparkX Technologies'}</span>
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5 group-hover:text-indigo-600 dark:group-hover:text-indigo-200 transition-colors">{job.title}</h3>
+                    <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mt-0.5 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{job.title}</h3>
                   </div>
 
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <span className="px-3 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      job.status === 'Active'
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+                        : job.status === 'Paused'
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                        : 'bg-stone-500/10 text-stone-500 dark:text-stone-400 border-stone-500/25'
+                    }`}>
                       {job.status}
                     </span>
                     {hasCandidateProfile && job.matchScore !== null && (
@@ -285,19 +323,19 @@ export default function JobCatalog() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-stone-600 dark:text-stone-300">
                   <span className="flex items-center space-x-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    <MapPin className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                     <span>{job.location}</span>
                   </span>
                   <span>•</span>
                   <span className="flex items-center space-x-1.5">
-                    <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    <Clock className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                     <span>{job.experience}</span>
                   </span>
                   <span>•</span>
                   <span className="flex items-center space-x-1.5">
-                    <GraduationCap className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                    <GraduationCap className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                     <span className="line-clamp-1">{job.education}</span>
                   </span>
                 </div>
@@ -310,16 +348,16 @@ export default function JobCatalog() {
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-normal">
+                <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed font-normal">
                   {job.description}
                 </p>
 
                 {/* Required Skills */}
                 <div className="pt-1">
-                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Required Skills:</span>
+                  <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">Required Skills:</span>
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {job.requiredSkills.map((skill, i) => (
-                      <span key={i} className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-[#06080E] text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200 dark:border-white/[0.08]">
+                      <span key={i} className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-[#231F1B] text-stone-700 dark:text-stone-300 text-xs font-medium border border-[#E8E4DF] dark:border-[#2A2520] transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]">
                         {skill}
                       </span>
                     ))}
@@ -328,24 +366,40 @@ export default function JobCatalog() {
               </div>
 
               {/* Apply CTA Bar */}
-              <div className="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium">
-                  <BrainCircuit className="w-3.5 h-3.5 text-indigo-500" />
+              <div className="pt-3.5 border-t border-stone-200 dark:border-[#2A2520] flex items-center justify-between">
+                <div className="text-[11px] text-stone-500 dark:text-stone-400 flex items-center gap-1.5 font-medium">
+                  <BrainCircuit className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                   <span>Autonomous Assessment Enabled</span>
                 </div>
 
-                <Button
-                  variant="primary"
-                  size="sm"
-                  iconRight={ChevronRight}
-                  onClick={() => handleApplyClick(job)}
-                >
-                  Apply with AI
-                </Button>
+                {job.status === 'Active' ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    iconRight={ChevronRight}
+                    onClick={() => handleApplyClick(job)}
+                  >
+                    Apply with AI
+                  </Button>
+                ) : job.status === 'Paused' ? (
+                  <button
+                    disabled
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 cursor-not-allowed"
+                  >
+                    Applications Paused
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 cursor-not-allowed"
+                  >
+                    Position Closed
+                  </button>
+                )}
               </div>
 
             </div>
-            </FadeInUp>
+            </div>
           ))}
         </div>
       </div>

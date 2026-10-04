@@ -33,6 +33,7 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
     toggleTheme, 
     syncWithDatabase, 
     logout,
+    requestLogout,
     setSelectedCandidate,
     setActiveJobId
   } = useRecruitment();
@@ -167,7 +168,11 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
       label: 'Sign Out of Session',
       icon: LogOut,
       category: 'Account',
-      action: () => logout()
+      action: () => {
+        onClose();
+        if (requestLogout) requestLogout(navigate);
+        else logout(navigate);
+      }
     }
   ];
 
@@ -217,10 +222,10 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
         role="dialog"
         aria-modal="true"
         aria-label="SparkX Command Menu"
-        className="relative w-full max-w-xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-popover overflow-hidden z-10 animate-scale-in"
+        className="relative w-full max-w-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-popover overflow-hidden z-10 animate-modal-enter"
       >
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3 border-b border-slate-100 dark:border-slate-800 gap-3">
+        <div className="flex items-center px-4 py-3 border-b border-stone-200 dark:border-[#2A2520] gap-3">
           <Search className="w-4 h-4 text-slate-400 shrink-0" />
           <input
             ref={inputRef}
@@ -269,16 +274,16 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
                     onClose();
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`w-full max-w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-colors duration-100 gap-2 ${
+                  className={`w-full max-w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-150 gap-2 active:scale-[0.98] cursor-pointer ${
                     isSelected 
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium' 
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      ? 'bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-white font-medium' 
+                      : 'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/60'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                       isSelected 
-                        ? 'bg-indigo-600 text-white' 
+                        ? 'bg-brand-600 text-white' 
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                     }`}>
                       <Icon className="w-3.5 h-3.5" />
@@ -291,10 +296,10 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                    <span className="text-[10px] uppercase font-mono tracking-[0.08em] text-slate-400 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
                       {item.category}
                     </span>
-                    {isSelected && <ArrowRight className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
+                    {isSelected && <ArrowRight className="w-3.5 h-3.5 text-brand-500 shrink-0" />}
                   </div>
                 </button>
               );

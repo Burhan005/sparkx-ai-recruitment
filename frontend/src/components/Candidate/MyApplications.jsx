@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { FadeInUp, Button, Stat } from '../ui/Primitives';
@@ -16,12 +16,15 @@ import {
   ExternalLink, 
   ChevronRight, 
   Sparkles, 
-  FileText,
-  Hourglass,
-  XCircle,
-  PartyPopper,
-  Lock,
-  DollarSign
+  FileText, 
+  Hourglass, 
+  XCircle, 
+  PartyPopper, 
+  Lock, 
+  DollarSign,
+  CalendarCheck,
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 import { 
   STAGE_CONFIG, 
@@ -30,6 +33,8 @@ import {
   HIRING_DECISION_CONFIG,
   normalizeWorkflow 
 } from '../../utils/workflowContract';
+import CandidateScheduleModal from './CandidateScheduleModal';
+import api from '../../services/api';
 
 export default function MyApplications() {
   const navigate = useNavigate();
@@ -39,6 +44,9 @@ export default function MyApplications() {
     currentUser, 
     setActiveJobId 
   } = useRecruitment();
+
+  const [schedulingModalApp, setSchedulingModalApp] = useState(null);
+  const [isRescheduling, setIsRescheduling] = useState(false);
 
   useEffect(() => {
     if (currentUser?.email) {
@@ -60,30 +68,39 @@ export default function MyApplications() {
     return wf.hiringDecision === 'selected';
   }).length;
 
-  const getStatusBadge = (app) => {
-    const wf = normalizeWorkflow(app);
-    const decisionColor = wf.decisionConfig?.color || wf.decisionConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-    const stageColor = wf.stageConfig?.color || wf.stageConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-    return (
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-bold border ${decisionColor}`}>
-          <span>{wf.decisionConfig?.label || wf.hiringDecision || 'In Review'}</span>
-        </span>
-        <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${stageColor}`}>
-          <span>Stage: {wf.stageConfig?.label || wf.stage || 'Applied'}</span>
-        </span>
-      </div>
-    );
-  };
+    const getStatusBadge = (app) => {
+      const wf = normalizeWorkflow(app);
+      const decisionColor = wf.decisionConfig?.color || wf.decisionConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+      const stageColor = wf.stageConfig?.color || wf.stageConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+      
+      const decisionLabel = wf.decisionConfig?.label || wf.hiringDecision || 'In Review';
+      const isDecisionPending = /pending|in_progress|applied|review/i.test(decisionLabel);
+      
+      const stageLabel = wf.stageConfig?.label || wf.stage || 'Applied';
+      const isStagePending = /pending|in_progress|applied/i.test(stageLabel);
+
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border ${decisionColor}`}>
+            {isDecisionPending && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse opacity-75" />}
+            <span>{decisionLabel}</span>
+          </span>
+          <span className={`inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${stageColor}`}>
+            {isStagePending && <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse opacity-75" />}
+            <span>Stage: {stageLabel}</span>
+          </span>
+        </div>
+      );
+    };
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 pb-16 animate-page-enter">
       
       {/* Header Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] p-6 sm:p-8 shadow-subtle">
         <div className="relative z-10 max-w-3xl space-y-3">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-medium font-mono">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
             <span>Applicant Telemetry & Status</span>
           </div>
 
@@ -107,7 +124,7 @@ export default function MyApplications() {
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Under Review</div>
           </div>
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-slate-200 dark:border-slate-800">
-            <div className="text-xl font-bold font-mono text-blue-600 dark:text-blue-400">{interviewCount}</div>
+            <div className="text-xl font-bold font-mono text-brand-600 dark:text-brand-400">{interviewCount}</div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Interviews</div>
           </div>
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-[#E8E8E4] dark:border-[#222634]">
@@ -125,7 +142,7 @@ export default function MyApplications() {
           </h2>
           <button 
             onClick={() => navigate('/jobs')}
-            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center space-x-1"
+            className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center space-x-1"
           >
             <span>Browse More Roles</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -134,13 +151,13 @@ export default function MyApplications() {
 
         {myApplications.length === 0 ? (
           <div className="p-12 text-center rounded-2xl bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] space-y-4 shadow-subtle">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto border border-[#E8E8E4] dark:border-slate-700">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400 flex items-center justify-center mx-auto border border-[#E8E8E4] dark:border-slate-700">
               <Briefcase className="w-6 h-6" />
             </div>
             <div className="space-y-1 max-w-md mx-auto">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">No applications submitted yet</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                You haven&apos;t applied to any roles under <span className="font-mono text-blue-600 dark:text-blue-400">{currentUser?.email}</span>. Browse active openings to submit your resume with automated AI screening.
+                You haven&apos;t applied to any roles under <span className="font-mono text-brand-600 dark:text-brand-400">{currentUser?.email}</span>. Browse active openings to submit your resume with automated AI screening.
               </p>
             </div>
             <button
@@ -165,15 +182,15 @@ export default function MyApplications() {
               const isAssessmentDone = ['submitted', 'evaluated'].includes(wf.assessmentStatus);
 
               return (
-                <FadeInUp key={app.id || idx} delay={idx * 70}>
-                  <div className={`p-5 sm:p-6 rounded-xl bg-white dark:bg-[#0E121E] border transition-all duration-200 space-y-4 shadow-card ${
+                <div key={app.id || idx} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(idx * 70, 420)}ms` }}>
+                  <div className={`p-5 sm:p-6 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border transition-all duration-200 space-y-4 shadow-card ${
                     isSelected 
                       ? 'border-emerald-500/40 ring-1 ring-emerald-500/20' 
                       : isRejected 
                       ? 'border-rose-500/30' 
                       : isShortlisted
                       ? 'border-brand-500/40 ring-1 ring-brand-500/20' 
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                      : 'border-[#E8E4DF] dark:border-[#2A2520] hover:border-stone-300 dark:hover:border-stone-700'
                   }`}>
                     
                     {/* Top Row: Company, Role, Status */}
@@ -226,21 +243,21 @@ export default function MyApplications() {
 
                     {/* Compensation Information */}
                     {(app.formattedCandidateCompensation || app.formattedJobCompensation) && (
-                      <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50 dark:bg-[#080A10] p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                      <div className="flex flex-wrap items-center gap-3 text-xs bg-stone-50 dark:bg-[#14110F] p-2.5 rounded-lg border border-[#E8E4DF] dark:border-[#2A2520]">
                         {app.formattedJobCompensation && (
-                          <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center space-x-1.5 text-stone-600 dark:text-stone-300">
                             <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                            <span>Role Budget: <strong className="font-semibold text-slate-900 dark:text-white">{app.formattedJobCompensation}</strong></span>
+                            <span>Role Budget: <strong className="font-semibold text-stone-900 dark:text-stone-100">{app.formattedJobCompensation}</strong></span>
                           </div>
                         )}
                         {app.formattedJobCompensation && app.formattedCandidateCompensation && (
-                          <span className="text-slate-300 dark:text-slate-700">•</span>
+                          <span className="text-stone-300 dark:text-stone-700">•</span>
                         )}
                         {app.formattedCandidateCompensation && (
-                          <div className="flex items-center space-x-1.5 text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center space-x-1.5 text-stone-600 dark:text-stone-300">
                             <span>Your Expected CTC: <strong className="font-semibold text-brand-600 dark:text-brand-400 font-mono">{app.formattedCandidateCompensation}</strong></span>
                             {app.currentCtc != null && (
-                              <span className="text-xs text-slate-400">(Current: ₹{Number(app.currentCtc).toFixed(2)} LPA)</span>
+                              <span className="text-xs text-stone-400">(Current: ₹{Number(app.currentCtc).toFixed(2)} LPA)</span>
                             )}
                           </div>
                         )}
@@ -248,34 +265,34 @@ export default function MyApplications() {
                     )}
 
                     {/* 4D Telemetry Strip */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs bg-slate-50 dark:bg-[#080A10] p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+                    <div className="flex flex-wrap items-center gap-3 text-xs bg-stone-50 dark:bg-[#14110F] p-3 rounded-lg border border-[#E8E4DF] dark:border-[#2A2520]">
                       <div className="flex items-center space-x-2">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium">Role Assessment:</span>
-                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.assessmentConfig?.color || wf.assessmentConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
+                        <span className="text-stone-500 dark:text-stone-400 font-medium">Role Assessment:</span>
+                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.assessmentConfig?.color || wf.assessmentConfig?.badge || 'bg-stone-100 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 border-[#E8E4DF] dark:border-[#2A2520]'}`}>
                           <span>{wf.assessmentConfig?.label || wf.assessmentStatus || 'Not Invited'}</span>
                         </span>
                       </div>
-                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span className="text-stone-300 dark:text-stone-700">•</span>
                       <div className="flex items-center space-x-2">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium">Interview:</span>
-                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.interviewConfig?.color || wf.interviewConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
+                        <span className="text-stone-500 dark:text-stone-400 font-medium">Interview:</span>
+                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.interviewConfig?.color || wf.interviewConfig?.badge || 'bg-stone-100 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 border-[#E8E4DF] dark:border-[#2A2520]'}`}>
                           <span>{wf.interviewConfig?.label || wf.interviewStatus || 'Not Scheduled'}</span>
                         </span>
                       </div>
-                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span className="text-stone-300 dark:text-stone-700">•</span>
                       <div className="flex items-center space-x-2">
-                        <span className="text-slate-500 dark:text-slate-400 font-medium">Hiring Decision:</span>
-                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.decisionConfig?.color || wf.decisionConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'}`}>
+                        <span className="text-stone-500 dark:text-stone-400 font-medium">Hiring Decision:</span>
+                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.decisionConfig?.color || wf.decisionConfig?.badge || 'bg-stone-100 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 border-[#E8E4DF] dark:border-[#2A2520]'}`}>
                           <span>{wf.decisionConfig?.label || wf.hiringDecision || 'Pending'}</span>
                         </span>
                       </div>
                     </div>
 
                     {/* Visual 6-Stage Hiring Roadmap Stepper */}
-                    <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 space-y-2">
-                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
+                    <div className="p-3.5 rounded-xl bg-stone-50/80 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] space-y-2">
+                      <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 font-medium">
                         <span className="font-mono uppercase tracking-wider text-[11px]">Hiring Roadmap</span>
-                        <span>Current Stage: <strong className="text-slate-900 dark:text-white capitalize">{wf.stageConfig?.label || wf.stage || 'Applied'}</strong></span>
+                        <span>Current Stage: <strong className="text-stone-900 dark:text-stone-100 capitalize">{wf.stageConfig?.label || wf.stage || 'Applied'}</strong></span>
                       </div>
                       
                       <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 pt-1">
@@ -296,7 +313,7 @@ export default function MyApplications() {
                                   ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80'
                                   : isCurrent
                                   ? 'bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border-brand-400 dark:border-brand-600 ring-1 ring-brand-500/30'
-                                  : 'bg-white dark:bg-[#0E121E] text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-800'
+                                  : 'bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-400 dark:text-stone-500 border-[#E8E4DF] dark:border-[#2A2520]'
                               }`}
                             >
                               <div className="truncate text-xs">{step.label}</div>
@@ -311,9 +328,9 @@ export default function MyApplications() {
 
                     {/* Interview Slot Callout if Scheduled */}
                     {isInterviewScheduled && (
-                      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0B0E18] border border-brand-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-stone-200 dark:border-[#2A2520] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                         <div className="space-y-0.5">
-                          <div className="font-semibold text-slate-900 dark:text-white flex items-center space-x-1.5">
+                          <div className="font-semibold text-stone-900 dark:text-white flex items-center space-x-1.5">
                             <Video className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                             <span>Interview ({wf.interviewConfig?.label || wf.interviewStatus || 'Scheduled'})</span>
                           </div>
@@ -321,17 +338,48 @@ export default function MyApplications() {
                             Scheduled Slot: <strong>{app.interviewScheduledAt || 'Confirmed with hiring manager'}</strong>
                           </p>
                         </div>
-                        {app.interviewMeetingUrl && (
-                          <a
-                            href={app.interviewMeetingUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-subtle"
-                          >
-                            <span>Launch Google Meet</span>
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
+                        <div className="flex items-center space-x-2">
+                          {isInterviewUnlocked && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSchedulingModalApp(app);
+                                  setIsRescheduling(true);
+                                }}
+                                className="px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-xs transition flex items-center space-x-1"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>Reschedule</span>
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!window.confirm('Are you sure you want to cancel this scheduled interview?')) return;
+                                  try {
+                                    await api.cancelInterview({ candidate_id: app.id });
+                                    refreshMyApplications(currentUser?.email);
+                                  } catch (err) {
+                                    alert(err.message || 'Failed to cancel interview');
+                                  }
+                                }}
+                                className="px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 font-semibold text-xs transition flex items-center space-x-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Cancel</span>
+                              </button>
+                            </>
+                          )}
+                          {app.interviewMeetingUrl && (
+                            <a
+                              href={app.interviewMeetingUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-subtle"
+                            >
+                              <span>Launch Room</span>
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -364,7 +412,7 @@ export default function MyApplications() {
                             </span>
                           )}
                         </div>
-                        <div className="p-3 bg-white dark:bg-[#080A10] rounded-lg border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs leading-relaxed">
+                        <div className="p-3 bg-[#FDFCFA] dark:bg-[#14110F] rounded-lg border border-[#E8E4DF] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 text-xs leading-relaxed">
                           {app.rejectionReason || "Thank you for participating in our screening process. While we are proceeding with other applicants for this opening, we recommend exploring your personalized Skill Gap Roadmap to strengthen your profile for future roles."}
                         </div>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -394,13 +442,17 @@ export default function MyApplications() {
                           <span>Interview Completed</span>
                         </span>
                       ) : (
-                        <span 
-                          className="px-3 py-1.5 rounded-lg bg-slate-100/70 dark:bg-slate-900/40 text-slate-400 dark:text-slate-500 font-medium border border-slate-200/50 dark:border-slate-800/50 flex items-center space-x-1.5 cursor-not-allowed"
-                          title="Interview room unlocks when scheduled by recruiter."
+                        <button 
+                          onClick={() => {
+                            setSchedulingModalApp(app);
+                            setIsRescheduling(false);
+                          }}
+                          className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold transition flex items-center space-x-1.5 shadow-subtle"
+                          title="Choose an available slot from recruiter calendar."
                         >
-                          <Lock className="w-3.5 h-3.5" />
-                          <span>Interview (Awaiting Schedule)</span>
-                        </span>
+                          <CalendarCheck className="w-3.5 h-3.5" />
+                          <span>Self-Schedule Interview</span>
+                        </button>
                       )}
 
                       {isAssessmentDone ? (
@@ -448,12 +500,25 @@ export default function MyApplications() {
                     </div>
 
                   </div>
-                </FadeInUp>
+                </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Candidate Self-Scheduling & Rescheduling Modal */}
+      {schedulingModalApp && (
+        <CandidateScheduleModal
+          isOpen={Boolean(schedulingModalApp)}
+          onClose={() => setSchedulingModalApp(null)}
+          application={schedulingModalApp}
+          isReschedule={isRescheduling}
+          onSuccess={() => {
+            refreshMyApplications(currentUser?.email);
+          }}
+        />
+      )}
 
     </div>
   );

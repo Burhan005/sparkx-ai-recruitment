@@ -29,9 +29,13 @@ export function RecruitmentProvider({ children }) {
     return 'light'; // Default to browser/OS light mode if dark is not preferred
   });
   useEffect(() => {
-    document.documentElement.classList.toggle('dark',  theme === 'dark');
-    document.documentElement.classList.toggle('light', theme !== 'dark');
+    const root = document.documentElement;
+    root.classList.add('theme-transition');
+    root.classList.toggle('dark',  theme === 'dark');
+    root.classList.toggle('light', theme !== 'dark');
     localStorage.setItem('sparkx_theme', theme);
+    const t = setTimeout(() => root.classList.remove('theme-transition'), 480);
+    return () => clearTimeout(t);
   }, [theme]);
   const toggleTheme = () => setTheme(p => p === 'dark' ? 'light' : 'dark');
 
@@ -41,6 +45,7 @@ export function RecruitmentProvider({ children }) {
   const [authStatus,  setAuthStatus]  = useState('INITIALIZING'); // 'INITIALIZING' | 'AUTHENTICATED' | 'UNAUTHENTICATED'
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole,    setUserRole]    = useState(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isLoggedIn = authStatus === 'AUTHENTICATED' && currentUser !== null;
 
   // URL routing is the single source of truth for navigation.
@@ -67,20 +72,64 @@ export function RecruitmentProvider({ children }) {
     toastBus.emit(`Welcome, ${userObj.name || 'User'}! Signed in as ${role === 'recruiter' ? 'Recruiter' : 'Candidate'}`, 'success');
   }, []);
 
-  const logout = useCallback(() => {
-    setAuthStatus('UNAUTHENTICATED');
-    setCurrentUser(null);
-    setUserRole(null);
+  const logout = useCallback((navigateFn) => {
+    setIsLoggingOut(true);
+    // 1. Immediately wipe all persistent authentication data
     localStorage.removeItem('sparkx_logged_in');
     localStorage.removeItem('sparkx_user');
     localStorage.removeItem('sparkx_user_role');
     localStorage.removeItem('sparkx_token');
     localStorage.removeItem('sparkx_current_view');
+    localStorage.removeItem('sparkx_active_job_id');
+    try {
+      sessionStorage.clear();
+    } catch {}
+
+    // 2. Clear all authenticated frontend state immediately
+    setAuthStatus('UNAUTHENTICATED');
+    setCurrentUser(null);
+    setUserRole(null);
     setJobs([]);
     setCandidates([]);
     setMyApplications([]);
+    setSelectedCandidate(null);
+
+    // 3. Emit toast
     toastBus.emit('Signed out successfully', 'info');
+
+    // 4. Navigate immediately to canonical /home
+    if (typeof navigateFn === 'function') {
+      navigateFn('/home', { replace: true });
+    } else if (typeof window !== 'undefined') {
+      window.location.replace('/home');
+    }
+
+    // Reset logging out flag after transition settles
+    setTimeout(() => {
+      setIsLoggingOut(false);
+    }, 600);
   }, []);
+
+  // ── Sign Out Confirmation Modal State ───────────────────────────────────────
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const pendingLogoutNavRef = useRef(null);
+
+  const requestLogout = useCallback((navigateFn) => {
+    pendingLogoutNavRef.current = typeof navigateFn === 'function' ? navigateFn : null;
+    setIsLogoutModalOpen(true);
+  }, []);
+
+  const cancelLogout = useCallback(() => {
+    setIsLogoutModalOpen(false);
+    pendingLogoutNavRef.current = null;
+  }, []);
+
+  const confirmLogout = useCallback(() => {
+    const navFn = pendingLogoutNavRef.current;
+    setIsLogoutModalOpen(false);
+    pendingLogoutNavRef.current = null;
+    logout(navFn);
+  }, [logout]);
 
   const switchRole = useCallback((newRole) => {
     // Production RBAC: Candidate accounts cannot arbitrarily elevate to recruiter
@@ -359,6 +408,17 @@ export function RecruitmentProvider({ children }) {
     return savedJob;
   };
 
+  const changeJobStatus = async (jobId, status, closureReason = null) => {
+    const updatedJob = await api.updateJobStatus(jobId, status, closureReason);
+    if (!updatedJob) {
+      toastBus.emit('Failed to update job status', 'error');
+      return null;
+    }
+    setJobs(prev => prev.map(j => j.id === jobId ? updatedJob : j));
+    toastBus.emit(`Job status changed to ${status}!`, 'success');
+    return updatedJob;
+  };
+
   const updateCandidateStage = async (candidateId, newStage, notes = '') => {
     try {
       const updatedCand = await api.updateCandidateStage(candidateId, newStage, notes);
@@ -388,6 +448,22 @@ export function RecruitmentProvider({ children }) {
       }
     } catch (err) {
       toastBus.emit(err.message || 'Failed to update decision', 'error');
+      throw err;
+    }
+  };
+
+  const reopenCandidate = async (candidateId, reason) => {
+    try {
+      const updatedCand = await api.reopenCandidate(candidateId, reason);
+      if (updatedCand) {
+        setCandidates(prev => prev.map(c => c.id === candidateId ? updatedCand : c));
+        setMyApplications(prev => prev.map(a => a.id === candidateId ? { ...a, ...updatedCand } : a));
+        if (selectedCandidate?.id === candidateId) setSelectedCandidate(updatedCand);
+        toastBus.emit('🔓 Application successfully reopened and moved to Review for reconsideration', 'success');
+        return updatedCand;
+      }
+    } catch (err) {
+      toastBus.emit(err.message || 'Failed to reopen application', 'error');
       throw err;
     }
   };
@@ -455,9 +531,18 @@ export function RecruitmentProvider({ children }) {
     const normalizedSkills = (skills || []).map(s => normalizeSkill(s));
     const reqSkills = targetJob.requiredSkills || [];
     const matchCount = reqSkills.filter(req => normalizedSkills.some(s => fuzzySkillMatch(s, req))).length;
-    let matchPercentage = Math.round((matchCount / Math.max(1, reqSkills.length)) * 70);
-    matchPercentage += Number(experienceYears) >= (targetJob.minExperienceYears || 2) ? 25 : 10;
-    matchPercentage = Math.min(99, Math.max(35, matchPercentage));
+    const expYearsNum = Number(experienceYears || 0);
+    const minExpYears = Number(targetJob.minExperienceYears ?? targetJob.min_experience_years ?? 0);
+    let matchPercentage = 0;
+    if (reqSkills.length > 0) {
+      matchPercentage = Math.round((matchCount / reqSkills.length) * 70);
+      if (matchCount > 0 && expYearsNum >= minExpYears) {
+        matchPercentage += 30;
+      } else if (matchCount > 0) {
+        matchPercentage += 15;
+      }
+    }
+    matchPercentage = Math.min(100, Math.max(0, matchPercentage));
 
     const localCand = {
       id: `cand-${Date.now()}`,
@@ -524,25 +609,33 @@ export function RecruitmentProvider({ children }) {
       });
     }
 
-    // Fallback to dynamic text analysis if backend interview call not triggered
+    // Fallback to dynamic evaluation if backend interview call not triggered
     if (!evaluation) {
-      const jobSkills = targetJob?.requiredSkills || ['AWS', 'Docker', 'Kubernetes'];
+      const jobSkills = targetJob?.requiredSkills || [];
       const overallScore = effectiveCodeScore;
-      let readiness = "Needs Foundational Preparation (Gap > 70%)";
+      let readiness = "Evaluation Pending";
       let strongSkills = [];
-      let missingSkills = jobSkills;
-      let recommendations = jobSkills.map(s => `Complete hands-on certification in ${s} to build technical competency.`);
+      let missingSkills = [];
+      let recommendations = [];
 
-      if (overallScore >= 80) {
-        readiness = "Immediately Job-Ready";
-        strongSkills = jobSkills.slice(0, 3);
-        missingSkills = jobSkills.slice(3);
-        recommendations = ["Demonstrated production mastery across core technical pillars. Ready for senior technical leadership."];
-      } else if (overallScore >= 50) {
-        readiness = "Hire-and-Develop (Trainable within 30 days)";
-        strongSkills = jobSkills.slice(0, 1);
-        missingSkills = jobSkills.slice(1);
-        recommendations = missingSkills.map(s => `Targeted architectural workshop in ${s}.`);
+      if (jobSkills.length > 0) {
+        if (overallScore >= 80) {
+          readiness = "Strong Technical Fit";
+          strongSkills = jobSkills.slice(0, Math.ceil(jobSkills.length / 2));
+          missingSkills = jobSkills.slice(Math.ceil(jobSkills.length / 2));
+          recommendations = ["Demonstrated proficiency across core job competencies."];
+        } else if (overallScore >= 50) {
+          readiness = "Moderate Role Fit";
+          strongSkills = jobSkills.slice(0, 1);
+          missingSkills = jobSkills.slice(1);
+          recommendations = missingSkills.map(s => `Targeted review in ${s}.`);
+        } else {
+          readiness = "Needs Foundational Preparation";
+          missingSkills = jobSkills;
+          recommendations = jobSkills.map(s => `Skill validation needed in ${s}.`);
+        }
+      } else {
+        recommendations = ["Complete scheduled interview rounds for holistic evaluation."];
       }
 
       evaluation = {
@@ -605,16 +698,18 @@ export function RecruitmentProvider({ children }) {
   return (
     <RecruitmentContext.Provider value={{
       authStatus,
+      isLoggingOut,
       theme, toggleTheme,
       isLoggedIn, login, logout, currentUser,
+      isLogoutModalOpen, requestLogout, cancelLogout, confirmLogout,
       userRole, switchRole,
       isDbConnected, isLoading, dbError,
       jobs, candidates,
       currentView, setCurrentView,
       selectedCandidate, setSelectedCandidate,
       activeJob, setActiveJobId,
-      createJob, updateJob, updateCandidateStatus, applyForJob,
-      updateCandidateStage, updateHiringDecision, inviteAssessment,
+      createJob, updateJob, changeJobStatus, updateCandidateStatus, applyForJob,
+      updateCandidateStage, updateHiringDecision, reopenCandidate, inviteAssessment,
       scheduleInterview, sendEmail,
       currentInterviewSession, setCurrentInterviewSession,
       completeInterviewAndEvaluate,

@@ -18,6 +18,7 @@ const TRACK_CONFIGS = {
     department: 'Engineering',
     icon: Code2,
     isCoding: true,
+    titlePlaceholder: 'e.g. Senior Backend Engineer',
     assessmentTitle: 'Practical Coding & System Architecture Assessment',
     assessmentDescription: 'Real-time live coding challenges, data structures, algorithmic puzzles, and edge-case assertion test suites.',
     educationPlaceholder: "Bachelor's or Master's in Computer Science, Software Engineering, or related field",
@@ -52,6 +53,7 @@ const TRACK_CONFIGS = {
     department: 'Finance & Accounting',
     icon: DollarSign,
     isCoding: false,
+    titlePlaceholder: 'e.g. Senior Financial Controller & Tax Auditor',
     assessmentTitle: 'Financial Modeling & Operational Audit Simulation',
     assessmentDescription: 'Case study analysis evaluating balance sheet reconciliation, US GAAP / IFRS compliance, variance modeling, and audit readiness.',
     educationPlaceholder: "Bachelor's / Master's in Finance, Accounting, Economics, or CPA / CA / CFA",
@@ -86,6 +88,7 @@ const TRACK_CONFIGS = {
     department: 'Human Resources',
     icon: Users,
     isCoding: false,
+    titlePlaceholder: 'e.g. Senior People Partner & Talent Lead',
     assessmentTitle: 'Workplace Scenario & Talent Strategy Simulation',
     assessmentDescription: 'Simulations testing conflict de-escalation, labor law adherence, organizational restructuring, and executive retention planning.',
     educationPlaceholder: "Bachelor's or Master's in Human Resources, Business Administration (MBA), or Organizational Psychology",
@@ -120,6 +123,7 @@ const TRACK_CONFIGS = {
     department: 'Marketing & Growth',
     icon: TrendingUp,
     isCoding: false,
+    titlePlaceholder: 'e.g. Growth Marketing Director & Performance Lead',
     assessmentTitle: 'Growth Strategy & Campaign Optimization Deliverable',
     assessmentDescription: 'Case study analyzing customer acquisition cost (CAC), lifetime value (LTV), attribution modeling, and multi-channel campaign turnarounds.',
     educationPlaceholder: "Bachelor's or Master's in Marketing, Communications, Business, or related discipline",
@@ -154,6 +158,7 @@ const TRACK_CONFIGS = {
     department: 'Sales & Business Development',
     icon: Target,
     isCoding: false,
+    titlePlaceholder: 'e.g. Enterprise Account Executive & BD Lead',
     assessmentTitle: 'Enterprise Deal Strategy & Objection Simulation',
     assessmentDescription: 'Simulations testing MEDDPICC deal qualification, competitive objection handling, executive pitch structure, and contract negotiation.',
     educationPlaceholder: "Bachelor's in Business Administration, Marketing, Economics, or proven enterprise sales track record",
@@ -188,6 +193,7 @@ const TRACK_CONFIGS = {
     department: 'Operations & Supply Chain',
     icon: Sliders,
     isCoding: false,
+    titlePlaceholder: 'e.g. Senior Operations Manager & SLA Lead',
     assessmentTitle: 'Process Optimization & SLA Governance Simulation',
     assessmentDescription: 'Evaluates process bottleneck identification, Lean Six Sigma methodologies, vendor contingency management, and SLA enforcement.',
     educationPlaceholder: "Bachelor's in Operations Management, Industrial Engineering, Supply Chain, or MBA",
@@ -222,6 +228,7 @@ const TRACK_CONFIGS = {
     department: 'Product & Design',
     icon: Sparkles,
     isCoding: false,
+    titlePlaceholder: 'e.g. Principal Product Manager & UX Lead',
     assessmentTitle: 'Product PRD & User Experience Simulation',
     assessmentDescription: 'Evaluates product requirement definition, UX wireframe critique, metric prioritization (North Star, retention), and technical feasibility trade-offs.',
     educationPlaceholder: "Bachelor's or Master's in Product Design, Human-Computer Interaction (HCI), Computer Science, or MBA",
@@ -256,6 +263,7 @@ const TRACK_CONFIGS = {
     department: 'Legal & Compliance',
     icon: ShieldCheck,
     isCoding: false,
+    titlePlaceholder: 'e.g. Senior Commercial Counsel & Compliance Lead',
     assessmentTitle: 'Commercial Contract Redline & Regulatory Audit',
     assessmentDescription: 'Case study analyzing commercial indemnification limits, GDPR / data sovereignty compliance, IP assignment, and regulatory risk mitigation.',
     educationPlaceholder: "LL.B, LL.M, Juris Doctor (J.D.), or equivalent legal credential",
@@ -289,6 +297,7 @@ const TECHNICAL_SUBTRACKS = {
   network: {
     id: 'network',
     label: 'Network & Security Engineering',
+    titlePlaceholder: 'e.g. Senior Network & Security Engineer',
     assessmentTitle: 'Network Architecture, Protocol Analysis & Diagnostics Assessment',
     assessmentDescription: 'Network topology design, routing protocols (BGP, OSPF), VLANs/Subnetting, firewall ACL policies, packet capture analysis (Wireshark/tcpdump), and network automation.',
     educationPlaceholder: "Bachelor's in Computer Science, Telecommunications, Information Systems, or CCNA / CCNP / CCIE / Network+ credentials",
@@ -322,6 +331,7 @@ const TECHNICAL_SUBTRACKS = {
   devops: {
     id: 'devops',
     label: 'DevOps & Cloud Infrastructure',
+    titlePlaceholder: 'e.g. Senior DevOps / Cloud SRE Engineer',
     assessmentTitle: 'DevOps, Cloud Infrastructure & Reliability Engineering Assessment',
     assessmentDescription: 'Hands-on infrastructure automation, container orchestration (Docker/K8s), CI/CD pipelines, IaC state management, and production incident triage.',
     educationPlaceholder: "Bachelor's or Master's in Computer Science, Systems Engineering, Information Technology, or relevant cloud/DevOps experience",
@@ -353,6 +363,7 @@ const TECHNICAL_SUBTRACKS = {
   frontend: {
     id: 'frontend',
     label: 'Frontend & Web Engineering',
+    titlePlaceholder: 'e.g. Lead Frontend / UI Engineer',
     assessmentTitle: 'Modern Frontend Engineering & Web Performance Assessment',
     assessmentDescription: 'Component architecture, state management, web vitals (LCP, FID, CLS), client-side security, and reactive UI patterns.',
     educationPlaceholder: "Bachelor's in Computer Science, Software Engineering, Design & Technology, or equivalent experience",
@@ -384,6 +395,7 @@ const TECHNICAL_SUBTRACKS = {
   ai_data: {
     id: 'ai_data',
     label: 'AI, Machine Learning & Data',
+    titlePlaceholder: 'e.g. Staff AI & Data Engineer',
     assessmentTitle: 'AI, Machine Learning & Data Pipelines Assessment',
     assessmentDescription: 'Model deployment, vector embeddings, high-throughput ETL pipelines, distributed training, and data quality validation.',
     educationPlaceholder: "Bachelor's or Master's in Computer Science, Data Science, Statistics, Mathematics, or AI/ML",
@@ -415,6 +427,7 @@ const TECHNICAL_SUBTRACKS = {
   backend: {
     id: 'backend',
     label: 'Backend & Systems Engineering',
+    titlePlaceholder: 'e.g. Senior Backend Systems Engineer',
     assessmentTitle: 'Practical Coding & System Architecture Assessment',
     assessmentDescription: 'Real-time live coding challenges, data structures, algorithmic puzzles, and edge-case assertion test suites.',
     educationPlaceholder: "Bachelor's or Master's in Computer Science, Software Engineering, or related field",
@@ -531,6 +544,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
       return {
         ...base,
         ...sub,
+        titlePlaceholder: sub.titlePlaceholder || base.titlePlaceholder,
         assessmentTitle: sub.assessmentTitle,
         assessmentDescription: sub.assessmentDescription,
         educationPlaceholder: sub.educationPlaceholder,
@@ -768,11 +782,11 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const skillsArray = formData.requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
-    const defaultFallbackSkills = currentTrack.isCoding 
-      ? ['System Architecture', 'Algorithms', 'Debugging'] 
-      : ['Strategic Analysis', 'Operational Governance', 'Executive Communication'];
-
-    const effectiveSkills = skillsArray.length ? skillsArray : defaultFallbackSkills;
+    if (skillsArray.length === 0) {
+      alert("Please specify at least one required skill for this position.");
+      return;
+    }
+    const effectiveSkills = skillsArray;
     const isCoding = currentTrack.isCoding;
 
     const parseNum = (v) => (v !== '' && v !== null && v !== undefined && !isNaN(Number(v))) ? Number(v) : null;
@@ -858,23 +872,27 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
   };
 
   return createPortal(
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md p-3 sm:p-4 overflow-y-auto animate-fade-in-up"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="relative w-full max-w-3xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-popover p-5 sm:p-7 text-slate-900 dark:text-slate-100 my-auto max-h-[92vh] overflow-y-auto animate-scale-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      {/* Smooth backdrop blur & opacity fade */}
+      <div 
+        className="fixed inset-0 bg-stone-950/70 backdrop-blur-md animate-backdrop-fade transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      {/* Modal dialog with spring physics and elevated depth */}
+      <div className="relative w-full max-w-3xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-depth-elevated p-5 sm:p-7 text-stone-900 dark:text-stone-100 my-auto max-h-[92vh] overflow-y-auto animate-modal-spring z-10">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between pb-4 border-b border-stone-200 dark:border-[#2A2520]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 flex items-center justify-center text-brand-600 dark:text-brand-400 shadow-subtle">
-              {jobToEdit ? <Save className="w-5 h-5 text-brand-600 dark:text-brand-400" /> : <Sparkles className="w-5 h-5 text-brand-600 dark:text-brand-400" />}
+            <div className="w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-300 shadow-subtle">
+              {jobToEdit ? <Save className="w-5 h-5 text-teal-700 dark:text-teal-300" /> : <Sparkles className="w-5 h-5 text-teal-700 dark:text-teal-300" />}
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100">
                 {jobToEdit ? `Edit Job Requirement: ${jobToEdit.title}` : 'Create New Job Requirement'}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-stone-500 dark:text-stone-400">
                 {jobToEdit ? 'Update position requirements, assessment rubric, or authoritative compensation budget' : 'Domain-aware profile synthesis & tailored adaptive assessment generation'}
               </p>
             </div>
@@ -882,28 +900,28 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
           <button 
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#231F1B] transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Role Track Selector */}
-        <div className="mt-5 p-3 sm:p-4 rounded-xl bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800">
+        <div className="mt-5 p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 font-mono">
+              <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 font-mono">
                 Role Track & Assessment Domain
               </span>
               <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase ${
                 currentTrack.isCoding 
-                  ? 'bg-brand-100 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800'
-                  : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                  ? 'bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800'
+                  : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
               }`}>
                 {currentTrack.isCoding ? 'Coding Challenges' : 'Executive Simulation (Non-Coding)'}
               </span>
             </div>
-            <span className="text-[11px] text-slate-400 hidden sm:inline">
+            <span className="text-[11px] text-stone-400 hidden sm:inline">
               Auto-detects from title or select manually
             </span>
           </div>
@@ -921,7 +939,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   className={`px-3 py-2 rounded-lg text-xs font-semibold transition border flex items-center space-x-2 ${
                     isSelected
                       ? 'bg-brand-600 text-white border-brand-600 shadow-subtle ring-2 ring-brand-500/30'
-                      : 'bg-white dark:bg-[#0E121E] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400 dark:hover:border-brand-600 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                      : 'bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-700 dark:text-stone-300 border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400 dark:hover:border-brand-600 hover:bg-stone-100 dark:hover:bg-[#231F1B]'
                   }`}
                 >
                   <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-brand-500 dark:text-brand-400'}`} />
@@ -936,23 +954,23 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Job Title *</label>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Job Title *</label>
               <input
                 type="text"
                 value={formData.title}
                 onChange={e => handleTitleChange(e.target.value)}
-                placeholder={activeSubTrack === 'network' ? "e.g. Senior Network & Security Engineer" : activeSubTrack === 'devops' ? "e.g. Senior DevOps / Cloud SRE Engineer" : activeSubTrack === 'frontend' ? "e.g. Lead Frontend / UI Engineer" : activeSubTrack === 'ai_data' ? "e.g. Staff AI & Data Engineer" : (currentTrack.isCoding ? "e.g. Senior Backend Engineer" : "e.g. Senior Financial Controller & Tax Auditor")}
-                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                placeholder={currentTrack.titlePlaceholder || "e.g. Senior Backend Engineer"}
+                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Department *</label>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Department *</label>
               <input
                 type="text"
                 value={formData.department}
                 onChange={e => setFormData({ ...formData, department: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
                 required
               />
             </div>
@@ -960,56 +978,56 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Min Experience (Years) *</label>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Min Experience (Years) *</label>
               <input
                 type="number"
                 min="0"
                 max="25"
                 value={formData.minExperienceYears}
                 onChange={e => setFormData({ ...formData, minExperienceYears: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
                 required
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Location *</label>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Location *</label>
               <input
                 type="text"
                 value={formData.location}
                 onChange={e => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Required Skills (Comma separated) *</label>
+            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Required Skills (Comma separated) *</label>
             <input
               type="text"
               value={formData.requiredSkills}
               onChange={e => setFormData({ ...formData, requiredSkills: e.target.value })}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
               placeholder={currentTrack.skillsPlaceholder}
               required
             />
           </div>
 
           {/* COMPENSATION & AUTHORITATIVE CTC BUDGET SPECIFICATION */}
-          <div className="p-4 sm:p-5 rounded-xl bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 space-y-4">
+          <div className="p-4 sm:p-5 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                   <DollarSign className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-1.5">
+                  <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center space-x-1.5">
                     <span>Compensation & CTC Budget</span>
                     <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/40">
                       Authoritative
                     </span>
                   </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
                     Defines the budget boundary for candidate discovery and automatic compensation relationship matching.
                   </p>
                 </div>
@@ -1020,7 +1038,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 <select
                   value={formData.ctcCurrency}
                   onChange={e => setFormData({ ...formData, ctcCurrency: e.target.value })}
-                  className="px-2.5 py-1.5 text-xs font-semibold bg-white dark:bg-[#0E121E] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:border-brand-500 shadow-subtle"
+                  className="px-2.5 py-1.5 text-xs font-semibold bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:border-brand-500 shadow-subtle"
                 >
                   <option value="INR">INR (₹)</option>
                   <option value="USD">USD ($)</option>
@@ -1031,7 +1049,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 <select
                   value={formData.ctcPeriod}
                   onChange={e => setFormData({ ...formData, ctcPeriod: e.target.value })}
-                  className="px-2.5 py-1.5 text-xs font-semibold bg-white dark:bg-[#0E121E] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:border-brand-500 shadow-subtle"
+                  className="px-2.5 py-1.5 text-xs font-semibold bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:border-brand-500 shadow-subtle"
                 >
                   <option value="per_annum">{formData.ctcCurrency === 'INR' ? 'Per Annum (LPA)' : 'Per Annum (Annual)'}</option>
                   <option value="per_month">Per Month</option>
@@ -1054,7 +1072,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${
                     formData.ctcType === tab.id
                       ? 'bg-brand-600 text-white border-brand-600 shadow-subtle'
-                      : 'bg-white dark:bg-[#0E121E] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand-400'
+                      : 'bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-600 dark:text-stone-300 border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400'
                   }`}
                 >
                   {tab.label}
@@ -1066,11 +1084,11 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
             {formData.ctcType === 'range' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Minimum CTC {formData.ctcCurrency === 'INR' ? '(in Lakhs, e.g. 8.0)' : `(${formData.ctcCurrency})`} *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">
+                    <span className="absolute left-3 top-2 text-xs text-stone-400 font-bold">
                       {formData.ctcCurrency === 'INR' ? '₹' : formData.ctcCurrency === 'USD' ? '$' : formData.ctcCurrency === 'EUR' ? '€' : '£'}
                     </span>
                     <input
@@ -1080,17 +1098,17 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       value={formData.ctcMin}
                       onChange={e => setFormData({ ...formData, ctcMin: e.target.value })}
                       placeholder="e.g. 8.0"
-                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-white dark:bg-[#0E121E] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 shadow-subtle"
+                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
                       required
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     Maximum CTC {formData.ctcCurrency === 'INR' ? '(in Lakhs, e.g. 12.0)' : `(${formData.ctcCurrency})`} *
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">
+                    <span className="absolute left-3 top-2 text-xs text-stone-400 font-bold">
                       {formData.ctcCurrency === 'INR' ? '₹' : formData.ctcCurrency === 'USD' ? '$' : formData.ctcCurrency === 'EUR' ? '€' : '£'}
                     </span>
                     <input
@@ -1100,7 +1118,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       value={formData.ctcMax}
                       onChange={e => setFormData({ ...formData, ctcMax: e.target.value })}
                       placeholder="e.g. 12.0"
-                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-white dark:bg-[#0E121E] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 shadow-subtle"
+                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
                       required
                     />
                   </div>
@@ -1110,11 +1128,11 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
 
             {formData.ctcType === 'fixed' && (
               <div className="pt-1 max-w-sm">
-                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
                   Fixed Exact CTC {formData.ctcCurrency === 'INR' ? '(in Lakhs, e.g. 10.0)' : `(${formData.ctcCurrency})`} *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">
+                  <span className="absolute left-3 top-2 text-xs text-stone-400 font-bold">
                     {formData.ctcCurrency === 'INR' ? '₹' : formData.ctcCurrency === 'USD' ? '$' : formData.ctcCurrency === 'EUR' ? '€' : '£'}
                   </span>
                   <input
@@ -1124,7 +1142,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                     value={formData.ctcMin}
                     onChange={e => setFormData({ ...formData, ctcMin: e.target.value, ctcMax: e.target.value })}
                     placeholder="e.g. 10.0"
-                    className="w-full pl-7 pr-3 py-1.5 text-xs bg-white dark:bg-[#0E121E] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 shadow-subtle"
+                    className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
                     required
                   />
                 </div>
@@ -1133,11 +1151,11 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
 
             {formData.ctcType === 'starting_from' && (
               <div className="pt-1 max-w-sm">
-                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
                   Minimum Starting CTC {formData.ctcCurrency === 'INR' ? '(in Lakhs, e.g. 8.0)' : `(${formData.ctcCurrency})`} *
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">
+                  <span className="absolute left-3 top-2 text-xs text-stone-400 font-bold">
                     {formData.ctcCurrency === 'INR' ? '₹' : formData.ctcCurrency === 'USD' ? '$' : formData.ctcCurrency === 'EUR' ? '€' : '£'}
                   </span>
                   <input
@@ -1147,7 +1165,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                     value={formData.ctcMin}
                     onChange={e => setFormData({ ...formData, ctcMin: e.target.value, ctcMax: '' })}
                     placeholder="e.g. 8.0"
-                    className="w-full pl-7 pr-3 py-1.5 text-xs bg-white dark:bg-[#0E121E] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 shadow-subtle"
+                    className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
                     required
                   />
                 </div>
@@ -1161,12 +1179,12 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
             )}
 
             {/* Variable Pay (Performance bonus) */}
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="pt-3 border-t border-stone-200 dark:border-[#2A2520]">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300">
                   Optional Variable Pay / Performance Bonus
                 </span>
-                <span className="text-[10px] text-slate-400">Included in total compensation potential</span>
+                <span className="text-[10px] text-stone-400">Included in total compensation potential</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
@@ -1176,7 +1194,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   value={formData.variablePayMin}
                   onChange={e => setFormData({ ...formData, variablePayMin: e.target.value })}
                   placeholder={`Min Variable ${formData.ctcCurrency === 'INR' ? '(e.g. 1.0 LPA)' : ''}`}
-                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-[#0E121E] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 shadow-subtle"
+                  className="w-full px-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
                 />
                 <input
                   type="number"
@@ -1185,14 +1203,14 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   value={formData.variablePayMax}
                   onChange={e => setFormData({ ...formData, variablePayMax: e.target.value })}
                   placeholder={`Max Variable ${formData.ctcCurrency === 'INR' ? '(e.g. 2.0 LPA)' : ''}`}
-                  className="w-full px-3 py-1.5 text-xs bg-white dark:bg-[#0E121E] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 shadow-subtle"
+                  className="w-full px-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
                 />
               </div>
             </div>
 
             {/* Live Candidate Discovery Badge Preview */}
-            <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Candidate Discovery Badge Preview:</span>
+            <div className="pt-2 border-t border-stone-200 dark:border-[#2A2520] flex items-center justify-between text-xs">
+              <span className="text-stone-500 dark:text-stone-400 font-medium">Candidate Discovery Badge Preview:</span>
               <div className="inline-flex items-center px-3 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 font-bold font-mono">
                 {candidatePreviewText}
               </div>
@@ -1202,19 +1220,19 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
           {/* DYNAMIC ASSESSMENT SECTION: CONDITIONAL CODING VS NON-CODING */}
           {currentTrack.isCoding ? (
             /* TECHNICAL TRACK: Coding languages & challenge difficulty */
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 space-y-3">
+            <div className="p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
                     {currentTrack.supportedLanguagesTitle || 'Supported Programming Languages for Coding Assessment *'}
                   </label>
                   {activeSubTrack && activeSubTrack !== 'backend' && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 font-semibold border border-brand-200 dark:border-brand-800/50">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-semibold border border-teal-200 dark:border-teal-800/50">
                       {currentTrack.label}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+                <p className="text-[11px] text-stone-500 dark:text-stone-400 mb-2">
                   {currentTrack.supportedLanguagesDesc || 'Candidates can select any of these allowed languages to complete their technical tasks.'}
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -1228,7 +1246,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border flex items-center space-x-1.5 ${
                           isChecked
                             ? 'bg-brand-600 text-white border-brand-600 shadow-subtle'
-                            : 'bg-white dark:bg-[#0E121E] text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:border-brand-400'
+                            : 'bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-600 dark:text-stone-300 border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400'
                         }`}
                       >
                         <span>{isChecked ? '✓' : '+'}</span>
@@ -1239,8 +1257,8 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <div className="pt-2 border-t border-stone-200 dark:border-[#2A2520] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
                   {activeSubTrack === 'network' ? 'Network Diagnostics & Scenario Difficulty:' : activeSubTrack === 'devops' ? 'Hands-on Scenario Difficulty:' : 'Coding Assessment Difficulty:'}
                 </label>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -1251,8 +1269,8 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       onClick={() => setFormData({ ...formData, codingDifficulty: lvl })}
                       className={`px-3 py-1 rounded-md text-xs font-bold transition border ${
                         formData.codingDifficulty === lvl
-                          ? 'bg-brand-50 dark:bg-brand-950/70 border-brand-500 text-brand-600 dark:text-brand-400'
-                          : 'bg-white dark:bg-[#0E121E] border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-400'
+                          ? 'bg-teal-50 dark:bg-teal-950/70 border-teal-500 text-teal-700 dark:text-teal-300'
+                          : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E8E4DF] dark:border-[#2A2520] text-stone-500 hover:border-stone-400'
                       }`}
                     >
                       {lvl}
@@ -1268,11 +1286,11 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 <div>
                   <div className="flex items-center space-x-2">
                     <currentTrack.icon className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <span className="text-xs font-bold text-slate-900 dark:text-white">
+                    <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
                       {currentTrack.assessmentTitle}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                  <p className="text-[11px] text-stone-600 dark:text-stone-400 mt-1 leading-relaxed">
                     {currentTrack.assessmentDescription}
                   </p>
                 </div>
@@ -1283,14 +1301,14 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
 
               {/* Rubric chips */}
               <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/30">
-                <span className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <span className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
                   Automated Evaluation Rubric Focus:
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {currentTrack.rubrics.map((r, i) => (
                     <span 
                       key={i}
-                      className="px-2.5 py-0.5 rounded-md text-[10px] font-medium bg-white dark:bg-[#0E121E] border border-emerald-200 dark:border-emerald-800/50 text-slate-700 dark:text-slate-300 flex items-center space-x-1"
+                      className="px-2.5 py-0.5 rounded-md text-[10px] font-medium bg-[#FDFCFA] dark:bg-[#1A1714] border border-emerald-200 dark:border-emerald-800/50 text-stone-700 dark:text-stone-300 flex items-center space-x-1"
                     >
                       <Check className="w-3 h-3 text-emerald-500" />
                       <span>{r}</span>
@@ -1301,7 +1319,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
 
               {/* Simulation Seniority Level */}
               <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-800/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
                   Case Study Seniority Level:
                 </label>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -1313,7 +1331,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       className={`px-3 py-1 rounded-md text-xs font-bold transition border ${
                         formData.codingDifficulty === lvl
                           ? 'bg-emerald-100 dark:bg-emerald-900/50 border-emerald-500 text-emerald-800 dark:text-emerald-300'
-                          : 'bg-white dark:bg-[#0E121E] border-slate-200 dark:border-slate-800 text-slate-500 hover:border-emerald-400'
+                          : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E8E4DF] dark:border-[#2A2520] text-stone-500 hover:border-emerald-400'
                       }`}
                     >
                       {lvl}
@@ -1325,36 +1343,36 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Education Qualification *</label>
+            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Education Qualification *</label>
             <input
               type="text"
               value={formData.education}
               onChange={e => setFormData({ ...formData, education: e.target.value })}
               placeholder={currentTrack.educationPlaceholder}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Role Description</label>
+            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Role Description</label>
             <textarea
               rows="2"
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
               placeholder={currentTrack.descriptionPlaceholder}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-50 dark:bg-[#080A10] border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
             />
           </div>
 
           {/* AI Question Generation trigger */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#080A10] border border-brand-200 dark:border-brand-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-subtle">
+          <div className="p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-teal-200 dark:border-teal-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-subtle">
             <div>
-              <div className="flex items-center space-x-2 text-brand-700 dark:text-brand-300 font-semibold text-xs">
-                <BrainCircuit className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <div className="flex items-center space-x-2 text-teal-700 dark:text-teal-300 font-semibold text-xs">
+                <BrainCircuit className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                 <span>AI Interview Question & Assessment Generator</span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
                 Automatically synthesizes authentic {currentTrack.label.toLowerCase()} interview questions tailored for this role.
               </p>
             </div>
@@ -1371,30 +1389,30 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
 
           {/* Questions preview */}
           {generatedQuestions.length > 0 && (
-            <div className="space-y-2 mt-2 max-h-48 overflow-y-auto p-3 bg-slate-50 dark:bg-[#080A10] rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="space-y-2 mt-2 max-h-48 overflow-y-auto p-3 bg-stone-50 dark:bg-[#14110F] rounded-xl border border-[#E8E4DF] dark:border-[#2A2520]">
               <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider font-mono">
                 Generated Adaptive Question Set ({generatedQuestions.length})
               </span>
               {generatedQuestions.map((q, idx) => (
-                <div key={q.id || idx} className="text-xs p-3 rounded-lg bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 shadow-subtle">
-                  <div className="font-semibold text-slate-900 dark:text-white flex items-center justify-between">
+                <div key={q.id || idx} className="text-xs p-3 rounded-lg bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 shadow-subtle">
+                  <div className="font-semibold text-stone-900 dark:text-stone-100 flex items-center justify-between">
                     <span>Q{idx+1}: {q.type}</span>
-                    <span className="text-[10px] text-brand-600 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/15 border border-brand-200 dark:border-brand-500/30 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/15 border border-teal-200 dark:border-teal-500/30 px-2 py-0.5 rounded-md">
                       Adaptive Probe Ready
                     </span>
                   </div>
-                  <p className="mt-1 text-slate-500 dark:text-slate-400 leading-relaxed">{q.prompt}</p>
+                  <p className="mt-1 text-stone-500 dark:text-stone-400 leading-relaxed">{q.prompt}</p>
                 </div>
               ))}
             </div>
           )}
 
           {/* Submit */}
-          <div className="pt-4 flex items-center justify-end space-x-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="pt-4 flex items-center justify-end space-x-3 border-t border-stone-200 dark:border-[#2A2520]">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition"
+              className="px-4 py-2 text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition"
             >
               Cancel
             </button>

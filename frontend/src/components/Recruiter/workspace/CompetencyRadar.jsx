@@ -19,104 +19,121 @@ export default function CompetencyRadar({ candidate, job }) {
 
     const scores = candidate.scores || {};
     const evalData = candidate.evaluation || {};
-    const matchScore = candidate.matchScore || 75;
-    const expYears = candidate.experienceYears || 3;
-    const integrity = candidate.integrityScore || 100;
 
-    // Technical assessment scores
-    const technical = scores.technicalScore || scores.overall || Math.min(100, Math.round(matchScore * 0.95));
-    const correctness = scores.overall || Math.min(100, Math.round(matchScore * 0.92));
-    const troubleshooting = scores.troubleshootingScore || Math.min(100, Math.round(matchScore * 0.88));
+    // Authoritative raw metrics (strictly null/undefined if not evaluated)
+    const rawMatch = candidate.matchScore ?? candidate.match_score ?? null;
+    const rawExp = candidate.experienceYears ?? candidate.experience_years ?? 0;
+    const rawIntegrity = candidate.integrityScore ?? candidate.integrity_score ?? null;
 
-    // Domain depth derived from experience years and match alignment
-    const domainDepth = Math.min(100, Math.max(50, Math.round(Math.min(expYears / 6, 1) * 35 + matchScore * 0.65)));
-
-    // Communication & synthesis from interview evaluation or normalized baseline
-    const communication = evalData.communicationScore || scores.communicationScore || Math.min(100, Math.max(60, Math.round(matchScore * 0.9)));
-
-    // System architecture & design
-    const architecture = evalData.systemDesignScore || scores.scenarioScore || Math.min(100, Math.round(matchScore * 0.93));
+    // Technical & coding scores
+    const rawTechnical = candidate.coding_score ?? candidate.codingScore ?? scores.technicalScore ?? scores.overall ?? null;
+    const rawTroubleshooting = scores.troubleshootingScore ?? scores.troubleshooting ?? null;
+    const rawArchitecture = evalData.systemDesignScore ?? scores.scenarioScore ?? scores.scenario ?? null;
+    const rawCommunication = evalData.communicationScore ?? scores.communicationScore ?? scores.communication ?? null;
 
     return [
       {
         key: 'arch',
         label: 'System Design',
         shortLabel: 'Arch',
-        score: Math.min(100, Math.max(20, architecture)),
+        evaluated: rawArchitecture !== null && rawArchitecture !== undefined,
+        score: rawArchitecture !== null && rawArchitecture !== undefined ? Math.min(100, Math.max(0, Number(rawArchitecture))) : 0,
         benchmark: 80,
         description: 'Microservice design, high-availability architecture, schema modeling',
-        evidence: scores.scenarioScore ? `Scenario score: ${scores.scenarioScore}%` : `${matchScore}% role alignment`
+        evidence: rawArchitecture !== null && rawArchitecture !== undefined
+          ? `Scenario score: ${Number(rawArchitecture)}%`
+          : 'Pending Evaluation — Architecture scenario unevaluated'
       },
       {
         key: 'correctness',
         label: 'Code Correctness',
         shortLabel: 'Code',
-        score: Math.min(100, Math.max(20, correctness)),
+        evaluated: rawTechnical !== null && rawTechnical !== undefined,
+        score: rawTechnical !== null && rawTechnical !== undefined ? Math.min(100, Math.max(0, Number(rawTechnical))) : 0,
         benchmark: 85,
         description: 'Automated test suite passing rate, edge cases, error resilience',
-        evidence: scores.overall ? `Test pass rate: ${scores.overall}%` : 'Standard sandbox pass'
+        evidence: rawTechnical !== null && rawTechnical !== undefined
+          ? (candidate.passed_test_cases != null && candidate.total_test_cases != null
+              ? `Test pass rate: ${Number(rawTechnical)}% (${candidate.passed_test_cases}/${candidate.total_test_cases} passed)`
+              : `Code score: ${Number(rawTechnical)}%`)
+          : 'Pending Evaluation — Code assessment unevaluated'
       },
       {
         key: 'troubleshooting',
         label: 'Troubleshooting',
         shortLabel: 'Debug',
-        score: Math.min(100, Math.max(20, troubleshooting)),
+        evaluated: rawTroubleshooting !== null && rawTroubleshooting !== undefined,
+        score: rawTroubleshooting !== null && rawTroubleshooting !== undefined ? Math.min(100, Math.max(0, Number(rawTroubleshooting))) : 0,
         benchmark: 75,
         description: 'Root cause isolation, log inspection, performance regression debugging',
-        evidence: scores.troubleshootingScore ? `Diagnostic score: ${scores.troubleshootingScore}%` : 'Syntax & runtime valid'
+        evidence: rawTroubleshooting !== null && rawTroubleshooting !== undefined
+          ? `Diagnostic score: ${Number(rawTroubleshooting)}%`
+          : 'Pending Evaluation — Troubleshooting unevaluated'
       },
       {
         key: 'domain',
         label: 'Domain Depth',
         shortLabel: 'Domain',
-        score: Math.min(100, Math.max(20, domainDepth)),
+        evaluated: rawMatch !== null && rawMatch !== undefined,
+        score: rawMatch !== null && rawMatch !== undefined ? Math.min(100, Math.max(0, Number(rawMatch))) : 0,
         benchmark: 78,
         description: 'Specialized framework proficiency and production toolchain depth',
-        evidence: `${expYears} yrs progressive experience in target stack`
+        evidence: rawMatch !== null && rawMatch !== undefined
+          ? `Algorithmic match: ${Number(rawMatch)}% (${rawExp} yrs relevant experience)`
+          : 'Pending Evaluation — Resume match unevaluated'
       },
       {
         key: 'comms',
         label: 'Communication',
         shortLabel: 'Comms',
-        score: Math.min(100, Math.max(20, communication)),
+        evaluated: rawCommunication !== null && rawCommunication !== undefined,
+        score: rawCommunication !== null && rawCommunication !== undefined ? Math.min(100, Math.max(0, Number(rawCommunication))) : 0,
         benchmark: 75,
         description: 'Technical synthesis, concise reasoning, architectural documentation',
-        evidence: evalData.communicationScore ? `Transcript score: ${evalData.communicationScore}%` : 'Structured interview verified'
+        evidence: rawCommunication !== null && rawCommunication !== undefined
+          ? `Interview transcript score: ${Number(rawCommunication)}%`
+          : 'Pending Evaluation — Interview communication unevaluated'
       },
       {
         key: 'reliability',
         label: 'Integrity & SRE',
         shortLabel: 'Reliability',
-        score: Math.min(100, Math.max(20, integrity)),
+        evaluated: rawIntegrity !== null && rawIntegrity !== undefined,
+        score: rawIntegrity !== null && rawIntegrity !== undefined ? Math.min(100, Math.max(0, Number(rawIntegrity))) : 0,
         benchmark: 90,
         description: 'Proctor telemetry confidence, environment security, and operational consistency',
-        evidence: `${integrity}% integrity verification index`
+        evidence: rawIntegrity !== null && rawIntegrity !== undefined
+          ? `${Number(rawIntegrity)}% integrity verification index`
+          : 'Pending Evaluation — Proctoring telemetry unevaluated'
       },
     ];
   }, [candidate]);
 
-  // Derived summary signals for idle telemetry state
-  const strongestAxis = useMemo(() => {
-    if (!axes.length) return null;
-    return [...axes].sort((a, b) => b.score - a.score)[0];
+  // Derived summary signals for evaluated telemetry state
+  const evaluatedAxes = useMemo(() => {
+    return axes.filter(a => a.evaluated);
   }, [axes]);
+
+  const strongestAxis = useMemo(() => {
+    if (!evaluatedAxes.length) return null;
+    return [...evaluatedAxes].sort((a, b) => b.score - a.score)[0];
+  }, [evaluatedAxes]);
 
   const gapAxis = useMemo(() => {
-    if (!axes.length) return null;
-    // Find axis with largest deficit vs benchmark (most below target)
-    const sorted = [...axes].sort((a, b) => (a.score - a.benchmark) - (b.score - b.benchmark));
-    // If the top gap candidate is the same as strongestAxis, pick the next one
-    const candidate = sorted[0];
-    if (strongestAxis && candidate.key === strongestAxis.key && sorted.length > 1) {
+    if (!evaluatedAxes.length) return null;
+    // Find axis with largest deficit vs benchmark
+    const sorted = [...evaluatedAxes].sort((a, b) => (a.score - a.benchmark) - (b.score - b.benchmark));
+    const cand = sorted[0];
+    if (strongestAxis && cand.key === strongestAxis.key && sorted.length > 1) {
       return sorted[1];
     }
-    return candidate;
-  }, [axes, strongestAxis]);
+    return cand;
+  }, [evaluatedAxes, strongestAxis]);
 
   const avgScore = useMemo(() => {
-    if (!axes.length) return 0;
-    return Math.round(axes.reduce((acc, ax) => acc + ax.score, 0) / axes.length);
-  }, [axes]);
+    if (!evaluatedAxes.length) return null;
+    return Math.round(evaluatedAxes.reduce((acc, ax) => acc + ax.score, 0) / evaluatedAxes.length);
+  }, [evaluatedAxes]);
 
   if (!candidate || axes.length === 0) return null;
 
@@ -200,18 +217,18 @@ export default function CompetencyRadar({ candidate, job }) {
   const currentHovered = hoveredIndex !== null ? axes[hoveredIndex] : null;
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-card space-y-4 select-none transition-all duration-200 hover:border-slate-300 dark:hover:border-slate-700 animate-fade-in-up gradient-border-shimmer">
+    <div className="rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] p-4 sm:p-5 shadow-card space-y-4 select-none transition-all duration-200 hover:border-stone-300 dark:hover:border-stone-700 animate-fade-in-up">
       
       {/* ── Card Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-200 dark:border-[#2A2520]">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 shadow-2xs">
+          <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200/60 dark:border-teal-800/60 flex items-center justify-center text-teal-700 dark:text-teal-300 shrink-0 shadow-2xs">
             <Layers className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+            <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5 flex-wrap">
               <span className="whitespace-nowrap">Competency Mesh</span>
-              <span className="whitespace-nowrap inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+              <span className="whitespace-nowrap inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
                 6-Axis
               </span>
             </h4>
@@ -225,7 +242,7 @@ export default function CompetencyRadar({ candidate, job }) {
         <div className="flex items-center gap-2.5 shrink-0">
           <div className="flex items-center gap-2 text-[11px] font-medium">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 ring-2 ring-indigo-500/20" />
+              <span className="w-2 h-2 rounded-full bg-brand-500 ring-2 ring-brand-500/20" />
               <span className="text-slate-700 dark:text-slate-300 font-semibold text-[10px]">Candidate</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -261,22 +278,26 @@ export default function CompetencyRadar({ candidate, job }) {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
               {axes.map(axis => {
-                const delta = axis.score - axis.benchmark;
+                const delta = axis.evaluated ? axis.score - axis.benchmark : null;
                 return (
                   <tr key={axis.key} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30">
                     <td className="py-2.5 px-2 font-semibold text-slate-900 dark:text-white">
                       {axis.label}
                     </td>
-                    <td className="py-2.5 px-2 text-right font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                      {axis.score}%
+                    <td className="py-2.5 px-2 text-right font-mono font-bold text-brand-600 dark:text-brand-400">
+                      {axis.evaluated ? `${axis.score}%` : <span className="text-slate-400 dark:text-slate-500 italic font-normal">Unevaluated</span>}
                     </td>
                     <td className="py-2.5 px-2 text-right font-mono text-slate-600 dark:text-slate-300">
                       {axis.benchmark}%
                     </td>
                     <td className="py-2.5 px-2 text-right font-mono font-semibold">
-                      <span className={delta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
-                        {delta >= 0 ? `+${delta}%` : `${delta}%`}
-                      </span>
+                      {axis.evaluated && delta !== null ? (
+                        <span className={delta >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                          {delta >= 0 ? `+${delta}%` : `${delta}%`}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 font-mono">—</span>
+                      )}
                     </td>
                     <td className="py-2.5 px-2 text-slate-600 dark:text-slate-300 text-[11px]">
                       {axis.evidence}
@@ -413,13 +434,13 @@ export default function CompetencyRadar({ candidate, job }) {
                       dominantBaseline="central"
                       className={`text-[10px] font-mono transition-colors font-bold ${
                         isHovered 
-                          ? 'fill-indigo-600 dark:fill-indigo-400 font-extrabold' 
+                          ? 'fill-brand-600 dark:fill-brand-400 font-extrabold' 
                           : 'fill-slate-600 dark:fill-slate-300'
                       }`}
                       onMouseEnter={() => setHoveredIndex(i)}
                       onMouseLeave={() => setHoveredIndex(null)}
                     >
-                      {axis.shortLabel} ({axis.score}%)
+                      {axis.shortLabel} {axis.evaluated ? `(${axis.score}%)` : '(—)'}
                     </text>
                   </g>
                 );
@@ -434,17 +455,19 @@ export default function CompetencyRadar({ candidate, job }) {
               <div className="space-y-2 animate-fade-in-up">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                    <span className="w-2 h-2 rounded-full bg-brand-500 shrink-0" />
                     <span className="font-bold text-slate-900 dark:text-white truncate">
                       {currentHovered.label}
                     </span>
                   </div>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold shrink-0 border ${
-                    currentHovered.score >= currentHovered.benchmark 
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                    !currentHovered.evaluated
+                      ? 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20'
+                      : currentHovered.score >= currentHovered.benchmark 
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                   }`}>
-                    {currentHovered.score >= currentHovered.benchmark ? 'Meets Baseline' : 'Focus Area'}
+                    {!currentHovered.evaluated ? 'Pending Evaluation' : currentHovered.score >= currentHovered.benchmark ? 'Meets Baseline' : 'Focus Area'}
                   </span>
                 </div>
 
@@ -452,7 +475,7 @@ export default function CompetencyRadar({ candidate, job }) {
                 <div className="space-y-1.5 pt-0.5">
                   <div className="flex items-center justify-between text-[11px] font-mono">
                     <span className="text-slate-600 dark:text-slate-300 font-medium">
-                      Candidate: <strong className="text-indigo-600 dark:text-indigo-400 font-bold">{currentHovered.score}%</strong>
+                      Candidate: <strong className="text-brand-600 dark:text-brand-400 font-bold">{currentHovered.evaluated ? `${currentHovered.score}%` : 'Unevaluated'}</strong>
                     </span>
                     <span className="text-slate-500 dark:text-slate-400">
                       Target: <strong className="text-slate-700 dark:text-slate-200">{currentHovered.benchmark}%</strong>
@@ -469,8 +492,8 @@ export default function CompetencyRadar({ candidate, job }) {
                     />
                     {/* Candidate score fill */}
                     <div 
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-300"
-                      style={{ width: `${currentHovered.score}%` }}
+                      className="h-full rounded-full bg-gradient-to-r from-brand-500 to-teal-600 transition-all duration-300"
+                      style={{ width: `${currentHovered.evaluated ? currentHovered.score : 0}%` }}
                     />
                   </div>
                 </div>
@@ -481,7 +504,7 @@ export default function CompetencyRadar({ candidate, job }) {
 
                 {/* Grounding signal quote */}
                 <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800 flex items-start gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-mono">
-                  <Info className="w-3.5 h-3.5 text-indigo-500 shrink-0 mt-0.5" />
+                  <Info className="w-3.5 h-3.5 text-brand-500 shrink-0 mt-0.5" />
                   <span className="truncate">{currentHovered.evidence}</span>
                 </div>
               </div>
@@ -490,11 +513,11 @@ export default function CompetencyRadar({ candidate, job }) {
               <div className="space-y-2 py-1">
                 <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                   <span className="flex items-center gap-1 font-semibold text-slate-700 dark:text-slate-300">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                    <Sparkles className="w-3.5 h-3.5 text-brand-500" />
                     <span>Real-Time Grounding Telemetry</span>
                   </span>
-                  <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                    {avgScore}% Avg
+                  <span className="font-mono font-bold text-brand-600 dark:text-brand-400">
+                    {avgScore !== null ? `${avgScore}% Avg` : 'Pending Evaluation'}
                   </span>
                 </div>
 
@@ -503,24 +526,36 @@ export default function CompetencyRadar({ candidate, job }) {
                 </p>
 
                 {/* Quick Signal Badges */}
-                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/70 dark:border-slate-800">
-                  <div className="p-2 rounded-lg bg-white dark:bg-[#0E121E] border border-slate-200/80 dark:border-slate-800/80">
-                    <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1 font-bold">
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-200/70 dark:border-[#2A2520]">
+                  <div className="p-2 rounded-lg bg-[#FDFCFA] dark:bg-[#14110F] border border-[#E5E0DA] dark:border-[#2A2520]">
+                    <span className="text-[9px] font-mono uppercase text-stone-500 dark:text-stone-400 flex items-center gap-1 font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                       Top Strength
                     </span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate block mt-0.5 font-mono">
-                      {strongestAxis?.shortLabel || 'N/A'} <span className="text-emerald-600 dark:text-emerald-400 font-bold">({strongestAxis?.score || 0}%)</span>
+                    <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate block mt-0.5 font-mono">
+                      {strongestAxis ? (
+                        <>
+                          {strongestAxis.shortLabel} <span className="text-emerald-600 dark:text-emerald-400 font-bold">({strongestAxis.score}%)</span>
+                        </>
+                      ) : (
+                        <span className="text-slate-400 font-normal italic">Pending evaluation</span>
+                      )}
                     </span>
                   </div>
 
-                  <div className="p-2 rounded-lg bg-white dark:bg-[#0E121E] border border-slate-200/80 dark:border-slate-800/80">
-                    <span className="text-[9px] font-mono uppercase text-slate-500 dark:text-slate-400 flex items-center gap-1 font-bold">
+                  <div className="p-2 rounded-lg bg-[#FDFCFA] dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
+                    <span className="text-[9px] font-mono uppercase text-stone-500 dark:text-stone-400 flex items-center gap-1 font-bold">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                      {(gapAxis?.score || 0) < (gapAxis?.benchmark || 80) ? 'Skill Gap' : 'Growth Area'}
+                      {gapAxis ? ((gapAxis.score < gapAxis.benchmark) ? 'Skill Gap' : 'Growth Area') : 'Skill Gap'}
                     </span>
-                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate block mt-0.5 font-mono">
-                      {gapAxis?.shortLabel || 'N/A'} <span className="text-amber-600 dark:text-amber-400 font-bold">({gapAxis?.score || 0}%)</span>
+                    <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate block mt-0.5 font-mono">
+                      {gapAxis ? (
+                        <>
+                          {gapAxis.shortLabel} <span className="text-amber-600 dark:text-amber-400 font-bold">({gapAxis.score}%)</span>
+                        </>
+                      ) : (
+                        <span className="text-slate-400 font-normal italic">Pending evaluation</span>
+                      )}
                     </span>
                   </div>
                 </div>

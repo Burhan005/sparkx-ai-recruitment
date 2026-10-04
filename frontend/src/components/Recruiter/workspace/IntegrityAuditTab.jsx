@@ -49,7 +49,7 @@ export default function IntegrityAuditTab({ candidate }) {
 
         <Card className="p-4">
           <span className="text-[11px] font-mono uppercase text-slate-400 font-bold">Logged Focus Events</span>
-          <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-1">
+          <div className="text-3xl font-black text-brand-600 dark:text-brand-400 mt-1">
             {events.length}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block">Window & tab switches</span>
@@ -60,7 +60,7 @@ export default function IntegrityAuditTab({ candidate }) {
       <Card className="p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <Activity className="w-4 h-4 text-indigo-500" />
+            <Activity className="w-4 h-4 text-brand-500" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">Proctoring Telemetry & Focus Event Log</h3>
           </div>
           <span className="text-xs font-mono text-slate-400">{events.length} Telemetry Entries</span>

@@ -18,48 +18,48 @@ export const STAGE_CONFIG = {
     id: STAGES.APPLIED,
     label: 'Applied',
     subtitle: 'New incoming submission',
-    color: 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/25',
-    badge: 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/25',
+    color: 'bg-stone-500/10 text-stone-700 dark:text-stone-300 border-stone-500/25',
+    badge: 'bg-stone-500/10 text-stone-700 dark:text-stone-300 border-stone-500/25',
     stepNumber: 1
   },
   [STAGES.SCREENING]: {
     id: STAGES.SCREENING,
     label: 'Screening',
     subtitle: 'Recruiter resume review',
-    color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25',
-    badge: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25',
+    color: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
+    badge: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
     stepNumber: 2
   },
   [STAGES.ASSESSMENT]: {
     id: STAGES.ASSESSMENT,
     label: 'Assessment',
     subtitle: 'Technical role evaluation',
-    color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25',
-    badge: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25',
+    color: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
+    badge: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
     stepNumber: 3
   },
   [STAGES.INTERVIEW]: {
     id: STAGES.INTERVIEW,
     label: 'Interview',
     subtitle: 'AI / Recruiter video meeting',
-    color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/25',
-    badge: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/25',
+    color: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25',
+    badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25',
     stepNumber: 4
   },
   [STAGES.REVIEW]: {
     id: STAGES.REVIEW,
     label: 'Review',
     subtitle: 'Hiring committee review',
-    color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25',
-    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25',
+    color: 'bg-stone-500/10 text-stone-700 dark:text-stone-300 border-stone-500/25',
+    badge: 'bg-stone-500/10 text-stone-700 dark:text-stone-300 border-stone-500/25',
     stepNumber: 5
   },
   [STAGES.COMPLETED]: {
     id: STAGES.COMPLETED,
     label: 'Completed',
     subtitle: 'Final decision logged',
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-    badge: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+    color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+    badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
     stepNumber: 6
   }
 };
@@ -77,38 +77,38 @@ export const ASSESSMENT_STATUS = {
 export const ASSESSMENT_STATUS_CONFIG = {
   [ASSESSMENT_STATUS.NOT_INVITED]: {
     label: 'Not Invited',
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700',
-    badge: 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700',
+    color: 'bg-stone-100 dark:bg-stone-800 text-stone-500 border-stone-200 dark:border-stone-700',
+    badge: 'bg-stone-100 dark:bg-stone-800 text-stone-500 border-stone-200 dark:border-stone-700',
     description: 'Awaiting recruiter invitation'
   },
   [ASSESSMENT_STATUS.INVITED]: {
     label: 'Test Invited',
-    color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25',
-    badge: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25',
+    color: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
+    badge: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
     description: 'Assessment unlocked; ready to take'
   },
   [ASSESSMENT_STATUS.IN_PROGRESS]: {
     label: 'In Progress',
-    color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25',
-    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25',
+    color: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25',
+    badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25',
     description: 'Candidate is currently taking the test'
   },
   [ASSESSMENT_STATUS.SUBMITTED]: {
     label: 'Submitted',
-    color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25',
-    badge: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25',
+    color: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
+    badge: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
     description: 'Submission locked; scoring underway'
   },
   [ASSESSMENT_STATUS.EVALUATED]: {
     label: 'Evaluated',
-    color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25',
-    badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25',
+    color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+    badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
     description: 'Test completed; score calculated'
   },
   [ASSESSMENT_STATUS.EXPIRED]: {
     label: 'Expired',
-    color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25',
-    badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25',
+    color: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25',
+    badge: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25',
     description: 'Assessment window elapsed'
   }
 };
@@ -125,32 +125,32 @@ export const INTERVIEW_STATUS = {
 export const INTERVIEW_STATUS_CONFIG = {
   [INTERVIEW_STATUS.NOT_SCHEDULED]: {
     label: 'Not Scheduled',
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700',
-    badge: 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700',
+    color: 'bg-stone-100 dark:bg-stone-800 text-stone-500 border-stone-200 dark:border-stone-700',
+    badge: 'bg-stone-100 dark:bg-stone-800 text-stone-500 border-stone-200 dark:border-stone-700',
     description: 'Interview not booked yet'
   },
   [INTERVIEW_STATUS.SCHEDULED]: {
     label: 'Interview Booked',
-    color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/25',
-    badge: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/25',
+    color: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
+    badge: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
     description: 'Interview slot booked with meeting credentials'
   },
   [INTERVIEW_STATUS.IN_PROGRESS]: {
     label: 'In Progress',
-    color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25 animate-pulse',
-    badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25 animate-pulse',
+    color: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25 animate-pulse',
+    badge: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/25 animate-pulse',
     description: 'Interview session active right now'
   },
   [INTERVIEW_STATUS.COMPLETED]: {
     label: 'Interviewed',
-    color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25',
-    badge: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25',
+    color: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
+    badge: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/25',
     description: 'Interview concluded; evaluation recorded'
   },
   [INTERVIEW_STATUS.CANCELLED]: {
     label: 'Cancelled',
-    color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25',
-    badge: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25',
+    color: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25',
+    badge: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/25',
     description: 'Interview cancelled by recruiter'
   }
 };
@@ -166,14 +166,14 @@ export const HIRING_DECISION = {
 export const HIRING_DECISION_CONFIG = {
   [HIRING_DECISION.UNDECIDED]: {
     label: 'In Review (Pending)',
-    color: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700',
-    badge: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+    color: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700',
+    badge: 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 border-stone-200 dark:border-stone-700',
     icon: 'Hourglass'
   },
   [HIRING_DECISION.SHORTLISTED]: {
     label: 'Shortlisted',
-    color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25',
-    badge: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/25',
+    color: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
+    badge: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
     icon: 'Sparkles'
   },
   [HIRING_DECISION.SELECTED]: {

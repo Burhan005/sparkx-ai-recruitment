@@ -15,9 +15,10 @@ import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.orm import Session
-from models.db_models import UserModel, RevokedTokenModel, RecruiterInvitationModel
+from models.db_models import UserModel, RevokedTokenModel, RecruiterInvitationModel, OrganizationModel
 from schemas import UserRegister, UserLogin, ForgotPasswordRequest, ResetPasswordRequest, UserProfileUpdate
 from email_service import send_email
+from services.organization_service import ensure_organization
 
 SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "sparkx-production-secret-key-2026-auth")
 ENV_NAME = os.environ.get("ENVIRONMENT", os.environ.get("ENV", "development")).lower()
@@ -62,13 +63,14 @@ def verify_password(plain_password: str, stored_hash: str) -> Tuple[bool, bool]:
         pass
     return False, False
 
-def create_access_token(user_id: str, email: str, role: str) -> str:
-    """Generate an HMAC-SHA256 signed bearer token with unique JTI."""
+def create_access_token(user_id: str, email: str, role: str, organization_id: str = "org-sparkx-default") -> str:
+    """Generate an HMAC-SHA256 signed bearer token with unique JTI and tenant organization."""
     jti = secrets.token_hex(16)
     payload = {
         "uid": user_id,
         "sub": email,
         "role": role,
+        "org": organization_id or "org-sparkx-default",
         "jti": jti,
         "exp": (datetime.utcnow() + timedelta(days=7)).isoformat()
     }
@@ -160,12 +162,27 @@ class AuthController:
         user_id = f"usr-{uuid.uuid4().hex[:8]}"
         pw_hash = hash_password(payload.password)
 
+        org_id = getattr(payload, "organization_id", None)
+        if not org_id:
+            if target_role == "recruiter":
+                # Create dedicated tenant organization for the new recruiter
+                org_slug = f"org-{uuid.uuid4().hex[:6]}"
+                org_name = getattr(payload, "company_name", None) or f"{payload.name.strip()}'s Organization"
+                org_record = ensure_organization(db, org_id=org_slug, name=org_name, slug=org_slug)
+                org_id = org_record.id
+            else:
+                org_id = "org-sparkx-default"
+                ensure_organization(db, org_id=org_id, name="SparkX Technologies", slug="sparkx-default")
+        else:
+            ensure_organization(db, org_id=org_id)
+
         new_user = UserModel(
             id=user_id,
             name=payload.name.strip(),
             email=email_clean,
             password_hash=pw_hash,
             role=target_role,
+            organization_id=org_id,
             phone=payload.phone,
             job_role=payload.job_role,
             experience_years=payload.experience_years or 0.0,
@@ -180,12 +197,13 @@ class AuthController:
         db.commit()
         db.refresh(new_user)
 
-        token = create_access_token(new_user.id, new_user.email, new_user.role)
+        token = create_access_token(new_user.id, new_user.email, new_user.role, new_user.organization_id)
         return {
             "id": new_user.id,
             "name": new_user.name,
             "email": new_user.email,
             "role": new_user.role,
+            "organization_id": new_user.organization_id,
             "token": token,
             "phone": new_user.phone,
             "job_role": new_user.job_role,
@@ -214,12 +232,14 @@ class AuthController:
             user.password_hash = hash_password(payload.password)
             db.commit()
 
-        token = create_access_token(user.id, user.email, user.role)
+        user_org = getattr(user, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+        token = create_access_token(user.id, user.email, user.role, user_org)
         return {
             "id": user.id,
             "name": user.name,
             "email": user.email,
             "role": user.role,
+            "organization_id": user_org,
             "token": token,
             "phone": user.phone,
             "job_role": user.job_role,
@@ -259,12 +279,14 @@ class AuthController:
         db.commit()
         db.refresh(user)
 
+        user_org = getattr(user, "organization_id", "org-sparkx-default") or "org-sparkx-default"
         return {
             "id": user.id,
             "name": user.name,
             "email": user.email,
             "role": user.role,
-            "token": create_access_token(user.id, user.email, user.role),
+            "organization_id": user_org,
+            "token": create_access_token(user.id, user.email, user.role, user_org),
             "phone": user.phone,
             "job_role": user.job_role,
             "experience_years": user.experience_years,
@@ -280,12 +302,14 @@ class AuthController:
         user = db.query(UserModel).filter(UserModel.id == user_id).first()
         if not user:
             return None, "User not found"
+        user_org = getattr(user, "organization_id", "org-sparkx-default") or "org-sparkx-default"
         return {
             "id": user.id,
             "name": user.name,
             "email": user.email,
             "role": user.role,
-            "token": create_access_token(user.id, user.email, user.role),
+            "organization_id": user_org,
+            "token": create_access_token(user.id, user.email, user.role, user_org),
             "phone": user.phone,
             "job_role": user.job_role,
             "experience_years": user.experience_years,

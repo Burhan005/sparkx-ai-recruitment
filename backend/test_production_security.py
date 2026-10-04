@@ -270,7 +270,10 @@ def test_candidate_job_uniqueness_and_update():
     """Verify applying to the same job twice updates candidate without duplicate row."""
     db = SessionLocal()
     try:
-        job = db.query(JobModel).first()
+        job = db.query(JobModel).filter(JobModel.status == "Active").first() or db.query(JobModel).first()
+        if job and job.status != "Active":
+            job.status = "Active"
+            db.commit()
         assert job is not None
         test_email = f"unique_app_{uuid.uuid4().hex[:6]}@example.com"
 

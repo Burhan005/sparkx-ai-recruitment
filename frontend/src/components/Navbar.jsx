@@ -17,7 +17,8 @@ export default function Navbar() {
     theme, 
     toggleTheme, 
     userRole, 
-    logout, 
+    logout,
+    requestLogout, 
     syncWithDatabase, 
     isDbConnected, 
     currentUser,
@@ -189,7 +190,7 @@ export default function Navbar() {
                     onClick={() => navigateTo(item.path)}
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 relative whitespace-nowrap shrink-0 ${
                       isActive 
-                        ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-md shadow-indigo-600/35 ring-1 ring-white/20' 
+                        ? 'bg-gradient-to-r from-brand-600 to-brand-500 text-white shadow-md shadow-brand-600/35 ring-1 ring-white/20' 
                         : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-800/60'
                     }`}
                   >
@@ -199,7 +200,7 @@ export default function Navbar() {
                       <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full shrink-0 ${
                         isActive 
                           ? 'bg-white/25 text-white' 
-                          : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20'
+                          : 'bg-brand-500/15 text-brand-600 dark:text-brand-400 border border-brand-500/20'
                       }`}>
                         {item.badge}
                       </span>
@@ -351,10 +352,10 @@ export default function Navbar() {
                       <button
                         onClick={() => {
                           setIsProfileOpen(false);
-                          logout();
-                          navigate('/login');
+                          if (requestLogout) requestLogout(navigate);
+                          else logout(navigate);
                         }}
-                        className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                        className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Sign Out</span>
@@ -470,10 +471,10 @@ export default function Navbar() {
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    logout();
-                    navigate('/login');
+                    if (requestLogout) requestLogout(navigate);
+                    else logout(navigate);
                   }}
-                  className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400"
+                  className="flex-1 flex items-center justify-center space-x-1.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-xs font-bold text-rose-600 dark:text-rose-400 cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                   <span>Sign Out</span>

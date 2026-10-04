@@ -9,14 +9,15 @@ VALID_PERIODS = {"annual", "monthly"}
 class JobCreate(BaseModel):
     title: str
     company_name: Optional[str] = "SparkX Technologies"
+    organization_id: Optional[str] = "org-sparkx-default"
     department: str
     location: str = "Remote"
     min_experience_years: int = 2
-    education: str
+    education: Optional[str] = "Bachelor's Degree or Equivalent"
     languages: List[str] = ["English"]
-    required_skills: List[str]
+    required_skills: Optional[List[str]] = []
     optional_criteria: Optional[str] = None
-    description: str
+    description: Optional[str] = ""
     questions: Optional[List[Dict[str, Any]]] = None
     coding_assessment: Optional[Dict[str, Any]] = None
     coding_difficulty: Optional[str] = "Mid-Level"
@@ -96,8 +97,12 @@ class JobUpdate(BaseModel):
     coding_difficulty: Optional[str] = None
     assessment_pool: Optional[Dict[str, Any]] = None
     assessment_version: Optional[int] = None
-    competency_blueprint: Optional[Dict[str, Any]] = None
-    status: Optional[str] = None
+    status: Optional[str] = None # "Active" | "Paused" | "Closed"
+    closure_reason: Optional[str] = None
+
+class JobStatusUpdate(BaseModel):
+    status: str # "Active" | "Paused" | "Closed"
+    closure_reason: Optional[str] = None
 
     # Compensation updates
     ctc_type: Optional[str] = None
@@ -223,14 +228,18 @@ class HiringDecisionUpdate(BaseModel):
     rejection_category: Optional[str] = None
     hr_notes: Optional[str] = ""
 
+class CandidateReopenRequest(BaseModel):
+    reason: str
+
 class AssessmentInviteRequest(BaseModel):
     custom_message: Optional[str] = ""
 
 class CandidateResponse(BaseModel):
     id: str
     job_id: str
-    job_title: Optional[str] = "Applied Position"
-    company_name: Optional[str] = "SparkX Technologies"
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    organization_id: Optional[str] = "org-sparkx-default"
     name: str
     email: str
     phone: Optional[str]
@@ -298,6 +307,12 @@ class CandidateResponse(BaseModel):
     # Assessment Versioning
     assessment_version: Optional[int] = 1
     assessment_blueprint: Optional[Dict[str, Any]] = None
+
+    # Controlled Reopening Telemetry
+    reopened_at: Optional[Any] = None
+    reopened_by: Optional[str] = None
+    reopen_reason: Optional[str] = None
+    previous_final_decision: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -372,6 +387,7 @@ class UserRegister(BaseModel):
     password: str
     role: str = "candidate"  # "recruiter" or "candidate"
     admin_code: Optional[str] = None  # Required if role == "recruiter"
+    organization_id: Optional[str] = "org-sparkx-default"
     
     # Optional Candidate Profile Fields
     phone: Optional[str] = None
@@ -404,6 +420,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     token: str
+    organization_id: Optional[str] = "org-sparkx-default"
     phone: Optional[str] = None
     job_role: Optional[str] = None
     experience_years: Optional[float] = 0.0
@@ -555,6 +572,10 @@ class CodeRunRequest(BaseModel):
     test_cases: Optional[List[Dict[str, Any]]] = None
     custom_input: Optional[str] = None
     is_custom_test: Optional[bool] = False
+    execution_mode: Optional[str] = "function" # "function" | "stdin"
+    entry_point: Optional[str] = None
+    function_signature: Optional[Dict[str, Any]] = None
+    schema_ddl: Optional[str] = None
 
 class CodeRunResponse(BaseModel):
     all_passed: bool
@@ -574,6 +595,7 @@ class AssessmentSubmitRequest(BaseModel):
     scenario_answers: Dict[str, str] = {}  # question_id -> written solution text
     hands_on_submission: Optional[Dict[str, Any]] = None # task_id, language, code, test_results
     troubleshooting_submission: Optional[Dict[str, Any]] = None # task_id, language, code, test_results
+    coding_submissions: Optional[List[Dict[str, Any]]] = None # Multi-problem submissions: [{problem_id, language, code, ...}]
 
 class AssessmentSubmitResponse(BaseModel):
     success: bool
@@ -600,5 +622,439 @@ class CopilotQueryResponse(BaseModel):
     uncertainty: Optional[str] = ""
     candidate_id: Optional[str] = None
     candidate_name: Optional[str] = None
+
+class ExternalPlatformQuestion(BaseModel):
+    id: str
+    platform: str
+    title: str
+    difficulty: str
+    type: Optional[str] = "coding"
+    url: Optional[str] = None
+
+class ExternalAssessmentCreate(BaseModel):
+    platform: str
+    candidate_id: str
+    job_id: Optional[str] = None
+    question_ids: List[str] = []
+
+class ExternalAssessmentResult(BaseModel):
+    platform: str
+    test_id: Optional[str] = None
+    candidate_id: str
+    status: str
+    score: Optional[int] = None
+    max_score: Optional[int] = 100
+    details: Optional[Dict[str, Any]] = None
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ADVANCED CODING ASSESSMENT SCHEMAS (PHASE 4A.1)
+# ═════════════════════════════════════════════════════════════════════════════
+
+class CodingTestCaseBase(BaseModel):
+    input_data: str
+    expected_output: str
+    is_hidden: bool = False
+    weight: float = 1.0
+    display_order: int = 0
+    explanation: Optional[str] = None
+
+
+class CodingTestCaseCreate(CodingTestCaseBase):
+    pass
+
+
+class CodingTestCasePublicResponse(BaseModel):
+    id: str
+    problem_id: str
+    is_hidden: bool = False
+    input_data: Optional[str] = None
+    expected_output: Optional[str] = None
+    explanation: Optional[str] = None
+    display_order: int = 0
+    weight: float = 1.0
+
+
+class CodingTestCaseDetailResponse(CodingTestCaseBase):
+    id: str
+    problem_id: str
+    created_at: Optional[datetime] = None
+
+
+class CodingProblemBase(BaseModel):
+    title: str
+    slug: str
+    problem_statement: str
+    difficulty: str = "Medium"
+    constraints: Optional[str] = None
+    input_format: Optional[str] = None
+    output_format: Optional[str] = None
+    execution_mode: str = "function" # "function" | "stdin"
+    function_name: str = "solve"
+    function_signature: Optional[Dict[str, Any]] = None
+    time_limit_sec: float = 5.0
+    memory_limit_mb: float = 128.0
+    allowed_languages: List[str] = ["python", "javascript", "sql"]
+    starter_code: Dict[str, str] = {}
+    solution_template: Optional[str] = None
+
+
+class CodingProblemCreate(CodingProblemBase):
+    is_system: bool = False
+
+
+class CodingProblemUpdate(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    problem_statement: Optional[str] = None
+    difficulty: Optional[str] = None
+    constraints: Optional[str] = None
+    input_format: Optional[str] = None
+    output_format: Optional[str] = None
+    execution_mode: Optional[str] = None
+    function_name: Optional[str] = None
+    function_signature: Optional[Dict[str, Any]] = None
+    time_limit_sec: Optional[float] = None
+    memory_limit_mb: Optional[float] = None
+    allowed_languages: Optional[List[str]] = None
+    starter_code: Optional[Dict[str, str]] = None
+    solution_template: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class CodingProblemResponse(CodingProblemBase):
+    id: str
+    organization_id: Optional[str] = None
+    is_system: bool = False
+    current_version: int = 1
+    is_active: bool = True
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    test_cases: Optional[List[CodingTestCasePublicResponse]] = []
+
+
+class CodingProblemVersionResponse(BaseModel):
+    id: str
+    problem_id: str
+    version_number: int
+    title: str
+    problem_statement: str
+    difficulty: str
+    constraints: Optional[str] = None
+    input_format: Optional[str] = None
+    output_format: Optional[str] = None
+    execution_mode: str = "function"
+    function_name: str
+    function_signature: Optional[Dict[str, Any]] = None
+    time_limit_sec: float
+    memory_limit_mb: float
+    allowed_languages: List[str]
+    starter_code: Dict[str, str]
+    change_summary: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
+class AssessmentSectionCreate(BaseModel):
+    title: str
+    section_type: str # technical_mcqs | scenario | coding | troubleshooting
+    display_order: int = 0
+    weight_percentage: float = 25.0
+    config: Optional[Dict[str, Any]] = {}
+
+
+class AssessmentSectionResponse(BaseModel):
+    id: str
+    assessment_id: str
+    title: str
+    section_type: str
+    display_order: int
+    weight_percentage: float
+    config: Optional[Dict[str, Any]] = {}
+    created_at: Optional[datetime] = None
+
+
+class AssessmentCodingProblemLink(BaseModel):
+    coding_problem_id: str
+    coding_problem_version_id: Optional[str] = None
+    display_order: int = 0
+    weight: float = 100.0
+    is_required: bool = True
+
+
+class AssessmentCreate(BaseModel):
+    job_id: str
+    title: str
+    description: Optional[str] = None
+    duration_minutes: int = 45
+    passing_score: int = 70
+    sections: Optional[List[AssessmentSectionCreate]] = []
+    coding_problems: Optional[List[AssessmentCodingProblemLink]] = []
+    mcqs: Optional[List[AssessmentMCQLink]] = []
+
+
+class AssessmentResponse(BaseModel):
+    id: str
+    job_id: str
+    organization_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    duration_minutes: int = 45
+    passing_score: int = 70
+    is_active: bool = True
+    version: int = 1
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+
+class SubmissionTestCaseResultResponse(BaseModel):
+    id: str
+    submission_id: str
+    test_case_id: str
+    passed: bool
+    actual_output: Optional[str] = None
+    execution_time_ms: Optional[float] = None
+    memory_mb: Optional[float] = None
+    error_message: Optional[str] = None
+    is_hidden: bool = False
+    created_at: Optional[datetime] = None
+
+
+class CodingSubmissionCreate(BaseModel):
+    assessment_id: Optional[str] = None
+    coding_problem_id: str
+    coding_problem_version_id: Optional[str] = None
+    language: str
+    source_code: str
+
+
+class CodingSubmissionResponse(BaseModel):
+    id: str
+    candidate_id: str
+    assessment_id: Optional[str] = None
+    coding_problem_id: str
+    coding_problem_version_id: Optional[str] = None
+    language: str
+    source_code: str
+    status: str
+    passed_test_cases: int = 0
+    total_test_cases: int = 0
+    score: float = 0.0
+    execution_time_ms: Optional[float] = None
+    memory_mb: Optional[float] = None
+    compiler_output: Optional[str] = None
+    runtime_error: Optional[str] = None
+    is_best_submission: bool = False
+    created_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    test_case_results: Optional[List[SubmissionTestCaseResultResponse]] = []
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ORGANIZATION / TENANCY SCHEMAS (PHASE 4B.1)
+# ═════════════════════════════════════════════════════════════════════════════
+
+class OrganizationResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    domain: Optional[str] = None
+    is_active: bool = True
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    user_count: Optional[int] = 0
+    job_count: Optional[int] = 0
+    candidate_count: Optional[int] = 0
+
+    class Config:
+        from_attributes = True
+
+class OrganizationUpdate(BaseModel):
+    name: Optional[str] = None
+    domain: Optional[str] = None
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# MCQ QUESTION BANK & AUTHORING SCHEMAS (PHASE 4B.2)
+# ═════════════════════════════════════════════════════════════════════════════
+
+class MCQOptionCreate(BaseModel):
+    option_key: str # "A", "B", "C", "D"
+    option_text: str
+    is_correct: bool = False
+    display_order: int = 0
+
+
+class MCQOptionResponse(BaseModel):
+    id: str
+    question_id: str
+    option_key: str
+    option_text: str
+    is_correct: Optional[bool] = None # Masked for candidates
+    display_order: int
+
+    class Config:
+        from_attributes = True
+
+
+class MCQQuestionCreate(BaseModel):
+    question_text: str
+    category: str = "technical"
+    difficulty: str = "Medium"
+    explanation: Optional[str] = None
+    skills: List[str] = []
+    options: List[MCQOptionCreate]
+    is_system: bool = False
+
+
+class MCQQuestionUpdate(BaseModel):
+    question_text: Optional[str] = None
+    category: Optional[str] = None
+    difficulty: Optional[str] = None
+    explanation: Optional[str] = None
+    skills: Optional[List[str]] = None
+    options: Optional[List[MCQOptionCreate]] = None
+    is_active: Optional[bool] = None
+
+
+class MCQQuestionResponse(BaseModel):
+    id: str
+    organization_id: Optional[str] = None
+    is_system: bool = False
+    question_text: str
+    category: str = "technical"
+    difficulty: str = "Medium"
+    explanation: Optional[str] = None
+    skills: List[str] = []
+    is_active: bool = True
+    current_version: int = 1
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    options: List[MCQOptionResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class AssessmentMCQLink(BaseModel):
+    mcq_question_id: str
+    display_order: int = 0
+    weight: float = 1.0
+    is_required: bool = True
+    question: Optional[MCQQuestionResponse] = None
+
+
+class AssessmentMCQAttachRequest(BaseModel):
+    mcqs: List[AssessmentMCQLink]
+
+
+# ─── PHASE 4C: INTERVIEW AVAILABILITY & SCHEDULING SCHEMAS ───────────────────
+
+class AvailabilityBlockCreate(BaseModel):
+    start_time: str # "HH:MM" e.g. "13:00"
+    end_time: str   # "HH:MM" e.g. "14:00"
+    reason: Optional[str] = "Unavailable / Busy"
+
+class AvailabilityBlockResponse(BaseModel):
+    id: str
+    availability_id: str
+    start_time: str
+    end_time: str
+    reason: str
+    created_at: Optional[str] = None
+
+class RecruiterAvailabilityCreate(BaseModel):
+    available_date: str # "YYYY-MM-DD"
+    start_time: str     # "HH:MM" e.g. "09:00"
+    end_time: str       # "HH:MM" e.g. "17:00"
+    timezone: Optional[str] = "UTC" # e.g. "Asia/Kolkata", "UTC"
+    slot_duration_minutes: Optional[int] = 30
+    buffer_minutes: Optional[int] = 15
+    job_id: Optional[str] = None
+    blocks: Optional[List[AvailabilityBlockCreate]] = []
+
+class RecruiterAvailabilityUpdate(BaseModel):
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    timezone: Optional[str] = None
+    slot_duration_minutes: Optional[int] = None
+    buffer_minutes: Optional[int] = None
+    is_active: Optional[bool] = None
+    blocks: Optional[List[AvailabilityBlockCreate]] = None
+
+class RecruiterAvailabilityResponse(BaseModel):
+    id: str
+    organization_id: str
+    recruiter_id: str
+    job_id: Optional[str] = None
+    available_date: str
+    start_time: str
+    end_time: str
+    timezone: str
+    slot_duration_minutes: int
+    buffer_minutes: int
+    is_active: bool
+    blocks: List[AvailabilityBlockResponse] = []
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+class InterviewSlot(BaseModel):
+    slot_id: str
+    availability_id: str
+    recruiter_id: str
+    start_time_utc: str # ISO UTC
+    end_time_utc: str   # ISO UTC
+    local_start_time: str
+    local_end_time: str
+    local_date: str
+    timezone: str
+    duration_minutes: int
+    is_available: bool = True
+
+class InterviewBookingRequest(BaseModel):
+    candidate_id: str
+    job_id: str
+    start_time_utc: str # ISO UTC e.g. "2026-10-15T09:00:00Z"
+    end_time_utc: str   # ISO UTC e.g. "2026-10-15T09:30:00Z"
+    timezone: Optional[str] = "UTC"
+    notes: Optional[str] = ""
+    availability_id: Optional[str] = None
+
+class InterviewRescheduleRequest(BaseModel):
+    booking_id: Optional[str] = None
+    candidate_id: Optional[str] = None
+    new_start_time_utc: str
+    new_end_time_utc: str
+    timezone: Optional[str] = "UTC"
+    reason: Optional[str] = ""
+
+class InterviewCancellationRequest(BaseModel):
+    booking_id: Optional[str] = None
+    candidate_id: Optional[str] = None
+    reason: Optional[str] = ""
+
+class InterviewBookingResponse(BaseModel):
+    id: str
+    organization_id: str
+    job_id: str
+    job_title: Optional[str] = None
+    candidate_id: str
+    candidate_name: Optional[str] = None
+    candidate_email: Optional[str] = None
+    recruiter_id: Optional[str] = None
+    start_time_utc: str
+    end_time_utc: str
+    local_start_time: Optional[str] = None
+    local_end_time: Optional[str] = None
+    local_date: Optional[str] = None
+    timezone: str
+    status: str
+    meeting_url: Optional[str] = None
+    notes: Optional[str] = None
+    cancellation_reason: Optional[str] = None
+    cancelled_by: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 

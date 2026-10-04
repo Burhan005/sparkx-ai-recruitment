@@ -485,38 +485,38 @@ export default function FancyInterviewScheduler({
       </div>
 
       {/* ── TOP HEADER: QUICK PRESETS & INTERVAL TOGGLES ── */}
-      <div className="p-4 bg-brand-50/60 dark:bg-[#0E121E] rounded-2xl border border-brand-200/70 dark:border-slate-800 space-y-3">
+      <div className="p-4 bg-teal-50/60 dark:bg-[#1A1714] rounded-2xl border border-teal-200/70 dark:border-[#2A2520] space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs font-bold text-slate-900 dark:text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
-            <Zap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider flex items-center space-x-1.5">
+            <Zap className="w-4 h-4 text-brand-600 dark:text-brand-400" />
             <span>1-Click Slot Presets:</span>
           </span>
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => applyPreset(1, 10, 0)}
-              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-indigo-200/70 dark:border-indigo-800 shadow-xs transition"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#14110F] hover:bg-brand-600 hover:text-white dark:hover:bg-brand-600 text-xs font-semibold text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-[#2A2520] shadow-xs transition"
             >
               Tomorrow 10:00 AM
             </button>
             <button
               type="button"
               onClick={() => applyPreset(1, 14, 0)}
-              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-indigo-200/70 dark:border-indigo-800 shadow-xs transition"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#14110F] hover:bg-brand-600 hover:text-white dark:hover:bg-brand-600 text-xs font-semibold text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-[#2A2520] shadow-xs transition"
             >
               Tomorrow 2:00 PM
             </button>
             <button
               type="button"
               onClick={() => applyPreset(2, 11, 0)}
-              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-indigo-200/70 dark:border-indigo-800 shadow-xs transition"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#14110F] hover:bg-brand-600 hover:text-white dark:hover:bg-brand-600 text-xs font-semibold text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-[#2A2520] shadow-xs transition"
             >
               In 2 Days 11:00 AM
             </button>
             <button
               type="button"
               onClick={() => applyPreset(3, 15, 30)}
-              className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-xs font-semibold text-slate-700 dark:text-slate-200 border border-indigo-200/70 dark:border-indigo-800 shadow-xs transition"
+              className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#14110F] hover:bg-brand-600 hover:text-white dark:hover:bg-brand-600 text-xs font-semibold text-stone-700 dark:text-stone-200 border border-stone-200 dark:border-[#2A2520] shadow-xs transition"
             >
               In 3 Days 3:30 PM
             </button>
@@ -525,21 +525,21 @@ export default function FancyInterviewScheduler({
       </div>
 
       {/* ── MAIN CALENDAR + TIME SLOTS MATRIX ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white dark:bg-slate-900/90 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-white dark:bg-[#1A1714] p-6 rounded-3xl border border-stone-200 dark:border-[#2A2520] shadow-sm">
         
         {/* LEFT COLUMN: INTERACTIVE MONTH CALENDAR (7 COLS) */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-stone-800">
             <div>
-              <h4 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+              <h4 className="text-lg font-black text-stone-900 dark:text-white tracking-tight">
                 {viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400">
                 Select your preferred interview date below
               </p>
             </div>
 
-            <div className="flex items-center space-x-1.5">
+            <div className="flex items-center space-x-2">
               <button
                 type="button"
                 onClick={() => {
@@ -547,14 +547,14 @@ export default function FancyInterviewScheduler({
                   setViewMonth(new Date(now.getFullYear(), now.getMonth(), 1));
                   setSelectedDate(now);
                 }}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 transition"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold text-brand-700 dark:text-brand-300 bg-brand-50/70 dark:bg-brand-950/60 hover:bg-brand-100 transition"
               >
                 Today
               </button>
               <button
                 type="button"
                 onClick={() => setViewMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
-                className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 transition"
+                className="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition"
                 title="Previous Month"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -562,7 +562,7 @@ export default function FancyInterviewScheduler({
               <button
                 type="button"
                 onClick={() => setViewMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
-                className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 transition"
+                className="w-9 h-9 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 flex items-center justify-center text-stone-700 dark:text-stone-300 transition"
                 title="Next Month"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -573,7 +573,7 @@ export default function FancyInterviewScheduler({
           {/* Weekday Labels */}
           <div className="grid grid-cols-7 text-center">
             {WEEKDAYS.map(w => (
-              <span key={w} className="text-xs font-bold text-slate-500 dark:text-slate-400 py-1 uppercase tracking-wider">
+              <span key={w} className="text-xs font-bold text-stone-500 dark:text-stone-400 py-1 uppercase tracking-wider">
                 {w}
               </span>
             ))}
@@ -585,12 +585,12 @@ export default function FancyInterviewScheduler({
               const isSelected = isSameDay(dayObj.date, selectedDate);
               const isToday = isSameDay(dayObj.date, today);
 
-              let cellStyle = "text-slate-700 dark:text-slate-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 hover:text-indigo-600";
+              let cellStyle = "text-stone-700 dark:text-stone-300 hover:bg-brand-50/70 dark:hover:bg-brand-950/60 hover:text-brand-600";
               if (!dayObj.isCurrentMonth) {
-                cellStyle = "text-slate-300 dark:text-slate-600 opacity-40";
+                cellStyle = "text-stone-300 dark:text-stone-600 opacity-40";
               }
               if (dayObj.isPast) {
-                cellStyle = "text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-30 line-through";
+                cellStyle = "text-stone-300 dark:text-stone-700 cursor-not-allowed opacity-30 line-through";
               }
               if (isSelected) {
                 cellStyle = "bg-brand-600 text-white font-bold shadow-subtle ring-2 ring-brand-500/40";
@@ -606,7 +606,7 @@ export default function FancyInterviewScheduler({
                 >
                   <span>{dayObj.date.getDate()}</span>
                   {isToday && !isSelected && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400 absolute bottom-1.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-brand-400 absolute bottom-1.5" />
                   )}
                 </button>
               );
@@ -614,18 +614,18 @@ export default function FancyInterviewScheduler({
           </div>
 
           {/* Timezone & Info Bar */}
-          <div className="flex flex-wrap items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 gap-2">
+          <div className="flex flex-wrap items-center justify-between pt-3 border-t border-stone-100 dark:border-stone-800 text-[11px] text-stone-500 dark:text-stone-400 gap-2">
             <span className="flex items-center space-x-1.5">
-              <Globe className="w-3.5 h-3.5 text-indigo-500" />
+              <Globe className="w-3.5 h-3.5 text-stone-400" />
               <span>Timezone: <strong>{Intl.DateTimeFormat().resolvedOptions().timeZone}</strong> (Automatic Detection)</span>
             </span>
             <div className="flex items-center space-x-3">
               <span className="flex items-center space-x-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-brand-600 inline-block" />
                 <span>Selected</span>
               </span>
               <span className="flex items-center space-x-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-brand-400 inline-block" />
                 <span>Today</span>
               </span>
             </div>
@@ -638,14 +638,14 @@ export default function FancyInterviewScheduler({
             
             {/* Header: Title & Time Preview */}
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center space-x-1.5">
-                <Clock className="w-4 h-4 text-indigo-500" />
+              <span className="text-xs font-black text-stone-900 dark:text-white uppercase tracking-wider flex items-center space-x-1.5">
+                <Clock className="w-4 h-4 text-stone-400" />
                 <span>Flexible Time Slots</span>
               </span>
               <button
                 type="button"
                 onClick={() => setIsCustomTimeOpen(!isCustomTimeOpen)}
-                className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 text-[11px] font-bold flex items-center space-x-1 transition"
+                className="px-2.5 py-1 rounded-lg bg-brand-50/70 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 hover:bg-brand-100/80 text-[11px] font-bold flex items-center space-x-1 transition"
               >
                 <Sliders className="w-3 h-3" />
                 <span>{isCustomTimeOpen ? 'Close Custom' : 'Custom Time ⚙️'}</span>
@@ -654,16 +654,16 @@ export default function FancyInterviewScheduler({
 
             {/* Custom Minute Stepper (When opened, allows ANY exact time e.g. 2:15 PM) */}
             {isCustomTimeOpen ? (
-              <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2.5 animate-in fade-in">
-                <div className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 flex items-center justify-between">
+              <div className="p-3.5 rounded-2xl bg-stone-50/80 dark:bg-[#14110F] border border-stone-200 dark:border-[#2A2520] space-y-2.5 animate-in fade-in">
+                <div className="text-[11px] font-bold text-stone-900 dark:text-stone-200 flex items-center justify-between">
                   <span>Exact Time Picker:</span>
-                  <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{currentHour12}:{selectedMinute.toString().padStart(2, '0')} {currentAmPm}</span>
+                  <span className="text-brand-600 dark:text-brand-400 font-extrabold">{currentHour12}:{selectedMinute.toString().padStart(2, '0')} {currentAmPm}</span>
                 </div>
                 
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   {/* Hour Selector */}
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Hour</label>
+                    <label className="block text-[10px] uppercase font-bold text-stone-500 mb-1">Hour</label>
                     <select
                       value={currentHour12}
                       onChange={(e) => {
@@ -671,7 +671,7 @@ export default function FancyInterviewScheduler({
                         const h24 = currentAmPm === 'PM' ? (h12 === 12 ? 12 : h12 + 12) : (h12 === 12 ? 0 : h12);
                         handleSelectTime(h24, selectedMinute);
                       }}
-                      className="w-full p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold"
+                      className="w-full p-2 rounded-xl bg-white dark:bg-[#1A1714] border border-stone-300 dark:border-stone-700 font-bold text-stone-900 dark:text-white"
                     >
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(h => (
                         <option key={h} value={h}>{h}</option>
@@ -681,11 +681,11 @@ export default function FancyInterviewScheduler({
 
                   {/* Minute Selector (5-min precision) */}
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Minute</label>
+                    <label className="block text-[10px] uppercase font-bold text-stone-500 mb-1">Minute</label>
                     <select
                       value={selectedMinute}
                       onChange={(e) => handleSelectTime(selectedHour, Number(e.target.value))}
-                      className="w-full p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold"
+                      className="w-full p-2 rounded-xl bg-white dark:bg-[#1A1714] border border-stone-300 dark:border-stone-700 font-bold text-stone-900 dark:text-white"
                     >
                       {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
                         <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>
@@ -695,15 +695,15 @@ export default function FancyInterviewScheduler({
 
                   {/* AM / PM Toggle */}
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Period</label>
-                    <div className="flex rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-0.5">
+                    <label className="block text-[10px] uppercase font-bold text-stone-500 mb-1">Period</label>
+                    <div className="flex rounded-xl bg-white dark:bg-[#1A1714] border border-stone-300 dark:border-stone-700 p-0.5">
                       <button
                         type="button"
                         onClick={() => {
                           const h24 = currentHour12 === 12 ? 0 : currentHour12;
                           handleSelectTime(h24, selectedMinute);
                         }}
-                        className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] ${currentAmPm === 'AM' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}
+                        className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] ${currentAmPm === 'AM' ? 'bg-brand-600 text-white' : 'text-stone-600 dark:text-stone-400'}`}
                       >
                         AM
                       </button>
@@ -713,7 +713,7 @@ export default function FancyInterviewScheduler({
                           const h24 = currentHour12 === 12 ? 12 : currentHour12 + 12;
                           handleSelectTime(h24, selectedMinute);
                         }}
-                        className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] ${currentAmPm === 'PM' ? 'bg-indigo-600 text-white' : 'text-slate-600'}`}
+                        className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] ${currentAmPm === 'PM' ? 'bg-brand-600 text-white' : 'text-stone-600 dark:text-stone-400'}`}
                       >
                         PM
                       </button>
@@ -724,7 +724,7 @@ export default function FancyInterviewScheduler({
             ) : (
               <>
                 {/* Flexibility Filter 1: Daypart Tabs (Morning / Afternoon / Evening) */}
-                <div className="flex items-center space-x-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
+                <div className="flex items-center space-x-1 p-1 bg-stone-100 dark:bg-stone-800 rounded-xl text-xs">
                   {[
                     { id: 'all', label: 'All Day' },
                     { id: 'morning', label: 'Morning' },
@@ -737,8 +737,8 @@ export default function FancyInterviewScheduler({
                       onClick={() => setDaypartFilter(tab.id)}
                       className={`flex-1 py-1 rounded-lg text-[11px] font-bold transition ${
                         daypartFilter === tab.id
-                          ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                          : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                          ? 'bg-white dark:bg-[#1A1714] text-brand-700 dark:text-brand-300 shadow-xs'
+                          : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'
                       }`}
                     >
                       {tab.label}
@@ -747,7 +747,7 @@ export default function FancyInterviewScheduler({
                 </div>
 
                 {/* Flexibility Filter 2: Interval Chips (15m, 30m, 45m, 60m) */}
-                <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 pt-0.5">
                   <span className="font-semibold">Slot Spacing:</span>
                   <div className="flex items-center space-x-1">
                     {[15, 30, 45, 60].map(mins => (
@@ -757,8 +757,8 @@ export default function FancyInterviewScheduler({
                         onClick={() => setSlotInterval(mins)}
                         className={`px-2 py-0.5 rounded-md font-bold text-[10px] transition ${
                           slotInterval === mins
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                            ? 'bg-brand-600 text-white shadow-xs'
+                            : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200'
                         }`}
                       >
                         {mins}m
@@ -779,7 +779,7 @@ export default function FancyInterviewScheduler({
                         className={`py-2 px-2.5 rounded-xl text-xs font-semibold border text-center transition-all ${
                           isSelected
                             ? 'bg-brand-600 border-brand-600 text-white font-bold shadow-subtle scale-[1.02]'
-                            : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-brand-400 hover:bg-brand-50/50'
+                            : 'bg-stone-50 dark:bg-[#14110F] border-stone-200 dark:border-[#2A2520] text-stone-700 dark:text-stone-300 hover:border-brand-500 hover:bg-brand-50/50'
                         }`}
                       >
                         {slot.label}
@@ -793,10 +793,10 @@ export default function FancyInterviewScheduler({
             {/* Duration Selector */}
             <div className="pt-1">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-stone-600 dark:text-stone-400 uppercase tracking-wider">
                   Interview Duration:
                 </span>
-                <span className="text-[11px] font-extrabold text-indigo-600 dark:text-indigo-400">
+                <span className="text-[11px] font-extrabold text-brand-600 dark:text-brand-400">
                   {durationMinutes} Minutes
                 </span>
               </div>
@@ -808,8 +808,8 @@ export default function FancyInterviewScheduler({
                     onClick={() => setDurationMinutes(mins)}
                     className={`py-1.5 rounded-xl text-xs font-bold transition border ${
                       durationMinutes === mins
-                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs'
-                        : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-indigo-400'
+                        ? 'bg-brand-600 border-brand-600 text-white shadow-xs'
+                        : 'bg-stone-50 dark:bg-[#14110F] border-stone-200 dark:border-[#2A2520] text-stone-600 dark:text-stone-400 hover:border-brand-500'
                     }`}
                   >
                     {mins}m
@@ -820,17 +820,17 @@ export default function FancyInterviewScheduler({
           </div>
 
           {/* Confirmed Slot Summary Card */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 text-xs space-y-1.5 shadow-subtle">
+          <div className="p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] text-xs space-y-1.5 shadow-subtle">
             <span className="text-2xs uppercase tracking-wider font-bold text-brand-600 dark:text-brand-400 block font-mono">
               Confirmed Slot Preview:
             </span>
-            <div className="text-slate-900 dark:text-white font-black text-sm">
+            <div className="text-stone-900 dark:text-stone-100 font-black text-sm">
               {formattedDateStr}
             </div>
-            <div className="text-slate-600 dark:text-slate-300 font-semibold flex items-center space-x-2">
-              <Clock className="w-3.5 h-3.5 text-indigo-500" />
+            <div className="text-stone-600 dark:text-stone-300 font-semibold flex items-center space-x-2">
+              <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
               <span>{formattedTimeStr}</span>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 font-extrabold text-[10px]">
+              <span className="px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-700 dark:text-teal-300 font-extrabold text-[10px]">
                 {durationMinutes} mins
               </span>
             </div>
@@ -901,11 +901,11 @@ export default function FancyInterviewScheduler({
                 </button>
               </div>
 
-              <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+              <div className="p-3 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40 text-xs text-teal-900 dark:text-teal-200 space-y-1">
                 <p className="font-semibold">
                   📋 Includes: MCQ Domain Assessment + Live Code Sandbox (Python, JavaScript, Go, SQL).
                 </p>
-                <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                <p className="text-[11px] text-teal-700 dark:text-teal-300">
                   Candidate submits solutions through the portal. Once submitted, scorecards and benchmark percentiles sync directly into your pipeline.
                 </p>
               </div>
@@ -982,11 +982,11 @@ export default function FancyInterviewScheduler({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <span className="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider flex items-center space-x-1.5">
-                  <Video className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span className="font-bold text-stone-900 dark:text-white text-xs uppercase tracking-wider flex items-center space-x-1.5">
+                  <Video className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                   <span>Video Interview Provider & Meeting Credentials</span>
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                <span className="text-[11px] text-stone-500 dark:text-stone-400 block mt-0.5">
                   Synced with Live Gmail SMTP & Calendar Invites (.ics) — zero hardcoded fake links
                 </span>
               </div>
@@ -1003,7 +1003,7 @@ export default function FancyInterviewScheduler({
                   </span>
                 )
               ) : (
-                <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-[11px] flex items-center space-x-1 border border-indigo-500/20">
+                <span className="px-3 py-1 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 font-bold text-[11px] flex items-center space-x-1 border border-brand-500/20">
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>Instant Video Active</span>
                 </span>
@@ -1018,18 +1018,18 @@ export default function FancyInterviewScheduler({
                 onClick={() => setSelectedProvider('google_meet')}
                 className={`p-4 rounded-2xl border text-left transition-all ${
                   selectedProvider === 'google_meet'
-                    ? 'bg-blue-500/10 border-blue-500 text-blue-900 dark:text-blue-100 ring-2 ring-blue-500/20 shadow-xs'
-                    : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300'
+                    ? 'bg-teal-50/70 dark:bg-teal-950/30 border-brand-500 text-stone-900 dark:text-stone-100 ring-2 ring-brand-500/20 shadow-subtle'
+                    : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E5E0DA] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 hover:border-brand-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-black text-xs flex items-center space-x-2 text-blue-600 dark:text-blue-400">
-                    <Video className="w-4 h-4" />
+                  <span className="font-black text-xs flex items-center space-x-2 text-stone-800 dark:text-stone-200">
+                    <Video className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                     <span>Google Meet (Official / Calendar API)</span>
                   </span>
-                  {selectedProvider === 'google_meet' && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                  {selectedProvider === 'google_meet' && <Check className="w-4 h-4 text-brand-600 dark:text-brand-400" />}
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
                   Creates a <strong>real Google Meet link</strong> via Google Calendar API. Dispatches calendar invite (.ics) to candidate and recruiter.
                 </p>
               </button>
@@ -1040,18 +1040,18 @@ export default function FancyInterviewScheduler({
                 onClick={() => setSelectedProvider('auto_instant')}
                 className={`p-4 rounded-2xl border text-left transition-all ${
                   selectedProvider === 'auto_instant'
-                    ? 'bg-brand-50/70 dark:bg-brand-950/30 border-brand-500 text-slate-900 dark:text-white ring-2 ring-brand-500/20 shadow-subtle'
-                    : 'bg-white dark:bg-[#0E121E] border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-brand-300'
+                    ? 'bg-teal-50/70 dark:bg-teal-950/30 border-brand-500 text-stone-900 dark:text-stone-100 ring-2 ring-brand-500/20 shadow-subtle'
+                    : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E5E0DA] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 hover:border-brand-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-black text-xs flex items-center space-x-2 text-indigo-600 dark:text-indigo-400">
-                    <Sparkles className="w-4 h-4" />
+                  <span className="font-black text-xs flex items-center space-x-2 text-teal-700 dark:text-teal-300">
+                    <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                     <span>SparkX Instant Video (Jitsi — 1-Click Quick)</span>
                   </span>
-                  {selectedProvider === 'auto_instant' && <Check className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
+                  {selectedProvider === 'auto_instant' && <Check className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
                   <strong>Quick Room:</strong> Zero setup, zero login required. Works in any browser with full HD video, mic, and screen sharing.
                 </p>
               </button>
@@ -1059,9 +1059,9 @@ export default function FancyInterviewScheduler({
 
             {/* Dynamic Context Card based on selected provider */}
             {selectedProvider === 'google_meet' ? (
-              <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-blue-200 dark:border-blue-900/50 space-y-3">
+              <div className="p-4 bg-white dark:bg-[#14110F] rounded-2xl border border-stone-200 dark:border-[#2A2520] space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                  <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center space-x-1.5">
                     <span>Google Integration Status:</span>
                     {googleStatus.connected ? (
                       <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold flex items-center space-x-1">
@@ -1079,7 +1079,7 @@ export default function FancyInterviewScheduler({
                     <button
                       type="button"
                       onClick={handleDisconnectGoogle}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-red-50 hover:text-red-600 text-[11px] font-semibold text-slate-600 dark:text-slate-400 transition flex items-center space-x-1"
+                      className="px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-stone-800 hover:bg-red-50 hover:text-red-600 text-[11px] font-semibold text-stone-600 dark:text-stone-400 transition flex items-center space-x-1"
                     >
                       <Unlink className="w-3 h-3" />
                       <span>Disconnect</span>
@@ -1088,7 +1088,7 @@ export default function FancyInterviewScheduler({
                     <button
                       type="button"
                       onClick={handleConnectGoogle}
-                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
+                      className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
                     >
                       <Link2 className="w-3.5 h-3.5" />
                       <span>Connect Google Account (1-Click)</span>
@@ -1097,14 +1097,14 @@ export default function FancyInterviewScheduler({
                 </div>
 
                 {googleStatus.connected ? (
-                  <div className="p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 text-xs text-blue-900 dark:text-blue-200">
+                  <div className="p-3 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/40 text-xs text-teal-900 dark:text-teal-200">
                     <p className="font-semibold">
                       ✨ Auto-Provisioning Active: When you click <strong>Confirm Schedule</strong>, SparkX will automatically create an authentic Google Meet conference under your connected Google account and send the real link to <strong>{candidate?.name || 'the candidate'}</strong> and <strong>{googleStatus.email}</strong>.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[11px] text-stone-500 dark:text-stone-400">
                       Optional: Or enter your permanent personal Google Meet link below if you prefer using a recurring room:
                     </p>
                     <div className="relative flex items-center">
@@ -1113,12 +1113,12 @@ export default function FancyInterviewScheduler({
                         value={googleMeetUrl}
                         onChange={e => setGoogleMeetUrl(e.target.value)}
                         placeholder="e.g. https://meet.google.com/xyz-abcd-efg (leave blank to auto-create on schedule)"
-                        className="w-full pl-3.5 pr-24 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-xs focus:border-blue-500 focus:outline-none"
+                        className="w-full pl-3.5 pr-24 py-2.5 bg-stone-50 dark:bg-[#14110F] border border-stone-300 dark:border-stone-700 rounded-xl text-stone-900 dark:text-white font-mono text-xs focus:border-brand-500 focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={handleCopyLink}
-                        className="absolute right-2 px-3 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center space-x-1"
+                        className="absolute right-2 px-3 py-1 rounded-lg bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 text-xs font-semibold text-stone-700 dark:text-stone-200 flex items-center space-x-1"
                       >
                         {copiedLink ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
                         <span>{copiedLink ? 'Copied' : 'Copy'}</span>
@@ -1131,9 +1131,9 @@ export default function FancyInterviewScheduler({
                         id="saveDefaultMeet"
                         checked={saveAsDefaultMeet}
                         onChange={e => setSaveAsDefaultMeet(e.target.checked)}
-                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        className="rounded border-stone-300 text-brand-600 focus:ring-brand-500"
                       />
-                      <label htmlFor="saveDefaultMeet" className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                      <label htmlFor="saveDefaultMeet" className="text-xs text-stone-600 dark:text-stone-400 font-medium">
                         Save as my permanent Google Meet room (auto-fills for future candidates)
                       </label>
                     </div>
@@ -1142,9 +1142,9 @@ export default function FancyInterviewScheduler({
               </div>
             ) : (
               /* Jitsi Instant Room Card */
-              <div className="p-4 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="p-4 bg-white dark:bg-[#14110F] rounded-2xl border border-stone-200 dark:border-[#2A2520] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center space-x-1.5">
+                  <span className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center space-x-1.5">
                     <span>Instant Room Link:</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold">
                       100% Active Now
@@ -1155,7 +1155,7 @@ export default function FancyInterviewScheduler({
                     href={activeMeetingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
+                    className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm transition"
                     title="Click to enter and test this room right now"
                   >
                     <Video className="w-3.5 h-3.5" />

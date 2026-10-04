@@ -10,13 +10,27 @@ from database import get_db
 from schemas import (
     CandidateApply, CandidateResponse, CandidateStatusUpdate, CandidateScheduleRequest,
     EmailSendRequest, CandidateApplicationItem, CandidateStageUpdate, HiringDecisionUpdate,
-    AssessmentInviteRequest, ExpectedUpdateDateRequest, CandidateUpdateNotificationRequest
+    AssessmentInviteRequest, ExpectedUpdateDateRequest, CandidateUpdateNotificationRequest,
+    CandidateReopenRequest
 )
 from controllers.candidate_controller import CandidateController
-from models.db_models import UserModel
-from auth_dependencies import get_current_user, require_recruiter, get_optional_current_user
+from models.db_models import UserModel, CandidateModel
+from auth_dependencies import (
+    get_current_user, require_recruiter, get_optional_current_user,
+    verify_candidate_ownership, verify_recruiter_tenant
+)
 
 router = APIRouter(prefix="/api/candidates", tags=["Candidates"])
+
+def _get_candidate_guarded(candidate_id: str, current_user: UserModel, db: Session) -> CandidateModel:
+    cand = CandidateController.get_candidate_by_id(candidate_id, db)
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    if current_user.role == "candidate":
+        verify_candidate_ownership(current_user, cand)
+    elif current_user.role == "recruiter":
+        verify_recruiter_tenant(current_user, cand, "candidate")
+    return cand
 
 @router.get("/recruiter/update-timeline")
 def get_recruiter_update_timeline(
@@ -25,9 +39,9 @@ def get_recruiter_update_timeline(
 ):
     """
     Recruiter-only: lists candidates by expected update timeline
-    (due today, due tomorrow, upcoming, overdue, completed, awaiting date).
+    (due today, due tomorrow, upcoming, overdue, completed, awaiting date) for recruiter's tenant.
     """
-    return CandidateController.get_update_timeline(db)
+    return CandidateController.get_update_timeline(db, organization_id=current_user.organization_id)
 
 @router.get("", response_model=List[CandidateResponse])
 def get_candidates(
@@ -41,7 +55,7 @@ def get_candidates(
     current_user: UserModel = Depends(require_recruiter),
     db: Session = Depends(get_db)
 ):
-    """Recruiter-only: lists all candidate records with hiring telemetry, compensation analysis, and query filtering."""
+    """Recruiter-only: lists all candidate records with hiring telemetry, compensation analysis, and query filtering for recruiter's tenant."""
     return CandidateController.get_all_candidates(
         db,
         skip=skip,
@@ -50,7 +64,8 @@ def get_candidates(
         compensation_status=compensation_status,
         min_expected_ctc=min_expected_ctc,
         max_expected_ctc=max_expected_ctc,
-        q=q
+        q=q,
+        organization_id=current_user.organization_id
     )
 
 @router.get("/my-applications", response_model=List[CandidateApplicationItem])
@@ -71,21 +86,21 @@ def get_my_applications(email: Optional[str] = None, current_user: UserModel = D
 def get_candidate(candidate_id: str, current_user: UserModel = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Fetch candidate dossier.
-    Recruiters have full visibility. Candidates may only view their own record.
+    Recruiters have full visibility within their tenant. Candidates may only view their own record.
     """
-    cand = CandidateController.get_candidate_by_id(candidate_id, db)
-    if not cand:
-        raise HTTPException(status_code=404, detail="Candidate not found")
+    cand = _get_candidate_guarded(candidate_id, current_user, db)
     
     if current_user.role == "candidate":
-        if cand.email.strip().lower() != current_user.email.strip().lower():
-            raise HTTPException(status_code=403, detail="Access denied: You cannot view another candidate's profile.")
-        # Scrub private internal recruiter scores and compensation analysis for candidate view
+        # Scrub private internal recruiter scores, notes, and compensation analysis for candidate view
+        db.expunge(cand)
         cand.match_score = 0
         cand.recruiter_score = None
         cand.coding_score = None
         cand.match_details = None
         cand.compensation_analysis = None
+        cand.hr_notes = None
+        cand.rejection_reason = None
+        cand.rejection_category = None
 
     return cand
 
@@ -99,13 +114,15 @@ def apply(payload: CandidateApply, current_user: UserModel = Depends(get_current
 
     cand, err = CandidateController.apply_candidate(payload, db)
     if err:
-        raise HTTPException(status_code=404, detail=err)
+        status_code = status.HTTP_404_NOT_FOUND if err == "Job not found" else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=status_code, detail=err)
     return cand
 
 @router.patch("/{candidate_id}/status")
 def update_status(candidate_id: str, payload: CandidateStatusUpdate, current_user: UserModel = Depends(require_recruiter), db: Session = Depends(get_db)):
     """Recruiter-only: update hiring pipeline stage, notes, or score."""
-    success = CandidateController.update_status(candidate_id, payload, db)
+    _get_candidate_guarded(candidate_id, current_user, db)
+    success = CandidateController.update_status(candidate_id, payload, db, organization_id=current_user.organization_id)
     if not success:
         raise HTTPException(status_code=404, detail="Candidate not found")
     return {"message": f"Candidate {candidate_id} status updated to {payload.status}"}
@@ -113,6 +130,7 @@ def update_status(candidate_id: str, payload: CandidateStatusUpdate, current_use
 @router.post("/{candidate_id}/schedule", response_model=CandidateResponse)
 def schedule_interview(candidate_id: str, payload: CandidateScheduleRequest, current_user: UserModel = Depends(require_recruiter), db: Session = Depends(get_db)):
     """Recruiter-only: schedule interview slot and advance candidate to assessment."""
+    _get_candidate_guarded(candidate_id, current_user, db)
     cand, err = CandidateController.schedule_interview(candidate_id, payload, db)
     if err:
         raise HTTPException(status_code=404, detail=err)
@@ -121,6 +139,7 @@ def schedule_interview(candidate_id: str, payload: CandidateScheduleRequest, cur
 @router.post("/{candidate_id}/send-email")
 def send_email(candidate_id: str, payload: EmailSendRequest, current_user: UserModel = Depends(require_recruiter), db: Session = Depends(get_db)):
     """Recruiter-only: dispatch candidate interview and offer emails."""
+    _get_candidate_guarded(candidate_id, current_user, db)
     email_event, err = CandidateController.send_email_notification(candidate_id, payload, db)
     if err:
         raise HTTPException(status_code=404, detail=err)
@@ -134,11 +153,13 @@ def invite_assessment(
     db: Session = Depends(get_db)
 ):
     """Recruiter-only: Idempotently invite candidate to technical assessment."""
+    _get_candidate_guarded(candidate_id, current_user, db)
     cand, err = CandidateController.invite_assessment(
         candidate_id=candidate_id,
         custom_message=payload.custom_message,
         changed_by=current_user.email,
-        db=db
+        db=db,
+        organization_id=current_user.organization_id
     )
     if err:
         raise HTTPException(status_code=400, detail=err)
@@ -155,6 +176,7 @@ def set_expected_update_date(
     Recruiter-only: sets the post-interview expected update date.
     Stores timeline state, resets reminder flags, and informs candidate.
     """
+    _get_candidate_guarded(candidate_id, current_user, db)
     cand, err = CandidateController.set_expected_update_date(
         candidate_id=candidate_id,
         expected_update_date=payload.expected_update_date,
@@ -177,6 +199,7 @@ def send_recruiter_update(
     Recruiter-only: dispatches an active status/decision update communication to the candidate.
     Updates candidate timeline state to 'update_sent' and stops future reminders.
     """
+    _get_candidate_guarded(candidate_id, current_user, db)
     cand, err = CandidateController.send_recruiter_update(
         candidate_id=candidate_id,
         message=payload.message,
@@ -195,12 +218,14 @@ def update_stage(
     db: Session = Depends(get_db)
 ):
     """Recruiter-only: Authoritative pipeline stage transition with transition guards."""
+    _get_candidate_guarded(candidate_id, current_user, db)
     cand, err = CandidateController.update_stage(
         candidate_id=candidate_id,
         new_stage=payload.stage,
         notes=payload.notes or "",
         changed_by=current_user.email,
-        db=db
+        db=db,
+        organization_id=current_user.organization_id
     )
     if err:
         raise HTTPException(status_code=400, detail=err)
@@ -214,6 +239,7 @@ def update_decision(
     db: Session = Depends(get_db)
 ):
     """Recruiter-only: Record hiring decision without regressing pipeline stage."""
+    _get_candidate_guarded(candidate_id, current_user, db)
     cand, err = CandidateController.update_hiring_decision(
         candidate_id=candidate_id,
         new_decision=payload.decision,
@@ -222,7 +248,32 @@ def update_decision(
         rejection_category=payload.rejection_category,
         hr_notes=payload.hr_notes or "",
         changed_by=current_user.email,
-        db=db
+        db=db,
+        organization_id=current_user.organization_id
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return cand
+
+@router.post("/{candidate_id}/reopen", response_model=CandidateResponse)
+def reopen_application(
+    candidate_id: str,
+    payload: CandidateReopenRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Recruiter-only: Controlled, audited application reopening for finalized candidates.
+    Requires minimum 10-character reason, resets final decision to 'undecided', moves stage to 'review',
+    and logs audit history.
+    """
+    _get_candidate_guarded(candidate_id, current_user, db)
+    cand, err = CandidateController.reopen_application(
+        candidate_id=candidate_id,
+        reason=payload.reason,
+        changed_by=current_user.email,
+        db=db,
+        organization_id=current_user.organization_id
     )
     if err:
         raise HTTPException(status_code=400, detail=err)
@@ -235,6 +286,7 @@ def get_audit_logs(
     db: Session = Depends(get_db)
 ):
     """Recruiter-only: Retrieve state transition audit log history."""
+    _get_candidate_guarded(candidate_id, current_user, db)
     logs = CandidateController.get_state_logs(candidate_id, db)
     return [
         {
@@ -258,6 +310,15 @@ async def parse_resume(file: Optional[UploadFile] = File(None), raw_text: Option
     filename = None
     if file:
         filename = os.path.basename(file.filename or "resume.pdf")
+        # Validate allowed resume extensions
+        allowed_exts = (".pdf", ".docx", ".doc", ".txt")
+        ext = os.path.splitext(filename)[1].lower()
+        if not ext or ext not in allowed_exts:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported file extension '{ext}'. Only .pdf, .docx, and .txt files are accepted for resume parsing."
+            )
+
         # Read with size boundary guard
         file_bytes = await file.read(MAX_RESUME_BYTES + 1)
         if len(file_bytes) > MAX_RESUME_BYTES:
@@ -266,7 +327,7 @@ async def parse_resume(file: Optional[UploadFile] = File(None), raw_text: Option
                 detail="Resume file exceeds the maximum allowed limit of 10MB."
             )
         # Validate magic bytes for PDF format
-        if filename.lower().endswith(".pdf") and not file_bytes.startswith(b"%PDF"):
+        if ext == ".pdf" and not file_bytes.startswith(b"%PDF"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid PDF file format. The file is corrupted or not a valid PDF document."

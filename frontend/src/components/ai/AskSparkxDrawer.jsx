@@ -698,14 +698,14 @@ export default function AskSparkxDrawer({
         {contextCandidate && (
           <div className="px-5 py-2.5 bg-slate-50 dark:bg-[#0E1017] border-b border-[#E8E8E4] dark:border-[#222634] flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 truncate">
-              <span className="font-mono text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400">Context:</span>
+              <span className="font-mono text-[10px] uppercase font-bold text-brand-600 dark:text-brand-400">Context:</span>
               <span className="font-bold text-slate-900 dark:text-white truncate">{contextCandidate.name}</span>
               <span className="text-slate-500 dark:text-slate-400 text-[11px]">({contextCandidate.jobTitle || 'Role'})</span>
             </div>
             <button
               type="button"
               onClick={() => setContextCandidate(null)}
-              className="text-[10px] font-mono text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+              className="text-[10px] font-mono text-brand-600 dark:text-brand-400 hover:underline shrink-0"
             >
               Clear context
             </button>
@@ -746,11 +746,11 @@ export default function AskSparkxDrawer({
                               const key = fact.substring(0, colonIdx).trim();
                               const val = fact.substring(colonIdx + 1).trim();
                               return (
-                                <li key={i} className="flex items-start gap-2 text-[11px] font-mono leading-relaxed bg-white dark:bg-[#0E121E] px-2.5 py-1.5 rounded-lg border border-slate-200/70 dark:border-slate-800/80 shadow-subtle">
+                                <li key={i} className="flex items-start gap-2 text-[11px] font-mono leading-relaxed bg-[#FDFCFA] dark:bg-[#1A1714] px-2.5 py-1.5 rounded-lg border border-[#E8E4DF] dark:border-[#2A2520] shadow-subtle">
                                   <span className="text-emerald-500 font-bold shrink-0 mt-0.5">•</span>
                                   <div className="flex-1">
-                                    <span className="font-bold text-slate-800 dark:text-slate-200">{key}:</span>{' '}
-                                    <span className="text-slate-600 dark:text-slate-300">
+                                    <span className="font-bold text-stone-800 dark:text-stone-200">{key}:</span>{' '}
+                                    <span className="text-stone-600 dark:text-stone-300">
                                       <FormattedMarkdownText content={val} />
                                     </span>
                                   </div>
@@ -758,9 +758,9 @@ export default function AskSparkxDrawer({
                               );
                             }
                             return (
-                              <li key={i} className="flex items-start gap-2 text-[11px] font-mono leading-relaxed bg-white dark:bg-[#0E121E] px-2.5 py-1.5 rounded-lg border border-slate-200/70 dark:border-slate-800/80 shadow-subtle">
+                              <li key={i} className="flex items-start gap-2 text-[11px] font-mono leading-relaxed bg-[#FDFCFA] dark:bg-[#1A1714] px-2.5 py-1.5 rounded-lg border border-[#E8E4DF] dark:border-[#2A2520] shadow-subtle">
                                 <span className="text-emerald-500 font-bold shrink-0 mt-0.5">•</span>
-                                <div className="flex-1 text-slate-600 dark:text-slate-300">
+                                <div className="flex-1 text-stone-600 dark:text-stone-300">
                                   <FormattedMarkdownText content={fact} />
                                 </div>
                               </li>
@@ -781,9 +781,9 @@ export default function AskSparkxDrawer({
                           {msg.metrics.map((m, i) => (
                             <span 
                               key={i} 
-                              className="px-2.5 py-1 rounded-lg bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/25 text-[10.5px] font-mono font-semibold shadow-subtle flex items-center gap-1.5"
+                              className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/25 text-[10.5px] font-mono font-semibold shadow-subtle flex items-center gap-1.5"
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />
                               <span>{m}</span>
                             </span>
                           ))}
@@ -793,12 +793,12 @@ export default function AskSparkxDrawer({
 
                     {/* AI Qualitative Interpretation */}
                     {msg.aiInterpretation && (
-                      <div className="space-y-1.5 bg-brand-50/60 dark:bg-brand-950/25 p-3.5 rounded-xl border border-brand-200/60 dark:border-brand-900/40">
-                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center gap-1.5">
+                      <div className="space-y-1.5 bg-teal-50/60 dark:bg-teal-950/25 p-3.5 rounded-xl border border-teal-200/60 dark:border-teal-900/40">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5" />
                           <span>AI Synthesis & Recruiter Briefing</span>
                         </span>
-                        <div className="text-[11.5px] text-slate-700 dark:text-slate-200 leading-relaxed pt-0.5">
+                        <div className="text-[11.5px] text-stone-700 dark:text-stone-200 leading-relaxed pt-0.5">
                           <FormattedMarkdownText content={msg.aiInterpretation} />
                         </div>
                       </div>
@@ -806,10 +806,10 @@ export default function AskSparkxDrawer({
 
                     {/* Uncertainty boundary */}
                     {msg.uncertainty && (
-                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 flex items-start gap-1.5 pt-1">
+                      <div className="text-[10.5px] text-stone-500 dark:text-stone-400 flex items-start gap-1.5 pt-1">
                         <HelpCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                         <div className="flex-1">
-                          <strong className="text-slate-700 dark:text-slate-300">Confidence Boundary:</strong>{' '}
+                          <strong className="text-stone-700 dark:text-stone-300">Confidence Boundary:</strong>{' '}
                           <FormattedMarkdownText content={msg.uncertainty} />
                         </div>
                       </div>
@@ -821,7 +821,7 @@ export default function AskSparkxDrawer({
           ))}
 
           {isProcessing && (
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 p-2.5 bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 rounded-lg max-w-[220px]">
+            <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400 p-2.5 bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg max-w-[220px]">
               <Sparkles className="w-3.5 h-3.5 animate-spin text-brand-500" />
               <span>Querying database ledger...</span>
             </div>
@@ -829,8 +829,8 @@ export default function AskSparkxDrawer({
         </div>
 
         {/* Suggested Prompts Pill Carousel */}
-        <div className="px-5 py-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-[#0B0E18]">
-          <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 block mb-1.5 uppercase font-bold tracking-wider">
+        <div className="px-5 py-2.5 border-t border-[#E8E4DF] dark:border-[#2A2520] bg-stone-50/50 dark:bg-[#14110F]">
+          <span className="text-[10px] font-mono text-stone-500 dark:text-stone-400 block mb-1.5 uppercase font-bold tracking-wider">
             Suggested Queries:
           </span>
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
@@ -842,7 +842,7 @@ export default function AskSparkxDrawer({
                   setQuery(p);
                   processQuery(p);
                 }}
-                className="px-2.5 py-1 rounded-lg text-[11px] bg-white dark:bg-[#0E121E] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 whitespace-nowrap transition shrink-0 shadow-subtle"
+                className="px-2.5 py-1 rounded-lg text-[11px] bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-700 dark:text-stone-300 border border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 whitespace-nowrap transition shrink-0 shadow-subtle"
               >
                 {p}
               </button>
@@ -851,14 +851,14 @@ export default function AskSparkxDrawer({
         </div>
 
         {/* Query Input Box */}
-        <form onSubmit={handleSend} className="p-3.5 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0E121E] flex items-center gap-2">
+        <form onSubmit={handleSend} className="p-3.5 border-t border-[#E8E4DF] dark:border-[#2A2520] bg-[#FDFCFA] dark:bg-[#1A1714] flex items-center gap-2">
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder={contextCandidate ? `Ask about ${contextCandidate.name}...` : "Ask about candidates, jobs, or pipeline status..."}
-            className="flex-1 px-3.5 py-2 bg-slate-50 dark:bg-[#080A10] border border-slate-200 dark:border-slate-800 rounded-lg text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+            className="flex-1 px-3.5 py-2 bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
             aria-label="Ask SparkX prompt input"
           />
           <button

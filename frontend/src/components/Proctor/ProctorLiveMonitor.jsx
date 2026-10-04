@@ -188,7 +188,7 @@ export default function ProctorLiveMonitor() {
   };
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 pb-16">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
@@ -210,7 +210,7 @@ export default function ProctorLiveMonitor() {
         <div className="flex items-center space-x-3">
           <button
             onClick={resetTelemetry}
-            className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-white transition flex items-center space-x-1.5 shadow-sm"
+            className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-brand-600 dark:hover:text-white transition flex items-center space-x-1.5 shadow-sm"
           >
             <RefreshCcw className="w-3.5 h-3.5" />
             <span>Reset Baseline</span>
@@ -233,7 +233,7 @@ export default function ProctorLiveMonitor() {
 
             {!cameraActive && (
               <div className="flex flex-col items-center justify-center p-6 text-center space-y-3">
-                <div className="w-20 h-20 rounded-full bg-slate-900 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                <div className="w-20 h-20 rounded-full bg-slate-900 border border-brand-500/30 flex items-center justify-center text-brand-400">
                   <Video className="w-8 h-8" />
                 </div>
                 <div className="text-xs font-semibold text-slate-300">Biometric HUD Stream Active</div>
@@ -266,7 +266,7 @@ export default function ProctorLiveMonitor() {
           {/* Interactive Simulation Controls */}
           <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-300 flex items-center space-x-1.5">
+              <span className="text-xs font-bold text-brand-300 flex items-center space-x-1.5">
                 <Zap className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Simulate Anomaly Triggers (Client Presentation Mode):</span>
               </span>
@@ -333,7 +333,7 @@ export default function ProctorLiveMonitor() {
           <div className="glass-card p-5 rounded-2xl border border-slate-800 flex-1 space-y-3 max-h-96 overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
               <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
-                <Activity className="w-4 h-4 text-indigo-400" />
+                <Activity className="w-4 h-4 text-brand-400" />
                 <span>Suspicious Event Audit Log ({events.length})</span>
               </span>
               <span className="text-[10px] text-slate-500">Immutable Audit Trail</span>

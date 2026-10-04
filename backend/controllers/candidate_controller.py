@@ -19,12 +19,14 @@ from services.compensation_service import (
     format_job_compensation,
     format_candidate_expectation
 )
+from services.organization_service import ensure_organization
 from workflow_contract import (
     STAGE_APPLIED, STAGE_SCREENING, STAGE_ASSESSMENT, STAGE_INTERVIEW, STAGE_REVIEW, STAGE_COMPLETED,
     ASSESS_NOT_INVITED, ASSESS_INVITED, ASSESS_IN_PROGRESS, ASSESS_SUBMITTED, ASSESS_EVALUATED,
     INTERVIEW_NOT_SCHEDULED, INTERVIEW_SCHEDULED, INTERVIEW_IN_PROGRESS, INTERVIEW_COMPLETED,
     DECISION_UNDECIDED, DECISION_SHORTLISTED, DECISION_SELECTED, DECISION_REJECTED,
-    validate_stage_transition, validate_decision_transition,
+    FINAL_DECISIONS, is_final_decision,
+    validate_stage_transition, validate_decision_transition, validate_reopen_application,
     project_legacy_status, project_legacy_final_decision
 )
 
@@ -45,9 +47,12 @@ class CandidateController:
         compensation_status: str = None,
         min_expected_ctc: float = None,
         max_expected_ctc: float = None,
-        q: str = None
+        q: str = None,
+        organization_id: str = None
     ):
         query = db.query(CandidateModel)
+        if organization_id:
+            query = query.filter(CandidateModel.organization_id == organization_id)
         if job_id and job_id != "ALL":
             query = query.filter(CandidateModel.job_id == job_id)
         if q and q.strip():
@@ -75,9 +80,15 @@ class CandidateController:
         return candidates[skip : skip + limit]
 
     @staticmethod
-    def get_candidate_by_id(candidate_id: str, db: Session):
+    def get_candidate_by_id(candidate_id: str, db: Session, organization_id: str = None):
         cand = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
-        return CandidateController._enrich_candidate(cand) if cand else None
+        if not cand:
+            return None
+        if organization_id:
+            cand_org = getattr(cand, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+            if cand_org != organization_id:
+                return None
+        return CandidateController._enrich_candidate(cand)
 
     @staticmethod
     def log_state_change(
@@ -131,6 +142,9 @@ class CandidateController:
         if not job:
             return None, "Job not found"
 
+        if getattr(job, "status", "Active") in ["Paused", "Closed"]:
+            return None, f"This position is currently {job.status.lower()} and no longer accepting new applications."
+
         # Authoritative, context-aware resume-to-job matching analysis
         job_data = {
             "id": job.id,
@@ -168,42 +182,12 @@ class CandidateController:
         matching_user = db.query(UserModel).filter(UserModel.email == payload.email.strip().lower()).first()
 
         if existing:
-            # Update existing application with latest resume/details
-            if not existing.user_id and matching_user:
-                existing.user_id = matching_user.id
-            existing.version = (existing.version or 1) + 1
-            existing.name = payload.name
-            existing.phone = payload.phone or existing.phone
-            existing.skills = payload.skills
-            existing.experience_years = payload.experience_years
-            existing.education = payload.education
-            existing.match_score = match_score
-            existing.match_details = match_details
-            existing.company_name = comp_name
-            if payload.resume_summary:
-                existing.resume_summary = payload.resume_summary
-            if payload.resume_filename:
-                existing.resume_filename = payload.resume_filename
-            if payload.resume_text:
-                existing.resume_text = payload.resume_text
-            # Candidate application compensation persistence
-            if payload.current_ctc is not None:
-                existing.current_ctc = payload.current_ctc
-            if payload.expected_ctc_min is not None:
-                existing.expected_ctc_min = payload.expected_ctc_min
-            if payload.expected_ctc_max is not None:
-                existing.expected_ctc_max = payload.expected_ctc_max
-            if payload.expected_ctc_type:
-                existing.expected_ctc_type = payload.expected_ctc_type
-            if payload.ctc_currency:
-                existing.ctc_currency = payload.ctc_currency.upper()
-            db.commit()
-            db.refresh(existing)
-            CandidateController._enrich_candidate(existing)
-            return existing, None
+            return None, "You have already submitted an application for this position."
 
         cid = f"cand-{uuid.uuid4().hex[:6]}"
         job_title = job.title if job else "Technical Role"
+        job_org = getattr(job, "organization_id", None) or "org-sparkx-default"
+        ensure_organization(db, job_org)
 
         # Initial automated confirmation email
         initial_email = {
@@ -222,6 +206,7 @@ class CandidateController:
         new_candidate = CandidateModel(
             id=cid,
             user_id=matching_user.id if matching_user else None,
+            organization_id=job_org,
             version=1,
             job_id=payload.job_id,
             company_name=comp_name,
@@ -256,30 +241,41 @@ class CandidateController:
             email_logs=[initial_email]
         )
 
-        db.add(new_candidate)
-        CandidateController.log_state_change(
-            candidate_id=cid,
-            dimension="stage",
-            from_val=None,
-            to_val=STAGE_APPLIED,
-            changed_by="candidate",
-            notes="Application submitted",
-            db=db
-        )
-        db.commit()
-        db.refresh(new_candidate)
-        CandidateController._enrich_candidate(new_candidate)
-        return new_candidate, None
+        try:
+            db.add(new_candidate)
+            CandidateController.log_state_change(
+                candidate_id=cid,
+                dimension="stage",
+                from_val=None,
+                to_val=STAGE_APPLIED,
+                changed_by="candidate",
+                notes="Application submitted",
+                db=db
+            )
+            db.commit()
+            db.refresh(new_candidate)
+            CandidateController._enrich_candidate(new_candidate)
+            return new_candidate, None
+        except Exception as e:
+            db.rollback()
+            if "UNIQUE" in str(e).upper() or "INTEGRITY" in type(e).__name__.upper():
+                return None, "You have already submitted an application for this position."
+            raise
 
     @staticmethod
-    def update_stage(candidate_id: str, new_stage: str, notes: str = "", changed_by: str = "recruiter", db: Session = None):
+    def update_stage(candidate_id: str, new_stage: str, notes: str = "", changed_by: str = "recruiter", db: Session = None, organization_id: str = None):
         """Authoritatively advance or adjust the application stage with FSM transition guards."""
         candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
         if not candidate:
             return None, "Candidate not found"
 
+        if organization_id:
+            cand_org = getattr(candidate, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+            if cand_org != organization_id:
+                return None, "Cross-tenant access forbidden: Candidate belongs to another organization."
+
         norm_stage = new_stage.lower().strip()
-        valid, err = validate_stage_transition(candidate.stage, norm_stage)
+        valid, err = validate_stage_transition(candidate.stage, norm_stage, current_decision=candidate.hiring_decision, candidate=candidate)
         if not valid:
             return None, err
 
@@ -304,6 +300,61 @@ class CandidateController:
         return candidate, None
 
     @staticmethod
+    def reopen_application(candidate_id: str, reason: str, changed_by: str = "recruiter", db: Session = None, organization_id: str = None):
+        """
+        Controlled, audited application reopening for finalized candidates:
+        - Validates that the application has a recorded final decision.
+        - Enforces a mandatory audit reason (minimum 10 characters).
+        - Preserves previous final decision in history and candidate record.
+        - Resets hiring_decision to 'undecided' and moves stage back to 'review' for reconsideration.
+        - Logs audit event to candidate_state_logs.
+        """
+        candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not candidate:
+            return None, "Candidate not found"
+
+        if organization_id:
+            cand_org = getattr(candidate, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+            if cand_org != organization_id:
+                return None, "Cross-tenant access forbidden: Candidate belongs to another organization."
+
+        valid, err = validate_reopen_application(candidate.stage, candidate.hiring_decision, reason)
+        if not valid:
+            return None, err
+
+        old_decision = candidate.hiring_decision
+        old_stage = candidate.stage
+        clean_reason = reason.strip()
+
+        # Update candidate state
+        candidate.previous_final_decision = old_decision
+        candidate.reopened_at = datetime.utcnow()
+        candidate.reopened_by = changed_by
+        candidate.reopen_reason = clean_reason
+        candidate.hiring_decision = DECISION_UNDECIDED
+        candidate.stage = STAGE_REVIEW
+        candidate.stage_updated_at = datetime.utcnow()
+        candidate.decision_updated_at = datetime.utcnow()
+        candidate.version = (candidate.version or 1) + 1
+        candidate.status = project_legacy_status(candidate.stage, candidate.hiring_decision)
+        candidate.final_decision = project_legacy_final_decision(candidate.stage, candidate.hiring_decision)
+
+        # Record audit log
+        CandidateController.log_state_change(
+            candidate_id=candidate.id,
+            dimension="reopen_application",
+            from_val=f"{old_stage}:{old_decision}",
+            to_val=f"{STAGE_REVIEW}:{DECISION_UNDECIDED}",
+            changed_by=changed_by,
+            notes=f"Controlled reopening authorized. Reason: {clean_reason}. Prior decision: {old_decision}",
+            db=db
+        )
+
+        db.commit()
+        db.refresh(candidate)
+        return candidate, None
+
+    @staticmethod
     def update_hiring_decision(
         candidate_id: str,
         new_decision: str = None,
@@ -313,6 +364,7 @@ class CandidateController:
         hr_notes: Optional[str] = None,
         changed_by: str = "recruiter",
         db: Session = None,
+        organization_id: str = None,
         *,
         decision: str = None,
         reason: str = None,
@@ -322,6 +374,11 @@ class CandidateController:
         candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
         if not candidate:
             return None, "Candidate not found"
+
+        if organization_id:
+            cand_org = getattr(candidate, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+            if cand_org != organization_id:
+                return None, "Cross-tenant access forbidden: Candidate belongs to another organization."
 
         target_decision = new_decision or decision or ""
         norm_decision = target_decision.lower().strip()
@@ -371,7 +428,7 @@ class CandidateController:
         return candidate, None
 
     @staticmethod
-    def invite_assessment(candidate_id: str, custom_message: str = "", changed_by: str = "recruiter", db: Session = None):
+    def invite_assessment(candidate_id: str, custom_message: str = "", changed_by: str = "recruiter", db: Session = None, organization_id: str = None):
         """
         Idempotent assessment invitation:
         Enables candidate technical assessment access, records invitation timestamp,
@@ -380,6 +437,17 @@ class CandidateController:
         candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
         if not candidate:
             return None, "Candidate not found"
+
+        if organization_id:
+            cand_org = getattr(candidate, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+            if cand_org != organization_id:
+                return None, "Cross-tenant access forbidden: Candidate belongs to another organization."
+
+        # Cross-dimensional guard: finalized decision or completed interview cannot receive assessment invitation
+        if candidate.hiring_decision in [DECISION_SELECTED, DECISION_REJECTED] or candidate.stage == STAGE_COMPLETED:
+            return None, f"Cannot invite candidate to assessment: application is finalized with decision '{candidate.hiring_decision}'."
+        if candidate.interview_status == INTERVIEW_COMPLETED:
+            return None, "Cannot invite candidate to assessment: interview has already been completed."
 
         # Idempotency check: if already invited or further along, return safely without resetting
         if candidate.assessment_status in [ASSESS_INVITED, ASSESS_IN_PROGRESS, ASSESS_SUBMITTED, ASSESS_EVALUATED]:
@@ -426,27 +494,36 @@ class CandidateController:
         return candidate, None
 
     @staticmethod
-    def update_status(candidate_id: str, payload: CandidateStatusUpdate, db: Session):
+    def update_status(candidate_id: str, payload: CandidateStatusUpdate, db: Session, organization_id: str = None):
         """Legacy compatibility adapter: routes legacy status strings to decoupled dimensions."""
+        candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+        if not candidate:
+            return False
+
+        if organization_id:
+            cand_org = getattr(candidate, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+            if cand_org != organization_id:
+                return False
+
         raw_status = (payload.status or "").strip().lower()
         
         # Decision mappings
         if raw_status in ["selected", "offered", "offer"]:
             cand, _ = CandidateController.update_hiring_decision(
                 candidate_id, DECISION_SELECTED, payload.recruiter_score, 
-                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db
+                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db, organization_id=organization_id
             )
             return bool(cand)
         elif raw_status == "rejected":
             cand, _ = CandidateController.update_hiring_decision(
                 candidate_id, DECISION_REJECTED, payload.recruiter_score, 
-                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db
+                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db, organization_id=organization_id
             )
             return bool(cand)
         elif raw_status == "shortlisted":
             cand, _ = CandidateController.update_hiring_decision(
                 candidate_id, DECISION_SHORTLISTED, payload.recruiter_score, 
-                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db
+                payload.rejection_reason, payload.rejection_category, payload.hr_notes, "recruiter", db, organization_id=organization_id
             )
             return bool(cand)
         
@@ -462,14 +539,21 @@ class CandidateController:
             "scheduled": STAGE_INTERVIEW
         }
         target_stage = stage_map.get(raw_status, STAGE_SCREENING)
-        cand, _ = CandidateController.update_stage(candidate_id, target_stage, payload.hr_notes or "", "recruiter", db)
+        cand, _ = CandidateController.update_stage(candidate_id, target_stage, payload.hr_notes or "", "recruiter", db, organization_id=organization_id)
         return bool(cand)
 
     @staticmethod
-    def get_candidate_applications(email: str, db: Session):
+    def get_candidate_applications(email: str, db: Session, user_id: str = None, organization_id: str = None):
         """Authoritative candidate application list: reads exact persisted states (zero heuristics)."""
-        clean_email = email.strip().lower()
-        applications = db.query(CandidateModel).filter(CandidateModel.email.ilike(clean_email)).order_by(CandidateModel.created_at.desc()).all()
+        clean_email = email.strip().lower() if email else ""
+        query = db.query(CandidateModel)
+        if user_id:
+            query = query.filter(or_(CandidateModel.email.ilike(clean_email), CandidateModel.user_id == user_id))
+        else:
+            query = query.filter(CandidateModel.email.ilike(clean_email))
+        if organization_id:
+            query = query.filter(CandidateModel.organization_id == organization_id)
+        applications = query.order_by(CandidateModel.created_at.desc()).all()
         result = []
         for app in applications:
             job = app.job
@@ -670,9 +754,12 @@ class CandidateController:
         return candidate, None
 
     @staticmethod
-    def get_update_timeline(db: Session) -> Dict[str, Any]:
+    def get_update_timeline(db: Session, organization_id: Optional[str] = None) -> Dict[str, Any]:
         today = datetime.utcnow().date()
-        candidates = db.query(CandidateModel).all()
+        query = db.query(CandidateModel)
+        if organization_id:
+            query = query.filter(CandidateModel.organization_id == organization_id)
+        candidates = query.all()
 
         due_today = []
         due_tomorrow = []
@@ -781,6 +868,12 @@ class CandidateController:
         candidate = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
         if not candidate:
             return None, "Candidate not found"
+
+        # Section 10 critical guard: cannot reschedule an interview that is already completed
+        if candidate.interview_status == INTERVIEW_COMPLETED:
+            return None, "Interview is already completed and cannot be rescheduled."
+        if candidate.hiring_decision in FINAL_DECISIONS or candidate.stage == STAGE_COMPLETED:
+            return None, f"Cannot schedule interview: application is finalized with decision '{candidate.hiring_decision}'."
 
         previous_slot = candidate.interview_scheduled_at
         old_interview_status = candidate.interview_status

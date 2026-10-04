@@ -88,6 +88,10 @@ export function normalizeCandidate(c) {
     rejectionCategory:    c.rejection_category     ?? c.rejectionCategory    ?? null,
     matchDetails:         c.match_details          ?? c.matchDetails         ?? null,
     emailLogs:            c.email_logs             ?? c.emailLogs            ?? [],
+    reopenedAt:           c.reopened_at            ?? c.reopenedAt           ?? null,
+    reopenedBy:           c.reopened_by            ?? c.reopenedBy           ?? null,
+    reopenReason:         c.reopen_reason          ?? c.reopenReason         ?? null,
+    previousFinalDecision: c.previous_final_decision ?? c.previousFinalDecision ?? null,
   };
 }
 
@@ -266,6 +270,32 @@ export const api = {
     }
   },
 
+  // ─── Organizations / Tenancy ─────────────────────────────────────────────
+  async getCurrentOrganization() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/organizations/current`, {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  },
+
+  async updateOrganization(payload) {
+    const res = await authFetch(`${API_BASE_URL}/organizations/current`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to update organization');
+    }
+    return await res.json();
+  },
+
   // ─── Health ──────────────────────────────────────────────────────────────
   async checkHealth() {
     try {
@@ -275,14 +305,31 @@ export const api = {
   },
 
   // ─── Jobs ─────────────────────────────────────────────────────────────────
-  async getJobs() {
+  async getJobs(statusFilter = null) {
     try {
-      const res = await authFetch(`${API_BASE_URL}/jobs`, { signal: AbortSignal.timeout(4000) });
+      const url = statusFilter ? `${API_BASE_URL}/jobs?status=${encodeURIComponent(statusFilter)}` : `${API_BASE_URL}/jobs`;
+      const res = await authFetch(url, { signal: AbortSignal.timeout(4000) });
       if (!res.ok) throw new Error('Failed to fetch jobs');
       const data = await res.json();
       return Array.isArray(data) ? data.map(normalizeJob) : [];
     } catch (err) {
       console.warn('[API] getJobs failed:', err.message);
+      return null;
+    }
+  },
+
+  async updateJobStatus(jobId, status, closureReason = null) {
+    try {
+      const payload = { status, closure_reason: closureReason };
+      const res = await authFetch(`${API_BASE_URL}/jobs/${jobId}/status`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error('Failed to update job status');
+      return normalizeJob(await res.json());
+    } catch (err) {
+      console.warn('[API] updateJobStatus failed:', err.message);
       return null;
     }
   },
@@ -616,6 +663,24 @@ export const api = {
     }
   },
 
+  async reopenCandidate(candidateId, reason) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/reopen`, {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to reopen application');
+      }
+      return normalizeCandidate(await res.json());
+    } catch (err) {
+      console.warn('[API] reopenCandidate failed:', err.message);
+      throw err;
+    }
+  },
+
   async inviteAssessment(candidateId, customMessage = '') {
     try {
       const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/invite-assessment`, {
@@ -756,7 +821,7 @@ export const api = {
           candidate_id: candidateId,
           candidate_name: candidateName || 'Candidate',
           candidate_skills: candidateSkills,
-          experience_years: Number(experienceYears || 2),
+          experience_years: Number(experienceYears ?? 0),
         }),
         signal: AbortSignal.timeout(6000),
       });
@@ -840,28 +905,35 @@ export const api = {
   },
 
   // ─── Recruiter Assessment Studio: AI Config Generator ─────────────────────
-  async generateStudioConfig(jobId, mcqCount = 5, interviewQCount = 3, difficulty = 'Mid-Level') {
+  async generateStudioConfig(jobId, mcqCount = 5, interviewQCount = 3, difficulty = 'Mid-Level', forceRefresh = false) {
     try {
       const params = new URLSearchParams({
         mcq_count: mcqCount,
         interview_q_count: interviewQCount,
         difficulty,
       });
+      if (forceRefresh) {
+        params.append('force_refresh', 'true');
+        params.append('_t', Date.now().toString());
+      }
       const res = await authFetch(`${API_BASE_URL}/assessment/studio/job/${jobId}?${params}`, {
         signal: AbortSignal.timeout(60000), // LLM may take a moment
       });
-      if (!res.ok) throw new Error(`Studio config generation failed: ${res.status}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Studio config generation failed: ${res.status}`);
+      }
       return await res.json();
     } catch (err) {
       console.warn('generateStudioConfig error:', err);
-      return null;
+      throw err;
     }
   },
 
   // ─── Supported Languages: Sandbox-detected authoritative list ─────────────
   async getSupportedLanguages() {
     try {
-      const res = await fetch(`${API_BASE_URL}/assessment/supported-languages`, {
+      const res = await (typeof authFetch === 'function' ? authFetch : fetch)(`${API_BASE_URL}/assessment/supported-languages`, {
         signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) throw new Error(`getSupportedLanguages failed: ${res.status}`);
@@ -958,6 +1030,320 @@ export const api = {
     }
   },
 
+  // ─── Coding Problem Bank & Recruiter Authoring ───────────────────────────
+  async getSupportedCodingLanguages() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/problems/languages`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getSupportedCodingLanguages failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getSupportedCodingLanguages error:', err);
+      return [];
+    }
+  },
+
+  async getCodingProblems({ difficulty = '', search = '', execution_mode = '', is_system = '' } = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (difficulty) params.append('difficulty', difficulty);
+      if (search) params.append('search', search);
+      if (execution_mode) params.append('execution_mode', execution_mode);
+      if (is_system !== '') params.append('is_system', String(is_system));
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await authFetch(`${API_BASE_URL}/assessment/problems${qs}`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) throw new Error(`getCodingProblems failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getCodingProblems error:', err);
+      return [];
+    }
+  },
+
+  async getCodingProblem(problemId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/problems/${problemId}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getCodingProblem failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getCodingProblem error:', err);
+      return null;
+    }
+  },
+
+  async createCodingProblem(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/problems`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to create coding problem: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('createCodingProblem error:', err);
+      throw err;
+    }
+  },
+
+  async updateCodingProblem(problemId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/problems/${problemId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to update coding problem: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('updateCodingProblem error:', err);
+      throw err;
+    }
+  },
+
+  async deleteCodingProblem(problemId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/problems/${problemId}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`deleteCodingProblem failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('deleteCodingProblem error:', err);
+      throw err;
+    }
+  },
+
+  async getAssessmentCodingProblems(assessmentId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/${assessmentId}/coding-problems`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getAssessmentCodingProblems failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getAssessmentCodingProblems error:', err);
+      return [];
+    }
+  },
+
+  async attachAssessmentCodingProblems(assessmentId, problems) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/${assessmentId}/coding-problems`, {
+        method: 'POST',
+        body: JSON.stringify({ problems }),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to attach coding problems: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('attachAssessmentCodingProblems error:', err);
+      throw err;
+    }
+  },
+
+  // ─── Phase 4B.2: Authoritative MCQ Question Bank & Assessment Integration ─
+  async getMCQQuestions({ category = '', difficulty = '', search = '', skill = '', is_system = '', is_active = '' } = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (category) params.append('category', category);
+      if (difficulty) params.append('difficulty', difficulty);
+      if (search) params.append('search', search);
+      if (skill) params.append('skill', skill);
+      if (is_system !== '') params.append('is_system', String(is_system));
+      if (is_active !== '') params.append('is_active', String(is_active));
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await authFetch(`${API_BASE_URL}/assessment/mcq-questions${qs}`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) throw new Error(`getMCQQuestions failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getMCQQuestions error:', err);
+      return [];
+    }
+  },
+
+  async getMCQQuestion(questionId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/mcq-questions/${questionId}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getMCQQuestion failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getMCQQuestion error:', err);
+      return null;
+    }
+  },
+
+  async createMCQQuestion(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/mcq-questions`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to create MCQ question: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('createMCQQuestion error:', err);
+      throw err;
+    }
+  },
+
+  async updateMCQQuestion(questionId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/mcq-questions/${questionId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to update MCQ question: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('updateMCQQuestion error:', err);
+      throw err;
+    }
+  },
+
+  async deleteMCQQuestion(questionId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/mcq-questions/${questionId}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`deleteMCQQuestion failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('deleteMCQQuestion error:', err);
+      throw err;
+    }
+  },
+
+  async getAssessmentMCQs(assessmentId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/${assessmentId}/mcqs`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getAssessmentMCQs failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getAssessmentMCQs error:', err);
+      return [];
+    }
+  },
+
+  async attachAssessmentMCQs(assessmentId, mcqs) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/${assessmentId}/mcqs`, {
+        method: 'POST',
+        body: JSON.stringify({ mcqs }),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to attach MCQs: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('attachAssessmentMCQs error:', err);
+      throw err;
+    }
+  },
+
+  // ─── External Coding Assessment Platforms ───────────────────────────────
+  async getExternalPlatforms() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/external/platforms`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getExternalPlatforms failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getExternalPlatforms error:', err);
+      return [];
+    }
+  },
+
+  async searchExternalQuestions(platform = 'hackerrank', query = '', difficulty = '', limit = 100) {
+    try {
+      const params = new URLSearchParams({ platform, query, difficulty, limit: String(limit) });
+      const res = await authFetch(`${API_BASE_URL}/assessment/external/questions?${params.toString()}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`searchExternalQuestions failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('searchExternalQuestions error:', err);
+      return [];
+    }
+  },
+
+  async createExternalAssessment(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/external/create`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) throw new Error(`createExternalAssessment failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('createExternalAssessment error:', err);
+      return null;
+    }
+  },
+
+  async syncExternalAssessment(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/external/${candidateId}/sync`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) throw new Error(`syncExternalAssessment failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('syncExternalAssessment error:', err);
+      return null;
+    }
+  },
+
+  async getExternalAssessmentResult(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/external/${candidateId}/result`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getExternalAssessmentResult failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getExternalAssessmentResult error:', err);
+      return null;
+    }
+  },
+
+
   async startAssessment(candidateId) {
     try {
       const res = await authFetch(`${API_BASE_URL}/assessment/${candidateId}/start`, {
@@ -1015,6 +1401,144 @@ export const api = {
     } catch (err) {
       console.warn('[API] queryCopilot error:', err.message);
       return null;
+    }
+  },
+
+  // ─── PHASE 4C: INTERVIEW AVAILABILITY & SCHEDULING ────────────────────────
+  async getRecruiterAvailabilities({ jobId = null, date = null } = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (jobId) params.append('job_id', jobId);
+      if (date) params.append('date', date);
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await authFetch(`${API_BASE_URL}/scheduling/availability${qs}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to fetch availabilities');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getRecruiterAvailabilities error:', err.message);
+      return [];
+    }
+  },
+
+  async createRecruiterAvailability(payload) {
+    const res = await authFetch(`${API_BASE_URL}/scheduling/availability`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to create availability');
+    }
+    return await res.json();
+  },
+
+  async updateRecruiterAvailability(availabilityId, payload) {
+    const res = await authFetch(`${API_BASE_URL}/scheduling/availability/${availabilityId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to update availability');
+    }
+    return await res.json();
+  },
+
+  async deleteRecruiterAvailability(availabilityId) {
+    const res = await authFetch(`${API_BASE_URL}/scheduling/availability/${availabilityId}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to delete availability');
+    }
+    return await res.json();
+  },
+
+  async addAvailabilityBlock(availabilityId, payload) {
+    const res = await authFetch(`${API_BASE_URL}/scheduling/availability/${availabilityId}/block`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to add block');
+    }
+    return await res.json();
+  },
+
+  async getInterviewSlots({ jobId = null, candidateId = null, timezone = 'UTC', fromDate = null, toDate = null } = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (jobId) params.append('job_id', jobId);
+      if (candidateId) params.append('candidate_id', candidateId);
+      if (timezone) params.append('timezone', timezone);
+      if (fromDate) params.append('from_date', fromDate);
+      if (toDate) params.append('to_date', toDate);
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await authFetch(`${API_BASE_URL}/scheduling/slots${qs}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to fetch interview slots');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getInterviewSlots error:', err.message);
+      return [];
+    }
+  },
+
+  async bookInterviewSlot(payload) {
+    const res = await authFetch(`${API_BASE_URL}/scheduling/book`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const error = new Error(err.detail || 'Failed to book slot');
+      error.status = res.status;
+      throw error;
+    }
+    return await res.json();
+  },
+
+  async rescheduleInterview(payload) {
+    const res = await authFetch(`${API_BASE_URL}/scheduling/reschedule`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const error = new Error(err.detail || 'Failed to reschedule interview');
+      error.status = res.status;
+      throw error;
+    }
+    return await res.json();
+  },
+
+  async cancelInterview(payload) {
+    const res = await authFetch(`${API_BASE_URL}/scheduling/cancel`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || 'Failed to cancel interview');
+    }
+    return await res.json();
+  },
+
+  async getMyInterviews() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/scheduling/my-interviews`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getMyInterviews error:', err.message);
+      return [];
     }
   },
 };

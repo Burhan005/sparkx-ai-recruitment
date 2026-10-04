@@ -19,7 +19,15 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
   const wf = normalizeWorkflow(candidate);
   const transcript = candidate.transcript || candidate.interview_transcript || [];
   const scores = candidate.scores || {};
-  const hasInterviewed = ['completed', 'in_progress'].includes(wf.interviewStatus) || transcript.length > 0;
+  const isInterviewCompleted = Boolean(
+    wf.interviewStatus === 'completed' ||
+    candidate.interviewStatus === 'completed' ||
+    candidate.interview_status === 'completed' ||
+    (candidate.interviewScore !== undefined && candidate.interviewScore !== null) ||
+    (candidate.interview_score !== undefined && candidate.interview_score !== null) ||
+    transcript.length > 0 ||
+    ['review', 'decision', 'offered', 'hired', 'rejected'].includes(wf.stage)
+  );
 
   return (
     <div className="space-y-6">
@@ -62,37 +70,70 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
 
       {/* Google Meet Link Banner */}
       {candidate.interviewMeetingUrl && (
-        <Card className="p-4 bg-cyan-50/50 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <Card className={`p-4 ${
+          isInterviewCompleted 
+            ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50' 
+            : 'bg-cyan-50/50 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800/50'
+        } flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3`}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-500 flex items-center justify-center shrink-0">
-              <Video className="w-5 h-5" />
+            <div className={`w-9 h-9 rounded-xl ${
+              isInterviewCompleted 
+                ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+                : 'bg-cyan-500/20 text-cyan-500'
+            } flex items-center justify-center shrink-0`}>
+              {isInterviewCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Video className="w-5 h-5" />}
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-900 dark:text-white">Confirmed Google Meet Session</div>
+              <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>{isInterviewCompleted ? 'Interview Session Concluded' : 'Confirmed Google Meet Session'}</span>
+                <span className={`text-[10px] font-mono px-2 py-0.2 rounded-full border ${
+                  isInterviewCompleted 
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                    : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                }`}>
+                  {isInterviewCompleted ? 'Concluded' : 'Active'}
+                </span>
+              </div>
               <div className="text-[11px] text-slate-500 font-mono truncate max-w-md">{candidate.interviewMeetingUrl}</div>
             </div>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            {onScheduleInterview && (
-              <button
-                type="button"
-                onClick={onScheduleInterview}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold transition shadow-xs"
-                title="Reschedule interview slot"
-              >
-                <Calendar className="w-3.5 h-3.5 text-cyan-500" />
-                <span>Reschedule Session</span>
-              </button>
+            {isInterviewCompleted ? (
+              onScheduleInterview && (
+                <button
+                  type="button"
+                  onClick={onScheduleInterview}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold transition shadow-xs"
+                  title="Schedule a subsequent technical round or committee interview"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Schedule Round 2</span>
+                </button>
+              )
+            ) : (
+              <>
+                {onScheduleInterview && (
+                  <button
+                    type="button"
+                    onClick={onScheduleInterview}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold transition shadow-xs"
+                    title="Reschedule interview slot"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-cyan-500" />
+                    <span>Reschedule Session</span>
+                  </button>
+                )}
+                <a
+                  href={candidate.interviewMeetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-sm"
+                >
+                  <span>Join Meeting Room</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </>
             )}
-            <a
-              href={candidate.interviewMeetingUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-sm"
-            >
-              <span>Join Meeting Room</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
           </div>
         </Card>
       )}
@@ -101,7 +142,7 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
       <Card className="p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-indigo-500" />
+            <MessageSquare className="w-4 h-4 text-brand-500" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">Speech-to-Text Interview Transcript</h3>
           </div>
           <span className="text-xs font-mono text-slate-400">
@@ -137,19 +178,19 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
                 className={`p-4 rounded-2xl text-xs space-y-1.5 transition-colors ${
                   msg.speaker === 'ai'
                     ? 'bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-200'
-                    : 'bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 text-slate-900 dark:text-indigo-100 ml-6'
+                    : 'bg-brand-50/60 dark:bg-brand-950/30 border border-brand-200/80 dark:border-brand-800/60 text-slate-900 dark:text-stone-100 ml-6'
                 }`}
               >
                 <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
                   <span className="flex items-center gap-1.5 font-bold">
                     {msg.speaker === 'ai' ? (
                       <>
-                        <Bot className="w-3.5 h-3.5 text-indigo-500" />
-                        <span className="text-indigo-600 dark:text-indigo-400">SparkX AI Interviewer</span>
+                        <Bot className="w-3.5 h-3.5 text-brand-500" />
+                        <span className="text-brand-600 dark:text-brand-400">SparkX AI Interviewer</span>
                       </>
                     ) : (
                       <>
-                        <User className="w-3.5 h-3.5 text-cyan-500" />
+                        <User className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
                         <span className="text-slate-700 dark:text-slate-300">{candidate.name} (Candidate)</span>
                       </>
                     )}

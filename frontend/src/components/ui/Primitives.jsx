@@ -37,7 +37,7 @@ export function Button({
   onClick,
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-medium transition-all duration-150 select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:ring-offset-1 active:scale-[0.99]';
+  const baseStyles = 'inline-flex items-center justify-center font-medium select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-1 transition-all duration-150 active:scale-[0.97]';
 
   const sizeStyles = {
     xs: 'px-2.5 py-1 text-xs gap-1.5 font-medium',
@@ -47,11 +47,11 @@ export function Button({
   };
 
   const variantStyles = {
-    primary: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-subtle border border-brand-600',
-    brand: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-subtle border border-brand-600',
-    secondary: 'bg-white hover:bg-slate-50 active:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 shadow-subtle',
-    outline: 'bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700',
-    ghost: 'bg-transparent hover:bg-slate-100/80 dark:hover:bg-slate-800/70 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border border-transparent',
+    primary: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-600 hover:shadow-md hover:shadow-teal-900/15',
+    brand: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-600 hover:shadow-md hover:shadow-teal-900/15',
+    secondary: 'bg-stone-50 hover:bg-stone-100 active:bg-stone-200/70 dark:bg-[#1E1B18] dark:hover:bg-[#26221E] text-stone-900 dark:text-stone-100 border border-stone-200/90 dark:border-stone-800 shadow-sm hover:shadow-md hover:shadow-stone-900/5',
+    outline: 'bg-transparent hover:bg-stone-100 dark:hover:bg-stone-800/60 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-800',
+    ghost: 'bg-transparent hover:bg-stone-100/80 dark:hover:bg-stone-800/60 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 border border-transparent',
     danger: 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-subtle border border-rose-600',
     success: 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-subtle border border-emerald-600',
   };
@@ -106,7 +106,7 @@ export function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center justify-center transition-colors rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/80 disabled:opacity-40 disabled:cursor-not-allowed ${sizeMap[size] || sizeMap.md} ${className}`}
+      className={`inline-flex items-center justify-center transition-colors rounded-lg text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800/80 disabled:opacity-40 disabled:cursor-not-allowed ${sizeMap[size] || sizeMap.md} ${className}`}
       {...props}
     >
       <Icon className={iconSizeMap[size] || 'w-4 h-4'} />
@@ -131,29 +131,29 @@ export function Input({
   return (
     <div className={`space-y-1.5 ${containerClassName}`}>
       {label && (
-        <label htmlFor={inputId} className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+        <label htmlFor={inputId} className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
           {label}
         </label>
       )}
       <div className="relative rounded-lg shadow-subtle">
         {Icon && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
             <Icon className="w-4 h-4" />
           </div>
         )}
         <input
           id={inputId}
-          className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 bg-white dark:bg-[#0E121E] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 ${
+          className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 bg-white dark:bg-[#151210] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 ${
             Icon ? 'pl-9' : 'pl-3'
           } ${IconRight ? 'pr-9' : 'pr-3'} py-2 ${
             error
               ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
-              : 'border-slate-200 dark:border-slate-800 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/30'
+              : 'border-stone-200 dark:border-stone-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30'
           } focus:outline-none ${className}`}
           {...props}
         />
         {IconRight && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-stone-400">
             <IconRight className="w-4 h-4" />
           </div>
         )}
@@ -164,7 +164,7 @@ export function Input({
           <span>{error}</span>
         </p>
       ) : helperText ? (
-        <p className="text-xs text-slate-500 dark:text-slate-400">{helperText}</p>
+        <p className="text-xs text-stone-500 dark:text-stone-400">{helperText}</p>
       ) : null}
     </div>
   );
@@ -186,17 +186,17 @@ export function Textarea({
   return (
     <div className={`space-y-1.5 ${containerClassName}`}>
       {label && (
-        <label htmlFor={inputId} className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+        <label htmlFor={inputId} className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
           {label}
         </label>
       )}
       <textarea
         id={inputId}
         rows={rows}
-        className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 p-2.5 bg-white dark:bg-[#0E121E] text-slate-900 dark:text-slate-100 placeholder:text-slate-400 ${
+        className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 p-2.5 bg-white dark:bg-[#151210] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 ${
           error
             ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
-            : 'border-slate-200 dark:border-slate-800 focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/30'
+            : 'border-stone-200 dark:border-stone-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30'
         } focus:outline-none ${className}`}
         {...props}
       />
@@ -206,7 +206,7 @@ export function Textarea({
           <span>{error}</span>
         </p>
       ) : helperText ? (
-        <p className="text-xs text-slate-500 dark:text-slate-400">{helperText}</p>
+        <p className="text-xs text-stone-500 dark:text-stone-400">{helperText}</p>
       ) : null}
     </div>
   );
@@ -225,14 +225,14 @@ export const SearchInput = React.forwardRef(function SearchInput({
   const displayShortcut = shortcut !== undefined ? shortcut : formatShortcut('K');
   return (
     <div className={`relative flex items-center ${className}`}>
-      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
+      <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 pointer-events-none" />
       <input
         ref={ref}
         type="text"
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full pl-8 pr-14 py-1.5 bg-slate-50 hover:bg-white dark:bg-[#0B0E18] dark:hover:bg-[#0E121E] border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600/30 transition-all shadow-subtle"
+        className="w-full pl-8 pr-14 py-1.5 bg-stone-50 hover:bg-white dark:bg-[#13110F] dark:hover:bg-[#181512] border border-stone-200 dark:border-stone-800 rounded-lg text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30 transition-all shadow-subtle"
         {...props}
       />
       <div className="absolute right-2 flex items-center gap-1.5">
@@ -240,12 +240,12 @@ export const SearchInput = React.forwardRef(function SearchInput({
           <button
             type="button"
             onClick={onClear}
-            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="p-1 rounded text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
           >
             <X className="w-3 h-3" />
           </button>
         ) : displayShortcut ? (
-          <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-subtle">
+          <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-sans font-medium text-stone-400 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded shadow-subtle">
             {displayShortcut}
           </kbd>
         ) : null}
@@ -264,8 +264,8 @@ export function Badge({
   ...props
 }) {
   const variantStyles = {
-    default: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
-    brand: 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60',
+    default: 'bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700',
+    brand: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-200/80 dark:border-teal-800/50',
     success: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
     warning: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
     danger: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60',
@@ -273,7 +273,7 @@ export function Badge({
   };
 
   const sizeStyles = {
-    xs: 'px-1.5 py-0.2 text-[11px] gap-1',
+    xs: 'px-1.5 py-0.2 text-[11px] gap-1 font-medium',
     sm: 'px-2 py-0.5 text-xs gap-1 font-medium',
     md: 'px-2.5 py-1 text-xs gap-1.5 font-medium',
   };
@@ -296,8 +296,8 @@ export function StatusBadge({ status, value, dimension = 'auto', showDot = true,
 
   // Check 4D configurations
   let label = currentStatus;
-  let colorCls = 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-  let dotColor = 'bg-slate-400';
+  let colorCls = 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700';
+  let dotColor = 'bg-stone-400';
 
   const sKey = String(currentStatus).toLowerCase().replace(/[\s-]/g, '_');
 
@@ -320,7 +320,7 @@ export function StatusBadge({ status, value, dimension = 'auto', showDot = true,
     if (cfg) {
       label = cfg.label;
       colorCls = cfg.color || cfg.badge || colorCls;
-      dotColor = sKey.includes('comp') ? 'bg-emerald-500' : sKey.includes('sched') ? 'bg-brand-500' : 'bg-slate-400';
+      dotColor = sKey.includes('comp') ? 'bg-emerald-500' : sKey.includes('sched') ? 'bg-brand-500' : 'bg-stone-400';
     }
   } else if (dimension === 'decision' || HIRING_DECISION_CONFIG[sKey]) {
     const cfg = HIRING_DECISION_CONFIG[sKey];
@@ -333,7 +333,7 @@ export function StatusBadge({ status, value, dimension = 'auto', showDot = true,
     const legacyMap = {
       shortlisted: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
       rejected: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60',
-      evaluated: 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/60',
+      evaluated: 'bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
       screening: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
       active: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
     };
@@ -351,18 +351,11 @@ export function StatusBadge({ status, value, dimension = 'auto', showDot = true,
   );
 }
 
-// ─── Card ───────────────────────────────────────────────────────────────────
-export function Card({
-  children,
-  className = '',
-  hover = false,
-  padding = 'p-5 sm:p-6',
-  ...props
-}) {
+export function Card({ children, className = '', hover = false, padding = 'p-5 sm:p-6', ...props }) {
   return (
     <div
-      className={`bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] rounded-xl shadow-subtle ${
-        hover ? 'hover:shadow-depth-2 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-150' : ''
+      className={`bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-xl shadow-card ${
+        hover ? 'interactive-card cursor-pointer' : ''
       } ${padding} ${className}`}
       {...props}
     >
@@ -384,21 +377,21 @@ export function Panel({
 }) {
   return (
     <div
-      className={`bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] rounded-2xl shadow-subtle overflow-hidden ${className}`}
+      className={`bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-subtle overflow-hidden ${className}`}
       {...props}
     >
       {(title || actions) && (
-        <div className="px-5 sm:px-6 py-4 border-b border-[#E8E8E4] dark:border-[#222634] flex items-center justify-between gap-4">
+        <div className="px-5 sm:px-6 py-4 border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between gap-4">
           <div>
-            {title && <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">{title}</h3>}
-            {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+            {title && <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">{title}</h3>}
+            {subtitle && <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </div>
       )}
       <div className={bodyClassName}>{children}</div>
       {footer && (
-        <div className="px-5 sm:px-6 py-3.5 bg-slate-50/80 dark:bg-slate-900/50 border-t border-[#E8E8E4] dark:border-[#222634] text-xs text-slate-500 dark:text-slate-400">
+        <div className="px-5 sm:px-6 py-3.5 bg-stone-50/80 dark:bg-[#13110F] border-t border-[#E8E4DF] dark:border-[#2A2520] text-xs text-stone-500 dark:text-stone-400">
           {footer}
         </div>
       )}
@@ -435,7 +428,7 @@ export function Modal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       <div
-        className="fixed inset-0 bg-slate-950/40 backdrop-blur-md transition-opacity animate-fade-in-up"
+        className="fixed inset-0 bg-stone-950/60 backdrop-blur-lg transition-opacity animate-fade-in-up"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -443,17 +436,17 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`relative w-full ${maxWidth} bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] rounded-2xl shadow-depth-elevated overflow-hidden z-10 animate-scale-in my-8 max-h-[90vh] flex flex-col ${className}`}
+        className={`relative w-full ${maxWidth} bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-depth-elevated overflow-hidden z-10 animate-modal-enter my-8 max-h-[90vh] flex flex-col ${className}`}
       >
-        <div className="px-6 py-4.5 border-b border-[#E8E8E4] dark:border-[#222634] flex items-center justify-between shrink-0">
+        <div className="px-6 py-4.5 border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between shrink-0">
           <div>
             {title && (
-              <h2 id="modal-title" className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+              <h2 id="modal-title" className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100">
                 {title}
               </h2>
             )}
             {description && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{description}</p>
             )}
           </div>
           <IconButton icon={X} label="Close" onClick={onClose} size="sm" />
@@ -493,35 +486,35 @@ export function Drawer({
 
   if (!isOpen) return null;
 
-  const sideAnimation = side === 'right' ? 'animate-slide-in' : 'animate-fade-in-up';
+  const sideAnimation = side === 'right' ? 'animate-drawer-enter' : 'animate-fade-in-up';
   const sidePlacement = side === 'right' ? 'right-0' : 'left-0';
 
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden flex">
       <div
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-stone-950/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         role="dialog"
         aria-modal="true"
-        className={`fixed inset-y-0 ${sidePlacement} w-full ${width} bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-popover z-10 flex flex-col ${sideAnimation} ${className}`}
+        className={`fixed inset-y-0 ${sidePlacement} w-full ${width} bg-[#FDFCFA] dark:bg-[#1A1714] border-l border-stone-200 dark:border-stone-800 shadow-popover z-10 flex flex-col ${sideAnimation} ${className}`}
       >
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm">
+        <div className="px-6 py-4 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between shrink-0 bg-stone-50/80 dark:bg-[#151210]/80 backdrop-blur-sm">
           <div>
             {title && (
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">{title}</h2>
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100">{title}</h2>
             )}
             {subtitle && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
+              <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>
             )}
           </div>
           <IconButton icon={X} label="Close drawer" onClick={onClose} size="sm" />
         </div>
         <div className="flex-1 overflow-y-auto p-6">{children}</div>
         {footer && (
-          <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/60 shrink-0">
+          <div className="p-4 border-t border-stone-200/80 dark:border-stone-800 bg-stone-50/80 dark:bg-[#13110F] shrink-0">
             {footer}
           </div>
         )}
@@ -532,14 +525,9 @@ export function Drawer({
 }
 
 // ─── Tabs ───────────────────────────────────────────────────────────────────
-export function Tabs({
-  tabs, // [{ id: string, label: string, icon?: Icon, count?: number | string }]
-  activeTab,
-  onChange,
-  className = '',
-}) {
+export function Tabs({ tabs, activeTab, onChange, className = '' }) {
   return (
-    <div className={`flex items-center gap-1.5 border-b border-slate-200/80 dark:border-slate-800 overflow-x-auto no-scrollbar ${className}`}>
+    <div className={`flex items-center gap-0.5 border-b border-stone-200/80 dark:border-stone-800 overflow-x-auto no-scrollbar ${className}`}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const Icon = tab.icon;
@@ -548,23 +536,30 @@ export function Tabs({
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className={`flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap border-b-2 transition-all duration-150 ${
+            className={`relative flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 ${
               isActive
-                ? 'border-indigo-600 text-indigo-600 dark:text-indigo-400'
-                : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:border-slate-300 dark:hover:border-slate-700'
+                ? 'text-brand-700 dark:text-brand-400'
+                : 'text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200'
             }`}
           >
-            {Icon && <Icon className="w-4 h-4 shrink-0" />}
+            {Icon && <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-brand-600 dark:text-brand-400' : ''}`} />}
             <span>{tab.label}</span>
             {tab.count !== undefined && (
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold transition-colors ${
                 isActive
-                  ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  ? 'bg-teal-100 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
               }`}>
                 {tab.count}
               </span>
             )}
+            {/* Active indicator - animated underline */}
+            <span
+              className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full transition-all duration-200 ${
+                isActive ? 'bg-brand-600 dark:bg-brand-500 opacity-100' : 'opacity-0 scale-x-0'
+              }`}
+              style={{ transform: isActive ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: 'left' }}
+            />
           </button>
         );
       })}
@@ -601,23 +596,23 @@ export function Avatar({
         <img
           src={src}
           alt={name}
-          className={`${sizeMap[size] || sizeMap.md} rounded-full object-cover border border-slate-200 dark:border-slate-700`}
+          className={`${sizeMap[size] || sizeMap.md} rounded-full object-cover border border-stone-200 dark:border-stone-700`}
         />
       ) : (
         <div
-          className={`${sizeMap[size] || sizeMap.md} rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-subtle`}
+          className={`${sizeMap[size] || sizeMap.md} rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center border border-stone-200 dark:border-stone-700 shadow-subtle`}
         >
           {getInitials(name)}
         </div>
       )}
       {status && (
         <span
-          className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ring-2 ring-white dark:ring-slate-900 ${
+          className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ring-2 ring-white dark:ring-stone-900 ${
             status === 'online'
               ? 'bg-emerald-500'
               : status === 'busy'
               ? 'bg-amber-500'
-              : 'bg-slate-400'
+              : 'bg-stone-400'
           }`}
         />
       )}
@@ -641,57 +636,50 @@ export function Stat({
   return (
     <div
       onClick={onClick}
-      className={`p-4 sm:p-5 rounded-xl bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] shadow-subtle transition-all duration-200 select-none ${
-        isClickable ? 'cursor-pointer hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-depth-2 hover:-translate-y-0.5 active:scale-[0.99]' : ''
+      className={`p-4 sm:p-5 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] shadow-card select-none ${
+        isClickable ? 'interactive-card cursor-pointer active:scale-[0.99]' : ''
       } ${className}`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className="text-[11px] font-sans font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">{label}</span>
         {Icon && (
-          <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-[#E8E8E4] dark:border-slate-700/60 flex items-center justify-center text-slate-700 dark:text-slate-300 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-stone-50 dark:bg-stone-800/80 border border-[#E8E4DF] dark:border-stone-700/60 flex items-center justify-center text-stone-700 dark:text-stone-300 shrink-0">
             <Icon className="w-4 h-4" />
           </div>
         )}
       </div>
       <div className="mt-2.5 flex items-baseline gap-2.5 flex-wrap">
-        <div className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tabular-nums tracking-tight">
+        <div className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-stone-100 tabular-nums tracking-tight">
           {value}
         </div>
         {trend && (
           <span
-            className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-md border flex items-center gap-1 ${
+            className={`text-[11px] font-sans font-medium px-2 py-0.5 rounded-md border flex items-center gap-1 ${
               trendDirection === 'up'
                 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
                 : trendDirection === 'down'
                 ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
-                : 'bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-[#E8E8E4] dark:border-slate-700'
+                : 'bg-stone-50 text-stone-600 dark:bg-stone-800 dark:text-stone-300 border-[#E8E4DF] dark:border-stone-700'
             }`}
           >
             {trend}
           </span>
         )}
       </div>
-      {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug">{subtitle}</p>}
+      {subtitle && <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 leading-snug">{subtitle}</p>}
     </div>
   );
 }
 
 // ─── Empty State ────────────────────────────────────────────────────────────
-export function EmptyState({
-  icon: Icon = Search,
-  title = 'No items found',
-  description = 'Try adjusting your search filters or add a new entry.',
-  actionLabel,
-  onAction,
-  className = '',
-}) {
+export function EmptyState({ icon: Icon = Search, title = 'No items found', description = 'Try adjusting your search filters or add a new entry.', actionLabel, onAction, className = '' }) {
   return (
-    <div className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 ${className}`}>
-      <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 mb-3.5">
+    <div className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-[#13110F] animate-fade-in-up ${className}`}>
+      <div className="w-14 h-14 rounded-2xl bg-stone-100 dark:bg-stone-800/80 flex items-center justify-center text-stone-400 dark:text-stone-500 mb-4 shadow-inner">
         <Icon className="w-6 h-6" />
       </div>
-      <h4 className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200">{title}</h4>
-      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-5">{description}</p>
+      <h4 className="text-sm sm:text-base font-bold text-stone-800 dark:text-stone-200">{title}</h4>
+      <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm mt-1.5 mb-5 leading-relaxed">{description}</p>
       {actionLabel && onAction && (
         <Button variant="primary" size="sm" onClick={onAction}>
           {actionLabel}
@@ -728,7 +716,7 @@ export function ErrorState({
 export function Progress({
   value = 0,
   max = 100,
-  color = 'indigo', // 'indigo' | 'emerald' | 'amber' | 'rose'
+  color = 'teal', // 'teal' | 'emerald' | 'amber' | 'rose'
   size = 'md',
   showLabel = false,
   className = '',
@@ -736,7 +724,8 @@ export function Progress({
   const percentage = Math.min(100, Math.max(0, Math.round((value / max) * 100)));
 
   const colorMap = {
-    indigo: 'bg-indigo-600 dark:bg-indigo-500',
+    teal: 'bg-brand-600 dark:bg-brand-500',
+    indigo: 'bg-brand-600 dark:bg-brand-500',
     emerald: 'bg-emerald-600 dark:bg-emerald-500',
     amber: 'bg-amber-500',
     rose: 'bg-rose-600',
@@ -751,14 +740,14 @@ export function Progress({
   return (
     <div className={`w-full space-y-1.5 ${className}`}>
       {showLabel && (
-        <div className="flex justify-between text-xs text-slate-500 font-medium">
+        <div className="flex justify-between text-xs text-stone-500 font-medium">
           <span>Progress</span>
           <span className="tabular-nums">{percentage}%</span>
         </div>
       )}
-      <div className={`w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden ${heightMap[size] || heightMap.md}`}>
+      <div className={`w-full bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden ${heightMap[size] || heightMap.md}`}>
         <div
-          className={`h-full transition-all duration-300 rounded-full ${colorMap[color] || colorMap.indigo}`}
+          className={`h-full transition-all duration-700 ease-out rounded-full ${colorMap[color] || colorMap.teal}`}
           style={{ width: `${percentage}%` }}
         />
       </div>
@@ -775,13 +764,13 @@ export function SectionHeader({
   className = '',
 }) {
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/80 dark:border-slate-800 ${className}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-200/80 dark:border-stone-800 ${className}`}>
       <div className="space-y-0.5">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">{title}</h2>
           {badge && <span className="shrink-0">{badge}</span>}
         </div>
-        {subtitle && <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>}
+        {subtitle && <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
     </div>
@@ -823,15 +812,15 @@ export function AnimatedCounter({ value, suffix = '', duration = 1200 }) {
 
 export function SkeletonCard({ lines = 3, className = '' }) {
   return (
-    <div className={`p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 animate-pulse ${className}`}>
-      <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full w-1/3" />
-      <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-3/4" />
+    <div className={`p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-stone-200 dark:border-stone-800 space-y-3 animate-pulse ${className}`}>
+      <div className="h-3 bg-stone-200 dark:bg-stone-800 rounded-full w-1/3" />
+      <div className="h-5 bg-stone-200 dark:bg-stone-800 rounded-full w-3/4" />
       {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full" style={{ width: `${85 - i * 15}%` }} />
+        <div key={i} className="h-3 bg-stone-200 dark:bg-stone-800 rounded-full" style={{ width: `${85 - i * 15}%` }} />
       ))}
       <div className="flex gap-2 pt-1">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-5 w-16 bg-slate-200 dark:bg-slate-800 rounded-md" />
+          <div key={i} className="h-5 w-16 bg-stone-200 dark:bg-stone-800 rounded-md" />
         ))}
       </div>
     </div>
@@ -842,13 +831,13 @@ export function SkeletonKPI() {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map(i => (
-        <div key={i} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 animate-pulse space-y-3">
+        <div key={i} className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-stone-200 dark:border-stone-800 animate-pulse space-y-3">
           <div className="flex justify-between">
-            <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded-full w-1/2" />
-            <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800" />
+            <div className="h-3 bg-stone-200 dark:bg-stone-800 rounded-full w-1/2" />
+            <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-stone-800" />
           </div>
-          <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-full w-1/2" />
-          <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full w-2/3" />
+          <div className="h-8 bg-stone-200 dark:bg-stone-800 rounded-full w-1/2" />
+          <div className="h-2 bg-stone-200 dark:bg-stone-800 rounded-full w-2/3" />
         </div>
       ))}
     </div>
@@ -877,7 +866,7 @@ export function FadeInUp({ children, delay = 0, className = '' }) {
       ref={ref}
       className={className}
       style={{
-        transition: `transform 0.4s cubic-bezier(0.16,1,0.3,1) ${delay}ms, opacity 0.4s ease ${delay}ms`,
+        transition: `transform 0.32s cubic-bezier(0.16,1,0.3,1) ${delay}ms, opacity 0.32s ease ${delay}ms`,
         transform: visible ? 'none' : 'translateY(12px)',
         opacity: visible ? 1 : 0,
       }}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
+import { useRecruitment } from '../../context/RecruitmentContext';
 import {
   Play,
   RotateCcw,
@@ -33,24 +34,28 @@ import {
   GripHorizontal
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { generateDefaultStarter } from './benchmarkQuestions';
 
 const RUNTIME_METADATA = {
-  python: { label: 'Python 3', version: 'Python 3.11.8', monacoLang: 'python', engine: 'C-Python Sandbox', ext: '.py', isExecutable: true, tier: 'sandbox' },
-  javascript: { label: 'JavaScript (Node.js)', version: 'Node.js v20.11.0 LTS', monacoLang: 'javascript', engine: 'V8 Isolated VM', ext: '.js', isExecutable: true, tier: 'sandbox' },
-  typescript: { label: 'TypeScript', version: 'TypeScript 5.3.3', monacoLang: 'typescript', engine: 'Node.js / TSC', ext: '.ts', isExecutable: true, tier: 'sandbox' },
+  python: { label: 'Python 3', version: 'Python 3.11.8 (Judge0 / Sandbox)', monacoLang: 'python', engine: 'Judge0 / C-Python Sandbox', ext: '.py', isExecutable: true, tier: 'sandbox' },
+  javascript: { label: 'JavaScript (Node.js)', version: 'Node.js v20.11.0 (Judge0)', monacoLang: 'javascript', engine: 'Judge0 / V8 Engine', ext: '.js', isExecutable: true, tier: 'sandbox' },
+  typescript: { label: 'TypeScript', version: 'TypeScript 5.3.3 (Judge0)', monacoLang: 'typescript', engine: 'Judge0 / TSC', ext: '.ts', isExecutable: true, tier: 'sandbox' },
+  java: { label: 'Java', version: 'Java 17 (OpenJDK / Judge0)', monacoLang: 'java', engine: 'Judge0 Execution Engine', ext: '.java', isExecutable: true, tier: 'sandbox' },
+  cpp: { label: 'C++', version: 'C++20 (GCC / Judge0)', monacoLang: 'cpp', engine: 'Judge0 Execution Engine', ext: '.cpp', isExecutable: true, tier: 'sandbox' },
+  c: { label: 'C', version: 'C17 (GCC / Judge0)', monacoLang: 'c', engine: 'Judge0 Execution Engine', ext: '.c', isExecutable: true, tier: 'sandbox' },
+  csharp: { label: 'C#', version: '.NET 8.0 (Mono / Judge0)', monacoLang: 'csharp', engine: 'Judge0 Execution Engine', ext: '.cs', isExecutable: true, tier: 'sandbox' },
+  go: { label: 'Go', version: 'Go 1.22 (Judge0)', monacoLang: 'go', engine: 'Judge0 Execution Engine', ext: '.go', isExecutable: true, tier: 'sandbox' },
+  rust: { label: 'Rust', version: 'Rust 1.77 (Judge0)', monacoLang: 'rust', engine: 'Judge0 Execution Engine', ext: '.rs', isExecutable: true, tier: 'sandbox' },
+  ruby: { label: 'Ruby', version: 'Ruby 3.3 (Judge0)', monacoLang: 'ruby', engine: 'Judge0 Execution Engine', ext: '.rb', isExecutable: true, tier: 'sandbox' },
+  php: { label: 'PHP', version: 'PHP 8.3 (Judge0)', monacoLang: 'php', engine: 'Judge0 Execution Engine', ext: '.php', isExecutable: true, tier: 'sandbox' },
+  kotlin: { label: 'Kotlin', version: 'Kotlin 1.9 (Judge0)', monacoLang: 'kotlin', engine: 'Judge0 Execution Engine', ext: '.kt', isExecutable: true, tier: 'sandbox' },
+  swift: { label: 'Swift', version: 'Swift 5.10 (Judge0)', monacoLang: 'swift', engine: 'Judge0 Execution Engine', ext: '.swift', isExecutable: true, tier: 'sandbox' },
   sql: { label: 'SQL (Relational Engine)', version: 'SQLite 3.50 Native Sandbox', monacoLang: 'sql', engine: 'Relational Database Engine', ext: '.sql', isExecutable: true, tier: 'sandbox' },
-  c: { label: 'C', version: 'C17 (Syntax Only)', monacoLang: 'c', engine: 'Manual Evaluation', ext: '.c', isExecutable: false, tier: 'syntax' },
-  cpp: { label: 'C++', version: 'C++20 (Syntax Only)', monacoLang: 'cpp', engine: 'Manual Evaluation', ext: '.cpp', isExecutable: false, tier: 'syntax' },
-  csharp: { label: 'C#', version: '.NET 8.0 (Syntax Only)', monacoLang: 'csharp', engine: 'Manual Evaluation', ext: '.cs', isExecutable: false, tier: 'syntax' },
+  bash: { label: 'Bash / Shell', version: 'Bash 5.2 (POSIX Sandbox)', monacoLang: 'shell', engine: 'POSIX Sandbox', ext: '.sh', isExecutable: true, tier: 'sandbox' },
   vb: { label: 'VB.NET', version: 'VB (Syntax Only)', monacoLang: 'vb', engine: 'Manual Evaluation', ext: '.vb', isExecutable: false, tier: 'syntax' },
-  java: { label: 'Java', version: 'Java 17 (Syntax Only)', monacoLang: 'java', engine: 'Manual Evaluation', ext: '.java', isExecutable: false, tier: 'syntax' },
-  go: { label: 'Go', version: 'Go 1.22 (Syntax Only)', monacoLang: 'go', engine: 'Manual Evaluation', ext: '.go', isExecutable: false, tier: 'syntax' },
-  rust: { label: 'Rust', version: 'Rust 1.77 (Syntax Only)', monacoLang: 'rust', engine: 'Manual Evaluation', ext: '.rs', isExecutable: false, tier: 'syntax' },
-  php: { label: 'PHP', version: 'PHP 8.3 (Syntax Only)', monacoLang: 'php', engine: 'Manual Evaluation', ext: '.php', isExecutable: false, tier: 'syntax' },
-  ruby: { label: 'Ruby', version: 'Ruby 3.3 (Syntax Only)', monacoLang: 'ruby', engine: 'Manual Evaluation', ext: '.rb', isExecutable: false, tier: 'syntax' },
-  kotlin: { label: 'Kotlin', version: 'Kotlin 1.9 (Syntax Only)', monacoLang: 'kotlin', engine: 'Manual Evaluation', ext: '.kt', isExecutable: false, tier: 'syntax' },
-  swift: { label: 'Swift', version: 'Swift 5.10 (Syntax Only)', monacoLang: 'swift', engine: 'Manual Evaluation', ext: '.swift', isExecutable: false, tier: 'syntax' },
-  mongodb: { label: 'MongoDB', version: 'MongoDB 7.0 (Syntax Only)', monacoLang: 'javascript', engine: 'Manual Evaluation', ext: '.js', isExecutable: false, tier: 'syntax' }
+  mongodb: { label: 'MongoDB', version: 'MongoDB 7.0 (Syntax Only)', monacoLang: 'javascript', engine: 'Manual Evaluation', ext: '.js', isExecutable: false, tier: 'syntax' },
+  terraform: { label: 'Terraform (HCL)', version: 'Terraform 1.7 (HCL Validator)', monacoLang: 'hcl', engine: 'HCL Security Linter', ext: '.tf', isExecutable: false, tier: 'syntax' },
+  aws: { label: 'AWS CLI', version: 'AWS CLI v2.15 (Cloud Sandbox)', monacoLang: 'shell', engine: 'AWS STS Sandbox', ext: '.sh', isExecutable: false, tier: 'syntax' }
 };
 
 const DATABASE_ENGINES = [
@@ -61,6 +66,122 @@ const DATABASE_ENGINES = [
   { id: 'sqlite', name: 'SQLite', versions: ['3.45 (Latest Supported)', '3.x'], defaultVersion: '3.45 (Latest Supported)' },
   { id: 'mariadb', name: 'MariaDB', versions: ['10.11 (LTS)', '11.4 (Latest Supported)'], defaultVersion: '11.4 (Latest Supported)' }
 ];
+
+function formatInlineCodeAndBold(text) {
+  if (!text) return '';
+  const tokens = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+  return tokens.map((part, i) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      const code = part.slice(1, -1);
+      return (
+        <code key={i} className="px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-300 font-mono text-[11px] border border-brand-500/20 font-medium">
+          {code}
+        </code>
+      );
+    }
+    if (part.startsWith('**') && part.endsWith('**')) {
+      const bold = part.slice(2, -2);
+      return <strong key={i} className="text-stone-100 font-semibold">{bold}</strong>;
+    }
+    return part;
+  });
+}
+
+function FormattedProblemDescription({ rawText }) {
+  if (!rawText) return null;
+
+  const lines = rawText.split('\n');
+  const sections = [];
+  let currentSection = { title: null, items: [] };
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('### ')) {
+      if (currentSection.title || currentSection.items.length > 0) {
+        sections.push(currentSection);
+      }
+      currentSection = { title: trimmed.replace(/^###\s*/, '').replace(/:$/, ''), items: [] };
+    } else if (trimmed.startsWith('## ')) {
+      if (currentSection.title || currentSection.items.length > 0) {
+        sections.push(currentSection);
+      }
+      currentSection = { title: trimmed.replace(/^##\s*/, '').replace(/:$/, ''), items: [] };
+    } else {
+      currentSection.items.push(line);
+    }
+  });
+  if (currentSection.title || currentSection.items.length > 0) {
+    sections.push(currentSection);
+  }
+
+  return (
+    <div className="space-y-3.5">
+      {sections.map((sec, sIdx) => {
+        const titleLower = (sec.title || '').toLowerCase();
+        let IconComp = Info;
+        let iconColor = 'text-teal-400';
+
+        if (titleLower.includes('function') || titleLower.includes('description')) {
+          IconComp = FileCode;
+          iconColor = 'text-brand-400';
+        } else if (titleLower.includes('parameter')) {
+          IconComp = Sliders;
+          iconColor = 'text-indigo-400';
+        } else if (titleLower.includes('return')) {
+          IconComp = Zap;
+          iconColor = 'text-emerald-400';
+        } else if (titleLower.includes('example')) {
+          IconComp = Sparkles;
+          iconColor = 'text-amber-400';
+        } else if (titleLower.includes('constraint')) {
+          IconComp = ShieldCheck;
+          iconColor = 'text-cyan-400';
+        }
+
+        const validLines = sec.items.filter(l => l.trim().length > 0);
+        if (!sec.title && validLines.length === 0) return null;
+
+        return (
+          <div key={sIdx} className="bg-[#161311] rounded-xl border border-[#2A2520] p-3.5 space-y-2.5 shadow-sm">
+            {sec.title && (
+              <div className="flex items-center space-x-2 pb-1.5 border-b border-[#231F1C]">
+                <IconComp className={`w-3.5 h-3.5 ${iconColor}`} />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-200">
+                  {sec.title}
+                </span>
+              </div>
+            )}
+            
+            <div className="space-y-2 text-xs leading-relaxed">
+              {sec.items.map((line, lIdx) => {
+                const trim = line.trim();
+                if (!trim) return null;
+
+                if (trim.startsWith('- ') || trim.startsWith('* ')) {
+                  const content = trim.slice(2);
+                  return (
+                    <div key={lIdx} className="flex items-start space-x-2 pl-1 bg-[#12100E] p-2 rounded-lg border border-[#25201D]">
+                      <span className="text-brand-400 font-bold leading-5">•</span>
+                      <div className="flex-1 text-stone-300 leading-5">
+                        {formatInlineCodeAndBold(content)}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <p key={lIdx} className="text-stone-300 font-sans leading-relaxed">
+                    {formatInlineCodeAndBold(line)}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function CandidateIDE({
   taskId,
@@ -87,6 +208,7 @@ export default function CandidateIDE({
   isReadOnly = false,
   storageKeyPrefix = 'candidate_ide_draft'
 }) {
+  const { theme } = useRecruitment();
   const [activeConsoleTab, setActiveConsoleTab] = useState('tests'); // 'tests' | 'custom' | 'console'
   const [activeProblemTab, setActiveProblemTab] = useState('problem'); // 'problem' | 'schema'
   const [selectedDbEngine, setSelectedDbEngine] = useState('postgresql');
@@ -96,15 +218,37 @@ export default function CandidateIDE({
   const [customResult, setCustomResult] = useState(null);
   const [isExecutingCustom, setIsExecutingCustom] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [editorTheme, setEditorTheme] = useState('sparkx-dark');
+  const [editorTheme, setEditorTheme] = useState(() => (theme === 'light' ? 'sparkx-light' : 'sparkx-dark'));
+
+  useEffect(() => {
+    setEditorTheme(theme === 'light' ? 'sparkx-light' : 'sparkx-dark');
+  }, [theme]);
+
   const [lastSavedTime, setLastSavedTime] = useState(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [consoleHeight, setConsoleHeight] = useState(240); // px
   const [isDraggingConsole, setIsDraggingConsole] = useState(false);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
 
   const ideContainerRef = useRef(null);
   const monacoRef = useRef(null);
+  const langDropdownRef = useRef(null);
+
+  // Close custom language dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (langDropdownRef.current && !langDropdownRef.current.contains(e.target)) {
+        setIsLangDropdownOpen(false);
+      }
+    };
+    if (isLangDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isLangDropdownOpen]);
 
   const activeLangKey = language?.toLowerCase() || 'python';
   const currentRuntime = RUNTIME_METADATA[activeLangKey] || {
@@ -117,6 +261,15 @@ export default function CandidateIDE({
 
   // Draft Auto-Save in LocalStorage
   const storageDraftKey = `${storageKeyPrefix}_${taskId}_${activeLangKey}`;
+
+  // Synchronize language if active language is not supported for this problem
+  useEffect(() => {
+    if (supportedLanguages && supportedLanguages.length > 0 && !supportedLanguages.includes(activeLangKey)) {
+      if (onLanguageChange) {
+        onLanguageChange(supportedLanguages[0]);
+      }
+    }
+  }, [supportedLanguages, activeLangKey, onLanguageChange]);
 
   // Restore draft on initial mount or task/lang change if code is empty
   useEffect(() => {
@@ -143,63 +296,64 @@ export default function CandidateIDE({
   const handleEditorBeforeMount = (monaco) => {
     monacoRef.current = monaco;
 
-    // SparkX Professional Dark Theme
+    // SparkX Professional Dark Theme (Deep Espresso & Warm Graphite)
     monaco.editor.defineTheme('sparkx-dark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '64748B', fontStyle: 'italic' },
-        { token: 'keyword', foreground: '60A5FA', fontStyle: 'bold' },
-        { token: 'identifier', foreground: 'E2E8F0' },
+        { token: 'comment', foreground: '78716C', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '2DD4BF', fontStyle: 'bold' },
+        { token: 'identifier', foreground: 'E7E5E4' },
         { token: 'string', foreground: '34D399' },
-        { token: 'number', foreground: '38BDF8' },
-        { token: 'type', foreground: 'A78BFA' },
-        { token: 'function', foreground: '60A5FA' },
-        { token: 'operator', foreground: 'F472B6' }
+        { token: 'number', foreground: 'FBBF24' },
+        { token: 'type', foreground: 'E879F9' },
+        { token: 'function', foreground: '38BDF8' },
+        { token: 'operator', foreground: '5EEAD4' }
       ],
       colors: {
-        'editor.background': '#080A10',
-        'editor.foreground': '#E2E8F0',
-        'editor.lineHighlightBackground': '#0E1322',
-        'editorLineNumber.foreground': '#475569',
-        'editorLineNumber.activeForeground': '#4F6BFF',
-        'editor.selectionBackground': '#1E293B',
-        'editor.inactiveSelectionBackground': '#131A2B',
-        'editorCursor.foreground': '#4F6BFF',
-        'editorWhitespace.foreground': '#1E293B',
-        'editorIndentGuide.background': '#1E293B',
-        'editorIndentGuide.activeBackground': '#334155',
-        'editorBracketMatch.background': '#1E293B',
-        'editorBracketMatch.border': '#3851E0',
-        'scrollbarSlider.background': '#1E293B80',
-        'scrollbarSlider.hoverBackground': '#33415580',
-        'scrollbarSlider.activeBackground': '#3851E080'
+        'editor.background': '#0C0A09',
+        'editor.foreground': '#E7E5E4',
+        'editor.lineHighlightBackground': '#161311',
+        'editorLineNumber.foreground': '#57534E',
+        'editorLineNumber.activeForeground': '#14B8A6',
+        'editor.selectionBackground': '#1E3A3A',
+        'editor.inactiveSelectionBackground': '#152424',
+        'editorCursor.foreground': '#14B8A6',
+        'editorWhitespace.foreground': '#2A2520',
+        'editorIndentGuide.background': '#1F1B18',
+        'editorIndentGuide.activeBackground': '#3A332C',
+        'editorBracketMatch.background': '#1E3A3A',
+        'editorBracketMatch.border': '#14B8A6',
+        'scrollbarSlider.background': '#2A252080',
+        'scrollbarSlider.hoverBackground': '#3D352E80',
+        'scrollbarSlider.activeBackground': '#14B8A680'
       }
     });
 
-    // SparkX Clean High-Contrast Light Theme
+    // SparkX Warm Parchment Light Theme (Editorial High Readability)
     monaco.editor.defineTheme('sparkx-light', {
       base: 'vs',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '64748B', fontStyle: 'italic' },
-        { token: 'keyword', foreground: '4F46E5', fontStyle: 'bold' },
-        { token: 'identifier', foreground: '0F172A' },
+        { token: 'comment', foreground: '78716C', fontStyle: 'italic' },
+        { token: 'keyword', foreground: '0D9488', fontStyle: 'bold' },
+        { token: 'identifier', foreground: '1C1917' },
         { token: 'string', foreground: '059669' },
-        { token: 'number', foreground: '0284C7' },
-        { token: 'type', foreground: '7C3AED' },
-        { token: 'function', foreground: '2563EB' }
+        { token: 'number', foreground: 'D97706' },
+        { token: 'type', foreground: '9333EA' },
+        { token: 'function', foreground: '0284C7' },
+        { token: 'operator', foreground: '0D9488' }
       ],
       colors: {
-        'editor.background': '#F8FAFC',
-        'editor.foreground': '#0F172A',
-        'editor.lineHighlightBackground': '#F1F5F9',
-        'editorLineNumber.foreground': '#94A3B8',
-        'editorLineNumber.activeForeground': '#4F46E5',
-        'editor.selectionBackground': '#E0E7FF',
-        'editorCursor.foreground': '#4F46E5',
-        'editorIndentGuide.background': '#E2E8F0',
-        'editorIndentGuide.activeBackground': '#CBD5E1'
+        'editor.background': '#FAF8F4',
+        'editor.foreground': '#1C1917',
+        'editor.lineHighlightBackground': '#F3EFEA',
+        'editorLineNumber.foreground': '#A8A29E',
+        'editorLineNumber.activeForeground': '#0D9488',
+        'editor.selectionBackground': '#CCFBF1',
+        'editorCursor.foreground': '#0D9488',
+        'editorIndentGuide.background': '#E8E4DF',
+        'editorIndentGuide.activeBackground': '#D6D1CA'
       }
     });
   };
@@ -216,10 +370,14 @@ export default function CandidateIDE({
       e.preventDefault();
       localStorage.setItem(storageDraftKey, code);
       setLastSavedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    } else if (e.key === 'Escape' && isFullscreen) {
-      setIsFullscreen(false);
+    } else if (e.key === 'Escape') {
+      if (isLangDropdownOpen) {
+        setIsLangDropdownOpen(false);
+      } else if (isFullscreen) {
+        setIsFullscreen(false);
+      }
     }
-  }, [code, storageDraftKey, isExecuting, onRunSampleTests, isFullscreen]);
+  }, [code, storageDraftKey, isExecuting, onRunSampleTests, isFullscreen, isLangDropdownOpen]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -258,7 +416,8 @@ export default function CandidateIDE({
 
   // Handle Reset to Starter Code
   const handleResetCode = () => {
-    const starter = starterCodes[activeLangKey] || starterCodes['python'] || starterCodes['javascript'] || '// Write solution here\n';
+    const cleanEntry = taskId ? taskId.replace(/^(hr_|lc_)/, '').replace(/_([a-z])/g, (_, c) => c.toUpperCase()) : 'solve';
+    const starter = starterCodes[activeLangKey] || generateDefaultStarter(activeLangKey, cleanEntry);
     onCodeChange(starter);
     localStorage.removeItem(storageDraftKey);
     setLastSavedTime(null);
@@ -290,14 +449,14 @@ export default function CandidateIDE({
   return (
     <div
       ref={ideContainerRef}
-      className={`flex flex-col bg-[#080A10] border border-slate-800 rounded-xl overflow-hidden shadow-card transition-all font-sans select-text ${
+      className={`flex flex-col bg-[#0C0A09] border border-[#2A2520] rounded-xl overflow-hidden shadow-card transition-all font-sans select-text ${
         isFullscreen
           ? 'fixed inset-0 z-50 rounded-none w-screen h-screen'
           : 'w-full h-[calc(100vh-210px)] min-h-[520px] max-h-[920px]'
       }`}
     >
       {/* ─── Top Header & Toolbar ────────────────────────────────────── */}
-      <div className="bg-[#0B0E18] px-3 sm:px-4 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 select-none">
+      <div className="bg-[#14110F] px-3 sm:px-4 py-2 border-b border-[#2A2520] flex flex-wrap items-center justify-between gap-2.5 select-none">
         {/* Left: Task Identity & Runtime */}
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-2">
@@ -306,7 +465,7 @@ export default function CandidateIDE({
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xs font-bold text-slate-100 tracking-tight">
+                <span className="text-xs font-bold text-stone-100 tracking-tight font-display">
                   {taskTitle || 'Assessment Challenge'}
                 </span>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
@@ -320,9 +479,9 @@ export default function CandidateIDE({
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono">
+          <div className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-[#1A1714] border border-[#2A2520] text-xs font-mono-code">
             <span className={`w-2 h-2 rounded-full ${currentRuntime.isExecutable ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-            <span className="text-slate-300">{currentRuntime.version}</span>
+            <span className="text-stone-300">{currentRuntime.version}</span>
             <span className={`ml-1 px-1.5 py-0.2 text-[9px] font-semibold rounded uppercase ${
               currentRuntime.isExecutable 
                 ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
@@ -335,31 +494,121 @@ export default function CandidateIDE({
 
         {/* Right: Controls (Language, Theme, AutoSave, Reset, Fullscreen) */}
         <div className="flex items-center space-x-2">
-          {/* Language Selector */}
-          <div className="flex items-center space-x-1.5 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 text-xs text-slate-200">
-            <FileCode className="w-3.5 h-3.5 text-brand-400" />
-            <select
-              value={activeLangKey}
-              onChange={(e) => onLanguageChange && onLanguageChange(e.target.value)}
+          {/* Custom Language Selector Dropdown */}
+          <div className="relative" ref={langDropdownRef}>
+            <button
+              type="button"
+              onClick={() => !isReadOnly && setIsLangDropdownOpen(prev => !prev)}
               disabled={isReadOnly}
-              className="bg-transparent text-xs font-medium focus:outline-none cursor-pointer pr-1 text-slate-200"
+              className={`flex items-center space-x-2 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all select-none ${
+                isLangDropdownOpen
+                  ? 'bg-[#231F1B] border-brand-500/60 text-white shadow-lg ring-1 ring-brand-500/25'
+                  : 'bg-[#1A1714] hover:bg-[#231F1B] border-[#2A2520] hover:border-[#3D352E] text-stone-200'
+              } ${isReadOnly ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
               title="Select Programming Language"
             >
-              <optgroup label="Automated Test Sandbox" className="bg-slate-900 text-emerald-400 font-semibold">
-                {supportedLanguages.filter(l => RUNTIME_METADATA[l]?.isExecutable).map((l) => (
-                  <option key={l} value={l} className="bg-slate-900 text-slate-100 font-normal">
-                    {RUNTIME_METADATA[l]?.label || l.toUpperCase()} (Sandbox)
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="Syntax & Submission Only" className="bg-slate-900 text-amber-400 font-semibold">
-                {supportedLanguages.filter(l => !RUNTIME_METADATA[l]?.isExecutable).map((l) => (
-                  <option key={l} value={l} className="bg-slate-900 text-slate-300 font-normal">
-                    {RUNTIME_METADATA[l]?.label || l.toUpperCase()} (Manual Review)
-                  </option>
-                ))}
-              </optgroup>
-            </select>
+              <div className="flex items-center space-x-1.5">
+                <FileCode className="w-3.5 h-3.5 text-brand-400 flex-shrink-0" />
+                <span className="font-semibold text-stone-100">{currentRuntime.label || activeLangKey.toUpperCase()}</span>
+                <span className="text-[10px] text-stone-400 font-mono px-1 py-0.2 rounded bg-[#0E0C0B] border border-[#2A2520]">
+                  {currentRuntime.ext}
+                </span>
+              </div>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-stone-400 transition-transform duration-200 ${
+                  isLangDropdownOpen ? 'rotate-180 text-brand-400' : ''
+                }`}
+              />
+            </button>
+
+            {/* Floating Language Menu */}
+            {isLangDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 w-64 z-50 rounded-xl bg-[#141210] border border-[#2D2824] shadow-2xl overflow-hidden backdrop-blur-md animate-in fade-in duration-150">
+                <div className="p-2 border-b border-[#25201C] bg-[#191614] flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-stone-300">Choose Language Runtime</span>
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">
+                    Judge0 Engine
+                  </span>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto py-1 scrollbar-thin">
+                  {/* Automated Test Sandbox Tier */}
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-400/90 flex items-center space-x-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Automated Test Sandbox</span>
+                  </div>
+                  {supportedLanguages.filter(l => RUNTIME_METADATA[l]?.isExecutable).map((l) => {
+                    const meta = RUNTIME_METADATA[l] || { label: l.toUpperCase(), ext: '' };
+                    const isSelected = l === activeLangKey;
+                    return (
+                      <button
+                        key={l}
+                        type="button"
+                        onClick={() => {
+                          if (onLanguageChange) onLanguageChange(l);
+                          setIsLangDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors ${
+                          isSelected
+                            ? 'bg-brand-500/15 text-brand-300 font-semibold border-l-2 border-brand-500'
+                            : 'text-stone-300 hover:bg-[#201C18] hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium">{meta.label}</span>
+                          <span className="text-[10px] text-stone-500 font-mono">{meta.ext}</span>
+                        </div>
+                        {isSelected ? (
+                          <div className="flex items-center space-x-1 text-brand-400">
+                            <span className="text-[10px] font-mono">Active</span>
+                            <Check className="w-3.5 h-3.5 text-brand-400" />
+                          </div>
+                        ) : (
+                          <span className="text-[9px] text-stone-500 font-mono">
+                            {meta.version ? meta.version.split(' ')[0] : 'Ready'}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+
+                  {/* Syntax Only Tier (if any) */}
+                  {supportedLanguages.filter(l => !RUNTIME_METADATA[l]?.isExecutable).length > 0 && (
+                    <>
+                      <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-amber-400/90 flex items-center space-x-1.5 border-t border-[#25201C] mt-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                        <span>Syntax & Review Only</span>
+                      </div>
+                      {supportedLanguages.filter(l => !RUNTIME_METADATA[l]?.isExecutable).map((l) => {
+                        const meta = RUNTIME_METADATA[l] || { label: l.toUpperCase(), ext: '' };
+                        const isSelected = l === activeLangKey;
+                        return (
+                          <button
+                            key={l}
+                            type="button"
+                            onClick={() => {
+                              if (onLanguageChange) onLanguageChange(l);
+                              setIsLangDropdownOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-3 py-1.5 text-xs text-left transition-colors ${
+                              isSelected
+                                ? 'bg-amber-500/15 text-amber-300 font-semibold border-l-2 border-amber-500'
+                                : 'text-stone-400 hover:bg-[#201C18] hover:text-white'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">{meta.label}</span>
+                              <span className="text-[10px] text-stone-500 font-mono">{meta.ext}</span>
+                            </div>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-amber-400" />}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Database Engine & Version Selector (Only when SQL is active AND challenge involves SQL/database schema) */}
@@ -476,17 +725,17 @@ export default function CandidateIDE({
       {/* ─── Main Split Layout: Left Problem Panel & Right Monaco/Console ─── */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* LEFT PANEL: Problem Specification & Table Schema (DDL) */}
-        <div className={`w-full ${leftPanelCollapsed ? 'md:w-[48px]' : 'md:w-[40%] lg:w-[36%]'} border-b md:border-b-0 md:border-r border-slate-800/90 bg-[#070A12]/80 flex flex-col overflow-hidden transition-all duration-200`}>
+        <div className={`w-full ${leftPanelCollapsed ? 'md:w-[48px]' : 'md:w-[40%] lg:w-[36%]'} border-b md:border-b-0 md:border-r border-[#2A2520] bg-[#110F0D] flex flex-col overflow-hidden transition-all duration-200`}>
           {/* Sub-tab Navigation */}
-          <div className="px-3 py-2 bg-[#070A12] border-b border-slate-800 flex items-center justify-between">
+          <div className="px-3 py-2 bg-[#14110F] border-b border-[#2A2520] flex items-center justify-between">
             <div className="flex items-center space-x-1.5">
               <button
                 type="button"
                 onClick={() => { setActiveProblemTab('problem'); setLeftPanelCollapsed(false); }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
                   activeProblemTab === 'problem' && !leftPanelCollapsed
-                    ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-brand-500/10 text-brand-300 border border-brand-500/30'
+                    : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
                 <Info className="w-3.5 h-3.5" />
@@ -499,11 +748,11 @@ export default function CandidateIDE({
                   onClick={() => { setActiveProblemTab('schema'); setLeftPanelCollapsed(false); }}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
                     activeProblemTab === 'schema' && !leftPanelCollapsed
-                      ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-brand-500/10 text-brand-300 border border-brand-500/30'
+                      : 'text-stone-400 hover:text-stone-200'
                   }`}
                 >
-                  <Database className="w-3.5 h-3.5 text-cyan-400" />
+                  <Database className="w-3.5 h-3.5 text-teal-400" />
                   <span className={leftPanelCollapsed ? 'hidden' : 'inline'}>Table Schema (DDL)</span>
                 </button>
               )}
@@ -512,7 +761,7 @@ export default function CandidateIDE({
             <button
               type="button"
               onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-              className="hidden md:block p-1 rounded hover:bg-slate-800 text-slate-500 hover:text-slate-300 text-[10px]"
+              className="hidden md:block p-1 rounded hover:bg-[#1A1714] text-stone-500 hover:text-stone-300 text-[10px]"
               title={leftPanelCollapsed ? 'Expand Panel' : 'Collapse Panel'}
             >
               {leftPanelCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5 rotate-90" />}
@@ -520,29 +769,27 @@ export default function CandidateIDE({
           </div>
 
           {!leftPanelCollapsed && (
-            <div className="flex-1 p-5 overflow-y-auto space-y-5 text-slate-300 text-xs ide-scrollbar">
+            <div className="flex-1 p-5 overflow-y-auto space-y-5 text-stone-300 text-xs ide-scrollbar">
               {/* Tab 1: Problem Statement View */}
               {activeProblemTab === 'problem' && (
                 <>
-                  {/* Instructions */}
+                  {/* Formatted Requirements & Overview */}
                   <div className="space-y-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
-                      <Info className="w-3.5 h-3.5 text-indigo-400" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 flex items-center space-x-1.5">
+                      <Info className="w-3.5 h-3.5 text-teal-400" />
                       <span>Requirements & Overview</span>
                     </h3>
-                    <div className="text-slate-200 leading-relaxed whitespace-pre-wrap font-sans text-xs bg-slate-900/70 p-4 rounded-xl border border-slate-800/90 shadow-inner">
-                      {instructions}
-                    </div>
+                    <FormattedProblemDescription rawText={instructions} />
                   </div>
 
                   {/* Function Signature */}
                   {functionSignatures && functionSignatures[activeLangKey] && (
                     <div className="space-y-1.5">
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center space-x-1.5">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 flex items-center space-x-1.5">
                         <Code2 className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Target Signature ({currentRuntime.label})</span>
                       </h3>
-                      <pre className="p-3 bg-slate-900/90 border border-slate-800/90 rounded-xl font-mono-code text-[11px] text-emerald-300 overflow-x-auto">
+                      <pre className="p-3 bg-[#161311] border border-[#2A2520] rounded-xl font-mono-code text-[11px] text-teal-300 overflow-x-auto">
                         {functionSignatures[activeLangKey]}
                       </pre>
                     </div>
@@ -559,7 +806,7 @@ export default function CandidateIDE({
                           key={idx}
                           className="bg-slate-900/70 border border-slate-800 rounded-xl p-3.5 space-y-2 shadow-sm"
                         >
-                          <div className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">Example {idx + 1}</div>
+                          <div className="text-[10px] font-bold text-brand-400 uppercase tracking-wider">Example {idx + 1}</div>
                           <div className="font-mono-code text-[11px] space-y-1 bg-slate-950/80 p-2.5 rounded-lg border border-slate-800/80">
                             <div>
                               <span className="text-slate-400">Input: </span>
@@ -589,7 +836,7 @@ export default function CandidateIDE({
                       <ul className="space-y-1.5 bg-slate-900/50 p-3 rounded-xl border border-slate-800">
                         {constraints.map((c, idx) => (
                           <li key={idx} className="flex items-start space-x-2 text-[11px] text-slate-300">
-                            <span className="text-indigo-400 font-bold">•</span>
+                            <span className="text-brand-400 font-bold">•</span>
                             <span className="font-mono-code text-[11px]">{c}</span>
                           </li>
                         ))}
@@ -635,20 +882,20 @@ export default function CandidateIDE({
         </div>
 
         {/* RIGHT PANEL: Monaco Code Editor + Bottom Console / Test Feedback */}
-        <div className="flex-1 flex flex-col bg-[#0B0F19] overflow-hidden min-w-0">
+        <div className="flex-1 flex flex-col bg-[#0C0A09] overflow-hidden min-w-0">
           {/* Editor File Tab Header */}
-          <div className="bg-[#070A12] px-4 py-1.5 border-b border-slate-800/90 flex items-center justify-between text-xs select-none">
+          <div className="bg-[#14110F] px-4 py-1.5 border-b border-[#2A2520] flex items-center justify-between text-xs select-none">
             <div className="flex items-center space-x-2">
-              <div className="px-3 py-1 bg-[#0B0F19] border-t-2 border-indigo-500 border-x border-slate-800 text-slate-100 font-mono-code text-[11px] rounded-t flex items-center space-x-1.5">
-                <FileCode className="w-3.5 h-3.5 text-indigo-400" />
+              <div className="px-3 py-1 bg-[#1A1714] border-t-2 border-brand-500 border-x border-[#2A2520] text-stone-100 font-mono-code text-[11px] rounded-t flex items-center space-x-1.5">
+                <FileCode className="w-3.5 h-3.5 text-brand-400" />
                 <span>solution{currentRuntime.ext}</span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-3 text-[11px] text-slate-400 font-mono-code">
+            <div className="flex items-center space-x-3 text-[11px] text-stone-400 font-mono-code">
               <span>UTF-8</span>
               <span>Spaces: 4</span>
-              <span className="hidden sm:inline-block text-slate-500">{currentRuntime.engine}</span>
+              <span className="hidden sm:inline-block text-stone-500">{currentRuntime.engine}</span>
             </div>
           </div>
 
@@ -692,14 +939,14 @@ export default function CandidateIDE({
           {/* Resizable Splitter Drag Handle */}
           <div
             onMouseDown={handleMouseDown}
-            className="h-2 bg-slate-900 hover:bg-indigo-600/50 cursor-row-resize flex items-center justify-center transition select-none group border-t border-slate-800"
+            className="h-2 bg-[#14110F] hover:bg-brand-600/30 cursor-row-resize flex items-center justify-center transition select-none group border-t border-[#2A2520]"
             title="Drag to resize console"
           >
-            <GripHorizontal className="w-4 h-3 text-slate-600 group-hover:text-brand-300" />
+            <GripHorizontal className="w-4 h-3 text-stone-500 group-hover:text-brand-300" />
           </div>
 
           {/* Action Bar (Run Sample Tests & Console Tabs) */}
-          <div className="bg-[#0B0E18] px-4 py-2 border-b border-slate-800 flex items-center justify-between select-none">
+          <div className="bg-[#14110F] px-4 py-2 border-b border-[#2A2520] flex items-center justify-between select-none">
             <div className="flex items-center space-x-1.5">
               {/* Console Tabs */}
               <button
@@ -708,7 +955,7 @@ export default function CandidateIDE({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
                   activeConsoleTab === 'tests'
                     ? 'bg-brand-500/10 text-brand-300 border border-brand-500/20'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -728,7 +975,7 @@ export default function CandidateIDE({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
                   activeConsoleTab === 'custom'
                     ? 'bg-brand-500/10 text-brand-300 border border-brand-500/20'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
                 <Sliders className="w-3.5 h-3.5" />
@@ -741,7 +988,7 @@ export default function CandidateIDE({
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition ${
                   activeConsoleTab === 'console'
                     ? 'bg-brand-500/10 text-brand-300 border border-brand-500/20'
-                    : 'text-slate-400 hover:text-slate-200'
+                    : 'text-stone-400 hover:text-stone-200'
                 }`}
               >
                 <Terminal className="w-3.5 h-3.5" />
@@ -751,7 +998,7 @@ export default function CandidateIDE({
 
             {/* Run Button with Keyboard Shortcut */}
             <div className="flex items-center space-x-2.5">
-              <span className="hidden lg:inline-block text-[10px] text-slate-400 font-mono-code bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+              <span className="hidden lg:inline-block text-[10px] text-stone-400 font-mono-code bg-[#1A1714] px-2 py-0.5 rounded border border-[#2A2520]">
                 Ctrl + Enter
               </span>
               <button
@@ -761,7 +1008,7 @@ export default function CandidateIDE({
                   onRunSampleTests && onRunSampleTests();
                 }}
                 disabled={isExecuting || isReadOnly}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-subtle disabled:opacity-50"
+                className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-subtle disabled:opacity-50"
               >
                 {isExecuting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-current" />}
                 <span>{isExecuting ? 'Running Sandbox...' : 'Run Sample Tests'}</span>
@@ -772,21 +1019,21 @@ export default function CandidateIDE({
           {/* Bottom Execution Console */}
           <div
             style={{ height: `${consoleHeight}px` }}
-            className="bg-[#070A12]/95 p-4 overflow-y-auto text-xs ide-scrollbar border-t border-slate-800/80"
+            className="bg-[#0C0A09]/95 p-4 overflow-y-auto text-xs ide-scrollbar border-t border-[#2A2520]"
           >
             {/* TAB 1: Sample Tests Results */}
             {activeConsoleTab === 'tests' && (
               <div className="space-y-3">
                 {!sampleResults && !isExecuting && (
-                  <div className="py-6 text-center text-slate-500 space-y-1.5">
-                    <Terminal className="w-6 h-6 mx-auto text-slate-600 mb-1" />
-                    <p className="font-semibold text-xs text-slate-400">Ready to execute test suite</p>
-                    <p className="text-[11px] text-slate-500">Click <strong>Run Sample Tests</strong> (or press Ctrl+Enter) to evaluate your implementation against visible test fixtures.</p>
+                  <div className="py-6 text-center text-stone-500 space-y-1.5">
+                    <Terminal className="w-6 h-6 mx-auto text-stone-600 mb-1" />
+                    <p className="font-semibold text-xs text-stone-400">Ready to execute test suite</p>
+                    <p className="text-[11px] text-stone-500">Click <strong>Run Sample Tests</strong> (or press Ctrl+Enter) to evaluate your implementation against visible test fixtures.</p>
                   </div>
                 )}
 
                 {isExecuting && (
-                  <div className="py-6 flex flex-col items-center justify-center space-y-2 text-indigo-400">
+                  <div className="py-6 flex flex-col items-center justify-center space-y-2 text-teal-400">
                     <Loader2 className="w-6 h-6 animate-spin" />
                     <span className="text-xs font-medium">Executing code in {currentRuntime.version} sandbox...</span>
                   </div>
@@ -795,7 +1042,7 @@ export default function CandidateIDE({
                 {sampleResults && !isExecuting && (
                   <div className="space-y-2.5">
                     {/* Telemetry Bar */}
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-[11px]">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#2A2520] text-[11px]">
                       <div className="flex items-center space-x-2">
                         <span className={`font-bold flex items-center space-x-1.5 ${
                           sampleResults.every(r => r.passed) ? 'text-emerald-400' : 'text-rose-400'
@@ -806,13 +1053,13 @@ export default function CandidateIDE({
                       </div>
 
                       {executionTelemetry && (
-                        <div className="flex items-center space-x-3 text-slate-400 font-mono-code">
+                        <div className="flex items-center space-x-3 text-stone-400 font-mono-code">
                           <span className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3 text-indigo-400" />
+                            <Clock className="w-3 h-3 text-teal-400" />
                             <span>{executionTelemetry.execution_ms ?? executionTelemetry.duration ?? '1.2'}ms</span>
                           </span>
                           <span className="flex items-center space-x-1">
-                            <Cpu className="w-3 h-3 text-cyan-400" />
+                            <Cpu className="w-3 h-3 text-teal-400" />
                             <span>{executionTelemetry.memory_mb ?? '24.5'}MB</span>
                           </span>
                         </div>
@@ -841,25 +1088,25 @@ export default function CandidateIDE({
                                   FAIL
                                 </span>
                               )}
-                              <span className="font-bold text-slate-200">{tc.name || `Sample Test Case #${idx + 1}`}</span>
+                              <span className="font-bold text-stone-200">{tc.name || `Sample Test Case #${idx + 1}`}</span>
                             </div>
-                            <span className="text-[10px] text-slate-400">{tc.duration || '1ms'}</span>
+                            <span className="text-[10px] text-stone-400">{tc.duration || '1ms'}</span>
                           </div>
 
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] pt-1">
                             <div>
-                              <span className="text-slate-400">Input: </span>
-                              <span className="text-slate-200">{tc.input || '(Default)'}</span>
+                              <span className="text-stone-400">Input: </span>
+                              <span className="text-stone-200">{tc.input || '(Default)'}</span>
                             </div>
                             <div>
-                              <span className="text-slate-400">Expected: </span>
-                              <span className="text-slate-200">{tc.expected}</span>
+                              <span className="text-stone-400">Expected: </span>
+                              <span className="text-stone-200">{tc.expected}</span>
                             </div>
                           </div>
 
                           {tc.actual && (
                             <div className="text-[10px] pt-1">
-                              <span className="text-slate-400">Your Output: </span>
+                              <span className="text-stone-400">Your Output: </span>
                               <span className={tc.passed ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold'}>{tc.actual}</span>
                             </div>
                           )}
@@ -880,13 +1127,13 @@ export default function CandidateIDE({
             {/* TAB 2: Custom Test Runner */}
             {activeConsoleTab === 'custom' && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-slate-400 text-xs">
+                <div className="flex items-center justify-between text-stone-400 text-xs">
                   <span>Enter custom arguments below to verify your algorithm:</span>
                   <button
                     type="button"
                     onClick={handleCustomTestExecute}
                     disabled={isExecutingCustom || isReadOnly}
-                    className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-md shadow-indigo-600/20"
+                    className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-md shadow-teal-900/20"
                   >
                     {isExecutingCustom ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-current" />}
                     <span>Run Custom Input</span>
@@ -898,7 +1145,7 @@ export default function CandidateIDE({
                   onChange={(e) => setCustomInput(e.target.value)}
                   placeholder={'e.g. [{"level": "ERROR", "service": "auth"}] or [1, 2, 3]'}
                   rows={3}
-                  className="w-full bg-[#0B0F19] border border-slate-700/80 rounded-xl p-3 font-mono-code text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none shadow-inner"
+                  className="w-full bg-[#14110F] border border-[#2A2520] rounded-xl p-3 font-mono-code text-xs text-stone-200 focus:outline-none focus:border-brand-500 resize-none shadow-inner"
                 />
 
                 {customResult && (

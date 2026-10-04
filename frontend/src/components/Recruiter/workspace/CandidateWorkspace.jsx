@@ -44,6 +44,7 @@ export default function CandidateWorkspace({
     setSelectedCandidate,
     updateCandidateStage,
     updateHiringDecision,
+    reopenCandidate,
     inviteAssessment,
     scheduleInterview
   } = useRecruitment();
@@ -107,12 +108,15 @@ export default function CandidateWorkspace({
   }, [currentIndex, candidates, handleSelectCandidate]);
 
   const handleBackToPipeline = useCallback(() => {
+    if (setSelectedCandidate) {
+      setSelectedCandidate(null);
+    }
     if (onClose) {
       onClose();
     } else {
       navigate('/recruiter');
     }
-  }, [onClose, navigate]);
+  }, [onClose, navigate, setSelectedCandidate]);
 
   // Keyboard Navigation: J/K or [/] for candidate switching, Esc for back/modal close, 1-7 for tabs
   useEffect(() => {
@@ -213,7 +217,7 @@ export default function CandidateWorkspace({
   ];
 
   return (
-    <div className="w-full bg-slate-50 dark:bg-[#080A10] flex flex-col text-slate-900 dark:text-slate-100">
+    <div className="w-full h-full bg-[#F7F5F2] dark:bg-[#110F0D] flex flex-col text-stone-900 dark:text-stone-100 overflow-hidden">
       {/* ── Persistent Top Navigation Bar ── */}
       <CandidateWorkspaceHeader
         candidate={currentCandidate}
@@ -232,18 +236,18 @@ export default function CandidateWorkspace({
       />
 
       {/* ── Workspace Body (Split: Candidate Quick Switcher + Main Intelligence Area) ── */}
-      <div className="flex-1 flex min-h-0 items-start">
-        {/* Left Candidate Rail (Desktop Collapsible) */}
-        <aside className="hidden xl:flex w-72 flex-col border-r border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-[#0B0E18] shrink-0 sticky top-[84px] h-[calc(100vh-84px)] overflow-y-auto">
-          <div className="p-3 border-b border-slate-200/80 dark:border-slate-800 sticky top-0 bg-white dark:bg-[#0B0E18] z-10">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Left Candidate Rail (Desktop Collapsible, dedicated scroll) */}
+        <aside className="hidden xl:flex w-72 flex-col border-r border-[#E8E4DF] dark:border-[#2A2520] bg-[#FDFCFA]/90 dark:bg-[#14110F] shrink-0 h-full overflow-y-auto scrollbar-thin">
+          <div className="p-3 border-b border-[#E8E4DF] dark:border-[#2A2520] sticky top-0 bg-[#FDFCFA] dark:bg-[#14110F] z-10">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-stone-400" />
               <input
                 type="text"
                 value={sidebarSearch}
                 onChange={e => setSidebarSearch(e.target.value)}
                 placeholder="Jump candidate..."
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-100 dark:bg-[#080A10] border border-transparent dark:border-slate-800 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500"
+                className="w-full pl-8 pr-3 py-1.5 bg-stone-100 dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-xs placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500"
               />
             </div>
           </div>
@@ -255,7 +259,7 @@ export default function CandidateWorkspace({
               const scoreBadgeColor = candScore >= 85 
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                 : candScore >= 70
-                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20'
+                ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20'
                 : candScore >= 50
                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                 : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
@@ -302,12 +306,11 @@ export default function CandidateWorkspace({
           </div>
         </aside>
 
-        {/* Main Intelligence Workspace Area */}
-        <main className="flex-1 flex flex-col min-w-0">
-
+        {/* Main Intelligence Workspace Area (dedicated smooth vertical scroll) */}
+        <main id="workspace-scroll-container" className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto scrollbar-thin">
 
           {/* Active Tab Panel with Fluid Motion */}
-          <div className="p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto">
+          <div className="p-4 sm:p-6 lg:p-8 w-full min-w-0 pb-16">
             <div key={activeTab} className="animate-fade-in-up">
               {activeTab === 'overview' && (
                 <CandidateOverviewTab 
@@ -344,6 +347,7 @@ export default function CandidateWorkspace({
                 <RecruiterDecisionTab 
                   candidate={currentCandidate} 
                   onUpdateDecision={updateHiringDecision} 
+                  onReopen={reopenCandidate}
                 />
               )}
               {activeTab === 'timeline' && (

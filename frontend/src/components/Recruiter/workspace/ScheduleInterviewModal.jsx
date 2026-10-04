@@ -13,13 +13,27 @@ export default function ScheduleInterviewModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const isInterviewCompleted = Boolean(
+    candidate?.interviewStatus === 'completed' ||
+    candidate?.interview_status === 'completed' ||
+    (candidate?.interviewScore !== undefined && candidate?.interviewScore !== null) ||
+    (candidate?.interview_score !== undefined && candidate?.interview_score !== null) ||
+    (candidate?.interviewTranscript && candidate.interviewTranscript.length > 0)
+  );
+
   const isReschedule = Boolean(
     isRescheduleProp ?? (
-      candidate?.interviewScheduledAt ||
-      candidate?.interview_scheduled_at ||
-      candidate?.interviewStatus === 'scheduled' ||
-      candidate?.interview_status === 'scheduled'
+      !isInterviewCompleted && (
+        candidate?.interviewScheduledAt ||
+        candidate?.interview_scheduled_at ||
+        candidate?.interviewStatus === 'scheduled' ||
+        candidate?.interview_status === 'scheduled'
+      )
     )
+  );
+
+  const isFollowUpRound = Boolean(
+    isInterviewCompleted && !isRescheduleProp
   );
 
   // Lock document body scroll when modal is open
@@ -65,36 +79,54 @@ export default function ScheduleInterviewModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="schedule-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-md overflow-y-auto overscroll-contain animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto overscroll-contain"
       onClick={(e) => {
         if (e.target === e.currentTarget && !isSubmitting) onClose();
       }}
     >
+      {/* Smooth backdrop blur & opacity fade */}
+      <div 
+        className="fixed inset-0 bg-stone-950/70 backdrop-blur-md animate-backdrop-fade transition-opacity"
+        onClick={() => { if (!isSubmitting) onClose(); }}
+        aria-hidden="true"
+      />
       <div
-        className="relative w-full max-w-4xl bg-white dark:bg-[#0E121E] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-popover overflow-hidden my-auto flex flex-col max-h-[92vh] text-slate-900 dark:text-slate-100 animate-scale-in"
+        className="relative w-full max-w-4xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-depth-elevated overflow-hidden my-auto flex flex-col max-h-[92vh] text-stone-900 dark:text-stone-100 animate-modal-spring z-10"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Top Header */}
-        <div className="p-4 sm:p-6 bg-slate-50/90 dark:bg-[#080A10] border-b border-slate-200 dark:border-slate-800 backdrop-blur-md shrink-0 flex items-center justify-between gap-4">
+        <div className="p-4 sm:p-6 bg-stone-50/90 dark:bg-[#14110F] border-b border-[#E8E4DF] dark:border-[#2A2520] backdrop-blur-md shrink-0 flex items-center justify-between gap-4">
           <div className="flex items-center space-x-3.5 min-w-0">
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-subtle shrink-0 border ${
-              isReschedule 
-                ? 'bg-cyan-50 dark:bg-cyan-950/60 border-cyan-200 dark:border-cyan-800 text-cyan-600 dark:text-cyan-400' 
-                : 'bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-brand-600 dark:text-brand-400'
+              isFollowUpRound
+                ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300'
+                : isReschedule 
+                ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300' 
+                : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300'
             }`}>
               <Calendar className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 id="schedule-modal-title" className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
-                  {isReschedule ? 'Reschedule Technical Interview' : 'Schedule Technical Interview'}
+                <h2 id="schedule-modal-title" className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+                  {isFollowUpRound 
+                    ? 'Schedule Follow-up Technical Round' 
+                    : isReschedule 
+                    ? 'Reschedule Technical Interview' 
+                    : 'Schedule Technical Interview'}
                 </h2>
                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold font-mono border ${
-                  isReschedule
-                    ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/30'
-                    : 'bg-brand-500/15 text-brand-700 dark:text-brand-300 border border-brand-500/30'
+                  isFollowUpRound
+                    ? 'bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/30'
+                    : isReschedule
+                    ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30'
+                    : 'bg-teal-500/15 text-teal-800 dark:text-teal-300 border-teal-500/30'
                 }`}>
-                  {isReschedule ? 'Reschedule Existing Slot' : 'Live Calendar Dispatch'}
+                  {isFollowUpRound 
+                    ? 'Follow-up Round' 
+                    : isReschedule 
+                    ? 'Reschedule Existing Slot' 
+                    : 'Live Calendar Dispatch'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2 truncate flex-wrap">
@@ -106,8 +138,16 @@ export default function ScheduleInterviewModal({
                 {isReschedule && (candidate.interviewScheduledAt || candidate.interview_scheduled_at) && (
                   <>
                     <span>•</span>
-                    <span className="text-cyan-600 dark:text-cyan-400 font-medium">
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">
                       Current: {candidate.interviewScheduledAt || candidate.interview_scheduled_at}
+                    </span>
+                  </>
+                )}
+                {isFollowUpRound && (
+                  <>
+                    <span>•</span>
+                    <span className="text-purple-600 dark:text-purple-400 font-medium">
+                      Prior Round Concluded
                     </span>
                   </>
                 )}
