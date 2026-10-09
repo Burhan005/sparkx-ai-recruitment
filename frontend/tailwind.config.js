@@ -10,6 +10,8 @@ export default {
       fontFamily: {
         sans: ["'Inter'", "'Plus Jakarta Sans'", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "sans-serif"],
         display: ["'Plus Jakarta Sans'", "'Inter'", "-apple-system", "sans-serif"],
+        serif: ["'Cinzel'", "'Cormorant Garamond'", "Georgia", "serif"],
+        wordmark: ["'Cinzel'", "'Cormorant Garamond'", "Georgia", "serif"],
         mono: ["'JetBrains Mono'", "'Fira Code'", "'Cascadia Code'", "Consolas", "monospace"],
       },
       fontSize: {
