@@ -11,7 +11,7 @@ from services.organization_service import ensure_organization
 
 class JobController:
     @staticmethod
-    def _enrich_job(j: JobModel) -> JobModel:
+    def _enrich_job(j: JobModel, db: Session = None) -> JobModel:
         if j:
             j.applicants_count = len(j.candidates) if hasattr(j, "candidates") and j.candidates else 0
             j.formatted_compensation = format_job_compensation(
@@ -23,6 +23,12 @@ class JobController:
                 variable_min=j.variable_pay_min,
                 variable_max=j.variable_pay_max
             )
+            if db:
+                from services.skill_service import SkillService
+                try:
+                    j.relational_skills = SkillService.get_job_skill_requirements_detailed(j.id, db)
+                except Exception:
+                    j.relational_skills = []
         return j
 
     @staticmethod
@@ -37,13 +43,13 @@ class JobController:
                 query = query.filter(JobModel.status == norm)
         jobs = query.offset(skip).limit(limit).all()
         for j in jobs:
-            JobController._enrich_job(j)
+            JobController._enrich_job(j, db)
         return jobs
 
     @staticmethod
     def get_job_by_id(job_id: str, db: Session):
         job = db.query(JobModel).filter(JobModel.id == job_id).first()
-        return JobController._enrich_job(job) if job else None
+        return JobController._enrich_job(job, db) if job else None
 
     @staticmethod
     def match_candidate_to_job(job_id: str, payload: JobMatchRequest, db: Session):
@@ -160,7 +166,15 @@ class JobController:
         db.add(new_job)
         db.commit()
         db.refresh(new_job)
-        JobController._enrich_job(new_job)
+
+        # Authoritative Phase 4E.1 Relational Skill Requirements Sync
+        from services.skill_service import SkillService
+        if payload.required_skills:
+            SkillService.sync_job_skill_requirements(new_job.id, payload.required_skills, db)
+            db.commit()
+            db.refresh(new_job)
+
+        JobController._enrich_job(new_job, db)
         return new_job
 
 
@@ -194,7 +208,15 @@ class JobController:
 
         db.commit()
         db.refresh(job)
-        JobController._enrich_job(job)
+
+        # Authoritative Phase 4E.1 Relational Skill Requirements Sync on update
+        if "required_skills" in update_data and update_data["required_skills"] is not None:
+            from services.skill_service import SkillService
+            SkillService.sync_job_skill_requirements(job.id, update_data["required_skills"], db)
+            db.commit()
+            db.refresh(job)
+
+        JobController._enrich_job(job, db)
         return job, None
 
     @staticmethod

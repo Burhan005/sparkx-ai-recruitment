@@ -37,7 +37,7 @@ export function Button({
   onClick,
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-medium select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/25 focus:ring-offset-1 transition-all duration-150 active:scale-[0.97]';
+  const baseStyles = 'inline-flex items-center justify-center font-medium select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:ring-offset-1 transition-all duration-150 active:scale-[0.97]';
 
   const sizeStyles = {
     xs: 'px-2.5 py-1 text-xs gap-1.5 font-medium',
@@ -47,8 +47,8 @@ export function Button({
   };
 
   const variantStyles = {
-    primary: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-600 hover:shadow-md hover:shadow-teal-900/15',
-    brand: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-600 hover:shadow-md hover:shadow-teal-900/15',
+    primary: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-600 hover:shadow-md hover:shadow-brand-900/15',
+    brand: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-600 hover:shadow-md hover:shadow-brand-900/15',
     secondary: 'bg-stone-50 hover:bg-stone-100 active:bg-stone-200/70 dark:bg-[#1E1B18] dark:hover:bg-[#26221E] text-stone-900 dark:text-stone-100 border border-stone-200/90 dark:border-stone-800 shadow-sm hover:shadow-md hover:shadow-stone-900/5',
     outline: 'bg-transparent hover:bg-stone-100 dark:hover:bg-stone-800/60 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-800',
     ghost: 'bg-transparent hover:bg-stone-100/80 dark:hover:bg-stone-800/60 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 border border-transparent',
@@ -148,7 +148,7 @@ export function Input({
           } ${IconRight ? 'pr-9' : 'pr-3'} py-2 ${
             error
               ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
-              : 'border-stone-200 dark:border-stone-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30'
+              : 'border-stone-200 dark:border-stone-800 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-1 focus:ring-brand-600/30'
           } focus:outline-none ${className}`}
           {...props}
         />
@@ -196,7 +196,7 @@ export function Textarea({
         className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 p-2.5 bg-white dark:bg-[#151210] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 ${
           error
             ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
-            : 'border-stone-200 dark:border-stone-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30'
+            : 'border-stone-200 dark:border-stone-800 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-1 focus:ring-brand-600/30'
         } focus:outline-none ${className}`}
         {...props}
       />
@@ -232,7 +232,7 @@ export const SearchInput = React.forwardRef(function SearchInput({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full pl-8 pr-14 py-1.5 bg-stone-50 hover:bg-white dark:bg-[#13110F] dark:hover:bg-[#181512] border border-stone-200 dark:border-stone-800 rounded-lg text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600/30 transition-all shadow-subtle"
+        className="w-full pl-8 pr-14 py-1.5 bg-stone-50 hover:bg-white dark:bg-[#2B201A] dark:hover:bg-[#352720] border border-stone-200 dark:border-[#423229] rounded-lg text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:border-brand-600 dark:focus:border-brand-500 focus:ring-1 focus:ring-brand-600/30 transition-all shadow-subtle"
         {...props}
       />
       <div className="absolute right-2 flex items-center gap-1.5">
@@ -265,7 +265,7 @@ export function Badge({
 }) {
   const variantStyles = {
     default: 'bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700',
-    brand: 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-200/80 dark:border-teal-800/50',
+    brand: 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 border-brand-200/80 dark:border-brand-800/50',
     success: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
     warning: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
     danger: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60',
@@ -333,7 +333,7 @@ export function StatusBadge({ status, value, dimension = 'auto', showDot = true,
     const legacyMap = {
       shortlisted: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
       rejected: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60',
-      evaluated: 'bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-800/60',
+      evaluated: 'bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-800/60',
       screening: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
       active: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
     };
@@ -547,7 +547,7 @@ export function Tabs({ tabs, activeTab, onChange, className = '' }) {
             {tab.count !== undefined && (
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold transition-colors ${
                 isActive
-                  ? 'bg-teal-100 dark:bg-teal-950/70 text-teal-800 dark:text-teal-300'
+                  ? 'bg-brand-100 dark:bg-brand-950/70 text-brand-800 dark:text-brand-300'
                   : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
               }`}>
                 {tab.count}
@@ -716,7 +716,7 @@ export function ErrorState({
 export function Progress({
   value = 0,
   max = 100,
-  color = 'teal', // 'teal' | 'emerald' | 'amber' | 'rose'
+  color = 'brand', // 'brand' | 'teal' | 'emerald' | 'amber' | 'rose'
   size = 'md',
   showLabel = false,
   className = '',
@@ -724,6 +724,7 @@ export function Progress({
   const percentage = Math.min(100, Math.max(0, Math.round((value / max) * 100)));
 
   const colorMap = {
+    brand: 'bg-brand-600 dark:bg-brand-500',
     teal: 'bg-brand-600 dark:bg-brand-500',
     indigo: 'bg-brand-600 dark:bg-brand-500',
     emerald: 'bg-emerald-600 dark:bg-emerald-500',
@@ -747,7 +748,7 @@ export function Progress({
       )}
       <div className={`w-full bg-stone-100 dark:bg-stone-800 rounded-full overflow-hidden ${heightMap[size] || heightMap.md}`}>
         <div
-          className={`h-full transition-all duration-700 ease-out rounded-full ${colorMap[color] || colorMap.teal}`}
+          className={`h-full transition-all duration-700 ease-out rounded-full ${colorMap[color] || colorMap.brand}`}
           style={{ width: `${percentage}%` }}
         />
       </div>

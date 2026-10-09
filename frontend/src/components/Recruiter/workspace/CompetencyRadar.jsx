@@ -222,13 +222,13 @@ export default function CompetencyRadar({ candidate, job }) {
       {/* ── Card Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-200 dark:border-[#2A2520]">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200/60 dark:border-teal-800/60 flex items-center justify-center text-teal-700 dark:text-teal-300 shrink-0 shadow-2xs">
+          <div className="w-8 h-8 rounded-xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200/60 dark:border-brand-800/60 flex items-center justify-center text-brand-700 dark:text-brand-300 shrink-0 shadow-2xs">
             <Layers className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5 flex-wrap">
               <span className="whitespace-nowrap">Competency Mesh</span>
-              <span className="whitespace-nowrap inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
+              <span className="whitespace-nowrap inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/20">
                 6-Axis
               </span>
             </h4>
@@ -492,7 +492,7 @@ export default function CompetencyRadar({ candidate, job }) {
                     />
                     {/* Candidate score fill */}
                     <div 
-                      className="h-full rounded-full bg-gradient-to-r from-brand-500 to-teal-600 transition-all duration-300"
+                      className="h-full rounded-full bg-gradient-to-r from-brand-600 to-amber-500 transition-all duration-300"
                       style={{ width: `${currentHovered.evaluated ? currentHovered.score : 0}%` }}
                     />
                   </div>

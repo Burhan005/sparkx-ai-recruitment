@@ -172,7 +172,7 @@ export default function JobCatalog() {
       <div className="relative overflow-hidden rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] p-6 sm:p-10 shadow-subtle text-center">
         <div className="relative z-10 max-w-3xl mx-auto space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-stone-100 dark:bg-[#231F1B] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 text-xs font-medium font-mono">
-            <Sparkles className="w-3.5 h-3.5 text-teal-700 dark:text-teal-300" />
+            <Sparkles className="w-3.5 h-3.5 text-brand-700 dark:text-brand-300" />
             <span>AI Talent Intelligence Platform</span>
           </div>
 
@@ -191,7 +191,7 @@ export default function JobCatalog() {
               <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Automated Parsing</div>
             </div>
             <div className="p-3 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
-              <div className="text-base font-bold text-teal-700 dark:text-teal-300 font-mono">Adaptive AI</div>
+              <div className="text-base font-bold text-brand-700 dark:text-brand-300 font-mono">Adaptive AI</div>
               <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Technical & Scenario Fit</div>
             </div>
             <div className="p-3 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] col-span-2 sm:col-span-1">
@@ -209,8 +209,8 @@ export default function JobCatalog() {
             <div className="flex items-center space-x-2">
               <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">Open Technical & Product Roles</h2>
               {candidateSkills.length > 0 && (
-                <span className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                  <Target className="w-3 h-3 text-teal-700 dark:text-teal-300" />
+                <span className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold font-mono bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+                  <Target className="w-3 h-3 text-brand-700 dark:text-brand-300" />
                   <span>Ranked by Your Resume Skills</span>
                 </span>
               )}
@@ -368,7 +368,7 @@ export default function JobCatalog() {
               {/* Apply CTA Bar */}
               <div className="pt-3.5 border-t border-stone-200 dark:border-[#2A2520] flex items-center justify-between">
                 <div className="text-[11px] text-stone-500 dark:text-stone-400 flex items-center gap-1.5 font-medium">
-                  <BrainCircuit className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <BrainCircuit className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                   <span>Autonomous Assessment Enabled</span>
                 </div>
 

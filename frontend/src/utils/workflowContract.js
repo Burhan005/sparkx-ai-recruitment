@@ -34,8 +34,8 @@ export const STAGE_CONFIG = {
     id: STAGES.ASSESSMENT,
     label: 'Assessment',
     subtitle: 'Technical role evaluation',
-    color: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
-    badge: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
+    color: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/25',
+    badge: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/25',
     stepNumber: 3
   },
   [STAGES.INTERVIEW]: {
@@ -95,8 +95,8 @@ export const ASSESSMENT_STATUS_CONFIG = {
   },
   [ASSESSMENT_STATUS.SUBMITTED]: {
     label: 'Submitted',
-    color: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
-    badge: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/25',
+    color: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
+    badge: 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/25',
     description: 'Submission locked; scoring underway'
   },
   [ASSESSMENT_STATUS.EVALUATED]: {

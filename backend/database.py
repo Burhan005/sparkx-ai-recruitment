@@ -39,11 +39,23 @@ def is_postgres_running(host: str, port: int, timeout: float = 0.8) -> bool:
 ENV_NAME = os.environ.get("ENVIRONMENT", os.environ.get("ENV", "development")).lower()
 is_production = ENV_NAME in ["production", "prod"]
 
+# Automated Test Detection: Completely isolates test runs from active application database
+import sys
+is_testing = (
+    os.environ.get("TESTING") == "1" or 
+    os.environ.get("SPARKX_TEST_MODE") == "1" or
+    ("pytest" in sys.argv[0] if sys.argv else False) or
+    any("test_" in str(arg) for arg in sys.argv)
+)
+_SQLITE_FILENAME = "test_sparkx.db" if is_testing else "sparkx_recruitment.db"
+_BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
+_SQLITE_PATH = os.path.join(_BACKEND_DIR, _SQLITE_FILENAME).replace('\\', '/')
+
 # Smart Database Initialization
 is_pg = DATABASE_URL.startswith("postgresql")
 pg_host, pg_port = extract_db_host_port(DATABASE_URL)
 
-if is_pg and is_postgres_running(pg_host, pg_port):
+if is_pg and is_postgres_running(pg_host, pg_port) and not is_testing:
     try:
         # Use 127.0.0.1 if host is localhost to avoid Windows IPv6 resolution latency
         pg_url = DATABASE_URL.replace("localhost", "127.0.0.1") if "localhost" in DATABASE_URL else DATABASE_URL
@@ -71,11 +83,9 @@ if is_pg and is_postgres_running(pg_host, pg_port):
                     f"Silent SQLite fallback is strictly prohibited in production."
                 )
             logger.warning(f"PostgreSQL DB connection failed ({conn_err}). Falling back to local SQLite for development.")
-            _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-            _SQLITE_PATH = os.path.join(_BACKEND_DIR, "sparkx_recruitment.db").replace('\\', '/')
             DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
             engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-            logger.warning(f"Development mode: Running on local SQLite database '{_SQLITE_PATH}'.")
+            logger.warning(f"Mode: Running on local SQLite database '{_SQLITE_PATH}'.")
     except RuntimeError:
         raise
     except Exception as err:
@@ -85,27 +95,39 @@ if is_pg and is_postgres_running(pg_host, pg_port):
                 f"Silent SQLite fallback is strictly prohibited in production."
             )
         logger.warning(f"PostgreSQL authentication failed ({err}). Falling back to local SQLite for development.")
-        _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-        _SQLITE_PATH = os.path.join(_BACKEND_DIR, "sparkx_recruitment.db").replace("\\", "/")
         DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
         engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-        logger.warning(f"Development mode: Running on local SQLite database '{_SQLITE_PATH}'.")
+        logger.warning(f"Mode: Running on local SQLite database '{_SQLITE_PATH}'.")
 else:
     if is_production:
         raise RuntimeError(
             f"FATAL DATABASE ERROR: PostgreSQL service is not active on {pg_host}:{pg_port} in production. "
             f"Silent SQLite fallback is strictly prohibited in production."
         )
-    if is_pg:
-        logger.info(f"PostgreSQL service is not active on {pg_host}:{pg_port}. Automatically running on local SQLite database 'sparkx_recruitment.db' for development.")
-    _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-    _SQLITE_PATH = os.path.join(_BACKEND_DIR, "sparkx_recruitment.db").replace("\\", "/")
+    if is_testing:
+        logger.info(f"Test runner detected. Isolating all operations in dedicated test database '{_SQLITE_PATH}'.")
+    elif is_pg:
+        logger.info(f"PostgreSQL service is not active on {pg_host}:{pg_port}. Automatically running on local SQLite database '{_SQLITE_FILENAME}' for development.")
     DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-    logger.info(f"Development mode: Running on local SQLite database '{_SQLITE_PATH}'.")
+    logger.info(f"Mode: Running on local SQLite database '{_SQLITE_PATH}'.")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+# Enforce SQLite foreign key cascades
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    if hasattr(dbapi_connection, "cursor"):
+        try:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+        except Exception:
+            pass
 
 def ensure_schema_columns():
     """Ensure newly added columns and tables exist in existing database."""
@@ -178,6 +200,7 @@ def ensure_schema_columns():
                     "rejection_reason": "TEXT",
                     "rejection_category": "VARCHAR",
                     "match_details": "JSON DEFAULT '{}'",
+                    "interview_transcript": "JSON DEFAULT '[]'",
                     # Authoritative Candidate Application Compensation Expectations
                     "current_ctc": "NUMERIC(10, 2)",
                     "expected_ctc_type": "VARCHAR DEFAULT 'range'",
@@ -215,6 +238,8 @@ def ensure_schema_columns():
                     "reopened_by": "VARCHAR",
                     "reopen_reason": "TEXT",
                     "previous_final_decision": "VARCHAR",
+                    "rationale_category": "VARCHAR",
+                    "rationale_note": "TEXT",
                     "organization_id": "VARCHAR DEFAULT 'org-sparkx-default'"
                 }
                 for col, col_type in new_cand_cols.items():
@@ -222,8 +247,16 @@ def ensure_schema_columns():
                         conn.execute(text(f"ALTER TABLE candidates ADD COLUMN {col} {col_type}"))
                         conn.commit()
 
+                # State logs columns
+                all_tables = [row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()]
+                if "candidate_state_logs" in all_tables:
+                    state_log_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(candidate_state_logs)")).fetchall()]
+                    if "rationale_category" not in state_log_cols:
+                        conn.execute(text("ALTER TABLE candidate_state_logs ADD COLUMN rationale_category VARCHAR"))
+                        conn.commit()
+
                 # Coding Problems table columns
-                prob_tables = [row[0] for row in conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()]
+                prob_tables = all_tables
                 if "coding_problems" in prob_tables:
                     prob_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(coding_problems)")).fetchall()]
                     new_prob_cols = {
@@ -245,6 +278,40 @@ def ensure_schema_columns():
                         if col not in cpv_cols:
                             conn.execute(text(f"ALTER TABLE coding_problem_versions ADD COLUMN {col} {col_type}"))
                             conn.commit()
+                if "assessments" in prob_tables:
+                    asm_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(assessments)")).fetchall()]
+                    new_asm_cols = {
+                        "status": "VARCHAR DEFAULT 'draft'",
+                        "created_by": "VARCHAR",
+                        "max_attempts": "INTEGER DEFAULT 1",
+                        "deadline_days": "INTEGER",
+                        "randomize_questions": "BOOLEAN DEFAULT 0",
+                        "allow_review": "BOOLEAN DEFAULT 1",
+                        "allow_unanswered": "BOOLEAN DEFAULT 1",
+                        "allow_resume": "BOOLEAN DEFAULT 1",
+                        "published_at": "TIMESTAMP",
+                        "archived_at": "TIMESTAMP"
+                    }
+                    for col, col_type in new_asm_cols.items():
+                        if col not in asm_cols:
+                            conn.execute(text(f"ALTER TABLE assessments ADD COLUMN {col} {col_type}"))
+                            conn.commit()
+
+                if "mcq_questions" in prob_tables:
+                    mcq_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(mcq_questions)")).fetchall()]
+                    new_mcq_cols = {
+                        "category": "VARCHAR DEFAULT 'technical'",
+                        "difficulty": "VARCHAR DEFAULT 'Medium'",
+                        "explanation": "TEXT",
+                        "skills": "JSON DEFAULT '[]'",
+                        "is_active": "BOOLEAN DEFAULT 1",
+                        "created_by": "VARCHAR",
+                        "current_version": "INTEGER DEFAULT 1"
+                    }
+                    for col, col_type in new_mcq_cols.items():
+                        if col not in mcq_cols:
+                            conn.execute(text(f"ALTER TABLE mcq_questions ADD COLUMN {col} {col_type}"))
+                            conn.commit()
             else:
                 # PostgreSQL schema column synchronization
                 for col, col_type in new_user_cols.items():
@@ -258,6 +325,16 @@ def ensure_schema_columns():
                     conn.execute(text("ALTER TABLE coding_problems ADD COLUMN IF NOT EXISTS function_signature JSON DEFAULT '{}'"))
                     conn.execute(text("ALTER TABLE coding_problem_versions ADD COLUMN IF NOT EXISTS execution_mode VARCHAR DEFAULT 'function'"))
                     conn.execute(text("ALTER TABLE coding_problem_versions ADD COLUMN IF NOT EXISTS function_signature JSON DEFAULT '{}'"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'draft'"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS created_by VARCHAR"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS max_attempts INTEGER DEFAULT 1"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS deadline_days INTEGER"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS randomize_questions BOOLEAN DEFAULT FALSE"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS allow_review BOOLEAN DEFAULT TRUE"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS allow_unanswered BOOLEAN DEFAULT TRUE"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS allow_resume BOOLEAN DEFAULT TRUE"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS published_at TIMESTAMP"))
+                    conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP"))
                 except Exception:
                     pass
                 conn.commit()
@@ -395,6 +472,23 @@ def ensure_schema_columns():
                     AssessmentController.seed_system_mcqs(db_session)
             except Exception as seed_err:
                 logger.warning(f"System assessment seed notice: {seed_err}")
+
+            # Idempotently migrate legacy JSON skills to relational tables (Phase 4E.1)
+            try:
+                from services.skill_service import SkillService
+                with SessionLocal() as db_session:
+                    skill_mig_stats = SkillService.migrate_legacy_skills_to_relational(db_session)
+                    logger.info(f"Phase 4E.1 Skill Foundation Migration synced: {skill_mig_stats['canonical_skills_in_db']} canonical skills, {skill_mig_stats['total_job_requirements']} job reqs, {skill_mig_stats['total_candidate_skills']} candidate skills.")
+            except Exception as skill_err:
+                logger.warning(f"Skill foundation migration notice: {skill_err}")
+
+            # Clean up any orphaned associations to guarantee strict referential integrity
+            try:
+                conn.execute(text("DELETE FROM candidate_skills WHERE candidate_id NOT IN (SELECT id FROM candidates)"))
+                conn.execute(text("DELETE FROM job_skill_requirements WHERE job_id NOT IN (SELECT id FROM jobs)"))
+                conn.commit()
+            except Exception as orphan_err:
+                logger.warning(f"Orphan cleanup notice: {orphan_err}")
         except Exception as e:
             logger.warning(f"Schema check notice: {e}")
 

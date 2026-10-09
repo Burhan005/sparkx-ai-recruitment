@@ -39,7 +39,7 @@ export default function SignOutModal() {
         if (e.target === e.currentTarget) cancelLogout();
       }}
     >
-      <div className="relative w-full max-w-md bg-[#FAF8F5] dark:bg-[#181512] border border-stone-300/80 dark:border-stone-800 rounded-2xl shadow-depth-elevated p-6 animate-modal-enter space-y-5">
+      <div className="relative w-full max-w-md bg-[#FAF8F5] dark:bg-[#2B201A] border border-stone-300/80 dark:border-[#423229] rounded-2xl shadow-depth-elevated p-6 animate-modal-enter space-y-5">
         
         {/* Close Button */}
         <button
@@ -80,7 +80,7 @@ export default function SignOutModal() {
               <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
                 {displayName}
               </span>
-              <span className="text-[10px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/20">
+              <span className="text-[10px] font-mono font-semibold uppercase px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/20">
                 {userRole === 'recruiter' ? 'Recruiter' : 'Candidate'}
               </span>
             </div>

@@ -243,7 +243,7 @@ export default function AssessmentEvidenceTab({ candidate, onInviteAssessment })
             </div>
             <span className="text-[9px] text-slate-400 font-mono">sample test cases</span>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
             <Zap className="w-5 h-5" />
           </div>
         </Card>
@@ -383,7 +383,7 @@ export default function AssessmentEvidenceTab({ candidate, onInviteAssessment })
             {/* Console Output */}
             <Card className="p-4 bg-slate-950 border-slate-800 space-y-2">
               <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                <Terminal className="w-3.5 h-3.5 text-amber-400" />
                 <span>Sandbox Console Log:</span>
               </div>
               <pre className="text-xs font-mono text-emerald-400 whitespace-pre-wrap leading-relaxed">

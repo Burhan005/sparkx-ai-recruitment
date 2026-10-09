@@ -28,6 +28,7 @@ export function normalizeJob(j) {
     variablePayMin:    j.variable_pay_min != null ? Number(j.variable_pay_min) : (j.variablePayMin != null ? Number(j.variablePayMin) : null),
     variablePayMax:    j.variable_pay_max != null ? Number(j.variable_pay_max) : (j.variablePayMax != null ? Number(j.variablePayMax) : null),
     formattedCompensation: j.formatted_compensation ?? j.formattedCompensation ?? null,
+    relationalSkills:      j.relational_skills      ?? j.relationalSkills      ?? null,
   };
 }
 
@@ -59,6 +60,7 @@ export function normalizeCandidate(c) {
     codingResults:   c.coding_results  ?? c.codingResults  ?? {},
     scores:          c.scores          ?? { jobSkills: 0, technicalScore: 0, communication: 0, problemSolving: 0, overall: 0 },
     skills:          c.skills          ?? [],
+    relationalSkills:c.relational_skills ?? c.relationalSkills ?? null,
     // Authoritative Candidate Application Compensation Expectations
     currentCtc:                  c.current_ctc != null ? Number(c.current_ctc) : (c.currentCtc != null ? Number(c.currentCtc) : null),
     expectedCtcType:             c.expected_ctc_type ?? c.expectedCtcType ?? 'range',
@@ -486,6 +488,10 @@ export const api = {
 
       const query = new URLSearchParams();
       if (params.jobId || params.job_id) query.append('job_id', params.jobId || params.job_id);
+      if (params.stage) query.append('stage', params.stage);
+      if (params.assessmentStatus || params.assessment_status) query.append('assessment_status', params.assessmentStatus || params.assessment_status);
+      if (params.interviewStatus || params.interview_status) query.append('interview_status', params.interviewStatus || params.interview_status);
+      if (params.hiringDecision || params.hiring_decision) query.append('hiring_decision', params.hiringDecision || params.hiring_decision);
       if (params.compensationStatus || params.compensation_status) query.append('compensation_status', params.compensationStatus || params.compensation_status);
       if (params.minExpectedCtc != null && params.minExpectedCtc !== '') query.append('min_expected_ctc', params.minExpectedCtc);
       if (params.maxExpectedCtc != null && params.maxExpectedCtc !== '') query.append('max_expected_ctc', params.maxExpectedCtc);
@@ -646,6 +652,10 @@ export const api = {
         recruiter_score: extra.recruiterScore != null ? Number(extra.recruiterScore) : null,
         rejection_reason: extra.rejectionReason || null,
         rejection_category: extra.rejectionCategory || null,
+        rationale_category: extra.rationaleCategory || null,
+        rationale_note: extra.rationaleNote || null,
+        evidence_references: extra.evidenceReferences || [],
+        job_id: extra.jobId || null,
       };
       const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/decision`, {
         method: 'PATCH',
@@ -659,6 +669,39 @@ export const api = {
       return normalizeCandidate(await res.json());
     } catch (err) {
       console.warn('[API] updateHiringDecision failed:', err.message);
+      throw err;
+    }
+  },
+
+  async getCandidateDecisionContext(candidateId, jobId = null) {
+    try {
+      const url = jobId
+        ? `${API_BASE_URL}/candidates/${encodeURIComponent(candidateId)}/decision-context?job_id=${encodeURIComponent(jobId)}`
+        : `${API_BASE_URL}/candidates/${encodeURIComponent(candidateId)}/decision-context`;
+      const res = await authFetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to fetch decision context (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCandidateDecisionContext failed:', err.message);
+      throw err;
+    }
+  },
+
+  async getCandidateDecisionHistory(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${encodeURIComponent(candidateId)}/decision-history`, {
+        signal: AbortSignal.timeout(6000)
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to fetch decision history (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCandidateDecisionHistory failed:', err.message);
       throw err;
     }
   },
@@ -695,6 +738,40 @@ export const api = {
       return normalizeCandidate(await res.json());
     } catch (err) {
       console.warn('[API] inviteAssessment failed:', err.message);
+      throw err;
+    }
+  },
+
+  async getPipelineSummary(jobId = null) {
+    try {
+      const query = new URLSearchParams();
+      if (jobId && jobId !== 'ALL') query.append('job_id', jobId);
+      const qs = query.toString();
+      const res = await authFetch(`${API_BASE_URL}/candidates/pipeline-summary${qs ? `?${qs}` : ''}`, {
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) throw new Error('Failed to fetch pipeline summary');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getPipelineSummary failed:', err.message);
+      return null;
+    }
+  },
+
+  async bulkCandidateAction(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/bulk-action`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Bulk action failed');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] bulkCandidateAction failed:', err.message);
       throw err;
     }
   },
@@ -1273,6 +1350,247 @@ export const api = {
     }
   },
 
+  // ─── Phase 4E.5: Advanced Assessment Builder API ──────────────────────────
+  async listBuilderAssessments(jobId = null) {
+    try {
+      const qs = jobId ? `?job_id=${encodeURIComponent(jobId)}` : '';
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments${qs}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`listBuilderAssessments failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('listBuilderAssessments error:', err);
+      return [];
+    }
+  },
+
+  async createBuilderAssessment(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to create assessment: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('createBuilderAssessment error:', err);
+      throw err;
+    }
+  },
+
+  async getBuilderAssessment(assessmentId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`getBuilderAssessment failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('getBuilderAssessment error:', err);
+      throw err;
+    }
+  },
+
+  async updateBuilderAssessment(assessmentId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to update assessment: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('updateBuilderAssessment error:', err);
+      throw err;
+    }
+  },
+
+  async attachBuilderQuestion(assessmentId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}/questions`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to attach question: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('attachBuilderQuestion error:', err);
+      throw err;
+    }
+  },
+
+  async removeBuilderQuestion(assessmentId, questionType, questionId) {
+    try {
+      const res = await authFetch(
+        `${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}/questions/${encodeURIComponent(questionType)}/${encodeURIComponent(questionId)}`,
+        {
+          method: 'DELETE',
+          signal: AbortSignal.timeout(8000),
+        }
+      );
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to remove question: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('removeBuilderQuestion error:', err);
+      throw err;
+    }
+  },
+
+  async reorderBuilderQuestions(assessmentId, items) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}/questions/reorder`, {
+        method: 'PUT',
+        body: JSON.stringify({ items }),
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to reorder questions: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('reorderBuilderQuestions error:', err);
+      throw err;
+    }
+  },
+
+  async autoSelectBuilderQuestions(assessmentId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}/auto-select`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Auto-select failed: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('autoSelectBuilderQuestions error:', err);
+      throw err;
+    }
+  },
+
+  async validateBuilderAssessment(assessmentId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}/validate`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Validation failed: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('validateBuilderAssessment error:', err);
+      throw err;
+    }
+  },
+
+  async publishBuilderAssessment(assessmentId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}/publish`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Publish failed: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('publishBuilderAssessment error:', err);
+      throw err;
+    }
+  },
+
+  async archiveBuilderAssessment(assessmentId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}/archive`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Archive failed: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('archiveBuilderAssessment error:', err);
+      throw err;
+    }
+  },
+
+  async previewBuilderAssessment(assessmentId, asCandidate = false) {
+    try {
+      const qs = asCandidate ? '?as_candidate=true' : '';
+      const res = await authFetch(`${API_BASE_URL}/assessment/builder/assessments/${encodeURIComponent(assessmentId)}/preview${qs}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`Preview failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('previewBuilderAssessment error:', err);
+      throw err;
+    }
+  },
+
+  async listUnifiedQuestions(params = {}) {
+    try {
+      const qs = new URLSearchParams();
+      if (params.question_type) qs.append('question_type', params.question_type);
+      if (params.difficulty) qs.append('difficulty', params.difficulty);
+      if (params.category) qs.append('category', params.category);
+      if (params.skill) qs.append('skill', params.skill);
+      if (params.search) qs.append('search', params.search);
+      const queryStr = qs.toString() ? `?${qs.toString()}` : '';
+      const res = await authFetch(`${API_BASE_URL}/assessment/questions${queryStr}`, {
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!res.ok) throw new Error(`listUnifiedQuestions failed: ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.warn('listUnifiedQuestions error:', err);
+      return [];
+    }
+  },
+
+  async createUnifiedQuestion(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/assessment/questions`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Failed to create question: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('createUnifiedQuestion error:', err);
+      throw err;
+    }
+  },
+
   // ─── External Coding Assessment Platforms ───────────────────────────────
   async getExternalPlatforms() {
     try {
@@ -1539,6 +1857,160 @@ export const api = {
     } catch (err) {
       console.warn('[API] getMyInterviews error:', err.message);
       return [];
+    }
+  },
+
+  // ─── PHASE 4E.1: RELATIONAL SKILL ARCHITECTURE METHODS ───────────────────────
+  async getCanonicalSkills(q = '', category = '', limit = 50) {
+    try {
+      const params = new URLSearchParams();
+      if (q) params.append('q', q);
+      if (category) params.append('category', category);
+      params.append('limit', limit);
+      const res = await fetch(`${API_BASE_URL}/skills?${params.toString()}`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCanonicalSkills error:', err.message);
+      return [];
+    }
+  },
+
+  async getCandidateSkills(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/skills/candidates/${candidateId}`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCandidateSkills error:', err.message);
+      return [];
+    }
+  },
+
+  async getJobSkillRequirements(jobId) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/skills/jobs/${jobId}`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getJobSkillRequirements error:', err.message);
+      return [];
+    }
+  },
+
+  // ─── Phase 4E.2: Multi-Skill Matching & Evidence Verification ───
+  async getCandidateJobMatch(candidateId, jobId) {
+    try {
+      const url = jobId 
+        ? `${API_BASE_URL}/skills/match/candidate/${candidateId}/job/${jobId}`
+        : `${API_BASE_URL}/skills/match/candidate/${candidateId}`;
+      const res = await authFetch(url);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCandidateJobMatch error:', err.message);
+      return null;
+    }
+  },
+
+  async getJobCandidatesMatch(jobId, limit = 50) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/skills/match/job/${jobId}/candidates?limit=${limit}`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getJobCandidatesMatch error:', err.message);
+      return null;
+    }
+  },
+
+  // ─── Phase 4E.3: Candidate Comparison Engine ───
+  async compareCandidates(jobId, candidateIds) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/skills/compare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: jobId,
+          candidate_ids: candidateIds
+        })
+      });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Comparison failed with status ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] compareCandidates error:', err.message);
+      throw err;
+    }
+  },
+
+  // ─── VERIFIED SKILL PASSPORT API CLIENT ─────────────────────────────────────
+  async getCandidateSkillPassport(candidateId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/skills/passport/${encodeURIComponent(candidateId)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to fetch skill passport (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCandidateSkillPassport error:', err.message);
+      throw err;
+    }
+  },
+
+  async getMySkillPassport() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/skills/passport/my-passport`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to fetch my skill passport (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getMySkillPassport error:', err.message);
+      throw err;
+    }
+  },
+
+  async verifyCandidateSkillManually(candidateId, candidateSkillId, payload = {}) {
+    try {
+      const res = await authFetch(
+        `${API_BASE_URL}/skills/passport/${encodeURIComponent(candidateId)}/verify/${encodeURIComponent(candidateSkillId)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Manual verification failed (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('[API] verifyCandidateSkillManually error:', err.message);
+      throw err;
+    }
+  },
+
+  // ─── EVIDENCE-BASED CANDIDATE SCORECARD API CLIENT ────────────────────────────
+  async getCandidateScorecard(candidateId, jobId = null) {
+    try {
+      const url = jobId
+        ? `${API_BASE_URL}/candidates/${encodeURIComponent(candidateId)}/jobs/${encodeURIComponent(jobId)}/scorecard`
+        : `${API_BASE_URL}/candidates/${encodeURIComponent(candidateId)}/scorecard`;
+      const res = await authFetch(url);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to fetch candidate scorecard (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getCandidateScorecard error:', err.message);
+      throw err;
     }
   },
 };

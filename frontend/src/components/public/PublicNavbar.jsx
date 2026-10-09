@@ -136,7 +136,7 @@ export default function PublicNavbar() {
     setIsMobileMenuOpen(false);
     setActiveId(id);
     if (location.pathname !== '/' && location.pathname !== '/home') {
-      navigate('/home' + href);
+      smoothNavigate('/home' + href);
       return;
     }
     const targetElement = document.querySelector(href);
@@ -149,8 +149,8 @@ export default function PublicNavbar() {
     <header 
       className={`sticky top-0 z-50 w-full transition-all duration-200 border-b ${
         scrolled 
-          ? 'bg-[#FAF8F5]/90 dark:bg-[#110F0D]/90 backdrop-blur-xl border-[#E8E4DF] dark:border-[#2A2520] shadow-subtle' 
-          : 'bg-[#FAF8F5]/70 dark:bg-[#110F0D]/70 backdrop-blur-md border-transparent'
+          ? 'bg-[#FAF8F5]/90 dark:bg-[#0F0E0D]/90 backdrop-blur-xl border-[#E8E4DF] dark:border-[#423229] shadow-subtle' 
+          : 'bg-[#FAF8F5]/70 dark:bg-[#0F0E0D]/70 backdrop-blur-md border-transparent'
       }`}
     >
       <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
@@ -160,7 +160,7 @@ export default function PublicNavbar() {
           <div 
             onClick={() => {
               if (location.pathname !== '/' && location.pathname !== '/home') {
-                navigate('/home');
+                smoothNavigate('/home');
               } else {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }
@@ -188,11 +188,11 @@ export default function PublicNavbar() {
           {/* ── Center: Desktop Navigation Links ── */}
           <nav 
             ref={navContainerRef}
-            className="relative hidden md:flex items-center gap-1 p-1 rounded-2xl bg-stone-200/60 dark:bg-[#1A1714]/80 border border-stone-300/60 dark:border-[#2A2520] backdrop-blur-sm"
+            className="relative hidden md:flex items-center gap-1 p-1 rounded-2xl bg-stone-200/70 dark:bg-[#2B201A] border border-stone-300/70 dark:border-[#423229] backdrop-blur-sm shadow-inner"
           >
-            {/* Sliding Active Pill Indicator (no excessive bounce, smooth transition) */}
+            {/* Sliding Active Pill Indicator with warm amber glow */}
             <span
-              className="absolute top-1 bottom-1 rounded-xl bg-white dark:bg-[#24201C] shadow-2xs pointer-events-none transition-all duration-200 ease-out"
+              className="absolute top-1 bottom-1 rounded-xl bg-white dark:bg-[#382A22] border border-brand-500/30 dark:border-brand-500/50 shadow-sm shadow-brand-500/15 pointer-events-none transition-all duration-200 ease-out"
               style={{
                 left: `${indicatorStyle.left}px`,
                 width: `${indicatorStyle.width}px`,
@@ -207,13 +207,16 @@ export default function PublicNavbar() {
                   key={link.id}
                   ref={(el) => (buttonRefs.current[link.id] = el)}
                   onClick={() => handleNavClick(link.href, link.id)}
-                  className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors duration-150 cursor-pointer select-none active:scale-[0.99] ${
+                  className={`relative z-10 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-colors duration-150 cursor-pointer select-none active:scale-[0.99] flex items-center gap-1.5 ${
                     isActive
-                      ? 'text-stone-900 dark:text-stone-50 font-bold'
-                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+                      ? 'text-brand-900 dark:text-brand-300 font-bold'
+                      : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
                   }`}
                 >
-                  {link.label}
+                  {isActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-500 dark:bg-brand-400 animate-pulse" />
+                  )}
+                  <span>{link.label}</span>
                 </button>
               );
             })}
@@ -225,7 +228,7 @@ export default function PublicNavbar() {
             <button
               onClick={toggleTheme}
               type="button"
-              className="p-2 rounded-xl border border-stone-300/80 dark:border-[#2A2520] bg-white/80 dark:bg-[#1A1714]/80 text-stone-700 dark:text-stone-300 hover:text-brand-600 dark:hover:text-brand-400 active:scale-[0.96] transition cursor-pointer shadow-2xs"
+              className="p-2 rounded-xl border border-stone-300/80 dark:border-[#423229] bg-white/80 dark:bg-[#2B201A] text-stone-700 dark:text-stone-300 hover:border-brand-500/50 hover:text-brand-600 dark:hover:text-brand-400 active:scale-[0.96] transition cursor-pointer shadow-2xs"
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
               aria-label="Toggle theme"
             >
@@ -290,7 +293,7 @@ export default function PublicNavbar() {
 
       {/* ── Mobile Slide-down Menu ── */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-[#E8E4DF] dark:border-[#2A2520] bg-[#FAF8F5]/98 dark:bg-[#110F0D]/98 backdrop-blur-2xl px-5 py-5 space-y-4 shadow-xl animate-fade-in-up">
+        <div className="md:hidden border-t border-[#E8E4DF] dark:border-[#423229] bg-[#FAF8F5]/98 dark:bg-[#0F0E0D]/98 backdrop-blur-2xl px-5 py-5 space-y-4 shadow-xl animate-fade-in-up">
           <div className="space-y-1">
             <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-stone-400 px-2">Navigation</span>
             {navLinks.map((link) => {
@@ -299,13 +302,14 @@ export default function PublicNavbar() {
                 <button
                   key={link.id}
                   onClick={() => handleNavClick(link.href, link.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold active:scale-[0.99] transition cursor-pointer ${
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold active:scale-[0.99] transition cursor-pointer flex items-center justify-between ${
                     isActive
-                      ? 'bg-stone-200/80 dark:bg-[#24201C] text-brand-600 dark:text-brand-400 font-bold'
-                      : 'text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#1A1714]'
+                      ? 'bg-brand-500/10 dark:bg-brand-500/15 border border-brand-500/30 text-brand-700 dark:text-brand-300 font-bold'
+                      : 'text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#2B201A]'
                   }`}
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  {isActive && <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />}
                 </button>
               );
             })}
@@ -317,7 +321,7 @@ export default function PublicNavbar() {
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    navigate(userRole === 'recruiter' ? '/recruiter' : '/jobs');
+                    smoothNavigate(userRole === 'recruiter' ? '/recruiter' : '/jobs');
                   }}
                   className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 active:scale-[0.98] text-white text-xs font-bold text-center flex items-center justify-center gap-2 shadow-subtle cursor-pointer transition"
                 >

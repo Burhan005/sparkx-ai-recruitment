@@ -9,7 +9,8 @@ import {
   Sparkles,
   ExternalLink,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  ShieldCheck
 } from 'lucide-react';
 import { Card, Badge, StatusBadge, Button } from '../../ui/Primitives';
 import { normalizeWorkflow } from '../../../utils/workflowContract';
@@ -32,39 +33,54 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
   return (
     <div className="space-y-6">
       {/* Top Interview Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card className="p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <Card className="p-3.5">
           <span className="text-[11px] font-mono uppercase text-slate-400 font-bold">Interview Status</span>
           <div className="mt-1">
             <StatusBadge dimension="interview" value={wf.interviewStatus} />
           </div>
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            {candidate.interviewScheduledAt ? `Slot: ${candidate.interviewScheduledAt}` : 'No slot scheduled'}
+          <span className="text-[10px] text-slate-500 mt-1 block truncate">
+            {candidate.interviewScheduledAt || candidate.interview_scheduled_at ? `Slot: ${candidate.interviewScheduledAt || candidate.interview_scheduled_at}` : 'No slot scheduled'}
           </span>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-3.5">
           <span className="text-[11px] font-mono uppercase text-slate-400 font-bold">Communication</span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
-            {scores.communication ? `${scores.communication}/100` : '—'}
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
+            {scores.communication !== undefined && scores.communication !== null ? `${scores.communication}/100` : '—'}
           </div>
           <span className="text-[10px] text-slate-500">Verbal articulation</span>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-3.5">
           <span className="text-[11px] font-mono uppercase text-slate-400 font-bold">Problem Solving</span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
-            {scores.problemSolving ? `${scores.problemSolving}/100` : '—'}
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
+            {scores.problemSolving !== undefined && scores.problemSolving !== null ? `${scores.problemSolving}/100` : '—'}
           </div>
           <span className="text-[10px] text-slate-500">Methodology & trade-offs</span>
         </Card>
 
-        <Card className="p-4">
+        <Card className="p-3.5">
           <span className="text-[11px] font-mono uppercase text-slate-400 font-bold">Technical Depth</span>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
-            {scores.jobSkills ? `${scores.jobSkills}/100` : '—'}
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5">
+            {scores.jobSkills !== undefined && scores.jobSkills !== null ? `${scores.jobSkills}/100` : '—'}
           </div>
           <span className="text-[10px] text-slate-500">Production experience</span>
+        </Card>
+
+        <Card className="p-3.5">
+          <span className="text-[11px] font-mono uppercase text-slate-400 font-bold">Integrity Trust</span>
+          <div className="text-xl font-black text-slate-900 dark:text-white mt-0.5 flex items-center space-x-1.5">
+            <span>{candidate.integrity_score !== undefined && candidate.integrity_score !== null ? `${candidate.integrity_score}%` : candidate.integrityScore !== undefined && candidate.integrityScore !== null ? `${candidate.integrityScore}%` : '—'}</span>
+            <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold ${
+              (candidate.integrity_risk || candidate.integrityRisk) === 'High'
+                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+            }`}>
+              {candidate.integrity_risk || candidate.integrityRisk || 'Low'}
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-500">Proctoring telemetry</span>
         </Card>
       </div>
 
@@ -73,13 +89,13 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
         <Card className={`p-4 ${
           isInterviewCompleted 
             ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50' 
-            : 'bg-cyan-50/50 dark:bg-cyan-950/20 border-cyan-200 dark:border-cyan-800/50'
+            : 'bg-brand-50/50 dark:bg-brand-950/20 border-brand-200 dark:border-brand-800/50'
         } flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3`}>
           <div className="flex items-center gap-3">
             <div className={`w-9 h-9 rounded-xl ${
               isInterviewCompleted 
                 ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
-                : 'bg-cyan-500/20 text-cyan-500'
+                : 'bg-brand-500/20 text-brand-600 dark:text-brand-400'
             } flex items-center justify-center shrink-0`}>
               {isInterviewCompleted ? <CheckCircle2 className="w-5 h-5" /> : <Video className="w-5 h-5" />}
             </div>
@@ -89,7 +105,7 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
                 <span className={`text-[10px] font-mono px-2 py-0.2 rounded-full border ${
                   isInterviewCompleted 
                     ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                    : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+                    : 'bg-brand-500/10 text-brand-700 dark:text-brand-300 border-brand-500/20'
                 }`}>
                   {isInterviewCompleted ? 'Concluded' : 'Active'}
                 </span>
@@ -119,7 +135,7 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold transition shadow-xs"
                     title="Reschedule interview slot"
                   >
-                    <Calendar className="w-3.5 h-3.5 text-cyan-500" />
+                    <Calendar className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                     <span>Reschedule Session</span>
                   </button>
                 )}
@@ -127,7 +143,7 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
                   href={candidate.interviewMeetingUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold transition shadow-sm"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition shadow-sm"
                 >
                   <span>Join Meeting Room</span>
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -135,6 +151,19 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
               </>
             )}
           </div>
+        </Card>
+      )}
+
+      {/* Executive Interview Evaluation Summary */}
+      {(candidate.interview_summary || candidate.interviewSummary) && (
+        <Card className="p-5 space-y-2 bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520]">
+          <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400">
+            <Sparkles className="w-4 h-4" />
+            <h3 className="text-xs font-bold uppercase tracking-wider font-mono">AI Technical Evaluation Summary</h3>
+          </div>
+          <p className="text-xs text-stone-700 dark:text-stone-300 leading-relaxed">
+            {candidate.interview_summary || candidate.interviewSummary}
+          </p>
         </Card>
       )}
 

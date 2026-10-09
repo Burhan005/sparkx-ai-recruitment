@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useRecruitment } from '../../../context/RecruitmentContext';
 import CandidateWorkspaceHeader from './CandidateWorkspaceHeader';
 import CandidateOverviewTab from './CandidateOverviewTab';
@@ -9,6 +9,8 @@ import SkillIntelligenceTab from './SkillIntelligenceTab';
 import IntegrityAuditTab from './IntegrityAuditTab';
 import RecruiterDecisionTab from './RecruiterDecisionTab';
 import AuditTimelineTab from './AuditTimelineTab';
+import CandidateScorecardTab from './CandidateScorecardTab';
+import CandidateComparisonModal from '../CandidateComparisonModal';
 import ScheduleInterviewModal from './ScheduleInterviewModal';
 import ResumeViewerModal from './ResumeViewerModal';
 import {
@@ -22,7 +24,8 @@ import {
   Users,
   Search,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Award
 } from 'lucide-react';
 import { Card, Badge, StatusBadge, Button } from '../../ui/Primitives';
 
@@ -49,9 +52,12 @@ export default function CandidateWorkspace({
     scheduleInterview
   } = useRecruitment();
 
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState(urlTab || 'overview');
   const [isSchedulerOpen, setIsSchedulerOpen] = useState(false);
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
+  const [comparisonContext, setComparisonContext] = useState(() => location.state?.comparisonContext || null);
   const [sidebarSearch, setSidebarSearch] = useState('');
 
   // Sync tab with URL if changed externally
@@ -60,6 +66,12 @@ export default function CandidateWorkspace({
       setActiveTab(urlTab);
     }
   }, [urlTab]);
+
+  useEffect(() => {
+    if (location.state?.comparisonContext) {
+      setComparisonContext(location.state.comparisonContext);
+    }
+  }, [location.state?.comparisonContext]);
 
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
@@ -85,6 +97,15 @@ export default function CandidateWorkspace({
     if (!currentCandidate) return null;
     return jobs.find(j => String(j.id) === String(currentCandidate.jobId || currentCandidate.job_id)) || null;
   }, [jobs, currentCandidate]);
+
+  // Cohort candidates for active requisition
+  const cohortCandidates = useMemo(() => {
+    const jId = activeJob?.id || currentCandidate?.jobId || currentCandidate?.job_id;
+    if (!jId) return [];
+    return candidates.filter(c => String(c.jobId || c.job_id) === String(jId));
+  }, [candidates, activeJob?.id, currentCandidate?.jobId, currentCandidate?.job_id]);
+
+  const canCompareCohort = cohortCandidates.length >= 2;
 
   // Navigate to another candidate while preserving review tab
   const handleSelectCandidate = useCallback((cand) => {
@@ -163,11 +184,14 @@ export default function CandidateWorkspace({
         handleTabChange('skills');
       } else if (e.key === '5') {
         e.preventDefault();
-        handleTabChange('integrity');
+        handleTabChange('scorecard');
       } else if (e.key === '6') {
         e.preventDefault();
-        handleTabChange('decision');
+        handleTabChange('integrity');
       } else if (e.key === '7') {
+        e.preventDefault();
+        handleTabChange('decision');
+      } else if (e.key === '8') {
         e.preventDefault();
         handleTabChange('timeline');
       }
@@ -211,13 +235,14 @@ export default function CandidateWorkspace({
     { id: 'assessment', label: 'Assessment Code',    icon: Code2 },
     { id: 'interview',  label: 'Interview Speech',   icon: MessageSquare },
     { id: 'skills',     label: 'Skill Intelligence', icon: Sparkles },
+    { id: 'scorecard',  label: 'Scorecard',          icon: Award },
     { id: 'integrity',  label: 'Integrity Telemetry',icon: ShieldCheck },
     { id: 'decision',   label: 'Hiring Decision',    icon: CheckCircle2 },
     { id: 'timeline',   label: 'Audit Ledger',       icon: History },
   ];
 
   return (
-    <div className="w-full h-full bg-[#F7F5F2] dark:bg-[#110F0D] flex flex-col text-stone-900 dark:text-stone-100 overflow-hidden">
+    <div className="w-full h-full bg-[#F7F5F2] dark:bg-[#0F0E0D] flex flex-col text-stone-900 dark:text-stone-100 overflow-hidden">
       {/* ── Persistent Top Navigation Bar ── */}
       <CandidateWorkspaceHeader
         candidate={currentCandidate}
@@ -230,6 +255,7 @@ export default function CandidateWorkspace({
         onOpenResume={() => setIsResumeModalOpen(true)}
         onScheduleInterview={() => setIsSchedulerOpen(true)}
         onOpenDecision={() => handleTabChange('decision')}
+        onOpenComparison={canCompareCohort ? () => setIsComparisonModalOpen(true) : undefined}
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={handleTabChange}
@@ -259,7 +285,7 @@ export default function CandidateWorkspace({
               const scoreBadgeColor = candScore >= 85 
                 ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                 : candScore >= 70
-                ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20'
+                ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/20'
                 : candScore >= 50
                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                 : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
@@ -338,6 +364,14 @@ export default function CandidateWorkspace({
                   activeJob={activeJob} 
                 />
               )}
+              {activeTab === 'scorecard' && (
+                <CandidateScorecardTab 
+                  candidate={currentCandidate} 
+                  activeJob={activeJob} 
+                  onNavigateTab={handleTabChange}
+                  onOpenComparison={canCompareCohort ? () => setIsComparisonModalOpen(true) : undefined}
+                />
+              )}
               {activeTab === 'integrity' && (
                 <IntegrityAuditTab 
                   candidate={currentCandidate} 
@@ -346,8 +380,10 @@ export default function CandidateWorkspace({
               {activeTab === 'decision' && (
                 <RecruiterDecisionTab 
                   candidate={currentCandidate} 
+                  activeJob={activeJob}
                   onUpdateDecision={updateHiringDecision} 
                   onReopen={reopenCandidate}
+                  comparisonContext={comparisonContext}
                 />
               )}
               {activeTab === 'timeline' && (
@@ -376,6 +412,26 @@ export default function CandidateWorkspace({
           isOpen={isResumeModalOpen}
           onClose={() => setIsResumeModalOpen(false)}
           candidate={currentCandidate}
+        />
+      )}
+
+      {/* ── Side-by-Side Candidate Comparison Modal (Portal Overlay) ── */}
+      {isComparisonModalOpen && activeJob && canCompareCohort && (
+        <CandidateComparisonModal
+          isOpen={isComparisonModalOpen}
+          onClose={() => setIsComparisonModalOpen(false)}
+          jobId={activeJob.id}
+          jobTitle={activeJob.title}
+          candidateIds={cohortCandidates.map(c => c.id)}
+          onSelectCandidate={(candId, initialTab, compContext) => {
+            setIsComparisonModalOpen(false);
+            const target = candidates.find(c => String(c.id) === String(candId));
+            if (target) {
+              if (compContext) setComparisonContext(compContext);
+              handleSelectCandidate(target);
+              handleTabChange(initialTab || 'scorecard');
+            }
+          }}
         />
       )}
     </div>

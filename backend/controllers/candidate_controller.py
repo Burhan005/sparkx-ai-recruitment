@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from models.db_models import CandidateModel, JobModel, CandidateStateLogModel, UserModel
 from schemas import (
     CandidateApply, CandidateStatusUpdate, CandidateScheduleRequest, 
-    EmailSendRequest, CandidateStageUpdate, HiringDecisionUpdate, AssessmentInviteRequest
+    EmailSendRequest, CandidateStageUpdate, HiringDecisionUpdate, AssessmentInviteRequest,
+    PipelineStatsResponse, BulkCandidateActionRequest, BulkCandidateActionResponse
 )
 from email_service import send_email, create_ics_calendar_event, parse_slot_to_datetime
 from ai_engine import calculate_resume_job_match
@@ -25,6 +26,7 @@ from workflow_contract import (
     ASSESS_NOT_INVITED, ASSESS_INVITED, ASSESS_IN_PROGRESS, ASSESS_SUBMITTED, ASSESS_EVALUATED,
     INTERVIEW_NOT_SCHEDULED, INTERVIEW_SCHEDULED, INTERVIEW_IN_PROGRESS, INTERVIEW_COMPLETED,
     DECISION_UNDECIDED, DECISION_SHORTLISTED, DECISION_SELECTED, DECISION_REJECTED,
+    VALID_STAGES, VALID_ASSESSMENT_STATUSES, VALID_INTERVIEW_STATUSES, VALID_HIRING_DECISIONS,
     FINAL_DECISIONS, is_final_decision,
     validate_stage_transition, validate_decision_transition, validate_reopen_application,
     project_legacy_status, project_legacy_final_decision
@@ -32,10 +34,16 @@ from workflow_contract import (
 
 class CandidateController:
     @staticmethod
-    def _enrich_candidate(c: CandidateModel) -> CandidateModel:
+    def _enrich_candidate(c: CandidateModel, db: Session = None) -> CandidateModel:
         if c:
             job = getattr(c, "job", None)
             c.compensation_analysis = analyze_candidate_application(c, job)
+            if db:
+                from services.skill_service import SkillService
+                try:
+                    c.relational_skills = SkillService.get_candidate_skills_detailed(c.id, db)
+                except Exception:
+                    c.relational_skills = []
         return c
 
     @staticmethod
@@ -44,6 +52,10 @@ class CandidateController:
         skip: int = 0,
         limit: int = 100,
         job_id: str = None,
+        stage: str = None,
+        assessment_status: str = None,
+        interview_status: str = None,
+        hiring_decision: str = None,
         compensation_status: str = None,
         min_expected_ctc: float = None,
         max_expected_ctc: float = None,
@@ -55,6 +67,14 @@ class CandidateController:
             query = query.filter(CandidateModel.organization_id == organization_id)
         if job_id and job_id != "ALL":
             query = query.filter(CandidateModel.job_id == job_id)
+        if stage and stage != "ALL":
+            query = query.filter(CandidateModel.stage == stage.lower().strip())
+        if assessment_status and assessment_status != "ALL":
+            query = query.filter(CandidateModel.assessment_status == assessment_status.lower().strip())
+        if interview_status and interview_status != "ALL":
+            query = query.filter(CandidateModel.interview_status == interview_status.lower().strip())
+        if hiring_decision and hiring_decision != "ALL":
+            query = query.filter(CandidateModel.hiring_decision == hiring_decision.lower().strip())
         if q and q.strip():
             term = f"%{q.strip()}%"
             query = query.filter(or_(CandidateModel.name.ilike(term), CandidateModel.email.ilike(term)))
@@ -65,7 +85,7 @@ class CandidateController:
 
         candidates = query.all()
         for c in candidates:
-            CandidateController._enrich_candidate(c)
+            CandidateController._enrich_candidate(c, db)
 
         if compensation_status and compensation_status != "All":
             norm_status = compensation_status.lower().strip()
@@ -80,6 +100,77 @@ class CandidateController:
         return candidates[skip : skip + limit]
 
     @staticmethod
+    def get_pipeline_summary(db: Session, organization_id: str, job_id: Optional[str] = None):
+        """
+        Authoritative pipeline summary and counts across all 4 independent dimensions:
+        stage, assessment_status, interview_status, hiring_decision.
+        Computed directly from database records scoped to the recruiter's organization and optional job.
+        """
+        base_query = db.query(CandidateModel)
+        if organization_id:
+            base_query = base_query.filter(CandidateModel.organization_id == organization_id)
+        if job_id and job_id != "ALL":
+            base_query = base_query.filter(CandidateModel.job_id == job_id)
+
+        candidates = base_query.all()
+        total_candidates = len(candidates)
+
+        stage_counts = {st: 0 for st in VALID_STAGES}
+        for c in candidates:
+            st = (c.stage or STAGE_APPLIED).lower().strip()
+            if st in stage_counts:
+                stage_counts[st] += 1
+            else:
+                stage_counts[st] = 1
+
+        assessment_counts = {ast: 0 for ast in VALID_ASSESSMENT_STATUSES}
+        for c in candidates:
+            ast = (c.assessment_status or ASSESS_NOT_INVITED).lower().strip()
+            if ast in assessment_counts:
+                assessment_counts[ast] += 1
+            else:
+                assessment_counts[ast] = 1
+
+        interview_counts = {ist: 0 for ist in VALID_INTERVIEW_STATUSES}
+        for c in candidates:
+            ist = (c.interview_status or INTERVIEW_NOT_SCHEDULED).lower().strip()
+            if ist in interview_counts:
+                interview_counts[ist] += 1
+            else:
+                interview_counts[ist] = 1
+
+        decision_counts = {dec: 0 for dec in VALID_HIRING_DECISIONS}
+        for c in candidates:
+            dec = (c.hiring_decision or DECISION_UNDECIDED).lower().strip()
+            if dec in decision_counts:
+                decision_counts[dec] += 1
+            else:
+                decision_counts[dec] = 1
+
+        # Count distinct candidates who have completed an assessment OR interview OR have valid scores
+        evaluated_candidates = 0
+        for c in candidates:
+            ast = (c.assessment_status or "").lower().strip()
+            ist = (c.interview_status or "").lower().strip()
+            has_scores = False
+            if isinstance(c.scores, dict) and (c.scores.get("overall") or 0) > 0:
+                has_scores = True
+            elif c.coding_score and c.coding_score > 0:
+                has_scores = True
+
+            if ast == ASSESS_EVALUATED or ist == INTERVIEW_COMPLETED or has_scores:
+                evaluated_candidates += 1
+
+        return {
+            "total_candidates": total_candidates,
+            "stage_counts": stage_counts,
+            "assessment_counts": assessment_counts,
+            "interview_counts": interview_counts,
+            "decision_counts": decision_counts,
+            "evaluated_candidates": evaluated_candidates
+        }
+
+    @staticmethod
     def get_candidate_by_id(candidate_id: str, db: Session, organization_id: str = None):
         cand = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
         if not cand:
@@ -88,7 +179,7 @@ class CandidateController:
             cand_org = getattr(cand, "organization_id", "org-sparkx-default") or "org-sparkx-default"
             if cand_org != organization_id:
                 return None
-        return CandidateController._enrich_candidate(cand)
+        return CandidateController._enrich_candidate(cand, db)
 
     @staticmethod
     def log_state_change(
@@ -112,6 +203,7 @@ class CandidateController:
         t_val = to_val if to_val is not None else (to_value if to_value is not None else to_state)
         actor = changed_by or triggered_by or "system"
         note = notes if notes is not None else (reason if reason is not None else "")
+        rat_cat = kwargs.get("rationale_category")
         session = db or kwargs.get("session")
         c_id = candidate_id or kwargs.get("candidate_id")
         dim = dimension or kwargs.get("dimension")
@@ -126,6 +218,7 @@ class CandidateController:
                 to_value=t_val,
                 changed_by=actor,
                 notes=note,
+                rationale_category=rat_cat,
                 created_at=datetime.utcnow()
             )
             session.add(log_entry)
@@ -254,7 +347,15 @@ class CandidateController:
             )
             db.commit()
             db.refresh(new_candidate)
-            CandidateController._enrich_candidate(new_candidate)
+
+            # Authoritative Phase 4E.1 Relational Skill Synchronization
+            from services.skill_service import SkillService
+            if payload.skills:
+                SkillService.sync_candidate_skills(new_candidate.id, payload.skills, db)
+                db.commit()
+                db.refresh(new_candidate)
+
+            CandidateController._enrich_candidate(new_candidate, db)
             return new_candidate, None
         except Exception as e:
             db.rollback()
@@ -355,6 +456,175 @@ class CandidateController:
         return candidate, None
 
     @staticmethod
+    def execute_bulk_action(payload: dict, changed_by: str, db: Session, organization_id: str):
+        """
+        Atomic, backend-validated bulk candidate management:
+        - Validates tenant authorization for each candidate
+        - Validates transition guards for stage / decision / assessment
+        - Applies operations atomically or records precise rejection reasons
+        - Logs audit trail in candidate_state_logs for each successful candidate
+        - Returns authoritative summary with successes and detailed failure reasons
+        """
+        candidate_ids = payload.get("candidate_ids", [])
+        action = (payload.get("action") or "").lower().strip()
+
+        if not candidate_ids:
+            return None, "No candidate IDs provided for bulk action."
+        if len(candidate_ids) > 50:
+            return None, "Bulk action limit exceeded: maximum 50 candidates per operation."
+
+        successful_ids = []
+        failures = []
+
+        if action == "update_stage":
+            target_stage = (payload.get("stage") or "").lower().strip()
+            if target_stage not in VALID_STAGES:
+                return None, f"Invalid target stage '{target_stage}'. Must be one of: {VALID_STAGES}"
+
+            notes = payload.get("notes") or f"Bulk stage update to {target_stage}"
+            for cid in candidate_ids:
+                cand = db.query(CandidateModel).filter(CandidateModel.id == cid).first()
+                if not cand:
+                    failures.append({"candidate_id": cid, "reason": "Candidate record not found"})
+                    continue
+                cand_org = getattr(cand, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+                if cand_org != organization_id:
+                    failures.append({"candidate_id": cid, "candidate_name": cand.name, "reason": "Cross-tenant access forbidden"})
+                    continue
+
+                valid, err = validate_stage_transition(cand.stage, target_stage, current_decision=cand.hiring_decision, candidate=cand)
+                if not valid:
+                    failures.append({"candidate_id": cid, "candidate_name": cand.name, "reason": err})
+                    continue
+
+                old_stage = cand.stage
+                cand.stage = target_stage
+                cand.stage_updated_at = datetime.utcnow()
+                cand.version = (cand.version or 1) + 1
+                cand.status = project_legacy_status(cand.stage, cand.hiring_decision)
+
+                CandidateController.log_state_change(
+                    candidate_id=cand.id,
+                    dimension="stage",
+                    from_val=old_stage,
+                    to_val=target_stage,
+                    changed_by=changed_by,
+                    notes=f"[Bulk Action] {notes}",
+                    db=db
+                )
+                successful_ids.append(cid)
+
+        elif action == "update_decision":
+            target_decision = (payload.get("decision") or "").lower().strip()
+            if target_decision not in VALID_HIRING_DECISIONS:
+                return None, f"Invalid target hiring decision '{target_decision}'. Must be one of: {VALID_HIRING_DECISIONS}"
+
+            rejection_reason = payload.get("rejection_reason")
+            rejection_category = payload.get("rejection_category")
+            hr_notes = payload.get("notes") or ""
+
+            for cid in candidate_ids:
+                cand = db.query(CandidateModel).filter(CandidateModel.id == cid).first()
+                if not cand:
+                    failures.append({"candidate_id": cid, "reason": "Candidate record not found"})
+                    continue
+                cand_org = getattr(cand, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+                if cand_org != organization_id:
+                    failures.append({"candidate_id": cid, "candidate_name": cand.name, "reason": "Cross-tenant access forbidden"})
+                    continue
+
+                valid, err = validate_decision_transition(cand.hiring_decision, target_decision)
+                if not valid:
+                    failures.append({"candidate_id": cid, "candidate_name": cand.name, "reason": err})
+                    continue
+
+                old_decision = cand.hiring_decision
+                cand.hiring_decision = target_decision
+                cand.decision_updated_at = datetime.utcnow()
+                cand.version = (cand.version or 1) + 1
+                if rejection_reason:
+                    cand.rejection_reason = rejection_reason
+                if rejection_category:
+                    cand.rejection_category = rejection_category
+                if hr_notes:
+                    cand.hr_notes = hr_notes
+
+                # Terminal decisions (selected, rejected) finalize the pipeline stage to completed
+                if target_decision in [DECISION_SELECTED, DECISION_REJECTED]:
+                    cand.stage = STAGE_COMPLETED
+                    cand.stage_updated_at = datetime.utcnow()
+
+                cand.status = project_legacy_status(cand.stage, cand.hiring_decision)
+                cand.final_decision = project_legacy_final_decision(cand.stage, cand.hiring_decision)
+
+                CandidateController.log_state_change(
+                    candidate_id=cand.id,
+                    dimension="hiring_decision",
+                    from_val=old_decision,
+                    to_val=target_decision,
+                    changed_by=changed_by,
+                    notes=f"[Bulk Action] {rejection_reason or hr_notes or 'Bulk decision update'}",
+                    db=db
+                )
+                successful_ids.append(cid)
+
+        elif action == "invite_assessment":
+            custom_message = payload.get("custom_message") or ""
+            for cid in candidate_ids:
+                cand = db.query(CandidateModel).filter(CandidateModel.id == cid).first()
+                if not cand:
+                    failures.append({"candidate_id": cid, "reason": "Candidate record not found"})
+                    continue
+                cand_org = getattr(cand, "organization_id", "org-sparkx-default") or "org-sparkx-default"
+                if cand_org != organization_id:
+                    failures.append({"candidate_id": cid, "candidate_name": cand.name, "reason": "Cross-tenant access forbidden"})
+                    continue
+
+                if cand.hiring_decision in [DECISION_SELECTED, DECISION_REJECTED] or cand.stage == STAGE_COMPLETED:
+                    failures.append({"candidate_id": cid, "candidate_name": cand.name, "reason": f"Application is finalized with decision '{cand.hiring_decision}'"})
+                    continue
+                if cand.interview_status == INTERVIEW_COMPLETED:
+                    failures.append({"candidate_id": cid, "candidate_name": cand.name, "reason": "Interview has already been completed"})
+                    continue
+
+                # Idempotency check: if already invited or further along, count as success without resetting
+                if cand.assessment_status in [ASSESS_INVITED, ASSESS_IN_PROGRESS, ASSESS_SUBMITTED, ASSESS_EVALUATED]:
+                    successful_ids.append(cid)
+                    continue
+
+                old_status = cand.assessment_status
+                cand.assessment_status = ASSESS_INVITED
+                cand.assessment_invited_at = datetime.utcnow()
+                if cand.stage in [STAGE_APPLIED, STAGE_SCREENING]:
+                    cand.stage = STAGE_ASSESSMENT
+                    cand.stage_updated_at = datetime.utcnow()
+                    cand.status = project_legacy_status(cand.stage, cand.hiring_decision)
+
+                CandidateController.log_state_change(
+                    candidate_id=cand.id,
+                    dimension="assessment_status",
+                    from_val=old_status,
+                    to_val=ASSESS_INVITED,
+                    changed_by=changed_by,
+                    notes=f"[Bulk Action] {custom_message or 'Technical assessment invitation'}",
+                    db=db
+                )
+                successful_ids.append(cid)
+        else:
+            return None, f"Unsupported bulk action '{action}'. Supported actions: update_stage, update_decision, invite_assessment"
+
+        db.commit()
+
+        return {
+            "action": action,
+            "total_requested": len(candidate_ids),
+            "success_count": len(successful_ids),
+            "failure_count": len(failures),
+            "successful_candidate_ids": successful_ids,
+            "failures": failures
+        }, None
+
+    @staticmethod
     def update_hiring_decision(
         candidate_id: str,
         new_decision: str = None,
@@ -386,6 +656,9 @@ class CandidateController:
         if not valid:
             return None, err
 
+        rat_category = kwargs.get("rationale_category") or kwargs.get("rejection_category")
+        rat_note = kwargs.get("rationale_note")
+
         if reason and not rejection_reason and norm_decision == DECISION_REJECTED:
             rejection_reason = reason
         if reason and not hr_notes:
@@ -402,6 +675,10 @@ class CandidateController:
             candidate.rejection_reason = rejection_reason
         if rejection_category is not None:
             candidate.rejection_category = rejection_category
+        if rat_category is not None:
+            candidate.rationale_category = rat_category
+        if rat_note is not None:
+            candidate.rationale_note = rat_note
         if hr_notes is not None:
             candidate.hr_notes = hr_notes
 
@@ -414,13 +691,15 @@ class CandidateController:
         candidate.status = project_legacy_status(candidate.stage, candidate.hiring_decision)
         candidate.final_decision = project_legacy_final_decision(candidate.stage, candidate.hiring_decision)
 
+        audit_note = rat_note or rejection_reason or hr_notes or ""
         CandidateController.log_state_change(
             candidate_id=candidate.id,
             dimension="hiring_decision",
             from_val=old_decision,
             to_val=norm_decision,
             changed_by=changed_by,
-            notes=rejection_reason or hr_notes or "",
+            notes=audit_note,
+            rationale_category=rat_category,
             db=db
         )
         db.commit()

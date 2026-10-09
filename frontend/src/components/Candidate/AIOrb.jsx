@@ -45,8 +45,8 @@ export default function AIOrb({
       ctx.clearRect(0, 0, size, size);
 
       let speed = 0.04;
-      let primaryColor = '15, 118, 110'; // teal-700 (brand hover)
-      let secondaryColor = '13, 148, 136'; // teal (brand)
+      let primaryColor = '194, 120, 3'; // roasted amber (#C27803)
+      let secondaryColor = '217, 119, 6'; // rich caramel (#D97706)
       let waveCount = 3;
       let amplitude = 2.5;
 
@@ -58,7 +58,7 @@ export default function AIOrb({
       } else if (mode === 'listening') {
         speed = 0.05;
         primaryColor = '16, 185, 129'; // emerald
-        secondaryColor = '6, 182, 212'; // cyan
+        secondaryColor = '217, 119, 6'; // warm caramel
         amplitude = 3.2;
       } else if (mode === 'processing') {
         speed = 0.09;

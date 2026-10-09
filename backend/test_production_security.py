@@ -285,21 +285,19 @@ def test_candidate_job_uniqueness_and_update():
         c1_id = cand1.id
         v1 = cand1.version
 
-        # Second application for same job & email
+        # Second application for same job & email: must be rejected to prevent duplicates
         cand2, err2 = CandidateController.apply_candidate(
             CandidateApply(job_id=job.id, name="Test Applicant Updated", email=test_email, skills=["Python", "FastAPI"], experience_years=4.0, education="B.Tech Computer Science"), db
         )
-        assert err2 is None
-        assert cand2.id == c1_id  # Reused same record
-        assert cand2.version > v1  # Concurrency version incremented
-        assert "FastAPI" in cand2.skills
+        assert err2 is not None and "already submitted" in err2.lower()
+        assert cand2 is None
 
         # Verify only 1 record exists in DB for this (job_id, email)
         count = db.query(CandidateModel).filter(
             CandidateModel.job_id == job.id, CandidateModel.email == test_email
         ).count()
         assert count == 1
-        print(" [PASS] Candidate-job uniqueness and optimistic version increment verified.")
+        print(" [PASS] Candidate-job uniqueness and duplicate application prevention verified.")
     finally:
         try:
             if 'cand1' in locals() and cand1:

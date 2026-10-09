@@ -988,7 +988,7 @@ export default function CodeAssessment() {
               </div>
 
               <div className="p-3.5 rounded-xl bg-stone-50/80 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
-                <div className="flex items-center space-x-1.5 text-teal-600 dark:text-teal-400 mb-1">
+                <div className="flex items-center space-x-1.5 text-brand-600 dark:text-brand-400 mb-1">
                   <Layers className="w-4 h-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Structure</span>
                 </div>
@@ -1225,7 +1225,7 @@ export default function CodeAssessment() {
                 <span>{cat.label}</span>
               </div>
               {isAnswered && (
-                <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-teal-200' : 'bg-emerald-500'}`} title="Answered / tested" />
+                <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-brand-200' : 'bg-emerald-500'}`} title="Answered / tested" />
               )}
             </button>
           );

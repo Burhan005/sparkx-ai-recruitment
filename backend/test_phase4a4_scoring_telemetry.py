@@ -149,6 +149,7 @@ def test_phase4a4_multi_problem_dynamic_scoring():
         candidate = CandidateModel(
             id=cand_id,
             job_id=job_id,
+            organization_id=org_id,
             name="Alice Algorithms",
             email=f"alice_{uuid.uuid4().hex[:4]}@domain.com",
             applied_date=datetime.utcnow().strftime("%Y-%m-%d"),
@@ -266,6 +267,7 @@ def test_zero_score_for_failing_solutions():
         candidate = CandidateModel(
             id=cand_id,
             job_id=job_id,
+            organization_id=org_id,
             name="Bob Fail",
             email=f"bob_{uuid.uuid4().hex[:4]}@domain.com",
             applied_date=datetime.utcnow().strftime("%Y-%m-%d"),

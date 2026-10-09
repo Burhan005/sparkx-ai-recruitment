@@ -13,6 +13,7 @@ Covers:
 """
 import sys
 import os
+import uuid
 from decimal import Decimal
 
 if hasattr(sys.stdout, 'reconfigure'):
@@ -265,7 +266,8 @@ def test_job_edit_preserves_candidate_expectation():
             ctc_max=10.0,
             ctc_currency="INR"
         )
-        job = JobController.create_new_job(job_payload, db)
+        test_org = f"org-test-comp-{uuid.uuid4().hex[:6]}"
+        job = JobController.create_new_job(job_payload, db, organization_id=test_org)
         job_id = job.id
 
         # Candidate applies with 9 LPA expectation
@@ -323,6 +325,7 @@ def test_multiple_applications_independent_expectations():
     """A candidate applying to two different jobs retains independent expectations for each."""
     db = SessionLocal()
     try:
+        test_org = f"org-test-comp-{uuid.uuid4().hex[:6]}"
         j1 = JobController.create_new_job(JobCreate(
             title="Junior Role",
             department="Engineering",
@@ -331,7 +334,7 @@ def test_multiple_applications_independent_expectations():
             description="Role 1",
             ctc_min=6.0,
             ctc_max=8.0
-        ), db)
+        ), db, organization_id=test_org)
 
         j2 = JobController.create_new_job(JobCreate(
             title="Senior Role",
@@ -341,7 +344,7 @@ def test_multiple_applications_independent_expectations():
             description="Role 2",
             ctc_min=16.0,
             ctc_max=22.0
-        ), db)
+        ), db, organization_id=test_org)
 
         shared_email = f"multi.apply.{j1.id}@test.ai"
 
@@ -393,6 +396,7 @@ def test_backend_compensation_filtering():
     """Recruiter can filter candidates by compensation relationship."""
     db = SessionLocal()
     try:
+        test_org = f"org-test-comp-{uuid.uuid4().hex[:6]}"
         job = JobController.create_new_job(JobCreate(
             title="Filter Test Role",
             department="Engineering",
@@ -401,7 +405,7 @@ def test_backend_compensation_filtering():
             description="Filter testing",
             ctc_min=10.0,
             ctc_max=12.0
-        ), db)
+        ), db, organization_id=test_org)
 
         # Candidate A: Within range (11 LPA)
         CandidateController.apply_candidate(CandidateApply(

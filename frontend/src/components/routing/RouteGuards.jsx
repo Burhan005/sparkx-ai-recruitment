@@ -5,7 +5,7 @@ import { SkeletonKPI, SkeletonCard } from '../ui/Primitives';
 
 export function LoadingScreen() {
   return (
-    <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#110F0D] flex flex-col">
+    <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0F0E0D] flex flex-col">
       <div className="h-16 bg-white/90 dark:bg-[#1A1714]/90 border-b border-stone-200 dark:border-stone-800 animate-pulse" />
       <div className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12 pt-8 space-y-8">
         <div className="space-y-2">

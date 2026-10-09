@@ -102,7 +102,7 @@ export default function ScheduleInterviewModal({
                 ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300'
                 : isReschedule 
                 ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300' 
-                : 'bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 text-teal-700 dark:text-teal-300'
+                : 'bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300'
             }`}>
               <Calendar className="w-5 h-5" />
             </div>
@@ -120,7 +120,7 @@ export default function ScheduleInterviewModal({
                     ? 'bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/30'
                     : isReschedule
                     ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30'
-                    : 'bg-teal-500/15 text-teal-800 dark:text-teal-300 border-teal-500/30'
+                    : 'bg-brand-500/15 text-brand-800 dark:text-brand-300 border-brand-500/30'
                 }`}>
                   {isFollowUpRound 
                     ? 'Follow-up Round' 

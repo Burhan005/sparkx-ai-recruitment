@@ -100,6 +100,15 @@ class JobUpdate(BaseModel):
     status: Optional[str] = None # "Active" | "Paused" | "Closed"
     closure_reason: Optional[str] = None
 
+    # Compensation updates
+    ctc_type: Optional[str] = None
+    ctc_min: Optional[float] = None
+    ctc_max: Optional[float] = None
+    ctc_currency: Optional[str] = None
+    ctc_period: Optional[str] = None
+    variable_pay_min: Optional[float] = None
+    variable_pay_max: Optional[float] = None
+
 class JobStatusUpdate(BaseModel):
     status: str # "Active" | "Paused" | "Closed"
     closure_reason: Optional[str] = None
@@ -153,6 +162,7 @@ class JobResponse(JobCreate):
     status: str
     applicants_count: Optional[int] = 0
     formatted_compensation: Optional[str] = "Compensation not specified"
+    relational_skills: Optional[List[Dict[str, Any]]] = None
 
     class Config:
         from_attributes = True
@@ -227,12 +237,47 @@ class HiringDecisionUpdate(BaseModel):
     rejection_reason: Optional[str] = None
     rejection_category: Optional[str] = None
     hr_notes: Optional[str] = ""
+    rationale_category: Optional[str] = None
+    rationale_note: Optional[str] = None
+    evidence_references: Optional[List[str]] = []
+    job_id: Optional[str] = None
 
 class CandidateReopenRequest(BaseModel):
     reason: str
 
 class AssessmentInviteRequest(BaseModel):
     custom_message: Optional[str] = ""
+
+class PipelineStatsResponse(BaseModel):
+    total_candidates: int
+    stage_counts: Dict[str, int]
+    assessment_counts: Dict[str, int]
+    interview_counts: Dict[str, int]
+    decision_counts: Dict[str, int]
+    evaluated_candidates: Optional[int] = 0
+
+class BulkCandidateActionRequest(BaseModel):
+    candidate_ids: List[str]
+    action: str # "update_stage" | "update_decision" | "invite_assessment"
+    stage: Optional[str] = None
+    decision: Optional[str] = None
+    notes: Optional[str] = ""
+    rejection_reason: Optional[str] = None
+    rejection_category: Optional[str] = None
+    custom_message: Optional[str] = ""
+
+class BulkCandidateFailureItem(BaseModel):
+    candidate_id: str
+    candidate_name: Optional[str] = None
+    reason: str
+
+class BulkCandidateActionResponse(BaseModel):
+    action: str
+    total_requested: int
+    success_count: int
+    failure_count: int
+    successful_candidate_ids: List[str]
+    failures: List[BulkCandidateFailureItem]
 
 class CandidateResponse(BaseModel):
     id: str
@@ -259,6 +304,7 @@ class CandidateResponse(BaseModel):
     scores: Dict[str, Any]
     interview_summary: Optional[str]
     evidence_snippets: List[Dict[str, Any]]
+    interview_transcript: Optional[List[Dict[str, Any]]] = []
     skill_gaps: Optional[Dict[str, Any]]
     hr_notes: Optional[str]
     final_decision: Optional[str]
@@ -313,6 +359,9 @@ class CandidateResponse(BaseModel):
     reopened_by: Optional[str] = None
     reopen_reason: Optional[str] = None
     previous_final_decision: Optional[str] = None
+
+    # Phase 4E.1 Relational Skills
+    relational_skills: Optional[List[Dict[str, Any]]] = None
 
     class Config:
         from_attributes = True
@@ -1056,5 +1105,602 @@ class InterviewBookingResponse(BaseModel):
     cancelled_by: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+# ─── PHASE 4E.1: RELATIONAL SKILL ARCHITECTURE SCHEMAS ─────────────────────────
+
+class SkillBase(BaseModel):
+    name: str
+    slug: Optional[str] = None
+    category: Optional[str] = "General Competencies"
+    description: Optional[str] = None
+    is_active: bool = True
+
+class SkillCreate(SkillBase):
+    pass
+
+class SkillResponse(SkillBase):
+    id: str
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class SkillEvidenceItem(BaseModel):
+    id: str
+    evidence_type: str
+    reference_id: Optional[str] = None
+    score_contribution: Optional[float] = 0.0
+    snippet: Optional[str] = None
+    created_at: Optional[str] = None
+
+class CandidateSkillItem(BaseModel):
+    candidate_skill_id: str
+    skill_id: str
+    name: str
+    slug: str
+    category: Optional[str] = "General Competencies"
+    proficiency_level: Optional[str] = "unspecified"
+    years_experience: Optional[float] = 0.0
+    is_verified: bool = False
+    verified_score: Optional[float] = None
+    verification_source: Optional[str] = None
+    evidence_count: int = 0
+    evidence: Optional[List[SkillEvidenceItem]] = []
+
+class JobSkillRequirementItem(BaseModel):
+    job_skill_requirement_id: str
+    skill_id: str
+    name: str
+    slug: str
+    category: Optional[str] = "General Competencies"
+    requirement_type: str = "must_have"
+    weight: float = 1.0
+    min_years: Optional[float] = 0.0
+    min_proficiency: Optional[str] = "intermediate"
+
+class CandidateSkillsSyncRequest(BaseModel):
+    skills: List[str]
+
+class JobSkillRequirementsSyncRequest(BaseModel):
+    skills: List[str]
+    requirement_types: Optional[Dict[str, str]] = None
+    weights: Optional[Dict[str, float]] = None
+
+class SkillEvidenceCreate(BaseModel):
+    evidence_type: str # "resume" | "coding_submission" | "mcq_submission" | "interview" | "certification"
+    reference_id: Optional[str] = None
+    score_contribution: Optional[float] = 0.0
+    snippet: Optional[str] = None
+
+class SkillAliasCreate(BaseModel):
+    alias: str
+
+class SkillAliasResponse(BaseModel):
+    id: str
+    skill_id: str
+    alias: str
+    created_at: Optional[Any] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ─── Phase 4E.2: Multi-Skill Matching & Evidence Verification Schemas ────────
+
+class SkillMatchItem(BaseModel):
+    skill_id: str
+    skill_name: str
+    slug: str
+    category: Optional[str] = "General Competencies"
+    requirement_type: str = "must_have"
+    weight: float = 1.0
+    required_years: float = 0.0
+    candidate_years: float = 0.0
+    required_proficiency: str = "intermediate"
+    candidate_proficiency: str = "unspecified"
+    status: str  # "verified_match" | "satisfied" | "partially_satisfied" | "missing" | "unsatisfied"
+    verification_status: str  # "VERIFIED" | "PARTIALLY_VERIFIED" | "SELF_REPORTED" | "not_applicable"
+    experience_satisfied: bool = False
+    proficiency_satisfied: bool = False
+    satisfaction_score: float = 0.0
+    weighted_contribution: float = 0.0
+    max_possible_contribution: float = 1.0
+    evidence_count: int = 0
+    evidence: Optional[List[SkillEvidenceItem]] = []
+    explanation: str = ""
+
+class SkillCategoryBreakdown(BaseModel):
+    score: float = 0.0
+    matched: int = 0
+    total: int = 0
+    has_missing: bool = False
+
+class SkillOverallMatch(BaseModel):
+    score: float = 0.0
+    status: str = "no_match"
+    has_missing_must_have: bool = False
+    matched_skills_count: int = 0
+    total_skills_count: int = 0
+
+class CandidateJobMatchResponse(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    job_id: str
+    job_title: str
+    overall_match: SkillOverallMatch
+    must_have: SkillCategoryBreakdown
+    preferred: SkillCategoryBreakdown
+    skills: List[SkillMatchItem] = []
+    evaluated_at: Optional[str] = None
+
+class BatchJobCandidateMatchResponse(BaseModel):
+    job_id: str
+    job_title: str
+    total_candidates: int
+    candidates: List[CandidateJobMatchResponse] = []
+
+
+# ─── Phase 4E.3: Candidate Comparison Engine Schemas ──────────────────────────
+
+class CandidateComparisonRequest(BaseModel):
+    job_id: str
+    candidate_ids: List[str]
+
+class CandidateComparisonSummaryItem(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    email: Optional[str] = None
+    stage: Optional[str] = None
+    overall_match: SkillOverallMatch
+    must_have: SkillCategoryBreakdown
+    preferred: SkillCategoryBreakdown
+    rank: int
+    assessment_status: Optional[str] = None
+    interview_status: Optional[str] = None
+    hiring_decision: Optional[str] = None
+    gaps: List[str] = []
+    top_strengths: List[str] = []
+    # Phase 4E.8 Scorecard Dimensions
+    scorecard_fit_score: Optional[float] = None
+    scorecard_fit_tier: Optional[str] = None
+    required_skill_coverage: Optional[float] = None
+    preferred_skill_coverage: Optional[float] = None
+    verified_evidence_count: Optional[int] = 0
+    mitigation_recommendations: Optional[List[Dict[str, Any]]] = []
+
+class SkillComparisonCandidateValue(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    status: str  # "verified_match" | "satisfied" | "partially_satisfied" | "missing" | "unsatisfied"
+    verification_status: str  # "VERIFIED" | "PARTIALLY_VERIFIED" | "SELF_REPORTED" | "not_applicable"
+    satisfaction_score: float = 0.0
+    candidate_years: float = 0.0
+    candidate_proficiency: str = "unspecified"
+    experience_satisfied: bool = False
+    proficiency_satisfied: bool = False
+    evidence_count: int = 0
+    evidence: Optional[List[Any]] = []
+    explanation: str = ""
+    # Phase 4E.8 Evidence Matrix Dimensions
+    scorecard_status: Optional[str] = None  # "VERIFIED" | "EVIDENCED" | "CLAIMED" | "MISSING"
+    evidence_strength: Optional[str] = None  # "HIGH" | "MEDIUM" | "LOW" | "NONE"
+    supported_sources: Optional[List[str]] = []
+    recency_label: Optional[str] = None
+    latest_evidence_timestamp: Optional[str] = None
+
+class SkillComparisonMatrixRow(BaseModel):
+    skill_id: str
+    skill_name: str
+    slug: str
+    category: Optional[str] = "General Competencies"
+    requirement_type: str = "must_have"
+    weight: float = 1.0
+    required_years: float = 0.0
+    required_proficiency: str = "intermediate"
+    candidate_values: Dict[str, SkillComparisonCandidateValue] = {}
+
+class CandidateComparisonResponse(BaseModel):
+    job_id: str
+    job_title: str
+    department: Optional[str] = None
+    organization_id: Optional[str] = None
+    total_requirements: int = 0
+    must_have_count: int = 0
+    preferred_count: int = 0
+    candidates: List[CandidateComparisonSummaryItem] = []
+    skill_comparison: List[SkillComparisonMatrixRow] = []
+    meaningful_differences: List[str] = []
+    honest_ties: List[str] = []
+    comparison_summary: Optional[str] = None
+    evaluated_at: Optional[str] = None
+
+
+# ─── Phase 4E.5: Advanced Assessment Builder Schemas ──────────────────────────
+
+class AssessmentBuilderCreate(BaseModel):
+    job_id: str
+    title: str
+    description: Optional[str] = None
+    duration_minutes: int = 45
+    passing_score: int = 70
+    max_attempts: int = 1
+    deadline_days: Optional[int] = None
+    randomize_questions: bool = False
+    allow_review: bool = True
+    allow_unanswered: bool = True
+    allow_resume: bool = True
+
+class AssessmentBuilderUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    duration_minutes: Optional[int] = None
+    passing_score: Optional[int] = None
+    max_attempts: Optional[int] = None
+    deadline_days: Optional[int] = None
+    randomize_questions: Optional[bool] = None
+    allow_review: Optional[bool] = None
+    allow_unanswered: Optional[bool] = None
+    allow_resume: Optional[bool] = None
+
+class AssessmentQuestionItem(BaseModel):
+    id: str # association id
+    question_type: str # "mcq" | "coding"
+    question_id: str # question id
+    title: str
+    difficulty: str
+    category: Optional[str] = None
+    skills: List[str] = []
+    display_order: int
+    weight: float
+    is_required: bool
+    options_count: Optional[int] = None
+    test_cases_count: Optional[int] = None
+
+class AssessmentBuilderDetailResponse(BaseModel):
+    id: str
+    job_id: str
+    job_title: Optional[str] = None
+    organization_id: Optional[str] = None
+    title: str
+    description: Optional[str] = None
+    status: str # "draft" | "published" | "archived"
+    version: int = 1
+    duration_minutes: int = 45
+    passing_score: int = 70
+    max_attempts: int = 1
+    deadline_days: Optional[int] = None
+    randomize_questions: bool = False
+    allow_review: bool = True
+    allow_unanswered: bool = True
+    allow_resume: bool = True
+    total_questions: int = 0
+    total_mcqs: int = 0
+    total_coding: int = 0
+    total_points: float = 0.0
+    questions: List[AssessmentQuestionItem] = []
+    created_by: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    published_at: Optional[datetime] = None
+    archived_at: Optional[datetime] = None
+
+class AssessmentQuestionAttachRequest(BaseModel):
+    question_type: str # "mcq" | "coding"
+    question_id: str
+    display_order: Optional[int] = None
+    weight: Optional[float] = None
+    is_required: bool = True
+
+class AssessmentQuestionReorderItem(BaseModel):
+    question_type: str # "mcq" | "coding"
+    question_id: str
+    display_order: int
+    weight: Optional[float] = None
+
+class AssessmentQuestionReorderRequest(BaseModel):
+    items: List[AssessmentQuestionReorderItem]
+
+class QuestionAutoSelectRule(BaseModel):
+    question_type: str = "mcq" # "mcq" | "coding" | "any"
+    category: Optional[str] = None # "technical" | "scenario" | "troubleshooting"
+    difficulty: Optional[str] = None # "Easy" | "Medium" | "Hard"
+    skill_slug: Optional[str] = None # e.g. "python" or canonical id "skl-python"
+    count: int = 1
+    weight: Optional[float] = None
+
+class QuestionAutoSelectRequest(BaseModel):
+    rules: List[QuestionAutoSelectRule]
+    clear_existing: bool = False
+
+class AssessmentValidationResult(BaseModel):
+    is_valid: bool
+    errors: List[str] = []
+    warnings: List[str] = []
+    total_questions: int = 0
+    total_mcqs: int = 0
+    total_coding: int = 0
+    total_points: float = 0.0
+
+class UnifiedQuestionBankItem(BaseModel):
+    id: str
+    question_type: str # "mcq" | "coding"
+    title: str
+    question_text: str
+    difficulty: str
+    category: Optional[str] = None
+    skills: List[str] = []
+    is_system: bool = False
+    is_active: bool = True
+    options_count: Optional[int] = None
+    test_cases_count: Optional[int] = None
+    created_at: Optional[datetime] = None
+
+class QuestionCreateUnified(BaseModel):
+    question_type: str # "mcq" | "coding"
+    title: str
+    question_text: str # For coding, this is problem_statement
+    category: Optional[str] = "technical" # technical, scenario, troubleshooting
+    difficulty: str = "Medium" # Easy, Medium, Hard
+    explanation: Optional[str] = None
+    skills: List[str] = []
+    skill_ids: Optional[List[str]] = []
+    # MCQ specific:
+    options: Optional[List[MCQOptionCreate]] = None
+    # Coding specific:
+    slug: Optional[str] = None
+    execution_mode: Optional[str] = "function"
+    function_name: Optional[str] = "solve"
+    function_signature: Optional[Dict[str, Any]] = None
+    time_limit_sec: Optional[float] = 5.0
+    memory_limit_mb: Optional[float] = 128.0
+    allowed_languages: Optional[List[str]] = ["python", "javascript", "sql"]
+    starter_code: Optional[Dict[str, str]] = None
+    test_cases: Optional[List[CodingTestCaseCreate]] = None
+
+
+# ─── VERIFIED SKILL PASSPORT SCHEMAS ──────────────────────────────────────────
+
+class PassportEvidenceItem(BaseModel):
+    id: str
+    evidence_type: str # "coding_submission" | "mcq_submission" | "assessment" | "interview" | "resume" | "recruiter_verification"
+    source_title: str
+    reference_id: Optional[str] = None
+    score_contribution: Optional[float] = 0.0
+    evidence_strength: str = "SUPPORTING" # "STRONG" | "MODERATE" | "SUPPORTING"
+    snippet: Optional[str] = None
+    created_at: Optional[str] = None
+    recency_label: str = "Recently"
+    is_verified_source: bool = False
+
+class PassportSkillItem(BaseModel):
+    candidate_skill_id: str
+    skill_id: str
+    name: str
+    skill_name: Optional[str] = None
+    slug: str
+    category: str = "General Competencies"
+    proficiency_level: str = "unspecified"
+    years_experience: float = 0.0
+    verification_status: str = "CLAIMED" # "VERIFIED" | "EVIDENCED" | "CLAIMED"
+    is_verified: bool = False
+    verified_score: Optional[float] = None
+    verification_source: Optional[str] = None
+    evidence_count: int = 0
+    evidence_strength: Optional[str] = "NONE"
+    latest_evidence_date: Optional[str] = None
+    recency_label: str = "No evidence"
+    evidence: List[PassportEvidenceItem] = []
+    summary_explanation: str = ""
+
+class PassportCategorySummary(BaseModel):
+    category: str
+    total_skills: int = 0
+    total: Optional[int] = 0
+    verified_skills: int = 0
+    verified: Optional[int] = 0
+    evidenced_skills: int = 0
+    evidenced: Optional[int] = 0
+    claimed_skills: Optional[int] = 0
+    claimed: Optional[int] = 0
+    verification_percentage: Optional[float] = 0.0
+
+class CandidateSkillPassportResponse(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    candidate_email: Optional[str] = None
+    job_id: Optional[str] = None
+    job_title: Optional[str] = None
+    applied_date: Optional[str] = None
+    total_skills: int = 0
+    verified_skills_count: int = 0
+    evidenced_skills_count: int = 0
+    claimed_skills_count: int = 0
+    total_evidence_count: int = 0
+    verification_rate: float = 0.0
+    verification_index: Optional[float] = 0.0
+    categories: List[PassportCategorySummary] = []
+    skills: List[PassportSkillItem] = []
+    generated_at: str
+
+class ManualSkillVerificationRequest(BaseModel):
+    notes: Optional[str] = "Recruiter manual verification"
+    score: Optional[float] = 100.0
+
+
+# ─── EVIDENCE-BASED CANDIDATE SCORECARD SCHEMAS (PHASE 4E.7) ─────────────────
+
+class ScorecardEvidenceItem(BaseModel):
+    id: str
+    evidence_type: str
+    source_title: str
+    reference_id: Optional[str] = None
+    score_contribution: Optional[float] = 0.0
+    evidence_strength: str = "SUPPORTING"
+    snippet: Optional[str] = None
+    created_at: Optional[str] = None
+    recency_label: str = "Recently"
+    artifact_url: Optional[str] = None
+
+class ScorecardSkillEvaluation(BaseModel):
+    skill_id: str
+    skill_name: str
+    slug: str
+    category: str = "General Competencies"
+    requirement_type: str = "must_have"
+    weight: float = 1.0
+    status: str
+    verification_status: str
+    candidate_years: float = 0.0
+    required_years: float = 0.0
+    candidate_proficiency: str = "unspecified"
+    required_proficiency: str = "intermediate"
+    evidence_count: int = 0
+    evidence_strength: str = "NONE"
+    supported_sources: List[str] = []
+    latest_evidence_timestamp: Optional[str] = None
+    recency_label: str = "No evidence"
+    evidence: List[ScorecardEvidenceItem] = []
+    reason: str = ""
+
+class ScorecardFitSummary(BaseModel):
+    total_required_skills: int = 0
+    verified_required_count: int = 0
+    evidenced_required_count: int = 0
+    claimed_required_count: int = 0
+    missing_required_count: int = 0
+    
+    total_preferred_skills: int = 0
+    verified_preferred_count: int = 0
+    evidenced_preferred_count: int = 0
+    claimed_preferred_count: int = 0
+    missing_preferred_count: int = 0
+
+    total_job_skills: int = 0
+    total_verified_skills: int = 0
+    total_evidenced_skills: int = 0
+    total_claimed_skills: int = 0
+    total_missing_skills: int = 0
+
+    required_skill_coverage: float = 0.0
+    preferred_skill_coverage: float = 0.0
+    overall_fit_score: float = 0.0
+    fit_tier: str = "MODERATE_FIT"
+    scoring_formula: str = ""
+
+class ScorecardSkillGapItem(BaseModel):
+    skill_name: str
+    category: str
+    requirement_type: str
+    gap_type: str
+    evidence_count: int = 0
+    current_status: str
+    mitigation_recommendation: str
+
+class ScorecardEvidenceSummary(BaseModel):
+    total_evidence_records: int = 0
+    coding_evidence_count: int = 0
+    mcq_evidence_count: int = 0
+    interview_evidence_count: int = 0
+    recruiter_verified_count: int = 0
+    latest_evidence_date: Optional[str] = None
+    latest_recency_label: str = "No evidence"
+
+class CandidateScorecardResponse(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    candidate_email: Optional[str] = None
+    candidate_stage: str = "applied"
+    job_id: str
+    job_title: str
+    job_department: Optional[str] = None
+    organization_id: str
+    summary: ScorecardFitSummary
+    skill_evaluations: List[ScorecardSkillEvaluation]
+    skill_gaps: List[ScorecardSkillGapItem]
+    evidence_summary: ScorecardEvidenceSummary
+    generated_at: str
+
+
+# ======================================================================
+# PHASE 4E.9 — EVIDENCE-BASED HIRING DECISION SCHEMAS
+# ======================================================================
+
+class DecisionContextScorecardSummary(BaseModel):
+    fit_score: float = 0.0
+    fit_tier: str = "MODERATE_FIT"
+    fit_tier_label: str = "Moderate Fit"
+    must_have_coverage: float = 0.0
+    preferred_coverage: float = 0.0
+    verified_evidence_count: int = 0
+    evidenced_count: int = 0
+    claimed_count: int = 0
+    missing_count: int = 0
+    total_requirements: int = 0
+
+class DecisionEvidenceItem(BaseModel):
+    skill_name: str
+    category: str = "General"
+    importance: str = "required" # "required" | "preferred"
+    status: str = "VERIFIED" # "VERIFIED" | "EVIDENCED" | "CLAIMED"
+    proficiency: Optional[str] = None
+    years_of_experience: Optional[float] = 0.0
+    evidence_sources: List[str] = []
+    evidence_count: int = 0
+    recency_label: str = "No evidence"
+    highlights: List[str] = []
+
+class DecisionGapItem(BaseModel):
+    skill_name: str
+    importance: str = "required"
+    status: str = "MISSING" # "MISSING" | "CLAIMED" | "EVIDENCED"
+    required_proficiency: Optional[str] = "intermediate"
+    candidate_proficiency: Optional[str] = "unspecified"
+    mitigation_recommendation: str = ""
+
+class DecisionHistoryItem(BaseModel):
+    id: str
+    candidate_id: str
+    from_decision: Optional[str] = None
+    to_decision: str
+    changed_by: str
+    changed_by_name: Optional[str] = None
+    rationale_category: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[str] = None
+
+class GroundedRationaleOption(BaseModel):
+    id: str
+    label: str
+    type: str # "positive" | "caution" | "gap"
+    grounded_evidence: Optional[str] = None
+
+class CandidateDecisionContextResponse(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    candidate_email: Optional[str] = None
+    job_id: str
+    job_title: str
+    department: Optional[str] = None
+    current_stage: str
+    current_decision: str
+    recruiter_score: Optional[int] = None
+    is_final_decision: bool = False
+    is_reopened: bool = False
+    reopened_at: Optional[str] = None
+    reopened_by: Optional[str] = None
+    reopen_reason: Optional[str] = None
+    previous_final_decision: Optional[str] = None
+    scorecard: DecisionContextScorecardSummary
+    strongest_evidence: List[DecisionEvidenceItem] = []
+    material_gaps: List[DecisionGapItem] = []
+    decision_history: List[DecisionHistoryItem] = []
+    allowed_transitions: List[str] = []
+    grounded_rationale_options: List[GroundedRationaleOption] = []
+    comparison_context: Optional[Dict[str, Any]] = None
+    rejection_category: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    hr_notes: Optional[str] = None
 
 

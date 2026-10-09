@@ -781,9 +781,9 @@ export default function AskSparkxDrawer({
                           {msg.metrics.map((m, i) => (
                             <span 
                               key={i} 
-                              className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-700 dark:text-teal-300 border border-teal-500/25 text-[10.5px] font-mono font-semibold shadow-subtle flex items-center gap-1.5"
+                              className="px-2.5 py-1 rounded-lg bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/25 text-[10.5px] font-mono font-semibold shadow-subtle flex items-center gap-1.5"
                             >
-                              <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-brand-500 shrink-0" />
                               <span>{m}</span>
                             </span>
                           ))}
@@ -793,8 +793,8 @@ export default function AskSparkxDrawer({
 
                     {/* AI Qualitative Interpretation */}
                     {msg.aiInterpretation && (
-                      <div className="space-y-1.5 bg-teal-50/60 dark:bg-teal-950/25 p-3.5 rounded-xl border border-teal-200/60 dark:border-teal-900/40">
-                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300 flex items-center gap-1.5">
+                      <div className="space-y-1.5 bg-brand-50/60 dark:bg-brand-950/25 p-3.5 rounded-xl border border-brand-200/60 dark:border-brand-900/40">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300 flex items-center gap-1.5">
                           <Sparkles className="w-3.5 h-3.5" />
                           <span>AI Synthesis & Recruiter Briefing</span>
                         </span>

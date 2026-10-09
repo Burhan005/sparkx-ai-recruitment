@@ -621,7 +621,7 @@ export function TypingTerminal() {
   };
 
   const colorMap = {
-    cmd: 'text-teal-400 font-semibold',
+    cmd: 'text-amber-400 font-semibold',
     dim: 'text-stone-500',
     info: 'text-sky-400',
     pass: 'text-emerald-400 font-medium',
@@ -639,11 +639,11 @@ export function TypingTerminal() {
           onClick={() => handleDomainChange('tech')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
             activeDomain === 'tech'
-              ? 'bg-teal-100 text-teal-950 border border-teal-300 shadow-sm dark:bg-teal-500/20 dark:text-teal-300 dark:border-teal-500/40 dark:shadow-teal-950/20 scale-[1.02]'
+              ? 'bg-brand-100 text-brand-950 border border-brand-300 shadow-sm dark:bg-brand-500/20 dark:text-brand-300 dark:border-brand-500/40 dark:shadow-brand-950/20 scale-[1.02]'
               : 'text-stone-700 bg-white/95 border border-stone-300/90 hover:bg-stone-50 hover:text-stone-950 shadow-2xs dark:text-stone-400 dark:bg-stone-900/60 dark:border-stone-800 dark:hover:bg-stone-800/50 dark:hover:text-stone-200'
           }`}
         >
-          <Code2 className="w-3.5 h-3.5 text-teal-700 dark:text-teal-400" />
+          <Code2 className="w-3.5 h-3.5 text-brand-700 dark:text-brand-400" />
           <span>Technical & Engineering (11 Compilers)</span>
         </button>
 
@@ -677,7 +677,7 @@ export function TypingTerminal() {
             <span className="text-[11px] font-mono text-stone-300 flex items-center gap-2">
               {activeDomain === 'tech' ? (
                 <>
-                  <Code2 className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <Code2 className="w-3.5 h-3.5 text-brand-400 shrink-0" />
                   <span className="font-semibold text-stone-200">{scenario.file}</span>
                   <span className="text-[10px] text-stone-500 hidden sm:inline">• UTF-8</span>
                 </>
@@ -712,7 +712,7 @@ export function TypingTerminal() {
                   className={`px-3 py-1 rounded-md text-[11px] font-mono font-semibold transition-all duration-150 cursor-pointer whitespace-nowrap ${
                     isActive
                       ? activeDomain === 'tech'
-                        ? 'bg-teal-500/25 text-teal-300 border border-teal-500/50 shadow-xs'
+                        ? 'bg-brand-500/25 text-brand-300 border border-brand-500/50 shadow-xs'
                         : 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-xs'
                       : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/80 border border-transparent'
                   }`}
@@ -731,7 +731,7 @@ export function TypingTerminal() {
             <div className="lg:col-span-6 p-4 sm:p-5 bg-[#0F0D0B] font-mono text-[11px] sm:text-xs leading-relaxed select-text overflow-x-hidden no-scrollbar">
               <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-stone-800/60 text-[10px] uppercase font-bold tracking-wider text-stone-500">
                 <span>Candidate Submission</span>
-                <span className="text-teal-400">Ready for Evaluation</span>
+                <span className="text-brand-400">Ready for Evaluation</span>
               </div>
 
               <div className="space-y-1">
@@ -749,7 +749,7 @@ export function TypingTerminal() {
               <div className="space-y-1">
                 <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-stone-800/60 text-[10px] uppercase font-bold tracking-wider text-stone-500">
                   <span className="flex items-center gap-1.5">
-                    <Terminal className="w-3 h-3 text-teal-400" />
+                    <Terminal className="w-3 h-3 text-brand-400" />
                     <span>Isolated Sandbox Console</span>
                   </span>
                   <span className="text-emerald-400">Live Telemetry</span>
@@ -766,7 +766,7 @@ export function TypingTerminal() {
                 ))}
                 {/* Blinking cursor */}
                 {visibleLines < scenario.lines?.length && inView && (
-                  <span className="inline-block w-1.5 h-3.5 animate-pulse ml-0.5 bg-teal-400" />
+                  <span className="inline-block w-1.5 h-3.5 animate-pulse ml-0.5 bg-brand-400" />
                 )}
               </div>
             </div>
@@ -829,12 +829,12 @@ export function TypingTerminal() {
                         key={dIdx}
                         className={`p-3 rounded-xl border text-xs leading-relaxed ${
                           d.tag === 'Candidate'
-                            ? 'bg-teal-950/30 border-teal-800/50 text-teal-200'
+                            ? 'bg-brand-950/30 border-brand-800/50 text-brand-200'
                             : 'bg-stone-900/60 border-stone-800 text-stone-300'
                         }`}
                       >
                         <div className="flex items-center justify-between text-[10px] font-bold mb-1 opacity-80">
-                          <span className={d.tag === 'Candidate' ? 'text-teal-400' : 'text-stone-400'}>
+                          <span className={d.tag === 'Candidate' ? 'text-brand-400' : 'text-stone-400'}>
                             {d.speaker}
                           </span>
                           <span className="font-mono text-[9px] uppercase">{d.tag}</span>
@@ -965,7 +965,7 @@ export function TypingTerminal() {
                         {/* Progress Bar */}
                         <div className="h-1.5 w-full rounded-full bg-stone-900 border border-stone-800/60 overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-amber-500 to-teal-400 rounded-full transition-all duration-700 ease-out"
+                            className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full transition-all duration-700 ease-out"
                             style={{ width: isEvaluated ? `${r.score}%` : '0%' }}
                           />
                         </div>

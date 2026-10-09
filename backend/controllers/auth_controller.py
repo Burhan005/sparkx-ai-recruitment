@@ -197,6 +197,17 @@ class AuthController:
         db.commit()
         db.refresh(new_user)
 
+        # Authoritative Phase 4E.1 Canonical Skill Registration
+        if new_user.skills:
+            try:
+                from services.skill_service import SkillService
+                for s in new_user.skills:
+                    if s and isinstance(s, str) and s.strip():
+                        SkillService.get_or_create_skill(s.strip(), db)
+                db.commit()
+            except Exception as sk_err:
+                print(f"[Auth] Notice: Canonical skill registration on register: {sk_err}")
+
         token = create_access_token(new_user.id, new_user.email, new_user.role, new_user.organization_id)
         return {
             "id": new_user.id,
@@ -278,6 +289,17 @@ class AuthController:
 
         db.commit()
         db.refresh(user)
+
+        # Authoritative Phase 4E.1 Canonical Skill Registration on profile update
+        if payload.skills:
+            try:
+                from services.skill_service import SkillService
+                for s in payload.skills:
+                    if s and isinstance(s, str) and s.strip():
+                        SkillService.get_or_create_skill(s.strip(), db)
+                db.commit()
+            except Exception as sk_err:
+                print(f"[Auth] Notice: Canonical skill registration on profile update: {sk_err}")
 
         user_org = getattr(user, "organization_id", "org-sparkx-default") or "org-sparkx-default"
         return {

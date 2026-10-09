@@ -3,7 +3,7 @@ import { ChevronDown, Check } from 'lucide-react';
 
 /**
  * CustomDropdown — Refined Espresso Stone Dropdown Component
- * Accessible, tactile popover menu with warm surfaces and teal accents.
+ * Accessible, tactile popover menu with warm surfaces and roasted amber accents.
  */
 export default function CustomDropdown({
   value,

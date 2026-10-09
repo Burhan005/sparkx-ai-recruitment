@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { useSmoothNavigate } from '../../context/PageTransitionContext';
 import { FadeInUp, Button, Stat } from '../ui/Primitives';
 import { 
   Briefcase, 
@@ -38,6 +39,7 @@ import api from '../../services/api';
 
 export default function MyApplications() {
   const navigate = useNavigate();
+  const { smoothNavigate } = useSmoothNavigate();
   const { 
     myApplications, 
     refreshMyApplications, 
@@ -141,7 +143,7 @@ export default function MyApplications() {
             Active Submissions ({myApplications.length})
           </h2>
           <button 
-            onClick={() => navigate('/jobs')}
+            onClick={() => smoothNavigate('/jobs')}
             className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center space-x-1"
           >
             <span>Browse More Roles</span>
@@ -161,7 +163,7 @@ export default function MyApplications() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/jobs')}
+              onClick={() => smoothNavigate('/jobs')}
               className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-950 text-xs font-semibold shadow-subtle transition inline-flex items-center space-x-2"
             >
               <span>Explore Available Positions</span>
@@ -369,15 +371,29 @@ export default function MyApplications() {
                             </>
                           )}
                           {app.interviewMeetingUrl && (
-                            <a
-                              href={app.interviewMeetingUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-subtle"
-                            >
-                              <span>Launch Room</span>
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
+                            app.interviewMeetingUrl.startsWith('http') ? (
+                              <a
+                                href={app.interviewMeetingUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-subtle"
+                              >
+                                <span>External Meet</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveJobId(app.jobId);
+                                  navigate(app.interviewMeetingUrl);
+                                }}
+                                className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-subtle"
+                              >
+                                <span>Enter Room</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            )
                           )}
                         </div>
                       </div>
@@ -427,7 +443,7 @@ export default function MyApplications() {
                         <button
                           onClick={() => {
                             setActiveJobId(app.jobId);
-                            navigate(`/interview/${app.id}`);
+                            smoothNavigate(`/interview/${app.id}`);
                           }}
                           className="px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand-950/40 hover:bg-brand-100 dark:hover:bg-brand-900/50 text-brand-700 dark:text-brand-300 font-semibold border border-brand-200 dark:border-brand-800/60 transition flex items-center space-x-1.5"
                         >
@@ -459,7 +475,7 @@ export default function MyApplications() {
                         <button
                           onClick={() => {
                             setActiveJobId(app.jobId);
-                            navigate(`/assessment/${app.id}`);
+                            smoothNavigate(`/assessment/${app.id}`);
                           }}
                           className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50 transition flex items-center space-x-1.5"
                         >
@@ -470,7 +486,7 @@ export default function MyApplications() {
                         <button
                           onClick={() => {
                             setActiveJobId(app.jobId);
-                            navigate(`/assessment/${app.id}`);
+                            smoothNavigate(`/assessment/${app.id}`);
                           }}
                           className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold transition flex items-center space-x-1.5 shadow-subtle"
                         >
@@ -490,12 +506,23 @@ export default function MyApplications() {
                       <button
                         onClick={() => {
                           setActiveJobId(app.jobId);
-                          navigate(`/skill-gap/${app.id}`);
+                          smoothNavigate(`/skill-gap/${app.id}`);
                         }}
                         className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-800 transition flex items-center space-x-1.5"
                       >
                         <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
                         <span>Skill Gap Roadmap</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveJobId(app.jobId);
+                          smoothNavigate(`/skill-passport/${app.id}`);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50 transition flex items-center space-x-1.5"
+                      >
+                        <Award className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>Skill Passport</span>
                       </button>
                     </div>
 

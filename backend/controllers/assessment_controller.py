@@ -21,11 +21,13 @@ from sqlalchemy.orm import Session
 from models.db_models import (
     CandidateModel, JobModel, UserModel,
     AssessmentModel, AssessmentSectionModel,
+    AssessmentVersionModel, AssessmentAuditLogModel,
     CodingProblemModel, CodingProblemVersionModel,
     AssessmentCodingProblemModel, CodingTestCaseModel,
     CodingSubmissionModel, SubmissionTestCaseResultModel,
     MCQQuestionModel, MCQOptionModel,
     AssessmentMCQModel, MCQSubmissionModel,
+    SkillModel, QuestionSkillModel,
     SUPPORTED_LANGUAGES_REGISTRY,
     can_access_problem, can_modify_problem,
     can_access_mcq, can_modify_mcq,
@@ -33,7 +35,11 @@ from models.db_models import (
     sanitize_mcq_for_candidate
 )
 from services.organization_service import ensure_organization
-from schemas import CodeRunRequest, CodeRunResponse, AssessmentSubmitRequest, AssessmentSubmitResponse
+from schemas import (
+    CodeRunRequest, CodeRunResponse, AssessmentSubmitRequest, AssessmentSubmitResponse,
+    AssessmentBuilderCreate, AssessmentBuilderUpdate, AssessmentQuestionAttachRequest,
+    AssessmentQuestionReorderRequest, QuestionAutoSelectRequest, QuestionCreateUnified
+)
 from ai_engine import synthesize_technical_assessment_bundle, evaluate_scenario_response, evaluate_practical_task, _normalize_bundle
 from workflow_contract import (
     validate_transition, project_legacy_status, project_legacy_final_decision,
@@ -344,6 +350,13 @@ class AssessmentController:
             authorized, auth_err = AssessmentController._is_candidate_authorized_for_assessment(candidate)
             if not authorized:
                 return None, auth_err
+
+            # Phase 4E.5: Draft Assessment Guard - candidates cannot access draft assessments
+            active_asm = db.query(AssessmentModel).filter(
+                AssessmentModel.job_id == target_job_id
+            ).first()
+            if active_asm and active_asm.status == "draft" and not candidate.assessment_blueprint:
+                return None, "Assessment is currently in draft and not yet available for candidates."
 
         job = db.query(JobModel).filter(JobModel.id == target_job_id).first()
         job_title = job.title if job else (candidate.job.title if (candidate and getattr(candidate, "job", None)) else "Role Assessment")
@@ -931,7 +944,41 @@ class AssessmentController:
                     "error": "Deliverable lacks required detail or is empty.",
                     "duration": "0ms"
                 })
-        return results, logs
+    @staticmethod
+    def _resolve_or_create_test_case(db: Session, prob_id: str, tc_data: Any, is_hidden: bool, idx: int) -> str:
+        tc_id = None
+        if hasattr(tc_data, "id"):
+            tc_id = tc_data.id
+        elif isinstance(tc_data, dict):
+            tc_id = tc_data.get("id")
+
+        if tc_id:
+            existing = db.query(CodingTestCaseModel.id).filter(CodingTestCaseModel.id == str(tc_id)).first()
+            if existing:
+                return existing[0]
+
+        existing_by_order = db.query(CodingTestCaseModel.id).filter(
+            CodingTestCaseModel.problem_id == prob_id,
+            CodingTestCaseModel.is_hidden == is_hidden,
+            CodingTestCaseModel.display_order == idx
+        ).first()
+        if existing_by_order:
+            return existing_by_order[0]
+
+        new_tc_id = str(tc_id) if (tc_id and not str(tc_id).isdigit()) else f"tc-{uuid.uuid4().hex[:10]}"
+        inp = tc_data.get("input", "") if isinstance(tc_data, dict) else getattr(tc_data, "input_data", "")
+        exp = tc_data.get("expected", "") if isinstance(tc_data, dict) else getattr(tc_data, "expected_output", "")
+        new_tc = CodingTestCaseModel(
+            id=new_tc_id,
+            problem_id=prob_id,
+            input_data=str(inp or ""),
+            expected_output=str(exp or ""),
+            is_hidden=is_hidden,
+            display_order=idx
+        )
+        db.add(new_tc)
+        db.flush()
+        return new_tc_id
 
     @staticmethod
     def submit_candidate_assessment(candidate_id: str, payload: AssessmentSubmitRequest, db: Session) -> Tuple[Optional[AssessmentSubmitResponse], Optional[str]]:
@@ -1011,6 +1058,18 @@ class AssessmentController:
                         points_earned=1.0 if is_answer_correct else 0.0,
                         points_possible=1.0
                     ))
+
+                    # Phase 4E.2: Link authentic MCQ evidence
+                    try:
+                        from services.skill_matching_service import SkillMatchingService
+                        SkillMatchingService.link_mcq_evidence(
+                            candidate_id=candidate.id,
+                            mcq_question_id=db_q.id,
+                            is_correct=is_answer_correct,
+                            db=db
+                        )
+                    except Exception:
+                        pass
 
             tech_score = int((correct_mcqs / total_mcqs) * 100)
         else:
@@ -1203,52 +1262,73 @@ class AssessmentController:
                     first_sample_results = p_sample_results
                     first_hidden_results = p_hidden_results
 
-                # Persist genuine CodingSubmissionModel & SubmissionTestCaseResultModel
-                try:
-                    sub_id = f"sub-{uuid.uuid4().hex[:12]}"
-                    sub_model = CodingSubmissionModel(
-                        id=sub_id,
-                        candidate_id=candidate.id,
-                        assessment_id=assessment_obj.id if assessment_obj else None,
-                        coding_problem_id=p_id if prob else None,
-                        coding_problem_version_id=acp.coding_problem_version_id if acp else None,
-                        language=c_lang,
-                        source_code=c_code,
-                        status="passed" if p_passed == p_total and p_total > 0 else "failed" if p_total > 0 else "completed",
-                        total_test_cases=p_total,
-                        passed_test_cases=p_passed,
-                        score=float(prob_score),
-                        execution_time_ms=p_total_ms,
-                        memory_mb=p_mem_mb,
-                        is_best_submission=True,
-                        completed_at=datetime.utcnow()
-                    )
-                    db.add(sub_model)
+                # Persist genuine CodingSubmissionModel & SubmissionTestCaseResultModel only if problem is in DB
+                sub_id = f"sub-{uuid.uuid4().hex[:12]}"
+                if prob:
+                    try:
+                        sub_model = CodingSubmissionModel(
+                            id=sub_id,
+                            candidate_id=candidate.id,
+                            assessment_id=assessment_obj.id if assessment_obj else None,
+                            coding_problem_id=prob.id,
+                            coding_problem_version_id=acp.coding_problem_version_id if acp else None,
+                            language=c_lang,
+                            source_code=c_code,
+                            status="passed" if p_passed == p_total and p_total > 0 else "failed" if p_total > 0 else "completed",
+                            total_test_cases=p_total,
+                            passed_test_cases=p_passed,
+                            score=float(prob_score),
+                            execution_time_ms=p_total_ms,
+                            memory_mb=p_mem_mb,
+                            is_best_submission=True,
+                            completed_at=datetime.utcnow()
+                        )
+                        db.add(sub_model)
 
-                    for r in p_sample_results:
-                        db.add(SubmissionTestCaseResultModel(
-                            id=f"tcr-{uuid.uuid4().hex[:12]}",
-                            submission_id=sub_id,
-                            test_case_id=str(r.get("id") or f"tc-s-{uuid.uuid4().hex[:6]}"),
-                            passed=bool(r.get("passed", False)),
-                            actual_output=str(r.get("actual", "")),
-                            execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
-                            memory_mb=p_mem_mb,
-                            error_message=r.get("error"),
-                            is_hidden=False
-                        ))
-                    for r in p_hidden_results:
-                        db.add(SubmissionTestCaseResultModel(
-                            id=f"tcr-{uuid.uuid4().hex[:12]}",
-                            submission_id=sub_id,
-                            test_case_id=str(r.get("id") or f"tc-h-{uuid.uuid4().hex[:6]}"),
-                            passed=bool(r.get("passed", False)),
-                            actual_output=str(r.get("actual", "")),
-                            execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
-                            memory_mb=p_mem_mb,
-                            error_message=r.get("error"),
-                            is_hidden=True
-                        ))
+                        for i, r in enumerate(p_sample_results):
+                            tc_obj = sample_tcs[i] if i < len(sample_tcs) else None
+                            tc_fk = AssessmentController._resolve_or_create_test_case(db, prob.id, tc_obj, is_hidden=False, idx=i)
+                            db.add(SubmissionTestCaseResultModel(
+                                id=f"tcr-{uuid.uuid4().hex[:12]}",
+                                submission_id=sub_id,
+                                test_case_id=tc_fk,
+                                passed=bool(r.get("passed", False)),
+                                actual_output=str(r.get("actual", "")),
+                                execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
+                                memory_mb=p_mem_mb,
+                                error_message=r.get("error"),
+                                is_hidden=False
+                            ))
+                        for i, r in enumerate(p_hidden_results):
+                            tc_obj = hidden_tcs[i] if i < len(hidden_tcs) else None
+                            tc_fk = AssessmentController._resolve_or_create_test_case(db, prob.id, tc_obj, is_hidden=True, idx=i)
+                            db.add(SubmissionTestCaseResultModel(
+                                id=f"tcr-{uuid.uuid4().hex[:12]}",
+                                submission_id=sub_id,
+                                test_case_id=tc_fk,
+                                passed=bool(r.get("passed", False)),
+                                actual_output=str(r.get("actual", "")),
+                                execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
+                                memory_mb=p_mem_mb,
+                                error_message=r.get("error"),
+                                is_hidden=True
+                            ))
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning(f"Error persisting coding submission: {e}")
+
+                # Phase 4E.2: Link authentic Coding evidence
+                try:
+                    from services.skill_matching_service import SkillMatchingService
+                    SkillMatchingService.link_coding_evidence(
+                        candidate_id=candidate.id,
+                        problem_id_or_slug=p_id,
+                        language=c_lang,
+                        score=float(prob_score),
+                        submission_id=sub_id,
+                        db=db,
+                        snippet=f"Coding solution for problem '{getattr(prob, 'title', p_id)}' in {c_lang.title()}: {prob_score}% score ({p_passed}/{p_total} tests passed)"
+                    )
                 except Exception:
                     pass
 
@@ -1336,50 +1416,76 @@ class AssessmentController:
                 else:
                     hands_score = 0
 
-                # Persist genuine CodingSubmissionModel & SubmissionTestCaseResultModel
-                try:
-                    sub_hands_id = f"sub-hands-{uuid.uuid4().hex[:10]}"
-                    sub_hands = CodingSubmissionModel(
-                        id=sub_hands_id,
-                        candidate_id=candidate.id,
-                        coding_problem_id=str(bundle_hands.get("id") or "hands_on_problem"),
-                        language=hands_lang,
-                        source_code=hands_code,
-                        status="passed" if passed_hands == total_hands and total_hands > 0 else "failed" if total_hands > 0 else "completed",
-                        total_test_cases=total_hands,
-                        passed_test_cases=passed_hands,
-                        score=float(hands_score),
-                        execution_time_ms=hands_total_ms,
-                        memory_mb=hands_mem_mb
-                    )
-                    db.add(sub_hands)
+                # Persist genuine CodingSubmissionModel & SubmissionTestCaseResultModel only if problem is in DB
+                h_raw_id = str(bundle_hands.get("id") or "")
+                db_h_prob = db.query(CodingProblemModel).filter(
+                    (CodingProblemModel.id == h_raw_id) | (CodingProblemModel.slug == h_raw_id)
+                ).first() if h_raw_id else None
+                sub_hands_id = f"sub-hands-{uuid.uuid4().hex[:10]}"
 
-                    for r in hands_sample_results:
-                        db.add(SubmissionTestCaseResultModel(
-                            id=f"tcr-{uuid.uuid4().hex[:12]}",
-                            submission_id=sub_hands_id,
-                            test_case_id=str(r.get("id") or f"tc-s-{uuid.uuid4().hex[:6]}"),
-                            passed=bool(r.get("passed", False)),
-                            actual_output=str(r.get("actual", "")),
-                            execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
-                            memory_mb=hands_mem_mb,
-                            error_message=r.get("error"),
-                            is_hidden=False
-                        ))
-                    for r in hands_hidden_results:
-                        db.add(SubmissionTestCaseResultModel(
-                            id=f"tcr-{uuid.uuid4().hex[:12]}",
-                            submission_id=sub_hands_id,
-                            test_case_id=str(r.get("id") or f"tc-h-{uuid.uuid4().hex[:6]}"),
-                            passed=bool(r.get("passed", False)),
-                            actual_output=str(r.get("actual", "")),
-                            execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
-                            memory_mb=hands_mem_mb,
-                            error_message=r.get("error"),
-                            is_hidden=True
-                        ))
+                if db_h_prob:
+                    try:
+                        sub_hands = CodingSubmissionModel(
+                            id=sub_hands_id,
+                            candidate_id=candidate.id,
+                            coding_problem_id=db_h_prob.id,
+                            language=hands_lang,
+                            source_code=hands_code,
+                            status="passed" if passed_hands == total_hands and total_hands > 0 else "failed" if total_hands > 0 else "completed",
+                            total_test_cases=total_hands,
+                            passed_test_cases=passed_hands,
+                            score=float(hands_score),
+                            execution_time_ms=hands_total_ms,
+                            memory_mb=hands_mem_mb
+                        )
+                        db.add(sub_hands)
+
+                        for i, r in enumerate(hands_sample_results):
+                            tc_obj = sample_tcs[i] if i < len(sample_tcs) else None
+                            tc_fk = AssessmentController._resolve_or_create_test_case(db, db_h_prob.id, tc_obj, is_hidden=False, idx=i)
+                            db.add(SubmissionTestCaseResultModel(
+                                id=f"tcr-{uuid.uuid4().hex[:12]}",
+                                submission_id=sub_hands_id,
+                                test_case_id=tc_fk,
+                                passed=bool(r.get("passed", False)),
+                                actual_output=str(r.get("actual", "")),
+                                execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
+                                memory_mb=hands_mem_mb,
+                                error_message=r.get("error"),
+                                is_hidden=False
+                            ))
+                        for i, r in enumerate(hands_hidden_results):
+                            tc_obj = hidden_tcs[i] if i < len(hidden_tcs) else None
+                            tc_fk = AssessmentController._resolve_or_create_test_case(db, db_h_prob.id, tc_obj, is_hidden=True, idx=i)
+                            db.add(SubmissionTestCaseResultModel(
+                                id=f"tcr-{uuid.uuid4().hex[:12]}",
+                                submission_id=sub_hands_id,
+                                test_case_id=tc_fk,
+                                passed=bool(r.get("passed", False)),
+                                actual_output=str(r.get("actual", "")),
+                                execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
+                                memory_mb=hands_mem_mb,
+                                error_message=r.get("error"),
+                                is_hidden=True
+                            ))
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).warning(f"Error persisting hands-on submission: {e}")
+
+                # Phase 4E.2: Link authentic Coding evidence
+                try:
+                    from services.skill_matching_service import SkillMatchingService
+                    SkillMatchingService.link_coding_evidence(
+                        candidate_id=candidate.id,
+                        problem_id_or_slug=str(bundle_hands.get("id") or "hands_on_problem"),
+                        language=hands_lang,
+                        score=float(hands_score),
+                        submission_id=sub_hands_id,
+                        db=db,
+                        snippet=f"Hands-on coding task in {hands_lang.title()}: {hands_score}% test cases passed"
+                    )
                 except Exception:
-                    pass  # Graceful fallback if tables are empty/unbound in legacy paths
+                    pass
 
         # 4. Grade Category 4: Troubleshooting / Anomaly Diagnosis (25 points)
         trouble = payload.troubleshooting_submission or {}
@@ -1441,48 +1547,74 @@ class AssessmentController:
             else:
                 trouble_score = 0
 
-            # Persist genuine troubleshooting CodingSubmissionModel & SubmissionTestCaseResultModel
-            try:
-                sub_tr_id = f"sub-trouble-{uuid.uuid4().hex[:10]}"
-                sub_tr = CodingSubmissionModel(
-                    id=sub_tr_id,
-                    candidate_id=candidate.id,
-                    coding_problem_id=str(bundle_trouble.get("id") or "troubleshooting_problem"),
-                    language=trouble_lang,
-                    source_code=trouble_code,
-                    status="passed" if passed_trouble == total_trouble and total_trouble > 0 else "failed" if total_trouble > 0 else "completed",
-                    total_test_cases=total_trouble,
-                    passed_test_cases=passed_trouble,
-                    score=float(trouble_score),
-                    execution_time_ms=trouble_total_ms,
-                    memory_mb=trouble_mem_mb
-                )
-                db.add(sub_tr)
+            # Persist genuine troubleshooting CodingSubmissionModel & SubmissionTestCaseResultModel only if problem is in DB
+            tr_raw_id = str(bundle_trouble.get("id") or "")
+            db_tr_prob = db.query(CodingProblemModel).filter(
+                (CodingProblemModel.id == tr_raw_id) | (CodingProblemModel.slug == tr_raw_id)
+            ).first() if tr_raw_id else None
+            sub_tr_id = f"sub-trouble-{uuid.uuid4().hex[:10]}"
 
-                for r in trouble_sample_results:
-                    db.add(SubmissionTestCaseResultModel(
-                        id=f"tcr-{uuid.uuid4().hex[:12]}",
-                        submission_id=sub_tr_id,
-                        test_case_id=str(r.get("id") or f"tc-ts-{uuid.uuid4().hex[:6]}"),
-                        passed=bool(r.get("passed", False)),
-                        actual_output=str(r.get("actual", "")),
-                        execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
-                        memory_mb=trouble_mem_mb,
-                        error_message=r.get("error"),
-                        is_hidden=False
-                    ))
-                for r in trouble_hidden_results:
-                    db.add(SubmissionTestCaseResultModel(
-                        id=f"tcr-{uuid.uuid4().hex[:12]}",
-                        submission_id=sub_tr_id,
-                        test_case_id=str(r.get("id") or f"tc-th-{uuid.uuid4().hex[:6]}"),
-                        passed=bool(r.get("passed", False)),
-                        actual_output=str(r.get("actual", "")),
-                        execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
-                        memory_mb=trouble_mem_mb,
-                        error_message=r.get("error"),
-                        is_hidden=True
-                    ))
+            if db_tr_prob:
+                try:
+                    sub_tr = CodingSubmissionModel(
+                        id=sub_tr_id,
+                        candidate_id=candidate.id,
+                        coding_problem_id=db_tr_prob.id,
+                        language=trouble_lang,
+                        source_code=trouble_code,
+                        status="passed" if passed_trouble == total_trouble and total_trouble > 0 else "failed" if total_trouble > 0 else "completed",
+                        total_test_cases=total_trouble,
+                        passed_test_cases=passed_trouble,
+                        score=float(trouble_score),
+                        execution_time_ms=trouble_total_ms,
+                        memory_mb=trouble_mem_mb
+                    )
+                    db.add(sub_tr)
+
+                    for i, r in enumerate(trouble_sample_results):
+                        tc_obj = t_sample_tcs[i] if i < len(t_sample_tcs) else None
+                        tc_fk = AssessmentController._resolve_or_create_test_case(db, db_tr_prob.id, tc_obj, is_hidden=False, idx=i)
+                        db.add(SubmissionTestCaseResultModel(
+                            id=f"tcr-{uuid.uuid4().hex[:12]}",
+                            submission_id=sub_tr_id,
+                            test_case_id=tc_fk,
+                            passed=bool(r.get("passed", False)),
+                            actual_output=str(r.get("actual", "")),
+                            execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
+                            memory_mb=trouble_mem_mb,
+                            error_message=r.get("error"),
+                            is_hidden=False
+                        ))
+                    for i, r in enumerate(trouble_hidden_results):
+                        tc_obj = t_hidden_tcs[i] if i < len(t_hidden_tcs) else None
+                        tc_fk = AssessmentController._resolve_or_create_test_case(db, db_tr_prob.id, tc_obj, is_hidden=True, idx=i)
+                        db.add(SubmissionTestCaseResultModel(
+                            id=f"tcr-{uuid.uuid4().hex[:12]}",
+                            submission_id=sub_tr_id,
+                            test_case_id=tc_fk,
+                            passed=bool(r.get("passed", False)),
+                            actual_output=str(r.get("actual", "")),
+                            execution_time_ms=float(str(r.get("duration", "0ms")).replace("ms", "") or 0.0),
+                            memory_mb=trouble_mem_mb,
+                            error_message=r.get("error"),
+                            is_hidden=True
+                        ))
+                except Exception as e:
+                    import logging
+                    logging.getLogger(__name__).warning(f"Error persisting troubleshooting submission: {e}")
+
+            # Phase 4E.2: Link authentic Coding evidence
+            try:
+                from services.skill_matching_service import SkillMatchingService
+                SkillMatchingService.link_coding_evidence(
+                    candidate_id=candidate.id,
+                    problem_id_or_slug=str(bundle_trouble.get("id") or "troubleshooting_problem"),
+                    language=trouble_lang,
+                    score=float(trouble_score),
+                    submission_id=sub_tr_id,
+                    db=db,
+                    snippet=f"Troubleshooting diagnosis task in {trouble_lang.title()}: {trouble_score}% test cases passed"
+                )
             except Exception:
                 pass
 
@@ -2207,7 +2339,8 @@ class AssessmentController:
                 organization_id=org_id,
                 title=f"{job.title} Technical Assessment",
                 passing_score=70,
-                duration_minutes=45
+                duration_minutes=45,
+                status="published"
             )
             db.add(assessment)
             db.flush()
@@ -2854,10 +2987,13 @@ class AssessmentController:
                 title=f"{job.title} Assessment",
                 description=f"Authoritative assessment for {job.title}",
                 duration_minutes=45,
-                passing_score=70
+                passing_score=70,
+                status="published"
             )
             db.add(assessment)
             db.flush()
+        else:
+            assessment.status = "published"
 
         org_id = current_user.organization_id
         if assessment.organization_id and org_id and assessment.organization_id not in (org_id, "org-sparkx-default"):
@@ -2911,3 +3047,1279 @@ class AssessmentController:
             "attached_count": attached_count,
             "mcqs": attached_list
         }, None, 200
+
+    # ═════════════════════════════════════════════════════════════════════════
+    # PHASE 4E.5: ADVANCED ASSESSMENT BUILDER ENGINE
+    # ═════════════════════════════════════════════════════════════════════════
+
+    @staticmethod
+    def _log_assessment_audit(
+        db: Session,
+        org_id: Optional[str],
+        asm_id: Optional[str],
+        action: str,
+        performed_by: str,
+        details: Optional[dict] = None
+    ):
+        """Append an immutable audit entry for builder lifecycle events."""
+        audit = AssessmentAuditLogModel(
+            id=f"aal-{uuid.uuid4().hex[:8]}",
+            organization_id=org_id,
+            assessment_id=asm_id,
+            action=action,
+            performed_by=performed_by,
+            details=details or {},
+            created_at=datetime.utcnow()
+        )
+        db.add(audit)
+
+    @staticmethod
+    def list_builder_assessments(
+        db: Session,
+        current_user: UserModel,
+        job_id: Optional[str] = None
+    ) -> Tuple[List[Dict[str, Any]], Optional[str], int]:
+        """List assessments with multi-tenant scoping and question/point aggregations."""
+        if not current_user or current_user.role != "recruiter":
+            return [], "Only recruiters can view assessment configurations", 403
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        query = db.query(AssessmentModel).filter(
+            (AssessmentModel.organization_id == org_id) | (AssessmentModel.organization_id == None) | (AssessmentModel.organization_id == "org-sparkx-default")
+        )
+        if job_id:
+            query = query.filter(AssessmentModel.job_id == job_id)
+
+        assessments = query.order_by(AssessmentModel.updated_at.desc()).all()
+        results = []
+        for asm in assessments:
+            mcq_count = len(asm.mcq_questions) if asm.mcq_questions else 0
+            coding_count = len(asm.coding_problems) if asm.coding_problems else 0
+            mcq_pts = sum(float(m.weight or 1.0) for m in (asm.mcq_questions or []))
+            coding_pts = sum(float(p.weight or 100.0) for p in (asm.coding_problems or []))
+
+            job = db.query(JobModel).filter(JobModel.id == asm.job_id).first()
+            results.append({
+                "id": asm.id,
+                "job_id": asm.job_id,
+                "job_title": job.title if job else "Unknown Job",
+                "organization_id": asm.organization_id,
+                "title": asm.title,
+                "description": asm.description,
+                "status": asm.status or "draft",
+                "version": asm.version or 1,
+                "duration_minutes": asm.duration_minutes or 45,
+                "passing_score": asm.passing_score or 70,
+                "max_attempts": asm.max_attempts or 1,
+                "deadline_days": asm.deadline_days,
+                "randomize_questions": bool(asm.randomize_questions),
+                "allow_review": bool(asm.allow_review),
+                "allow_unanswered": bool(asm.allow_unanswered),
+                "allow_resume": bool(asm.allow_resume),
+                "total_questions": mcq_count + coding_count,
+                "total_mcqs": mcq_count,
+                "total_coding": coding_count,
+                "total_points": mcq_pts + coding_pts,
+                "created_by": asm.created_by,
+                "created_at": asm.created_at.isoformat() if asm.created_at else None,
+                "updated_at": asm.updated_at.isoformat() if asm.updated_at else None,
+                "published_at": asm.published_at.isoformat() if asm.published_at else None,
+                "archived_at": asm.archived_at.isoformat() if asm.archived_at else None
+            })
+        return results, None, 200
+
+    @staticmethod
+    def create_builder_assessment(
+        db: Session,
+        payload: AssessmentBuilderCreate,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """Create a new draft assessment bound to job and organization."""
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can create assessments", 403
+
+        job = db.query(JobModel).filter(JobModel.id == payload.job_id).first()
+        if not job:
+            return None, f"Job {payload.job_id} not found", 404
+
+        org_id = current_user.organization_id or job.organization_id or "org-sparkx-default"
+        if job.organization_id and job.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied: job belongs to another organization", 403
+
+        asm_id = f"asm-{uuid.uuid4().hex[:8]}"
+        new_asm = AssessmentModel(
+            id=asm_id,
+            job_id=job.id,
+            organization_id=org_id,
+            title=payload.title,
+            description=payload.description,
+            status="draft",
+            version=1,
+            duration_minutes=payload.duration_minutes,
+            passing_score=payload.passing_score,
+            max_attempts=payload.max_attempts,
+            deadline_days=payload.deadline_days,
+            randomize_questions=payload.randomize_questions,
+            allow_review=payload.allow_review,
+            allow_unanswered=payload.allow_unanswered,
+            allow_resume=payload.allow_resume,
+            created_by=current_user.id,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.add(new_asm)
+
+        AssessmentController._log_assessment_audit(
+            db=db,
+            org_id=org_id,
+            asm_id=asm_id,
+            action="created",
+            performed_by=current_user.id,
+            details={"title": payload.title, "job_id": job.id}
+        )
+        db.commit()
+        db.refresh(new_asm)
+
+        return AssessmentController.get_builder_assessment(db, asm_id, current_user)
+
+    @staticmethod
+    def get_builder_assessment(
+        db: Session,
+        assessment_id: str,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """Retrieve authoritative assessment details, question breakdown, and validation status."""
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can view assessment details", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied: assessment belongs to another organization", 403
+
+        job = db.query(JobModel).filter(JobModel.id == asm.job_id).first()
+
+        questions = []
+        total_mcq_pts = 0.0
+        total_coding_pts = 0.0
+
+        for am in asm.mcq_questions or []:
+            q = am.question
+            if not q:
+                continue
+            wt = float(am.weight or 1.0)
+            total_mcq_pts += wt
+            questions.append({
+                "id": am.id,
+                "question_type": "mcq",
+                "question_id": q.id,
+                "title": q.question_text[:80] + ("..." if len(q.question_text) > 80 else ""),
+                "difficulty": q.difficulty,
+                "category": q.category,
+                "skills": q.skills or [],
+                "display_order": am.display_order,
+                "weight": wt,
+                "is_required": am.is_required,
+                "options_count": len(q.options) if q.options else 0,
+                "test_cases_count": None
+            })
+
+        for ap in asm.coding_problems or []:
+            p = ap.problem
+            if not p:
+                continue
+            wt = float(ap.weight or 100.0)
+            total_coding_pts += wt
+            questions.append({
+                "id": ap.id,
+                "question_type": "coding",
+                "question_id": p.id,
+                "title": p.title,
+                "difficulty": p.difficulty,
+                "category": "coding",
+                "skills": getattr(p, "allowed_languages", []) or [],
+                "display_order": ap.display_order,
+                "weight": wt,
+                "is_required": ap.is_required,
+                "options_count": None,
+                "test_cases_count": len(p.test_cases) if p.test_cases else 0
+            })
+
+        questions.sort(key=lambda x: x["display_order"])
+
+        mcq_count = len(asm.mcq_questions or [])
+        coding_count = len(asm.coding_problems or [])
+
+        data = {
+            "id": asm.id,
+            "job_id": asm.job_id,
+            "job_title": job.title if job else "Unknown Job",
+            "organization_id": asm.organization_id,
+            "title": asm.title,
+            "description": asm.description,
+            "status": asm.status or "draft",
+            "version": asm.version or 1,
+            "duration_minutes": asm.duration_minutes or 45,
+            "passing_score": asm.passing_score or 70,
+            "max_attempts": asm.max_attempts or 1,
+            "deadline_days": asm.deadline_days,
+            "randomize_questions": bool(asm.randomize_questions),
+            "allow_review": bool(asm.allow_review),
+            "allow_unanswered": bool(asm.allow_unanswered),
+            "allow_resume": bool(asm.allow_resume),
+            "total_questions": mcq_count + coding_count,
+            "total_mcqs": mcq_count,
+            "total_coding": coding_count,
+            "total_points": total_mcq_pts + total_coding_pts,
+            "questions": questions,
+            "created_by": asm.created_by,
+            "created_at": asm.created_at.isoformat() if asm.created_at else None,
+            "updated_at": asm.updated_at.isoformat() if asm.updated_at else None,
+            "published_at": asm.published_at.isoformat() if asm.published_at else None,
+            "archived_at": asm.archived_at.isoformat() if asm.archived_at else None
+        }
+        return data, None, 200
+
+    @staticmethod
+    def update_builder_assessment(
+        db: Session,
+        assessment_id: str,
+        payload: AssessmentBuilderUpdate,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """Update draft assessment configuration settings."""
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can update assessments", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied: assessment belongs to another organization", 403
+
+        if asm.status == "archived":
+            return None, "Cannot modify an archived assessment. Create a new assessment or clone.", 400
+
+        update_fields = {}
+        for field, val in payload.model_dump(exclude_unset=True).items():
+            setattr(asm, field, val)
+            update_fields[field] = val
+
+        asm.updated_at = datetime.utcnow()
+        AssessmentController._log_assessment_audit(
+            db=db,
+            org_id=asm.organization_id,
+            asm_id=asm.id,
+            action="updated",
+            performed_by=current_user.id,
+            details=update_fields
+        )
+        db.commit()
+        db.refresh(asm)
+
+        return AssessmentController.get_builder_assessment(db, asm.id, current_user)
+
+    @staticmethod
+    def attach_builder_question(
+        db: Session,
+        assessment_id: str,
+        payload: AssessmentQuestionAttachRequest,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """Manually attach a specific MCQ or coding problem to an assessment."""
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can attach questions", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied", 403
+
+        if asm.status == "archived":
+            return None, "Cannot modify an archived assessment", 400
+
+        # Calculate next display order
+        existing_orders = [m.display_order for m in (asm.mcq_questions or [])] + [p.display_order for p in (asm.coding_problems or [])]
+        next_order = payload.display_order if payload.display_order is not None else ((max(existing_orders) if existing_orders else 0) + 1)
+
+        if payload.question_type == "mcq":
+            q = db.query(MCQQuestionModel).filter(MCQQuestionModel.id == payload.question_id).first()
+            if not q:
+                return None, f"MCQ Question {payload.question_id} not found", 404
+            if not can_access_mcq(org_id, q):
+                return None, "Access denied to specified question", 403
+
+            existing_link = db.query(AssessmentMCQModel).filter(
+                AssessmentMCQModel.assessment_id == asm.id,
+                AssessmentMCQModel.mcq_question_id == q.id
+            ).first()
+            if existing_link:
+                existing_link.weight = payload.weight or existing_link.weight
+                existing_link.display_order = next_order
+                existing_link.is_required = payload.is_required
+            else:
+                assoc = AssessmentMCQModel(
+                    id=f"amcq-{uuid.uuid4().hex[:8]}",
+                    assessment_id=asm.id,
+                    mcq_question_id=q.id,
+                    display_order=next_order,
+                    weight=payload.weight if payload.weight is not None else 1.0,
+                    is_required=payload.is_required
+                )
+                db.add(assoc)
+
+        elif payload.question_type == "coding":
+            p = db.query(CodingProblemModel).filter(CodingProblemModel.id == payload.question_id).first()
+            if not p:
+                return None, f"Coding problem {payload.question_id} not found", 404
+            if not can_access_problem(org_id, p):
+                return None, "Access denied to specified coding problem", 403
+
+            existing_link = db.query(AssessmentCodingProblemModel).filter(
+                AssessmentCodingProblemModel.assessment_id == asm.id,
+                AssessmentCodingProblemModel.coding_problem_id == p.id
+            ).first()
+            if existing_link:
+                existing_link.weight = payload.weight or existing_link.weight
+                existing_link.display_order = next_order
+                existing_link.is_required = payload.is_required
+            else:
+                assoc = AssessmentCodingProblemModel(
+                    id=f"acp-{uuid.uuid4().hex[:8]}",
+                    assessment_id=asm.id,
+                    coding_problem_id=p.id,
+                    coding_problem_version_id=p.versions[0].id if p.versions else None,
+                    display_order=next_order,
+                    weight=payload.weight if payload.weight is not None else 100.0,
+                    is_required=payload.is_required
+                )
+                db.add(assoc)
+        else:
+            return None, "question_type must be 'mcq' or 'coding'", 400
+
+        asm.updated_at = datetime.utcnow()
+        AssessmentController._log_assessment_audit(
+            db=db,
+            org_id=asm.organization_id,
+            asm_id=asm.id,
+            action="question_added",
+            performed_by=current_user.id,
+            details={"type": payload.question_type, "question_id": payload.question_id}
+        )
+        db.commit()
+
+        return AssessmentController.get_builder_assessment(db, asm.id, current_user)
+
+    @staticmethod
+    def remove_builder_question(
+        db: Session,
+        assessment_id: str,
+        question_type: str,
+        question_id: str,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """Remove a question association from an assessment."""
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can remove questions", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied", 403
+
+        if asm.status == "archived":
+            return None, "Cannot modify an archived assessment", 400
+
+        if question_type == "mcq":
+            deleted = db.query(AssessmentMCQModel).filter(
+                AssessmentMCQModel.assessment_id == asm.id,
+                (AssessmentMCQModel.mcq_question_id == question_id) | (AssessmentMCQModel.id == question_id)
+            ).delete()
+        elif question_type == "coding":
+            deleted = db.query(AssessmentCodingProblemModel).filter(
+                AssessmentCodingProblemModel.assessment_id == asm.id,
+                (AssessmentCodingProblemModel.coding_problem_id == question_id) | (AssessmentCodingProblemModel.id == question_id)
+            ).delete()
+        else:
+            return None, "question_type must be 'mcq' or 'coding'", 400
+
+        if not deleted:
+            return None, "Question association not found", 404
+
+        asm.updated_at = datetime.utcnow()
+        AssessmentController._log_assessment_audit(
+            db=db,
+            org_id=asm.organization_id,
+            asm_id=asm.id,
+            action="question_removed",
+            performed_by=current_user.id,
+            details={"type": question_type, "question_id": question_id}
+        )
+        db.commit()
+
+        return AssessmentController.get_builder_assessment(db, asm.id, current_user)
+
+    @staticmethod
+    def reorder_builder_questions(
+        db: Session,
+        assessment_id: str,
+        payload: AssessmentQuestionReorderRequest,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """Update display sequence and points for all assessment questions."""
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can reorder questions", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied", 403
+
+        for item in payload.items:
+            if item.question_type == "mcq":
+                assoc = db.query(AssessmentMCQModel).filter(
+                    AssessmentMCQModel.assessment_id == asm.id,
+                    (AssessmentMCQModel.mcq_question_id == item.question_id) | (AssessmentMCQModel.id == item.question_id)
+                ).first()
+                if assoc:
+                    assoc.display_order = item.display_order
+                    if item.weight is not None:
+                        assoc.weight = item.weight
+            elif item.question_type == "coding":
+                assoc = db.query(AssessmentCodingProblemModel).filter(
+                    AssessmentCodingProblemModel.assessment_id == asm.id,
+                    (AssessmentCodingProblemModel.coding_problem_id == item.question_id) | (AssessmentCodingProblemModel.id == item.question_id)
+                ).first()
+                if assoc:
+                    assoc.display_order = item.display_order
+                    if item.weight is not None:
+                        assoc.weight = item.weight
+
+        asm.updated_at = datetime.utcnow()
+        AssessmentController._log_assessment_audit(
+            db=db,
+            org_id=asm.organization_id,
+            asm_id=asm.id,
+            action="reordered",
+            performed_by=current_user.id,
+            details={"count": len(payload.items)}
+        )
+        db.commit()
+
+        return AssessmentController.get_builder_assessment(db, asm.id, current_user)
+
+    @staticmethod
+    def auto_select_builder_questions(
+        db: Session,
+        assessment_id: str,
+        payload: QuestionAutoSelectRequest,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """
+        Rule-based auto-selection from authoritative DB question bank.
+        Validates availability against real DB entities; aborts with 400 if insufficient without fake fallback.
+        """
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can auto-select questions", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied", 403
+
+        if payload.clear_existing:
+            db.query(AssessmentMCQModel).filter(AssessmentMCQModel.assessment_id == asm.id).delete()
+            db.query(AssessmentCodingProblemModel).filter(AssessmentCodingProblemModel.assessment_id == asm.id).delete()
+            db.flush()
+
+        already_selected_mcq_ids = {m.mcq_question_id for m in (asm.mcq_questions or [])}
+        already_selected_prob_ids = {p.coding_problem_id for p in (asm.coding_problems or [])}
+
+        newly_attached_mcqs = []
+        newly_attached_problems = []
+
+        for rule in payload.rules:
+            req_type = rule.question_type or "mcq"
+            count_needed = max(1, rule.count)
+
+            if req_type in ("mcq", "any"):
+                query = db.query(MCQQuestionModel).filter(
+                    MCQQuestionModel.is_active == True,
+                    (MCQQuestionModel.is_system == True) | (MCQQuestionModel.organization_id == org_id) | (MCQQuestionModel.organization_id == "org-sparkx-default")
+                )
+                if rule.difficulty:
+                    query = query.filter(MCQQuestionModel.difficulty.ilike(rule.difficulty))
+                if rule.category:
+                    query = query.filter(MCQQuestionModel.category.ilike(rule.category))
+                if rule.skill_slug:
+                    # Filter by canonical skill or JSON tag
+                    skill_matches = [r[0] for r in db.query(QuestionSkillModel.question_id).join(SkillModel, QuestionSkillModel.skill_id == SkillModel.id).filter(
+                        (SkillModel.slug == rule.skill_slug.lower()) | (SkillModel.id == rule.skill_slug) | (SkillModel.name.ilike(rule.skill_slug))
+                    ).all()]
+                    query = query.filter(
+                        (MCQQuestionModel.id.in_(skill_matches)) | (MCQQuestionModel.skills.contains(rule.skill_slug.lower()))
+                    )
+
+                available_mcqs = [q for q in query.all() if q.id not in already_selected_mcq_ids]
+                if req_type == "mcq" and len(available_mcqs) < count_needed:
+                    return None, f"Insufficient questions in pool: rule requested {count_needed} {rule.difficulty or ''} MCQ(s), but only {len(available_mcqs)} available matching criteria.", 400
+
+                selected = available_mcqs[:count_needed]
+                for q in selected:
+                    already_selected_mcq_ids.add(q.id)
+                    newly_attached_mcqs.append((q, rule.weight or 1.0))
+
+            if req_type == "coding":
+                query = db.query(CodingProblemModel).filter(
+                    CodingProblemModel.is_active == True,
+                    (CodingProblemModel.is_system == True) | (CodingProblemModel.organization_id == org_id) | (CodingProblemModel.organization_id == "org-sparkx-default")
+                )
+                if rule.difficulty:
+                    query = query.filter(CodingProblemModel.difficulty.ilike(rule.difficulty))
+                if rule.skill_slug:
+                    skill_matches = [r[0] for r in db.query(QuestionSkillModel.question_id).join(SkillModel, QuestionSkillModel.skill_id == SkillModel.id).filter(
+                        (SkillModel.slug == rule.skill_slug.lower()) | (SkillModel.id == rule.skill_slug) | (SkillModel.name.ilike(rule.skill_slug))
+                    ).all()]
+                    query = query.filter(
+                        (CodingProblemModel.id.in_(skill_matches)) | (CodingProblemModel.slug.ilike(f"%{rule.skill_slug}%"))
+                    )
+
+                available_probs = [p for p in query.all() if p.id not in already_selected_prob_ids]
+                if len(available_probs) < count_needed:
+                    return None, f"Insufficient questions in pool: rule requested {count_needed} {rule.difficulty or ''} coding problem(s), but only {len(available_probs)} available matching criteria.", 400
+
+                selected = available_probs[:count_needed]
+                for p in selected:
+                    already_selected_prob_ids.add(p.id)
+                    newly_attached_problems.append((p, rule.weight or 100.0))
+
+        # Assign display orders and persist
+        current_max = 0
+        existing_orders = [m.display_order for m in (asm.mcq_questions or [])] + [p.display_order for p in (asm.coding_problems or [])]
+        if existing_orders:
+            current_max = max(existing_orders)
+
+        for q, wt in newly_attached_mcqs:
+            current_max += 1
+            db.add(AssessmentMCQModel(
+                id=f"amcq-{uuid.uuid4().hex[:8]}",
+                assessment_id=asm.id,
+                mcq_question_id=q.id,
+                display_order=current_max,
+                weight=wt,
+                is_required=True
+            ))
+
+        for p, wt in newly_attached_problems:
+            current_max += 1
+            db.add(AssessmentCodingProblemModel(
+                id=f"acp-{uuid.uuid4().hex[:8]}",
+                assessment_id=asm.id,
+                coding_problem_id=p.id,
+                coding_problem_version_id=p.versions[0].id if p.versions else None,
+                display_order=current_max,
+                weight=wt,
+                is_required=True
+            ))
+
+        asm.updated_at = datetime.utcnow()
+        AssessmentController._log_assessment_audit(
+            db=db,
+            org_id=asm.organization_id,
+            asm_id=asm.id,
+            action="auto_selected",
+            performed_by=current_user.id,
+            details={"mcqs_added": len(newly_attached_mcqs), "coding_added": len(newly_attached_problems)}
+        )
+        db.commit()
+
+        return AssessmentController.get_builder_assessment(db, asm.id, current_user)
+
+    @staticmethod
+    def validate_builder_assessment(
+        db: Session,
+        assessment_id: str,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """
+        Execute comprehensive validation checks on an assessment:
+        - Job existence and validity
+        - Time limits and passing scores
+        - Question counts (>= 1 required)
+        - Question active states
+        - MCQ option structure (>= 2 options, exactly 1 correct answer)
+        - Coding test case structure (>= 1 test case)
+        """
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can validate assessments", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        errors = []
+        warnings = []
+
+        if not asm.title or not asm.title.strip():
+            errors.append("Assessment title cannot be empty.")
+
+        job = db.query(JobModel).filter(JobModel.id == asm.job_id).first()
+        if not job:
+            errors.append(f"Associated job ID {asm.job_id} does not exist.")
+
+        if not asm.duration_minutes or asm.duration_minutes <= 0:
+            errors.append("Duration must be at least 1 minute.")
+
+        if asm.passing_score is None or not (1 <= asm.passing_score <= 100):
+            errors.append("Passing score must be between 1% and 100%.")
+
+        mcqs = asm.mcq_questions or []
+        problems = asm.coding_problems or []
+        total_questions = len(mcqs) + len(problems)
+
+        if total_questions == 0:
+            errors.append("Assessment must contain at least one question before it can be published.")
+
+        total_points = 0.0
+
+        for idx, am in enumerate(mcqs):
+            q = am.question
+            if not q:
+                errors.append(f"MCQ Question #{idx + 1} reference is invalid or deleted.")
+                continue
+            if not q.is_active:
+                errors.append(f"MCQ '{q.question_text[:30]}...' is inactive.")
+
+            opts = q.options or []
+            if len(opts) < 2:
+                errors.append(f"MCQ '{q.question_text[:30]}...' must have at least 2 answer options.")
+
+            correct_opts = [o for o in opts if o.is_correct]
+            if len(correct_opts) != 1:
+                errors.append(f"MCQ '{q.question_text[:30]}...' must have exactly one correct answer (found {len(correct_opts)}).")
+
+            total_points += float(am.weight or 1.0)
+
+        for idx, ap in enumerate(problems):
+            p = ap.problem
+            if not p:
+                errors.append(f"Coding problem #{idx + 1} reference is invalid or deleted.")
+                continue
+            if not p.is_active:
+                errors.append(f"Coding problem '{p.title}' is inactive.")
+
+            tcs = p.test_cases or []
+            if len(tcs) < 1:
+                errors.append(f"Coding problem '{p.title}' must contain at least one test case.")
+            else:
+                has_public = any(not tc.is_hidden for tc in tcs)
+                has_hidden = any(tc.is_hidden for tc in tcs)
+                if not has_public:
+                    warnings.append(f"Coding problem '{p.title}' has no public sample test cases for candidate verification.")
+                if not has_hidden:
+                    warnings.append(f"Coding problem '{p.title}' has no hidden test cases for secure grading.")
+
+            total_points += float(ap.weight or 100.0)
+
+        return {
+            "is_valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "total_questions": total_questions,
+            "total_mcqs": len(mcqs),
+            "total_coding": len(problems),
+            "total_points": total_points
+        }, None, 200
+
+    @staticmethod
+    def publish_builder_assessment(
+        db: Session,
+        assessment_id: str,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """
+        Validate, freeze immutable snapshot version, and publish assessment.
+        Ensures active candidate versions are strictly isolated from future drafts.
+        """
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can publish assessments", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied", 403
+
+        # Validate before publication
+        val_res, val_err, _ = AssessmentController.validate_builder_assessment(db, asm.id, current_user)
+        if not val_res or not val_res.get("is_valid"):
+            err_msg = "; ".join(val_res.get("errors", [])) if val_res else "Validation failed"
+            return None, f"Cannot publish invalid assessment: {err_msg}", 400
+
+        # Snapshot frozen MCQs
+        snapshot_mcqs = []
+        mcq_solutions = {}
+        for am in (asm.mcq_questions or []):
+            q = am.question
+            sorted_opts = sorted(q.options, key=lambda o: o.display_order) if q.options else []
+            correct_key = next((o.option_key for o in sorted_opts if o.is_correct), "A")
+            mcq_solutions[q.id] = correct_key
+            snapshot_mcqs.append({
+                "id": q.id,
+                "question": q.question_text,
+                "difficulty": q.difficulty,
+                "category": q.category,
+                "skills": q.skills or [],
+                "options": {o.option_key: o.option_text for o in sorted_opts},
+                "correct_option": correct_key,
+                "explanation": q.explanation,
+                "weight": float(am.weight or 1.0),
+                "display_order": am.display_order,
+                "is_required": am.is_required
+            })
+
+        # Snapshot frozen coding problems
+        snapshot_coding = []
+        for ap in (asm.coding_problems or []):
+            p = ap.problem
+            tcs = sorted(p.test_cases, key=lambda t: t.display_order) if p.test_cases else []
+            snapshot_coding.append({
+                "id": p.id,
+                "title": p.title,
+                "slug": p.slug,
+                "problem_statement": p.problem_statement,
+                "difficulty": p.difficulty,
+                "constraints": p.constraints,
+                "input_format": p.input_format,
+                "output_format": p.output_format,
+                "execution_mode": p.execution_mode,
+                "function_name": p.function_name,
+                "function_signature": p.function_signature,
+                "time_limit_sec": p.time_limit_sec,
+                "memory_limit_mb": p.memory_limit_mb,
+                "allowed_languages": p.allowed_languages,
+                "starter_code": p.starter_code,
+                "weight": float(ap.weight or 100.0),
+                "display_order": ap.display_order,
+                "is_required": ap.is_required,
+                "sample_test_cases": [
+                    {"id": t.id, "input": t.input_data, "expected": t.expected_output, "is_hidden": False, "weight": t.weight}
+                    for t in tcs if not t.is_hidden
+                ],
+                "hidden_test_cases": [
+                    {"id": t.id, "input": t.input_data, "expected": t.expected_output, "is_hidden": True, "weight": t.weight}
+                    for t in tcs if t.is_hidden
+                ]
+            })
+
+        new_version_num = (asm.version or 1) if asm.status == "draft" else ((asm.version or 1) + 1)
+        asm.version = new_version_num
+        asm.status = "published"
+        asm.published_at = datetime.utcnow()
+        asm.updated_at = datetime.utcnow()
+
+        snapshot_bundle = {
+            "version": new_version_num,
+            "title": asm.title,
+            "description": asm.description,
+            "duration_minutes": asm.duration_minutes,
+            "passing_score": asm.passing_score,
+            "max_attempts": asm.max_attempts,
+            "deadline_days": asm.deadline_days,
+            "randomize_questions": asm.randomize_questions,
+            "allow_review": asm.allow_review,
+            "allow_unanswered": asm.allow_unanswered,
+            "allow_resume": asm.allow_resume,
+            "technical_mcqs": snapshot_mcqs,
+            "coding_problems": snapshot_coding,
+            "mcq_solutions": mcq_solutions,
+            "published_at": datetime.utcnow().isoformat()
+        }
+
+        # Immutable Version Snapshot Record
+        version_rec = AssessmentVersionModel(
+            id=f"asv-{uuid.uuid4().hex[:8]}",
+            assessment_id=asm.id,
+            version_number=new_version_num,
+            title=asm.title,
+            description=asm.description,
+            duration_minutes=asm.duration_minutes,
+            passing_score=asm.passing_score,
+            max_attempts=asm.max_attempts,
+            deadline_days=asm.deadline_days,
+            randomize_questions=asm.randomize_questions,
+            allow_review=asm.allow_review,
+            allow_unanswered=asm.allow_unanswered,
+            allow_resume=asm.allow_resume,
+            snapshot_data=snapshot_bundle,
+            published_by=current_user.id,
+            published_at=datetime.utcnow()
+        )
+        db.add(version_rec)
+
+        # Synchronize Job.assessment_pool for backwards compatibility
+        job = db.query(JobModel).filter(JobModel.id == asm.job_id).first()
+        if job:
+            job.assessment_pool = snapshot_bundle
+
+        AssessmentController._log_assessment_audit(
+            db=db,
+            org_id=asm.organization_id,
+            asm_id=asm.id,
+            action="published",
+            performed_by=current_user.id,
+            details={"version": new_version_num, "total_mcqs": len(snapshot_mcqs), "total_coding": len(snapshot_coding)}
+        )
+        db.commit()
+
+        return AssessmentController.get_builder_assessment(db, asm.id, current_user)
+
+    @staticmethod
+    def archive_builder_assessment(
+        db: Session,
+        assessment_id: str,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """Archive an assessment to prevent new assignments while preserving history."""
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can archive assessments", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied", 403
+
+        asm.status = "archived"
+        asm.archived_at = datetime.utcnow()
+        asm.updated_at = datetime.utcnow()
+
+        AssessmentController._log_assessment_audit(
+            db=db,
+            org_id=asm.organization_id,
+            asm_id=asm.id,
+            action="archived",
+            performed_by=current_user.id,
+            details={"version": asm.version}
+        )
+        db.commit()
+
+        return AssessmentController.get_builder_assessment(db, asm.id, current_user)
+
+    @staticmethod
+    def preview_builder_assessment(
+        db: Session,
+        assessment_id: str,
+        current_user: UserModel,
+        as_candidate: bool = False
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """
+        Preview assessment bundle.
+        Recruiter view exposes full answers and hidden tests; Candidate view strictly sanitizes secrets.
+        """
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can preview assessments", 403
+
+        asm = db.query(AssessmentModel).filter(
+            (AssessmentModel.id == assessment_id) | (AssessmentModel.job_id == assessment_id)
+        ).first()
+        if not asm:
+            return None, "Assessment not found", 404
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        if asm.organization_id and asm.organization_id not in (org_id, "org-sparkx-default"):
+            return None, "Access denied", 403
+
+        mcqs_data = []
+        for am in (asm.mcq_questions or []):
+            q = am.question
+            if not q or not q.is_active:
+                continue
+            sorted_opts = sorted(q.options, key=lambda o: o.display_order) if q.options else []
+            correct_key = next((o.option_key for o in sorted_opts if o.is_correct), "A")
+            if as_candidate:
+                mcqs_data.append({
+                    "id": q.id,
+                    "question": q.question_text,
+                    "difficulty": q.difficulty,
+                    "category": q.category,
+                    "skills": q.skills or [],
+                    "options": {o.option_key: o.option_text for o in sorted_opts},
+                    "display_order": am.display_order,
+                    "weight": float(am.weight or 1.0)
+                })
+            else:
+                mcqs_data.append({
+                    "id": q.id,
+                    "question": q.question_text,
+                    "difficulty": q.difficulty,
+                    "category": q.category,
+                    "skills": q.skills or [],
+                    "options": {o.option_key: o.option_text for o in sorted_opts},
+                    "correct_option": correct_key,
+                    "explanation": q.explanation,
+                    "display_order": am.display_order,
+                    "weight": float(am.weight or 1.0)
+                })
+
+        coding_data = []
+        for ap in (asm.coding_problems or []):
+            p = ap.problem
+            if not p or not p.is_active:
+                continue
+            tcs = sorted(p.test_cases, key=lambda t: t.display_order) if p.test_cases else []
+            if as_candidate:
+                coding_data.append({
+                    "id": p.id,
+                    "title": p.title,
+                    "slug": p.slug,
+                    "problem_statement": p.problem_statement,
+                    "difficulty": p.difficulty,
+                    "constraints": p.constraints,
+                    "input_format": p.input_format,
+                    "output_format": p.output_format,
+                    "execution_mode": p.execution_mode,
+                    "function_name": p.function_name,
+                    "allowed_languages": p.allowed_languages,
+                    "starter_code": p.starter_code,
+                    "display_order": ap.display_order,
+                    "weight": float(ap.weight or 100.0),
+                    "sample_test_cases": [
+                        {"id": t.id, "input": t.input_data, "expected": t.expected_output, "is_hidden": False, "explanation": t.explanation}
+                        for t in tcs if not t.is_hidden
+                    ]
+                })
+            else:
+                coding_data.append({
+                    "id": p.id,
+                    "title": p.title,
+                    "slug": p.slug,
+                    "problem_statement": p.problem_statement,
+                    "difficulty": p.difficulty,
+                    "constraints": p.constraints,
+                    "input_format": p.input_format,
+                    "output_format": p.output_format,
+                    "execution_mode": p.execution_mode,
+                    "function_name": p.function_name,
+                    "allowed_languages": p.allowed_languages,
+                    "starter_code": p.starter_code,
+                    "display_order": ap.display_order,
+                    "weight": float(ap.weight or 100.0),
+                    "test_cases": [
+                        {"id": t.id, "input": t.input_data, "expected": t.expected_output, "is_hidden": t.is_hidden, "explanation": t.explanation}
+                        for t in tcs
+                    ]
+                })
+
+        return {
+            "assessment_id": asm.id,
+            "title": asm.title,
+            "description": asm.description,
+            "status": asm.status,
+            "version": asm.version,
+            "duration_minutes": asm.duration_minutes,
+            "passing_score": asm.passing_score,
+            "as_candidate_view": as_candidate,
+            "technical_mcqs": mcqs_data,
+            "coding_problems": coding_data
+        }, None, 200
+
+    @staticmethod
+    def create_unified_question(
+        db: Session,
+        payload: QuestionCreateUnified,
+        current_user: UserModel
+    ) -> Tuple[Optional[Dict[str, Any]], Optional[str], int]:
+        """
+        Author authoritative technical question (MCQ, Scenario, Troubleshooting, or Coding)
+        with relational skill associations.
+        """
+        if not current_user or current_user.role != "recruiter":
+            return None, "Only recruiters can create questions", 403
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+
+        if payload.question_type == "mcq":
+            if not payload.options or len(payload.options) < 2:
+                return None, "MCQ questions must have at least 2 options", 400
+            correct_opts = [o for o in payload.options if o.is_correct]
+            if len(correct_opts) != 1:
+                return None, "MCQ question must have exactly one correct answer", 400
+
+            qid = f"mcq-{uuid.uuid4().hex[:8]}"
+            q = MCQQuestionModel(
+                id=qid,
+                organization_id=org_id,
+                is_system=False,
+                question_text=payload.question_text,
+                category=payload.category or "technical",
+                difficulty=payload.difficulty or "Medium",
+                explanation=payload.explanation,
+                skills=payload.skills or [],
+                is_active=True,
+                created_by=current_user.id,
+                current_version=1
+            )
+            db.add(q)
+            db.flush()
+
+            for idx, opt in enumerate(payload.options):
+                db.add(MCQOptionModel(
+                    id=f"opt-{uuid.uuid4().hex[:8]}",
+                    question_id=qid,
+                    option_key=opt.option_key,
+                    option_text=opt.option_text,
+                    is_correct=opt.is_correct,
+                    display_order=opt.display_order if opt.display_order else (idx + 1)
+                ))
+
+            # Associate canonical skills via QuestionSkillModel
+            for sk_id in (payload.skill_ids or []):
+                sk = db.query(SkillModel).filter((SkillModel.id == sk_id) | (SkillModel.slug == sk_id.lower())).first()
+                if sk:
+                    db.add(QuestionSkillModel(
+                        id=f"qsk-{uuid.uuid4().hex[:8]}",
+                        question_type="mcq",
+                        question_id=qid,
+                        skill_id=sk.id,
+                        relevance_weight=1.0
+                    ))
+
+            db.commit()
+            return {
+                "id": q.id,
+                "question_type": "mcq",
+                "title": q.question_text[:60],
+                "category": q.category,
+                "difficulty": q.difficulty,
+                "skills": q.skills
+            }, None, 201
+
+        elif payload.question_type == "coding":
+            slug = payload.slug or re.sub(r'[^a-z0-9]+', '-', payload.title.lower()).strip('-')
+            prob_id = f"prob-{uuid.uuid4().hex[:8]}"
+
+            prob = CodingProblemModel(
+                id=prob_id,
+                organization_id=org_id,
+                is_system=False,
+                title=payload.title,
+                slug=slug,
+                problem_statement=payload.question_text,
+                difficulty=payload.difficulty or "Medium",
+                execution_mode=payload.execution_mode or "function",
+                function_name=payload.function_name or "solve",
+                function_signature=payload.function_signature or {},
+                time_limit_sec=payload.time_limit_sec or 5.0,
+                memory_limit_mb=payload.memory_limit_mb or 128.0,
+                allowed_languages=payload.allowed_languages or ["python", "javascript", "sql"],
+                starter_code=payload.starter_code or {},
+                current_version=1,
+                is_active=True,
+                created_by=current_user.id
+            )
+            db.add(prob)
+            db.flush()
+
+            # Version snapshot
+            v_id = f"cpv-{uuid.uuid4().hex[:8]}"
+            prob_v = CodingProblemVersionModel(
+                id=v_id,
+                problem_id=prob_id,
+                version_number=1,
+                title=payload.title,
+                problem_statement=payload.question_text,
+                difficulty=payload.difficulty or "Medium",
+                execution_mode=payload.execution_mode or "function",
+                function_name=payload.function_name or "solve",
+                function_signature=payload.function_signature or {},
+                time_limit_sec=payload.time_limit_sec or 5.0,
+                memory_limit_mb=payload.memory_limit_mb or 128.0,
+                allowed_languages=payload.allowed_languages or ["python", "javascript", "sql"],
+                starter_code=payload.starter_code or {}
+            )
+            db.add(prob_v)
+            db.flush()
+
+            # Test cases
+            tcs = payload.test_cases or []
+            if not tcs:
+                # Add default sample check if none provided
+                tcs = [CodingTestCaseCreate(
+                    input_data="[1, 2]",
+                    expected_output="3",
+                    is_hidden=False,
+                    weight=1.0,
+                    display_order=1
+                )]
+
+            for idx, tc in enumerate(tcs):
+                db.add(CodingTestCaseModel(
+                    id=f"tc-{uuid.uuid4().hex[:8]}",
+                    problem_id=prob_id,
+                    problem_version_id=v_id,
+                    input_data=tc.input_data,
+                    expected_output=tc.expected_output,
+                    is_hidden=tc.is_hidden,
+                    weight=tc.weight,
+                    display_order=tc.display_order if tc.display_order else (idx + 1),
+                    explanation=tc.explanation
+                ))
+
+            # Associate canonical skills via QuestionSkillModel
+            for sk_id in (payload.skill_ids or []):
+                sk = db.query(SkillModel).filter((SkillModel.id == sk_id) | (SkillModel.slug == sk_id.lower())).first()
+                if sk:
+                    db.add(QuestionSkillModel(
+                        id=f"qsk-{uuid.uuid4().hex[:8]}",
+                        question_type="coding",
+                        question_id=prob_id,
+                        skill_id=sk.id,
+                        relevance_weight=1.0
+                    ))
+
+            db.commit()
+            return {
+                "id": prob.id,
+                "question_type": "coding",
+                "title": prob.title,
+                "difficulty": prob.difficulty,
+                "slug": prob.slug
+            }, None, 201
+
+        return None, "question_type must be 'mcq' or 'coding'", 400
+
+    @staticmethod
+    def list_unified_question_bank(
+        db: Session,
+        current_user: UserModel,
+        question_type: Optional[str] = None,
+        difficulty: Optional[str] = None,
+        category: Optional[str] = None,
+        skill: Optional[str] = None,
+        search: Optional[str] = None
+    ) -> Tuple[List[Dict[str, Any]], Optional[str], int]:
+        """Query unified question repository (MCQs & Coding) across tenant and system libraries."""
+        if not current_user or current_user.role != "recruiter":
+            return [], "Only recruiters can browse question repository", 403
+
+        org_id = current_user.organization_id or "org-sparkx-default"
+        results = []
+
+        # 1. MCQs
+        if not question_type or question_type in ("mcq", "technical", "scenario", "troubleshooting"):
+            mcq_query = db.query(MCQQuestionModel).filter(
+                (MCQQuestionModel.is_system == True) | (MCQQuestionModel.organization_id == org_id) | (MCQQuestionModel.organization_id == "org-sparkx-default")
+            )
+            if difficulty:
+                mcq_query = mcq_query.filter(MCQQuestionModel.difficulty.ilike(difficulty))
+            if category:
+                mcq_query = mcq_query.filter(MCQQuestionModel.category.ilike(category))
+            if search:
+                mcq_query = mcq_query.filter(MCQQuestionModel.question_text.ilike(f"%{search}%"))
+
+            for q in mcq_query.all():
+                if skill:
+                    # check canonical links or JSON tag
+                    has_skill = any(s.lower() == skill.lower() for s in (q.skills or []))
+                    if not has_skill:
+                        matching_link = db.query(QuestionSkillModel).join(SkillModel).filter(
+                            QuestionSkillModel.question_id == q.id,
+                            (SkillModel.slug == skill.lower()) | (SkillModel.id == skill)
+                        ).first()
+                        if not matching_link:
+                            continue
+
+                results.append({
+                    "id": q.id,
+                    "question_type": "mcq",
+                    "title": q.question_text[:70] + ("..." if len(q.question_text) > 70 else ""),
+                    "question_text": q.question_text,
+                    "difficulty": q.difficulty,
+                    "category": q.category,
+                    "skills": q.skills or [],
+                    "is_system": bool(q.is_system),
+                    "is_active": bool(q.is_active),
+                    "options_count": len(q.options) if q.options else 0,
+                    "test_cases_count": None,
+                    "created_at": q.created_at.isoformat() if q.created_at else None
+                })
+
+        # 2. Coding Problems
+        if (not question_type or question_type == "coding") and (not category or category.lower() in ("coding", "all")):
+            cp_query = db.query(CodingProblemModel).filter(
+                (CodingProblemModel.is_system == True) | (CodingProblemModel.organization_id == org_id) | (CodingProblemModel.organization_id == "org-sparkx-default")
+            )
+            if difficulty:
+                cp_query = cp_query.filter(CodingProblemModel.difficulty.ilike(difficulty))
+            if search:
+                cp_query = cp_query.filter(
+                    (CodingProblemModel.title.ilike(f"%{search}%")) | (CodingProblemModel.problem_statement.ilike(f"%{search}%"))
+                )
+
+            for p in cp_query.all():
+                if skill:
+                    has_skill = any(s.lower() == skill.lower() for s in (p.allowed_languages or [])) or (skill.lower() in p.slug.lower())
+                    if not has_skill:
+                        matching_link = db.query(QuestionSkillModel).join(SkillModel).filter(
+                            QuestionSkillModel.question_id == p.id,
+                            (SkillModel.slug == skill.lower()) | (SkillModel.id == skill)
+                        ).first()
+                        if not matching_link:
+                            continue
+
+                results.append({
+                    "id": p.id,
+                    "question_type": "coding",
+                    "title": p.title,
+                    "question_text": p.problem_statement,
+                    "difficulty": p.difficulty,
+                    "category": "coding",
+                    "skills": p.allowed_languages or [],
+                    "is_system": bool(p.is_system),
+                    "is_active": bool(p.is_active),
+                    "options_count": None,
+                    "test_cases_count": len(p.test_cases) if p.test_cases else 0,
+                    "created_at": p.created_at.isoformat() if p.created_at else None
+                })
+
+        return results, None, 200

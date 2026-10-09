@@ -194,7 +194,7 @@ export default function ProctorLiveMonitor() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 uppercase tracking-wider">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/20 uppercase tracking-wider">
               Real-Time Biometric HUD
             </span>
             <span className="text-xs text-slate-500 dark:text-slate-400">Autonomous Proctoring Engine</span>
@@ -256,7 +256,7 @@ export default function ProctorLiveMonitor() {
 
             <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-slate-400 bg-black/70 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
               <span className="flex items-center space-x-1.5">
-                <Activity className="w-3.5 h-3.5 text-cyan-400" />
+                <Activity className="w-3.5 h-3.5 text-brand-400" />
                 <span>Telemetry: Nominal</span>
               </span>
               <span>Anti-Cheating V2.4</span>
@@ -267,7 +267,7 @@ export default function ProctorLiveMonitor() {
           <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-brand-300 flex items-center space-x-1.5">
-                <Zap className="w-3.5 h-3.5 text-cyan-400" />
+                <Zap className="w-3.5 h-3.5 text-brand-400" />
                 <span>Simulate Anomaly Triggers (Client Presentation Mode):</span>
               </span>
               <span className="text-[10px] text-slate-400">Instant Event Logging</span>

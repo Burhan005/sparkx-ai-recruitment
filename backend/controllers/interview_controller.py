@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Tuple, Optional
 from sqlalchemy.orm import Session
-from models.db_models import CandidateModel, JobModel, IntegrityLogModel
+from models.db_models import CandidateModel, JobModel, IntegrityLogModel, InterviewBookingModel
 from schemas import AdaptiveQuestionRequest, TelemetryEventCreate, EvaluationRequest, CandidateQuestionsRequest
 from ai_engine import evaluate_adaptive_answer, calculate_scorecard_and_gap, synthesize_candidate_interview_questions
 from workflow_contract import (
@@ -26,9 +26,10 @@ class InterviewController:
             return True, None
 
         # Authorize: candidate must be scheduled (or invited)
-        if candidate.interview_status not in ["scheduled", "invited"]:
-            if not candidate.interview_scheduled_at:
-                return False, "Interview access restricted: Candidate has not been scheduled for an interview."
+        if candidate.interview_status in ["cancelled", "not_scheduled"]:
+            return False, f"Interview access restricted: Candidate interview status is '{candidate.interview_status}'."
+        if candidate.interview_status not in ["scheduled", "invited"] and not candidate.interview_scheduled_at:
+            return False, "Interview access restricted: Candidate has not been scheduled for an interview."
 
         can_trans, err = validate_transition("interview_status", candidate.interview_status or "scheduled", "in_progress")
         if not can_trans:
@@ -37,6 +38,15 @@ class InterviewController:
         old_interview_status = candidate.interview_status or "scheduled"
         candidate.interview_status = "in_progress"
         candidate.interview_started_at = datetime.utcnow()
+
+        # Synchronize Phase 4C active booking to in_progress
+        active_booking = db.query(InterviewBookingModel).filter(
+            InterviewBookingModel.candidate_id == candidate.id,
+            InterviewBookingModel.status == "scheduled"
+        ).order_by(InterviewBookingModel.start_time_utc.desc()).first()
+        if active_booking:
+            active_booking.status = "in_progress"
+
         log_state_change(
             db=db,
             candidate_id=candidate.id,
@@ -153,10 +163,33 @@ class InterviewController:
         candidate.scores = evaluation["scores"]
         candidate.interview_summary = evaluation["interview_summary"]
         candidate.evidence_snippets = evaluation["evidence_snippets"]
+        candidate.interview_transcript = payload.transcript or []
         candidate.skill_gaps = evaluation["skill_gaps"]
         candidate.integrity_score = payload.integrity_score
         candidate.integrity_risk = risk
         candidate.integrity_events = payload.integrity_events
+
+        # Phase 4E.2: Link authentic interview evidence
+        try:
+            from services.skill_matching_service import SkillMatchingService
+            tech_score = float((evaluation.get("scores") or {}).get("technical", 80.0))
+            SkillMatchingService.link_interview_evidence(
+                candidate_id=candidate.id,
+                job_id=job.id,
+                technical_score=tech_score,
+                evidence_snippets=evaluation.get("evidence_snippets") or [],
+                db=db
+            )
+        except Exception:
+            pass
+
+        # Synchronize Phase 4C active booking to completed
+        active_booking = db.query(InterviewBookingModel).filter(
+            InterviewBookingModel.candidate_id == candidate.id,
+            InterviewBookingModel.status.in_(["scheduled", "in_progress"])
+        ).order_by(InterviewBookingModel.start_time_utc.desc()).first()
+        if active_booking:
+            active_booking.status = "completed"
 
         # Interview status -> completed
         old_interview_status = candidate.interview_status or "in_progress"

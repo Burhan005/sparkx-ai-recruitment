@@ -338,12 +338,19 @@ export default function CandidateOverviewTab({
               Demonstrates {expYears} years in related discipline with verified competency across required production technologies.
             </p>
           </div>
-          <div className="pt-3 mt-2 border-t border-[#E5E0DA] dark:border-stone-800/60 text-[11px] font-mono text-brand-600 dark:text-brand-400 font-semibold flex items-center justify-between">
-            <span>{matchScore}% Alignment Index</span>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('scorecard')}
+            className="pt-3 mt-2 border-t border-[#E5E0DA] dark:border-stone-800/60 text-[11px] font-mono text-brand-600 dark:text-brand-400 font-semibold hover:underline flex items-center justify-between text-left cursor-pointer group/link"
+          >
+            <span className="flex items-center gap-1">
+              <span>{matchScore}% Fit Scorecard</span>
+              <ArrowRight className="w-3 h-3 group-hover/link:translate-x-0.5 transition-transform" />
+            </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300">
               {expYears} Yrs Exp
             </span>
-          </div>
+          </button>
         </Card>
 
         {/* EVIDENCE: Grounded Verification */}
@@ -444,7 +451,7 @@ export default function CandidateOverviewTab({
                 onNavigateTab('timeline');
               }
             }}
-            className="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800/60 text-[11px] font-semibold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center justify-between text-left"
+            className="pt-3 mt-2 border-t border-slate-100 dark:border-slate-800/60 text-[11px] font-semibold text-brand-600 dark:text-brand-400 hover:underline flex items-center justify-between text-left"
           >
             <span>
               {wf.stage === 'screening'
@@ -632,7 +639,7 @@ export default function CandidateOverviewTab({
                   <div className="text-[10px] text-stone-600 dark:text-stone-300 font-medium">Assessment Benchmark</div>
                 </div>
                 <div className="p-2.5 rounded-xl bg-stone-100 dark:bg-[#1A1714] border border-stone-200 dark:border-[#2A2520]">
-                  <div className="text-base font-black text-teal-600 dark:text-teal-400 font-mono">
+                  <div className="text-base font-black text-brand-600 dark:text-brand-400 font-mono">
                     {candidate.integrityScore != null ? `${candidate.integrityScore}%` : 'Pending'}
                   </div>
                   <div className="text-[10px] text-stone-600 dark:text-stone-300 font-medium">Integrity Verified</div>
@@ -920,7 +927,7 @@ export default function CandidateOverviewTab({
 
           {/* 2. Authoritative Compensation & CTC Intelligence Card */}
           <Card className="p-5 space-y-4 shadow-card relative overflow-hidden animate-fade-in-up delay-100 hover:shadow-depth-2 hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 opacity-80" />
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 opacity-80" />
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 pt-0.5">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 shadow-2xs">

@@ -119,7 +119,7 @@ ${skillsList.length > 0 ? `* Skills : ${skillsList.join(', ')}` : '* Skills : No
         {/* Header */}
         <div className="p-4 sm:p-5 bg-stone-50/90 dark:bg-[#14110F] border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-300 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 flex items-center justify-center text-brand-700 dark:text-brand-300 shrink-0">
               <FileText className="w-5 h-5" />
             </div>
             <div className="min-w-0">

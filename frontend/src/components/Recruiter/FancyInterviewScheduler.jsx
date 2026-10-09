@@ -409,19 +409,19 @@ export default function FancyInterviewScheduler({
       
       {/* ── RESCHEDULE NOTICE (When candidate already has a slot) ── */}
       {initialScheduledAt && (
-        <div className="p-3.5 px-4 rounded-xl bg-cyan-50/80 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 flex items-center justify-between gap-3 text-xs shadow-2xs">
+        <div className="p-3.5 px-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-between gap-3 text-xs shadow-2xs">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
               <CalendarIcon className="w-4 h-4" />
             </div>
             <div>
-              <span className="font-bold text-cyan-900 dark:text-cyan-200">Rescheduling Existing Interview</span>
-              <p className="text-slate-500 dark:text-slate-400 text-[11px]">
-                Currently booked: <strong className="text-slate-800 dark:text-slate-200 font-mono">{initialScheduledAt}</strong>
+              <span className="font-bold text-amber-900 dark:text-amber-200">Rescheduling Existing Interview</span>
+              <p className="text-stone-500 dark:text-stone-400 text-[11px]">
+                Currently booked: <strong className="text-stone-800 dark:text-stone-200 font-mono">{initialScheduledAt}</strong>
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-100 dark:bg-cyan-900/60 text-cyan-800 dark:text-cyan-200 border border-cyan-300 dark:border-cyan-700 shrink-0">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700 shrink-0">
             Reschedule Mode
           </span>
         </div>
@@ -485,7 +485,7 @@ export default function FancyInterviewScheduler({
       </div>
 
       {/* ── TOP HEADER: QUICK PRESETS & INTERVAL TOGGLES ── */}
-      <div className="p-4 bg-teal-50/60 dark:bg-[#1A1714] rounded-2xl border border-teal-200/70 dark:border-[#2A2520] space-y-3">
+      <div className="p-4 bg-[#FDFBF7] dark:bg-[#2B201A] rounded-2xl border border-[#E8DFD8] dark:border-[#423229] space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-bold text-stone-900 dark:text-stone-200 uppercase tracking-wider flex items-center space-x-1.5">
             <Zap className="w-4 h-4 text-brand-600 dark:text-brand-400" />
@@ -828,9 +828,9 @@ export default function FancyInterviewScheduler({
               {formattedDateStr}
             </div>
             <div className="text-stone-600 dark:text-stone-300 font-semibold flex items-center space-x-2">
-              <Clock className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              <Clock className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
               <span>{formattedTimeStr}</span>
-              <span className="px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-700 dark:text-teal-300 font-extrabold text-[10px]">
+              <span className="px-2 py-0.5 rounded-md bg-brand-500/15 text-brand-700 dark:text-brand-300 font-extrabold text-[10px]">
                 {durationMinutes} mins
               </span>
             </div>
@@ -901,11 +901,11 @@ export default function FancyInterviewScheduler({
                 </button>
               </div>
 
-              <div className="p-3 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-200/60 dark:border-teal-900/40 text-xs text-teal-900 dark:text-teal-200 space-y-1">
+              <div className="p-3 rounded-xl bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200/60 dark:border-brand-900/40 text-xs text-brand-900 dark:text-brand-200 space-y-1">
                 <p className="font-semibold">
                   📋 Includes: MCQ Domain Assessment + Live Code Sandbox (Python, JavaScript, Go, SQL).
                 </p>
-                <p className="text-[11px] text-teal-700 dark:text-teal-300">
+                <p className="text-[11px] text-brand-700 dark:text-brand-300">
                   Candidate submits solutions through the portal. Once submitted, scorecards and benchmark percentiles sync directly into your pipeline.
                 </p>
               </div>
@@ -1018,7 +1018,7 @@ export default function FancyInterviewScheduler({
                 onClick={() => setSelectedProvider('google_meet')}
                 className={`p-4 rounded-2xl border text-left transition-all ${
                   selectedProvider === 'google_meet'
-                    ? 'bg-teal-50/70 dark:bg-teal-950/30 border-brand-500 text-stone-900 dark:text-stone-100 ring-2 ring-brand-500/20 shadow-subtle'
+                    ? 'bg-brand-50/70 dark:bg-brand-950/30 border-brand-500 text-stone-900 dark:text-stone-100 ring-2 ring-brand-500/20 shadow-subtle'
                     : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E5E0DA] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 hover:border-brand-300'
                 }`}
               >
@@ -1040,16 +1040,16 @@ export default function FancyInterviewScheduler({
                 onClick={() => setSelectedProvider('auto_instant')}
                 className={`p-4 rounded-2xl border text-left transition-all ${
                   selectedProvider === 'auto_instant'
-                    ? 'bg-teal-50/70 dark:bg-teal-950/30 border-brand-500 text-stone-900 dark:text-stone-100 ring-2 ring-brand-500/20 shadow-subtle'
+                    ? 'bg-brand-50/70 dark:bg-brand-950/30 border-brand-500 text-stone-900 dark:text-stone-100 ring-2 ring-brand-500/20 shadow-subtle'
                     : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E5E0DA] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 hover:border-brand-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-black text-xs flex items-center space-x-2 text-teal-700 dark:text-teal-300">
+                  <span className="font-black text-xs flex items-center space-x-2 text-brand-700 dark:text-brand-300">
                     <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                     <span>SparkX Instant Video (Jitsi — 1-Click Quick)</span>
                   </span>
-                  {selectedProvider === 'auto_instant' && <Check className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+                  {selectedProvider === 'auto_instant' && <Check className="w-4 h-4 text-brand-600 dark:text-brand-400" />}
                 </div>
                 <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
                   <strong>Quick Room:</strong> Zero setup, zero login required. Works in any browser with full HD video, mic, and screen sharing.
@@ -1097,7 +1097,7 @@ export default function FancyInterviewScheduler({
                 </div>
 
                 {googleStatus.connected ? (
-                  <div className="p-3 rounded-xl bg-teal-50/50 dark:bg-teal-950/30 border border-teal-100 dark:border-teal-900/40 text-xs text-teal-900 dark:text-teal-200">
+                  <div className="p-3 rounded-xl bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200/60 dark:border-brand-900/40 text-xs text-brand-900 dark:text-brand-200">
                     <p className="font-semibold">
                       ✨ Auto-Provisioning Active: When you click <strong>Confirm Schedule</strong>, SparkX will automatically create an authentic Google Meet conference under your connected Google account and send the real link to <strong>{candidate?.name || 'the candidate'}</strong> and <strong>{googleStatus.email}</strong>.
                     </p>

@@ -14,7 +14,9 @@ import {
   ExternalLink,
   Bot,
   FileText,
-  Home
+  Home,
+  ShieldCheck,
+  Scale
 } from 'lucide-react';
 import { StatusBadge, Button, IconButton } from '../../ui/Primitives';
 import { normalizeWorkflow } from '../../../utils/workflowContract';
@@ -30,6 +32,7 @@ export default function CandidateWorkspaceHeader({
   onOpenResume,
   onScheduleInterview,
   onOpenDecision,
+  onOpenComparison,
   tabs = [],
   activeTab = 'overview',
   onTabChange
@@ -118,7 +121,7 @@ export default function CandidateWorkspaceHeader({
 
           {/* Candidate Avatar & Name Chip */}
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-brand-600 to-teal-500 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0 font-mono tracking-wide">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#2A1B14] to-[#C27803] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0 font-mono tracking-wide">
               {initials}
             </div>
             <div className="flex items-baseline gap-2 min-w-0">
@@ -167,6 +170,17 @@ export default function CandidateWorkspaceHeader({
             </Button>
           )}
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.open(`/skill-passport/${candidate.id}`, '_blank')}
+            className="gap-1.5 border-indigo-200 dark:border-indigo-900/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs py-1 h-7 sm:h-8"
+            title="View candidate's Verified Skill Passport"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span className="hidden sm:inline">Passport</span>
+          </Button>
+
           {onScheduleInterview && (() => {
             const isInterviewCompleted = Boolean(
               wf.interviewStatus === 'completed' ||
@@ -209,6 +223,19 @@ export default function CandidateWorkspaceHeader({
               </Button>
             );
           })()}
+
+          {onOpenComparison && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onOpenComparison}
+              className="gap-1.5 border-stone-200 dark:border-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 text-xs py-1 h-7 sm:h-8"
+              title="Compare side-by-side with other candidates for this job opening"
+            >
+              <Scale className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+              <span className="hidden sm:inline">Compare</span>
+            </Button>
+          )}
 
           {onOpenDecision && (
             <Button

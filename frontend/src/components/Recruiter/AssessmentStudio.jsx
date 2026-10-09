@@ -55,6 +55,7 @@ const EVAL_TYPE_TO_TAB = {
 function getTabsFromEvalTypes(evalTypes, isCoding = true) {
   const seen = new Set();
   const tabs = [];
+
   for (const evalType of (evalTypes || [])) {
     const def = EVAL_TYPE_TO_TAB[evalType];
     if (def && !seen.has(def.id)) {
@@ -85,7 +86,7 @@ function getTabsFromEvalTypes(evalTypes, isCoding = true) {
   return tabs;
 }
 
-export default function AssessmentStudio({ defaultTab = 'interview' }) {
+export default function AssessmentStudio({ defaultTab = 'assessment' }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { 
@@ -527,6 +528,11 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
             </div>
             <div className="flex items-center gap-2">
               <Button
+                variant="primary" size="xs" icon={Layers}
+                onClick={() => navigate(`/recruiter/assessment-builder?job_id=${currentJob.id}`)}
+                title="Open Advanced Assessment Builder"
+              >Advanced Builder →</Button>
+              <Button
                 variant="outline" size="xs" icon={Eye}
                 onClick={() => navigate(`/interview?preview=true&job_id=${currentJob.id}`)}
                 title="Preview interview as candidate"
@@ -566,7 +572,7 @@ export default function AssessmentStudio({ defaultTab = 'interview' }) {
       {!isLoadingConfig && studioConfig && (
         <>
           {/* Tab Navigation — dynamic based on domain */}
-          <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-px overflow-x-auto">
+          <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-px overflow-x-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {availableTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;

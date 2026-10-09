@@ -2,12 +2,16 @@
 (V) Assessment Views - HTTP Endpoints for 4-Category Technical Assessments
 Protected by Role-Based Access Control and strict ownership verification.
 """
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas import CodeRunRequest, CodeRunResponse, AssessmentSubmitRequest, AssessmentSubmitResponse
+from schemas import (
+    CodeRunRequest, CodeRunResponse, AssessmentSubmitRequest, AssessmentSubmitResponse,
+    AssessmentBuilderCreate, AssessmentBuilderUpdate, AssessmentQuestionAttachRequest,
+    AssessmentQuestionReorderRequest, QuestionAutoSelectRequest, QuestionCreateUnified
+)
 from controllers.assessment_controller import AssessmentController
 from ai_engine import generate_studio_assessment_config
 
@@ -391,6 +395,270 @@ def attach_assessment_coding_problems(
     return res
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# PHASE 4E.5: ADVANCED ASSESSMENT BUILDER ENDPOINTS
+# ═════════════════════════════════════════════════════════════════════════════
+
+@router.get("/builder/assessments")
+def list_builder_assessments(
+    job_id: Optional[str] = None,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """List recruiter's assessments filtered by job and multi-tenant boundary."""
+    res, err, status_code = AssessmentController.list_builder_assessments(
+        db=db,
+        current_user=current_user,
+        job_id=job_id
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.post("/builder/assessments")
+def create_builder_assessment(
+    payload: AssessmentBuilderCreate,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Create a new draft assessment for a job."""
+    res, err, status_code = AssessmentController.create_builder_assessment(
+        db=db,
+        payload=payload,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.get("/builder/assessments/{assessment_id}")
+def get_builder_assessment(
+    assessment_id: str,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Get full assessment configuration, attached questions, and validation state."""
+    res, err, status_code = AssessmentController.get_builder_assessment(
+        db=db,
+        assessment_id=assessment_id,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.put("/builder/assessments/{assessment_id}")
+def update_builder_assessment(
+    assessment_id: str,
+    payload: AssessmentBuilderUpdate,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Update settings for an assessment draft."""
+    res, err, status_code = AssessmentController.update_builder_assessment(
+        db=db,
+        assessment_id=assessment_id,
+        payload=payload,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.post("/builder/assessments/{assessment_id}/questions")
+def attach_builder_question(
+    assessment_id: str,
+    payload: AssessmentQuestionAttachRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Attach an MCQ or coding question to the assessment."""
+    res, err, status_code = AssessmentController.attach_builder_question(
+        db=db,
+        assessment_id=assessment_id,
+        payload=payload,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.delete("/builder/assessments/{assessment_id}/questions/{question_type}/{question_id}")
+def remove_builder_question(
+    assessment_id: str,
+    question_type: str,
+    question_id: str,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Remove a question association from the assessment."""
+    res, err, status_code = AssessmentController.remove_builder_question(
+        db=db,
+        assessment_id=assessment_id,
+        question_type=question_type,
+        question_id=question_id,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.put("/builder/assessments/{assessment_id}/questions/reorder")
+def reorder_builder_questions(
+    assessment_id: str,
+    payload: AssessmentQuestionReorderRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Reorder and adjust point weights of attached questions."""
+    res, err, status_code = AssessmentController.reorder_builder_questions(
+        db=db,
+        assessment_id=assessment_id,
+        payload=payload,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.post("/builder/assessments/{assessment_id}/auto-select")
+def auto_select_builder_questions(
+    assessment_id: str,
+    payload: QuestionAutoSelectRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Rule-based question auto-selection from authoritative DB question bank."""
+    res, err, status_code = AssessmentController.auto_select_builder_questions(
+        db=db,
+        assessment_id=assessment_id,
+        payload=payload,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.post("/builder/assessments/{assessment_id}/validate")
+def validate_builder_assessment(
+    assessment_id: str,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Run full validation checks against assessment configuration."""
+    res, err, status_code = AssessmentController.validate_builder_assessment(
+        db=db,
+        assessment_id=assessment_id,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.post("/builder/assessments/{assessment_id}/publish")
+def publish_builder_assessment(
+    assessment_id: str,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Validate, create immutable version snapshot, and publish assessment."""
+    res, err, status_code = AssessmentController.publish_builder_assessment(
+        db=db,
+        assessment_id=assessment_id,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.post("/builder/assessments/{assessment_id}/archive")
+def archive_builder_assessment(
+    assessment_id: str,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Archive assessment so no new candidates can be assigned."""
+    res, err, status_code = AssessmentController.archive_builder_assessment(
+        db=db,
+        assessment_id=assessment_id,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.get("/builder/assessments/{assessment_id}/preview")
+def preview_builder_assessment(
+    assessment_id: str,
+    as_candidate: bool = False,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Preview assessment with recruiter solutions or sanitized candidate perspective."""
+    res, err, status_code = AssessmentController.preview_builder_assessment(
+        db=db,
+        assessment_id=assessment_id,
+        current_user=current_user,
+        as_candidate=as_candidate
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.get("/questions")
+def list_unified_question_bank(
+    question_type: Optional[str] = Query(None),
+    difficulty: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    skill: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Query unified question repository (MCQs & Coding) across tenant and system libraries."""
+    res, err, status_code = AssessmentController.list_unified_question_bank(
+        db=db,
+        current_user=current_user,
+        question_type=question_type,
+        difficulty=difficulty,
+        category=category,
+        skill=skill,
+        search=search
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
+@router.post("/questions", status_code=201)
+def create_unified_question(
+    payload: QuestionCreateUnified,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Author a new question (MCQ or Coding) with relational skill linking."""
+    res, err, status_code = AssessmentController.create_unified_question(
+        db=db,
+        payload=payload,
+        current_user=current_user
+    )
+    if err:
+        raise HTTPException(status_code=status_code, detail=err)
+    return res
+
+
 # ─── 3. Candidate Assessment Session Endpoints (Wildcards) ───────────────────
 
 @router.get("/{candidate_id}")
@@ -447,7 +715,7 @@ def get_assessment(
 
     res, err = AssessmentController.get_candidate_assessment(candidate_id, job_id, db, is_recruiter=is_recruiter)
     if err:
-        status_code = 403 if ("restricted" in err.lower() or "screening" in err.lower()) else 404
+        status_code = 403 if ("restricted" in err.lower() or "screening" in err.lower() or "draft" in err.lower()) else 404
         raise HTTPException(status_code=status_code, detail=err)
     return res
 
@@ -643,4 +911,5 @@ def attach_assessment_mcqs(
     if err:
         raise HTTPException(status_code=status_code, detail=err)
     return res
+
 

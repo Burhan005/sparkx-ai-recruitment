@@ -77,7 +77,7 @@ export function generateResumeHTML(candidate) {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      border-bottom: 2px solid #0D9488;
+      border-bottom: 2px solid #C27803;
       padding-bottom: 18px;
       margin-bottom: 22px;
       gap: 16px;
@@ -86,7 +86,7 @@ export function generateResumeHTML(candidate) {
     .header-left h1 {
       font-size: 24px;
       font-weight: 800;
-      color: #0F172A;
+      color: #1C130E;
       letter-spacing: -0.5px;
       margin-bottom: 4px;
     }
@@ -94,7 +94,7 @@ export function generateResumeHTML(candidate) {
     .header-left .role {
       font-size: 14px;
       font-weight: 600;
-      color: #0D9488;
+      color: #C27803;
       margin-bottom: 10px;
     }
     
@@ -113,22 +113,22 @@ export function generateResumeHTML(candidate) {
     }
     
     .score-badge {
-      background: #F0FDFA;
-      border: 1.5px solid #0D9488;
+      background: #FFFBEB;
+      border: 1.5px solid #C27803;
       border-radius: 10px;
       padding: 10px 16px;
       text-align: center;
       min-width: 100px;
       font-size: 11px;
       font-weight: 700;
-      color: #0D9488;
+      color: #92400E;
     }
     
     .score-badge span {
       display: block;
       font-size: 22px;
       font-weight: 800;
-      color: #0F766E;
+      color: #C27803;
       line-height: 1;
       margin-bottom: 2px;
       font-family: 'JetBrains Mono', monospace;
@@ -244,12 +244,12 @@ export function generateResumeHTML(candidate) {
 <body>
   <div class="container">
     <!-- Top Action Bar (hidden when printing) -->
-    <div class="no-print" style="margin-bottom: 18px; padding: 12px; background: #F0FDFA; border: 1px solid #CCFBF1; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 12px; font-weight: 600; color: #0F766E;">
+    <div class="no-print" style="margin-bottom: 18px; padding: 12px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 12px; font-weight: 600; color: #92400E;">
         Verified Candidate Application Dossier — Ready to Print / Save as PDF
       </span>
       <div style="display: flex; gap: 8px;">
-        <button onclick="window.print()" style="background: #0D9488; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;">
+        <button onclick="window.print()" style="background: #C27803; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer;">
           Save / Print as PDF
         </button>
         <button onclick="window.close()" style="background: white; color: #475569; border: 1px solid #CBD5E1; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer;">

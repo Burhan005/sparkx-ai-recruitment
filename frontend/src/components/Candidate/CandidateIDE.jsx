@@ -119,7 +119,7 @@ function FormattedProblemDescription({ rawText }) {
       {sections.map((sec, sIdx) => {
         const titleLower = (sec.title || '').toLowerCase();
         let IconComp = Info;
-        let iconColor = 'text-teal-400';
+        let iconColor = 'text-brand-400';
 
         if (titleLower.includes('function') || titleLower.includes('description')) {
           IconComp = FileCode;
@@ -135,7 +135,7 @@ function FormattedProblemDescription({ rawText }) {
           iconColor = 'text-amber-400';
         } else if (titleLower.includes('constraint')) {
           IconComp = ShieldCheck;
-          iconColor = 'text-cyan-400';
+          iconColor = 'text-brand-400';
         }
 
         const validLines = sec.items.filter(l => l.trim().length > 0);
@@ -302,31 +302,31 @@ export default function CandidateIDE({
       inherit: true,
       rules: [
         { token: 'comment', foreground: '78716C', fontStyle: 'italic' },
-        { token: 'keyword', foreground: '2DD4BF', fontStyle: 'bold' },
+        { token: 'keyword', foreground: 'F59E0B', fontStyle: 'bold' },
         { token: 'identifier', foreground: 'E7E5E4' },
         { token: 'string', foreground: '34D399' },
         { token: 'number', foreground: 'FBBF24' },
         { token: 'type', foreground: 'E879F9' },
-        { token: 'function', foreground: '38BDF8' },
-        { token: 'operator', foreground: '5EEAD4' }
+        { token: 'function', foreground: 'F59E0B' },
+        { token: 'operator', foreground: 'FCD34D' }
       ],
       colors: {
-        'editor.background': '#0C0A09',
+        'editor.background': '#161310',
         'editor.foreground': '#E7E5E4',
-        'editor.lineHighlightBackground': '#161311',
-        'editorLineNumber.foreground': '#57534E',
-        'editorLineNumber.activeForeground': '#14B8A6',
-        'editor.selectionBackground': '#1E3A3A',
-        'editor.inactiveSelectionBackground': '#152424',
-        'editorCursor.foreground': '#14B8A6',
+        'editor.lineHighlightBackground': '#1E1B17',
+        'editorLineNumber.foreground': '#78716C',
+        'editorLineNumber.activeForeground': '#F59E0B',
+        'editor.selectionBackground': '#452E1B',
+        'editor.inactiveSelectionBackground': '#2E1E12',
+        'editorCursor.foreground': '#F59E0B',
         'editorWhitespace.foreground': '#2A2520',
         'editorIndentGuide.background': '#1F1B18',
         'editorIndentGuide.activeBackground': '#3A332C',
-        'editorBracketMatch.background': '#1E3A3A',
-        'editorBracketMatch.border': '#14B8A6',
+        'editorBracketMatch.background': '#3A2716',
+        'editorBracketMatch.border': '#F59E0B',
         'scrollbarSlider.background': '#2A252080',
         'scrollbarSlider.hoverBackground': '#3D352E80',
-        'scrollbarSlider.activeBackground': '#14B8A680'
+        'scrollbarSlider.activeBackground': '#F59E0B80'
       }
     });
 
@@ -336,22 +336,22 @@ export default function CandidateIDE({
       inherit: true,
       rules: [
         { token: 'comment', foreground: '78716C', fontStyle: 'italic' },
-        { token: 'keyword', foreground: '0D9488', fontStyle: 'bold' },
+        { token: 'keyword', foreground: 'C27803', fontStyle: 'bold' },
         { token: 'identifier', foreground: '1C1917' },
         { token: 'string', foreground: '059669' },
         { token: 'number', foreground: 'D97706' },
         { token: 'type', foreground: '9333EA' },
-        { token: 'function', foreground: '0284C7' },
-        { token: 'operator', foreground: '0D9488' }
+        { token: 'function', foreground: 'B45309' },
+        { token: 'operator', foreground: 'C27803' }
       ],
       colors: {
         'editor.background': '#FAF8F4',
         'editor.foreground': '#1C1917',
         'editor.lineHighlightBackground': '#F3EFEA',
         'editorLineNumber.foreground': '#A8A29E',
-        'editorLineNumber.activeForeground': '#0D9488',
-        'editor.selectionBackground': '#CCFBF1',
-        'editorCursor.foreground': '#0D9488',
+        'editorLineNumber.activeForeground': '#C27803',
+        'editor.selectionBackground': '#FEF3C7',
+        'editorCursor.foreground': '#C27803',
         'editorIndentGuide.background': '#E8E4DF',
         'editorIndentGuide.activeBackground': '#D6D1CA'
       }
@@ -614,7 +614,7 @@ export default function CandidateIDE({
           {/* Database Engine & Version Selector (Only when SQL is active AND challenge involves SQL/database schema) */}
           {activeLangKey === 'sql' && (schemaDdl || instructions?.toLowerCase().includes('sql') || taskTitle?.toLowerCase().includes('sql') || supportedLanguages.includes('sql')) && (
             <div className="flex items-center space-x-1.5 bg-slate-900 px-2.5 py-1 rounded-lg border border-brand-500/30 text-xs text-brand-300">
-              <Database className="w-3.5 h-3.5 text-cyan-400" />
+              <Database className="w-3.5 h-3.5 text-brand-400" />
               <select
                 value={selectedDbEngine}
                 onChange={(e) => {
@@ -725,7 +725,7 @@ export default function CandidateIDE({
       {/* ─── Main Split Layout: Left Problem Panel & Right Monaco/Console ─── */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* LEFT PANEL: Problem Specification & Table Schema (DDL) */}
-        <div className={`w-full ${leftPanelCollapsed ? 'md:w-[48px]' : 'md:w-[40%] lg:w-[36%]'} border-b md:border-b-0 md:border-r border-[#2A2520] bg-[#110F0D] flex flex-col overflow-hidden transition-all duration-200`}>
+        <div className={`w-full ${leftPanelCollapsed ? 'md:w-[48px]' : 'md:w-[40%] lg:w-[36%]'} border-b md:border-b-0 md:border-r border-[#2A2520] bg-[#0F0E0D] flex flex-col overflow-hidden transition-all duration-200`}>
           {/* Sub-tab Navigation */}
           <div className="px-3 py-2 bg-[#14110F] border-b border-[#2A2520] flex items-center justify-between">
             <div className="flex items-center space-x-1.5">
@@ -752,7 +752,7 @@ export default function CandidateIDE({
                       : 'text-stone-400 hover:text-stone-200'
                   }`}
                 >
-                  <Database className="w-3.5 h-3.5 text-teal-400" />
+                  <Database className="w-3.5 h-3.5 text-amber-400" />
                   <span className={leftPanelCollapsed ? 'hidden' : 'inline'}>Table Schema (DDL)</span>
                 </button>
               )}
@@ -776,7 +776,7 @@ export default function CandidateIDE({
                   {/* Formatted Requirements & Overview */}
                   <div className="space-y-2">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-stone-400 flex items-center space-x-1.5">
-                      <Info className="w-3.5 h-3.5 text-teal-400" />
+                      <Info className="w-3.5 h-3.5 text-amber-400" />
                       <span>Requirements & Overview</span>
                     </h3>
                     <FormattedProblemDescription rawText={instructions} />
@@ -789,7 +789,7 @@ export default function CandidateIDE({
                         <Code2 className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Target Signature ({currentRuntime.label})</span>
                       </h3>
-                      <pre className="p-3 bg-[#161311] border border-[#2A2520] rounded-xl font-mono-code text-[11px] text-teal-300 overflow-x-auto">
+                      <pre className="p-3 bg-[#161311] border border-[#2A2520] rounded-xl font-mono-code text-[11px] text-amber-300 overflow-x-auto">
                         {functionSignatures[activeLangKey]}
                       </pre>
                     </div>
@@ -852,7 +852,7 @@ export default function CandidateIDE({
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center space-x-1.5">
-                        <Database className="w-4 h-4 text-cyan-400" />
+                        <Database className="w-4 h-4 text-brand-400" />
                         <span>Relational Table Definitions</span>
                       </h3>
                       <p className="text-[11px] text-slate-400 pt-0.5">
@@ -1033,7 +1033,7 @@ export default function CandidateIDE({
                 )}
 
                 {isExecuting && (
-                  <div className="py-6 flex flex-col items-center justify-center space-y-2 text-teal-400">
+                  <div className="py-6 flex flex-col items-center justify-center space-y-2 text-amber-400">
                     <Loader2 className="w-6 h-6 animate-spin" />
                     <span className="text-xs font-medium">Executing code in {currentRuntime.version} sandbox...</span>
                   </div>
@@ -1055,11 +1055,11 @@ export default function CandidateIDE({
                       {executionTelemetry && (
                         <div className="flex items-center space-x-3 text-stone-400 font-mono-code">
                           <span className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3 text-teal-400" />
+                            <Clock className="w-3 h-3 text-amber-400" />
                             <span>{executionTelemetry.execution_ms ?? executionTelemetry.duration ?? '1.2'}ms</span>
                           </span>
                           <span className="flex items-center space-x-1">
-                            <Cpu className="w-3 h-3 text-teal-400" />
+                            <Cpu className="w-3 h-3 text-amber-400" />
                             <span>{executionTelemetry.memory_mb ?? '24.5'}MB</span>
                           </span>
                         </div>
@@ -1133,7 +1133,7 @@ export default function CandidateIDE({
                     type="button"
                     onClick={handleCustomTestExecute}
                     disabled={isExecutingCustom || isReadOnly}
-                    className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-md shadow-teal-900/20"
+                    className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-[11px] font-bold transition flex items-center space-x-1 shadow-md shadow-amber-950/20"
                   >
                     {isExecutingCustom ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 fill-current" />}
                     <span>Run Custom Input</span>

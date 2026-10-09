@@ -624,6 +624,8 @@ class SchedulingController:
 
         # Update candidate model
         cand.interview_status = INTERVIEW_CANCELLED
+        cand.interview_scheduled_at = None
+        cand.interview_meeting_url = None
         CandidateController.log_state_change(
             candidate_id=cand.id,
             dimension="interview_status",

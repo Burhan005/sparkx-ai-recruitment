@@ -8,6 +8,7 @@ import { RequireAuth, RequireRole, RequirePublic, RootRedirect } from './compone
 import { FadeInUp } from './components/ui/Primitives';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import GlobalScrollProgress from './components/layout/GlobalScrollProgress';
+import CosmicThemeWave from './components/ui/CosmicThemeWave';
 
 import { PageTransitionProvider } from './context/PageTransitionContext';
 
@@ -18,9 +19,11 @@ const JobCatalog = lazy(() => import('./components/Candidate/JobCatalog'));
 const AIInterviewRoom = lazy(() => import('./components/Candidate/AIInterviewRoom'));
 const CodeAssessment = lazy(() => import('./components/Candidate/CodeAssessment'));
 const SkillGapReport = lazy(() => import('./components/Candidate/SkillGapReport'));
+const SkillPassportView = lazy(() => import('./components/Candidate/SkillPassportView'));
 const MyApplications = lazy(() => import('./components/Candidate/MyApplications'));
 const ProctorLiveMonitor = lazy(() => import('./components/Proctor/ProctorLiveMonitor'));
 const AssessmentStudio = lazy(() => import('./components/Recruiter/AssessmentStudio'));
+const AssessmentBuilder = lazy(() => import('./components/Recruiter/AssessmentBuilder'));
 const RecruiterAvailabilityManager = lazy(() => import('./components/Recruiter/RecruiterAvailabilityManager'));
 const NotFoundScreen = lazy(() => import('./components/ui/NotFoundScreen'));
 const LandingPage = lazy(() => import('./components/public/LandingPage'));
@@ -31,7 +34,7 @@ function PageFallback() {
     <div className="w-full min-h-[50vh] flex flex-col items-center justify-center p-8 space-y-4 animate-fade-in">
       <div className="relative w-10 h-10">
         <div className="absolute inset-0 rounded-full border-2 border-brand-600/20 border-t-brand-600 animate-spin" />
-        <div className="absolute inset-2 rounded-full border-2 border-teal-600/20 border-b-teal-600 animate-spin [animation-direction:reverse]" />
+        <div className="absolute inset-2 rounded-full border-2 border-brand-500/20 border-b-brand-500 animate-spin [animation-direction:reverse]" />
       </div>
       <div className="text-center space-y-0.5">
         <p className="text-[10px] font-mono uppercase tracking-wider text-stone-400">SparkX OS</p>
@@ -54,6 +57,7 @@ export default function App() {
       <GlobalScrollProgress />
       <ToastProvider>
         <RecruitmentProvider>
+          <CosmicThemeWave />
           <ToastBridge />
           <SignOutModal />
           <PageTransitionProvider>
@@ -119,6 +123,8 @@ export default function App() {
                   <Route path="/assessment/:candidateId" element={<CodeAssessment />} />
                   <Route path="/skill-gap" element={<SkillGapReport />} />
                   <Route path="/skill-gap/:candidateId" element={<SkillGapReport />} />
+                  <Route path="/skill-passport" element={<SkillPassportView />} />
+                  <Route path="/skill-passport/:candidateId" element={<SkillPassportView />} />
                 </Route>
 
                 {/* ─── Recruiter Protected Routes ─── */}
@@ -129,6 +135,7 @@ export default function App() {
                   <Route path="/recruiter/candidates/:candidateId" element={<CandidatePipeline />} />
                   <Route path="/recruiter/proctor" element={<ProctorLiveMonitor />} />
                   <Route path="/recruiter/assessment-studio" element={<AssessmentStudio defaultTab="assessment" />} />
+                  <Route path="/recruiter/assessment-builder" element={<AssessmentBuilder />} />
                   <Route path="/recruiter/interview-studio" element={<AssessmentStudio defaultTab="interview" />} />
                   <Route path="/recruiter/availability" element={<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-page-enter"><RecruiterAvailabilityManager /></div>} />
                 </Route>

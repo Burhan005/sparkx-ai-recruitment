@@ -81,6 +81,75 @@ export default function AIInterviewRoom() {
   const [hasStarted, setHasStarted] = useState(false);
   const [isVoiceMuted, setIsVoiceMuted] = useState(false);
 
+  // Pre-flight hardware & system readiness check
+  const [hardwareCheck, setHardwareCheck] = useState({
+    mic: 'pending',
+    cam: 'pending',
+    speaker: 'pending',
+    network: typeof navigator !== 'undefined' && navigator.onLine ? 'online' : 'offline',
+    checking: false,
+    error: null
+  });
+
+  const handleTestHardware = async () => {
+    setHardwareCheck(prev => ({ ...prev, checking: true, error: null }));
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setHardwareCheck(prev => ({
+          ...prev,
+          mic: 'denied',
+          cam: 'denied',
+          checking: false,
+          error: 'Media devices API is not supported in this browser.'
+        }));
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      const hasAudio = stream.getAudioTracks().length > 0;
+      const hasVideo = stream.getVideoTracks().length > 0;
+      stream.getTracks().forEach(t => t.stop());
+      setHardwareCheck(prev => ({
+        ...prev,
+        mic: hasAudio ? 'granted' : 'denied',
+        cam: hasVideo ? 'granted' : 'denied',
+        checking: false,
+        error: null
+      }));
+    } catch (err) {
+      console.warn('Hardware test warning:', err);
+      setHardwareCheck(prev => ({
+        ...prev,
+        mic: 'denied',
+        cam: 'denied',
+        checking: false,
+        error: 'Camera or Microphone access was blocked. Please grant permissions in your browser address bar.'
+      }));
+    }
+  };
+
+  const handleTestSpeaker = () => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      }
+      setHardwareCheck(prev => ({ ...prev, speaker: 'tested' }));
+    } catch (e) {
+      console.warn('Speaker test error:', e);
+      setHardwareCheck(prev => ({ ...prev, speaker: 'tested' }));
+    }
+  };
+
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const proctorRef = useRef(null);
@@ -200,6 +269,15 @@ export default function AIInterviewRoom() {
         setIntegrityEvents(prev => [ev, ...prev]);
         setIntegrityScore(score);
         setRiskLevel(risk);
+        if (candidateId && !isRecruiterTesting) {
+          api.logTelemetry(candidateId, {
+            candidate_id: candidateId,
+            timestamp: ev.timestamp || new Date().toISOString(),
+            event_type: ev.type || 'focus_change',
+            description: ev.description || 'Integrity anomaly detected',
+            severity: risk === 'High' ? 'high' : 'medium'
+          }).catch(() => {});
+        }
       },
       onStatusChange: (status) => {
         if (status.tabActive !== undefined) setTabFocused(status.tabActive);
@@ -720,6 +798,125 @@ export default function AIInterviewRoom() {
           </div>
         </div>
 
+        {/* Pre-Flight System & Media Readiness Check */}
+        <div className="p-6 rounded-2xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-3">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2 font-mono">
+                <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <span>Pre-Flight System & Media Readiness</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Verify your microphone, camera, and audio playback are functional prior to entering the live room.
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={handleTestHardware}
+                disabled={hardwareCheck.checking}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-500/20 border border-brand-500/20 transition flex items-center space-x-1.5"
+              >
+                <Activity className={`w-3.5 h-3.5 ${hardwareCheck.checking ? 'animate-spin' : ''}`} />
+                <span>{hardwareCheck.checking ? 'Testing...' : 'Test Mic & Camera'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleTestSpeaker}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 transition flex items-center space-x-1.5"
+              >
+                <Volume2 className="w-3.5 h-3.5" />
+                <span>Test Speaker</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            {/* Microphone */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Mic className="w-4 h-4 text-brand-500" />
+                <div>
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white">Microphone</div>
+                  <div className="text-[10px] text-slate-500">Audio input</div>
+                </div>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                hardwareCheck.mic === 'granted' 
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : hardwareCheck.mic === 'denied'
+                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-500 border border-stone-200 dark:border-stone-700'
+              }`}>
+                {hardwareCheck.mic === 'granted' ? 'Authorized' : hardwareCheck.mic === 'denied' ? 'Blocked' : 'Pending Check'}
+              </span>
+            </div>
+
+            {/* Camera */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Video className="w-4 h-4 text-brand-500" />
+                <div>
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white">Camera</div>
+                  <div className="text-[10px] text-slate-500">Video & Proctor</div>
+                </div>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                hardwareCheck.cam === 'granted' 
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : hardwareCheck.cam === 'denied'
+                  ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-500 border border-stone-200 dark:border-stone-700'
+              }`}>
+                {hardwareCheck.cam === 'granted' ? 'Authorized' : hardwareCheck.cam === 'denied' ? 'Blocked' : 'Pending Check'}
+              </span>
+            </div>
+
+            {/* Audio Output */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Volume2 className="w-4 h-4 text-brand-500" />
+                <div>
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white">Sound Output</div>
+                  <div className="text-[10px] text-slate-500">AI speech voice</div>
+                </div>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                hardwareCheck.speaker === 'tested'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-stone-100 dark:bg-stone-800 text-stone-500 border border-stone-200 dark:border-stone-700'
+              }`}>
+                {hardwareCheck.speaker === 'tested' ? 'Tested' : 'Untested'}
+              </span>
+            </div>
+
+            {/* Network */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Activity className="w-4 h-4 text-brand-500" />
+                <div>
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white">Network</div>
+                  <div className="text-[10px] text-slate-500">Telemetry feed</div>
+                </div>
+              </div>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                hardwareCheck.network === 'online'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+              }`}>
+                {hardwareCheck.network === 'online' ? 'Connected' : 'Offline'}
+              </span>
+            </div>
+          </div>
+
+          {hardwareCheck.error && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>{hardwareCheck.error}</span>
+            </div>
+          )}
+        </div>
+
         {/* Readiness Instructions & Start Action Footer */}
         <div className="p-6 rounded-2xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-card">
           <div className="space-y-1 max-w-xl">
@@ -755,14 +952,14 @@ export default function AIInterviewRoom() {
       
       {/* Recruiter Confirmed Interview Banner */}
       {activeCandidate?.interviewScheduledAt && (
-        <div className="p-3.5 px-4 rounded-2xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
+        <div className="p-3.5 px-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-500 dark:text-cyan-400 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
               <Calendar className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-cyan-800 dark:text-cyan-300 font-bold">Interview Confirmed by Recruiter</span>
-              <p className="text-slate-600 dark:text-slate-400 text-[11px]">Scheduled Slot: <strong className="text-slate-900 dark:text-white">{activeCandidate.interviewScheduledAt}</strong></p>
+              <span className="text-amber-800 dark:text-amber-300 font-bold">Interview Confirmed by Recruiter</span>
+              <p className="text-stone-600 dark:text-stone-400 text-[11px]">Scheduled Slot: <strong className="text-stone-900 dark:text-white">{activeCandidate.interviewScheduledAt}</strong></p>
             </div>
           </div>
           {activeCandidate.interviewMeetingUrl && (
@@ -1141,7 +1338,7 @@ export default function AIInterviewRoom() {
                 }}
                 className="text-brand-600 dark:text-brand-400 hover:underline font-semibold flex items-center space-x-1 transition"
               >
-                <span>Proceed to Assessment</span>
+                <span>Complete & Submit Interview</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>

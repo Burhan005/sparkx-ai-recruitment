@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { useSmoothNavigate } from '../../context/PageTransitionContext';
 import CandidateWorkspace from './workspace/CandidateWorkspace';
 import AskSparkxDrawer from '../ai/AskSparkxDrawer';
 import JobCreatorModal from './JobCreatorModal';
+import CandidateComparisonModal from './CandidateComparisonModal';
 import { 
   Stat, 
   Button, 
@@ -18,6 +20,7 @@ import {
   CustomDropdown
 } from '../ui/Primitives';
 import confetti from 'canvas-confetti';
+import { api } from '../../services/api';
 import { 
   Users, 
   Search, 
@@ -49,14 +52,32 @@ import {
   ChevronDown,
   ChevronUp,
   DollarSign,
-  Edit3
+  Edit3,
+  Scale,
+  Check,
+  X,
+  MoreHorizontal,
+  UserCheck,
+  UserX,
+  Send,
+  RefreshCw,
+  SlidersHorizontal,
+  CheckSquare,
+  Square,
+  CornerDownRight,
+  XCircle,
+  ArrowUpRight
 } from 'lucide-react';
 import { 
   normalizeWorkflow,
   STAGE_CONFIG,
   HIRING_DECISION_CONFIG,
   ASSESSMENT_STATUS_CONFIG,
-  INTERVIEW_STATUS_CONFIG
+  INTERVIEW_STATUS_CONFIG,
+  STAGES,
+  ASSESSMENT_STATUS,
+  INTERVIEW_STATUS,
+  HIRING_DECISION
 } from '../../utils/workflowContract';
 import { 
   formatJobCTC, 
@@ -67,6 +88,7 @@ import {
 export default function CandidatePipeline() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { smoothNavigate } = useSmoothNavigate();
   const { jobId: routeJobId, candidateId: routeCandidateId } = useParams();
   const { 
     candidates = [], 
@@ -76,8 +98,11 @@ export default function CandidatePipeline() {
     selectedCandidate, 
     setSelectedCandidate,
     updateCandidateStage,
+    updateHiringDecision,
     inviteAssessment,
-    changeJobStatus
+    bulkCandidateAction,
+    changeJobStatus,
+    syncWithDatabase
   } = useRecruitment();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -117,7 +142,154 @@ export default function CandidatePipeline() {
   const [dragOverStage, setDragOverStage] = useState(null);
   const [isAskSparkxOpen, setIsAskSparkxOpen] = useState(false);
   const [isInboundExpanded, setIsInboundExpanded] = useState(false);
+
+  // Phase 4E.4: Authoritative DB-backed Pipeline Summary
+  const [pipelineSummary, setPipelineSummary] = useState(null);
+  const [isPipelineSummaryLoading, setIsPipelineSummaryLoading] = useState(false);
+
+  // Phase 4E.4: 4 Independent Workflow Dimension Filters
+  const [stageFilter, setStageFilter] = useState('ALL');
+  const [assessmentFilter, setAssessmentFilter] = useState('ALL');
+  const [interviewFilter, setInterviewFilter] = useState('ALL');
+  const [decisionFilter, setDecisionFilter] = useState('ALL');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Phase 4E.4: Bulk Action State & Candidate Multi-Select
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState([]);
+  const [isBulkStageModalOpen, setIsBulkStageModalOpen] = useState(false);
+  const [bulkTargetStage, setBulkTargetStage] = useState('screening');
+  const [bulkStageNotes, setBulkStageNotes] = useState('');
+  const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+  const [rejectionTargetCandidate, setRejectionTargetCandidate] = useState(null);
+  const [rejectionCategory, setRejectionCategory] = useState('skills_mismatch');
+  const [rejectionReasonText, setRejectionReasonText] = useState('');
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+  const [activeCardMenuId, setActiveCardMenuId] = useState(null);
+
+  // Phase 4E.3: Candidate Comparison Modal Integration
+  const [selectedForComparison, setSelectedForComparison] = useState([]);
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
   const searchInputRef = useRef(null);
+
+  // Authoritative pipeline summary fetcher
+  const loadPipelineSummary = useCallback(async () => {
+    try {
+      setIsPipelineSummaryLoading(true);
+      const data = await api.getPipelineSummary(selectedJobFilter);
+      if (data) {
+        setPipelineSummary(data);
+      }
+    } catch (err) {
+      console.warn('[Pipeline] Error fetching pipeline summary:', err);
+    } finally {
+      setIsPipelineSummaryLoading(false);
+    }
+  }, [selectedJobFilter]);
+
+  useEffect(() => {
+    loadPipelineSummary();
+  }, [loadPipelineSummary, candidates]);
+
+  // Close active card menu when clicking anywhere else
+  useEffect(() => {
+    const handleOutsideClick = () => setActiveCardMenuId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, []);
+
+  const comparisonJobId = useMemo(() => {
+    if (selectedForComparison.length === 0) return null;
+    const firstCand = candidates.find(c => String(c.id) === String(selectedForComparison[0]));
+    return firstCand ? (firstCand.jobId || firstCand.job_id) : (selectedJobFilter !== 'ALL' ? selectedJobFilter : null);
+  }, [selectedForComparison, candidates, selectedJobFilter]);
+
+  const comparisonJobTitle = useMemo(() => {
+    if (!comparisonJobId) return 'Selected Job Role';
+    const j = jobs.find(job => String(job.id) === String(comparisonJobId));
+    return j ? j.title : 'Selected Job Role';
+  }, [comparisonJobId, jobs]);
+
+  const toggleCandidateSelection = (cand, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const candId = typeof cand === 'object' ? cand.id : cand;
+    setSelectedCandidateIds(prev =>
+      prev.includes(candId) ? prev.filter(id => id !== candId) : [...prev, candId]
+    );
+  };
+
+  const selectAllVisibleCandidates = () => {
+    if (selectedCandidateIds.length === filteredCandidates.length && filteredCandidates.length > 0) {
+      setSelectedCandidateIds([]);
+    } else {
+      setSelectedCandidateIds(filteredCandidates.map(c => c.id));
+    }
+  };
+
+  const clearCandidateSelection = () => {
+    setSelectedCandidateIds([]);
+  };
+
+  const toggleCandidateComparison = (cand, e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    const candId = typeof cand === 'object' ? cand.id : cand;
+    const targetCand = typeof cand === 'object' ? cand : candidates.find(c => String(c.id) === String(candId));
+
+    setSelectedForComparison(prev => {
+      if (prev.includes(candId)) {
+        return prev.filter(id => id !== candId);
+      } else {
+        if (prev.length > 0 && targetCand) {
+          const firstCand = candidates.find(c => String(c.id) === String(prev[0]));
+          const firstJobId = firstCand ? String(firstCand.jobId || firstCand.job_id) : null;
+          const targetJobId = String(targetCand.jobId || targetCand.job_id);
+
+          if (firstJobId && targetJobId && firstJobId !== targetJobId) {
+            setErrorBanner(`Comparison requires candidates applied to the same job opening (${comparisonJobTitle}). Deselect or clear selection to compare candidates from other roles.`);
+            setTimeout(() => setErrorBanner(''), 4500);
+            return prev;
+          }
+        }
+
+        if (prev.length >= 4) {
+          setErrorBanner("You can compare up to 4 candidates side-by-side.");
+          setTimeout(() => setErrorBanner(''), 3000);
+          return prev;
+        }
+        return [...prev, candId];
+      }
+    });
+  };
+
+  const clearComparisonSelection = () => setSelectedForComparison([]);
+
+  const handleBulkCompare = () => {
+    if (selectedCandidateIds.length < 2) {
+      setErrorBanner("Please select at least 2 candidates to compare.");
+      setTimeout(() => setErrorBanner(''), 4000);
+      return;
+    }
+    if (selectedCandidateIds.length > 4) {
+      setErrorBanner("Candidate comparison allows a maximum of 4 candidates side-by-side.");
+      setTimeout(() => setErrorBanner(''), 4000);
+      return;
+    }
+    const selectedObjects = candidates.filter(c => selectedCandidateIds.includes(c.id));
+    const firstJobId = selectedObjects[0]?.jobId || selectedObjects[0]?.job_id;
+    const allSameJob = selectedObjects.every(c => String(c.jobId || c.job_id) === String(firstJobId));
+    if (!allSameJob) {
+      setErrorBanner("Candidate comparison requires candidates applied to the same job opening.");
+      setTimeout(() => setErrorBanner(''), 4500);
+      return;
+    }
+    setSelectedForComparison(selectedCandidateIds.slice(0, 4));
+    setIsComparisonModalOpen(true);
+  };
 
   // Focus candidate search on '/' keypress
   useEffect(() => {
@@ -155,22 +327,20 @@ export default function CandidatePipeline() {
     }
   }, [routeCandidateId, candidates, setSelectedCandidate]);
 
-  const handleOpenCandidate = (cand) => {
+  const handleOpenCandidate = (cand, tab, state = null) => {
     setSelectedCandidate(cand);
-    navigate(`/recruiter/candidates/${cand.id}`);
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    smoothNavigate(tab ? `/recruiter/candidates/${cand.id}?tab=${tab}` : `/recruiter/candidates/${cand.id}`, state ? { state } : undefined);
   };
 
   const handleCloseCandidateModal = () => {
     setSelectedCandidate(null);
-    navigate(routeJobId ? `/recruiter/jobs/${routeJobId}` : '/recruiter');
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    smoothNavigate(routeJobId ? `/recruiter/jobs/${routeJobId}` : '/recruiter');
   };
 
   // Filter candidates memoized
   const filteredCandidates = useMemo(() => {
     return candidates.filter(c => {
-      const matchesJob = selectedJobFilter === 'ALL' || String(c.jobId) === String(selectedJobFilter);
+      const matchesJob = selectedJobFilter === 'ALL' || String(c.jobId || c.job_id) === String(selectedJobFilter);
       if (!matchesJob) return false;
 
       const q = searchQuery.toLowerCase().trim();
@@ -190,28 +360,36 @@ export default function CandidatePipeline() {
         if (rel !== compensationFilter) return false;
       }
 
+      const wf = normalizeWorkflow(c);
+
+      // Phase 4E.4: 4 Independent Workflow Dimensions
+      if (stageFilter !== 'ALL' && wf.stage !== stageFilter) return false;
+      if (assessmentFilter !== 'ALL' && wf.assessmentStatus !== assessmentFilter) return false;
+      if (interviewFilter !== 'ALL' && wf.interviewStatus !== interviewFilter) return false;
+      if (decisionFilter !== 'ALL' && wf.hiringDecision !== decisionFilter) return false;
+
       if (filterStatus === 'All') return true;
       if (filterStatus === 'Evaluated') {
-        const wf = normalizeWorkflow(c);
         return wf.assessmentStatus === 'evaluated' || wf.interviewStatus === 'completed' || (c.scores && c.scores.overall > 0);
       }
       if (filterStatus === 'Shortlisted') {
-        const wf = normalizeWorkflow(c);
-        return wf.hiringDecision === 'accepted' || c.finalDecision === 'Shortlisted' || c.finalDecision === 'Selected';
+        return wf.hiringDecision === 'shortlisted' || c.finalDecision === 'Shortlisted' || c.finalDecision === 'Selected';
       }
       if (filterStatus === 'High Risk') return c.integrityRisk === 'High';
       return true;
     });
-  }, [candidates, selectedJobFilter, searchQuery, filterStatus, compensationFilter]);
+  }, [candidates, selectedJobFilter, searchQuery, filterStatus, compensationFilter, stageFilter, assessmentFilter, interviewFilter, decisionFilter]);
 
-  // Aggregate Metrics
-  const totalApplicants = candidates.length;
+  // Aggregate Metrics (Authoritative when summary available)
+  const totalApplicants = pipelineSummary?.total_candidates ?? candidates.length;
   const highMatchCount = candidates.filter(c => (c.matchScore || 0) >= 85).length;
   const integrityFlaggedCount = candidates.filter(c => c.integrityRisk === 'High').length;
-  const evaluatedCount = candidates.filter(c => {
-    const wf = normalizeWorkflow(c);
-    return wf.assessmentStatus === 'evaluated' || wf.interviewStatus === 'completed' || (c.scores && c.scores.overall > 0);
-  }).length;
+  const evaluatedCount = pipelineSummary?.evaluated_candidates != null
+    ? pipelineSummary.evaluated_candidates
+    : candidates.filter(c => {
+        const wf = normalizeWorkflow(c);
+        return wf.assessmentStatus === 'evaluated' || wf.interviewStatus === 'completed' || (c.scores && c.scores.overall > 0);
+      }).length;
 
   // Dropdown Options
   const jobDropdownOptions = useMemo(() => [
@@ -231,6 +409,44 @@ export default function CandidatePipeline() {
     { value: 'partial_overlap', label: 'Partial Overlap', badge: 'Overlap', description: 'Expected range intersects job budget' },
     { value: 'expectation_unavailable', label: 'Expectation Not Provided', description: 'Candidate has not submitted CTC' },
   ], []);
+
+  // Phase 4E.4: 4 Independent Dimension Dropdown Options
+  const stageDropdownOptions = useMemo(() => [
+    { value: 'ALL', label: 'All Stages', icon: Layers },
+    { value: 'applied', label: 'Applied (Inbox)', badge: String(pipelineSummary?.stage_counts?.applied ?? 0) },
+    { value: 'screening', label: 'Screening', badge: String(pipelineSummary?.stage_counts?.screening ?? 0) },
+    { value: 'assessment', label: 'Assessment', badge: String(pipelineSummary?.stage_counts?.assessment ?? 0) },
+    { value: 'interview', label: 'Interview', badge: String(pipelineSummary?.stage_counts?.interview ?? 0) },
+    { value: 'review', label: 'Review & Evaluation', badge: String(pipelineSummary?.stage_counts?.review ?? 0) },
+    { value: 'completed', label: 'Completed', badge: String(pipelineSummary?.stage_counts?.completed ?? 0) },
+  ], [pipelineSummary]);
+
+  const assessmentDropdownOptions = useMemo(() => [
+    { value: 'ALL', label: 'All Assessments', icon: Code2 },
+    { value: 'not_invited', label: 'Not Invited', badge: String(pipelineSummary?.assessment_counts?.not_invited ?? 0) },
+    { value: 'invited', label: 'Test Invited', badge: String(pipelineSummary?.assessment_counts?.invited ?? 0) },
+    { value: 'in_progress', label: 'In Progress', badge: String(pipelineSummary?.assessment_counts?.in_progress ?? 0) },
+    { value: 'submitted', label: 'Submitted', badge: String(pipelineSummary?.assessment_counts?.submitted ?? 0) },
+    { value: 'evaluated', label: 'Evaluated', badge: String(pipelineSummary?.assessment_counts?.evaluated ?? 0) },
+    { value: 'expired', label: 'Expired', badge: String(pipelineSummary?.assessment_counts?.expired ?? 0) },
+  ], [pipelineSummary]);
+
+  const interviewDropdownOptions = useMemo(() => [
+    { value: 'ALL', label: 'All Interviews', icon: Calendar },
+    { value: 'not_scheduled', label: 'Not Scheduled', badge: String(pipelineSummary?.interview_counts?.not_scheduled ?? 0) },
+    { value: 'scheduled', label: 'Interview Booked', badge: String(pipelineSummary?.interview_counts?.scheduled ?? 0) },
+    { value: 'in_progress', label: 'In Progress', badge: String(pipelineSummary?.interview_counts?.in_progress ?? 0) },
+    { value: 'completed', label: 'Concluded', badge: String(pipelineSummary?.interview_counts?.completed ?? 0) },
+    { value: 'cancelled', label: 'Cancelled', badge: String(pipelineSummary?.interview_counts?.cancelled ?? 0) },
+  ], [pipelineSummary]);
+
+  const decisionDropdownOptions = useMemo(() => [
+    { value: 'ALL', label: 'All Decisions', icon: CheckCircle2 },
+    { value: 'undecided', label: 'In Review (Pending)', badge: String(pipelineSummary?.decision_counts?.undecided ?? 0) },
+    { value: 'shortlisted', label: 'Shortlisted', badge: String(pipelineSummary?.decision_counts?.shortlisted ?? 0) },
+    { value: 'selected', label: 'Selected / Offer Extended', badge: String(pipelineSummary?.decision_counts?.selected ?? 0) },
+    { value: 'rejected', label: 'Rejected', badge: String(pipelineSummary?.decision_counts?.rejected ?? 0) },
+  ], [pipelineSummary]);
 
   const handleJobCreated = (newJob) => {
     setActiveTab('jobs');
@@ -264,6 +480,7 @@ export default function CandidatePipeline() {
       await Promise.all(appliedCandidates.map(c => updateCandidateStage(c.id, 'screening')));
       setSuccessBanner(`✓ Advanced ${appliedCandidates.length} application(s) from Inbox to Screening`);
       setTimeout(() => setSuccessBanner(''), 4000);
+      loadPipelineSummary();
     } catch (err) {
       console.error('Failed to batch advance:', err);
     }
@@ -305,6 +522,7 @@ export default function CandidatePipeline() {
       }
       setSuccessBanner(`✓ Moved ${currentCand.name} to ${stageNames[targetStageId] || targetStageId}`);
       setTimeout(() => setSuccessBanner(''), 4000);
+      loadPipelineSummary();
 
     } catch (err) {
       console.error('Failed to move stage:', err);
@@ -313,14 +531,217 @@ export default function CandidatePipeline() {
     }
   };
 
+  // Phase 4E.4: Bulk Action Handlers
+  const handleBulkStageChange = async (targetStage, notes = '') => {
+    if (!selectedCandidateIds.length) return;
+    try {
+      setIsBulkActionLoading(true);
+      const res = await bulkCandidateAction({
+        candidate_ids: selectedCandidateIds,
+        action: 'update_stage',
+        stage: targetStage,
+        notes: notes || `Bulk stage update to ${targetStage}`
+      });
+      if (res) {
+        setIsBulkStageModalOpen(false);
+        setBulkStageNotes('');
+        setSelectedCandidateIds([]);
+        loadPipelineSummary();
+        if (res.failure_count > 0 && res.failures?.length > 0) {
+          const reasons = res.failures.map(f => `${f.candidate_name || f.candidate_id}: ${f.reason}`).join('; ');
+          setErrorBanner(`Some candidates could not be transitioned: ${reasons}`);
+          setTimeout(() => setErrorBanner(''), 7000);
+        } else {
+          setSuccessBanner(`✓ Successfully moved ${res.success_count} candidate(s) to ${STAGE_CONFIG[targetStage]?.label || targetStage}`);
+          setTimeout(() => setSuccessBanner(''), 4000);
+        }
+      }
+    } catch (err) {
+      setErrorBanner(err.message || 'Bulk stage transition failed');
+      setTimeout(() => setErrorBanner(''), 6000);
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkInviteAssessment = async () => {
+    if (!selectedCandidateIds.length) return;
+    try {
+      setIsBulkActionLoading(true);
+      const res = await bulkCandidateAction({
+        candidate_ids: selectedCandidateIds,
+        action: 'invite_assessment',
+        custom_message: 'Please complete the technical assessment.'
+      });
+      if (res) {
+        setSelectedCandidateIds([]);
+        loadPipelineSummary();
+        if (res.failure_count > 0 && res.failures?.length > 0) {
+          const reasons = res.failures.map(f => `${f.candidate_name || f.candidate_id}: ${f.reason}`).join('; ');
+          setErrorBanner(`Some candidates could not be invited: ${reasons}`);
+          setTimeout(() => setErrorBanner(''), 7000);
+        } else {
+          setSuccessBanner(`✓ Invited ${res.success_count} candidate(s) to technical assessment`);
+          setTimeout(() => setSuccessBanner(''), 4000);
+        }
+      }
+    } catch (err) {
+      setErrorBanner(err.message || 'Bulk assessment invitation failed');
+      setTimeout(() => setErrorBanner(''), 6000);
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkShortlist = async () => {
+    if (!selectedCandidateIds.length) return;
+    try {
+      setIsBulkActionLoading(true);
+      const res = await bulkCandidateAction({
+        candidate_ids: selectedCandidateIds,
+        action: 'update_decision',
+        decision: 'shortlisted',
+        notes: 'Bulk shortlisted by recruiter'
+      });
+      if (res) {
+        setSelectedCandidateIds([]);
+        loadPipelineSummary();
+        if (res.failure_count > 0 && res.failures?.length > 0) {
+          const reasons = res.failures.map(f => `${f.candidate_name || f.candidate_id}: ${f.reason}`).join('; ');
+          setErrorBanner(`Some candidates could not be shortlisted: ${reasons}`);
+          setTimeout(() => setErrorBanner(''), 7000);
+        } else {
+          setSuccessBanner(`✓ Successfully shortlisted ${res.success_count} candidate(s)`);
+          setTimeout(() => setSuccessBanner(''), 4000);
+        }
+      }
+    } catch (err) {
+      setErrorBanner(err.message || 'Bulk shortlist failed');
+      setTimeout(() => setErrorBanner(''), 6000);
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  const handleOpenRejectionModal = (candidateOrNull = null, e = null) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setRejectionTargetCandidate(candidateOrNull);
+    setRejectionCategory('skills_mismatch');
+    setRejectionReasonText('');
+    setIsRejectionModalOpen(true);
+    setActiveCardMenuId(null);
+  };
+
+  const handleExecuteRejection = async () => {
+    try {
+      setIsBulkActionLoading(true);
+      if (rejectionTargetCandidate) {
+        const candId = typeof rejectionTargetCandidate === 'object' ? rejectionTargetCandidate.id : rejectionTargetCandidate;
+        const candName = typeof rejectionTargetCandidate === 'object' ? rejectionTargetCandidate.name : 'Candidate';
+        await updateHiringDecision(candId, 'rejected', {
+          rejectionReason: rejectionReasonText.trim() || 'Candidate qualifications did not meet criteria for this role.',
+          rejectionCategory: rejectionCategory
+        });
+        setSuccessBanner(`Application for "${candName}" marked as Rejected.`);
+        setTimeout(() => setSuccessBanner(''), 4000);
+      } else if (selectedCandidateIds.length > 0) {
+        const res = await bulkCandidateAction({
+          candidate_ids: selectedCandidateIds,
+          action: 'update_decision',
+          decision: 'rejected',
+          rejection_reason: rejectionReasonText.trim() || 'Candidate qualifications did not meet criteria for this role.',
+          rejection_category: rejectionCategory
+        });
+        if (res) {
+          setSelectedCandidateIds([]);
+          if (res.failure_count > 0 && res.failures?.length > 0) {
+            const reasons = res.failures.map(f => `${f.candidate_name || f.candidate_id}: ${f.reason}`).join('; ');
+            setErrorBanner(`Some candidates could not be rejected: ${reasons}`);
+            setTimeout(() => setErrorBanner(''), 7000);
+          } else {
+            setSuccessBanner(`✓ Rejected ${res.success_count} candidate application(s)`);
+            setTimeout(() => setSuccessBanner(''), 4000);
+          }
+        }
+      }
+      setIsRejectionModalOpen(false);
+      setRejectionTargetCandidate(null);
+      setRejectionReasonText('');
+      loadPipelineSummary();
+    } catch (err) {
+      setErrorBanner(err.message || 'Failed to record rejection decision');
+      setTimeout(() => setErrorBanner(''), 6000);
+    } finally {
+      setIsBulkActionLoading(false);
+    }
+  };
+
+  // Phase 4E.4: Quick Card Actions
+  const NEXT_STAGE_MAP = {
+    applied: 'screening',
+    screening: 'assessment',
+    assessment: 'interview',
+    interview: 'review',
+    review: 'completed'
+  };
+
+  const NEXT_STAGE_LABELS = {
+    applied: 'Screen',
+    screening: 'Assess',
+    assessment: 'Interview',
+    interview: 'Review',
+    review: 'Complete'
+  };
+
+  const handleQuickAdvance = async (cand, e) => {
+    if (e) e.stopPropagation();
+    const currentStage = getCandidateStage(cand);
+    const nextStage = NEXT_STAGE_MAP[currentStage];
+    if (!nextStage) return;
+    await handleStageDrop(cand.id, nextStage);
+  };
+
+  const handleQuickShortlist = async (cand, e) => {
+    if (e) e.stopPropagation();
+    setActiveCardMenuId(null);
+    try {
+      await updateHiringDecision(cand.id, 'shortlisted', {
+        hrNotes: 'Shortlisted via quick recruiter action'
+      });
+      loadPipelineSummary();
+      setSuccessBanner(`✓ Shortlisted ${cand.name}`);
+      setTimeout(() => setSuccessBanner(''), 3500);
+    } catch (err) {
+      setErrorBanner(err.message || 'Failed to shortlist candidate');
+      setTimeout(() => setErrorBanner(''), 5000);
+    }
+  };
+
+  const handleQuickInviteAssessment = async (cand, e) => {
+    if (e) e.stopPropagation();
+    setActiveCardMenuId(null);
+    try {
+      await inviteAssessment(cand.id);
+      loadPipelineSummary();
+      setSuccessBanner(`✓ Assessment invitation dispatched for ${cand.name}`);
+      setTimeout(() => setSuccessBanner(''), 3500);
+    } catch (err) {
+      setErrorBanner(err.message || 'Failed to invite candidate');
+      setTimeout(() => setErrorBanner(''), 5000);
+    }
+  };
+
   const stages = [
     {
       id: 'screening',
       name: 'Screening',
       subtitle: 'Resume match & review',
-      dotColor: 'bg-teal-500',
-      badgeColor: 'border-teal-200 dark:border-teal-900 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300',
-      items: filteredCandidates.filter(c => getCandidateStage(c) === 'screening')
+      dotColor: 'bg-amber-500',
+      badgeColor: 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300',
+      items: filteredCandidates.filter(c => getCandidateStage(c) === 'screening'),
+      authoritativeCount: pipelineSummary?.stage_counts?.screening ?? 0
     },
     {
       id: 'assessment',
@@ -328,15 +749,17 @@ export default function CandidatePipeline() {
       subtitle: 'Coding sandbox & test suites',
       dotColor: 'bg-purple-500',
       badgeColor: 'border-purple-200 dark:border-purple-900 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300',
-      items: filteredCandidates.filter(c => getCandidateStage(c) === 'assessment')
+      items: filteredCandidates.filter(c => getCandidateStage(c) === 'assessment'),
+      authoritativeCount: pipelineSummary?.stage_counts?.assessment ?? 0
     },
     {
       id: 'interview',
       name: 'Interview',
       subtitle: 'Adaptive AI & video meet',
-      dotColor: 'bg-cyan-500',
-      badgeColor: 'border-cyan-200 dark:border-cyan-900 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300',
-      items: filteredCandidates.filter(c => getCandidateStage(c) === 'interview')
+      dotColor: 'bg-brand-500',
+      badgeColor: 'border-brand-200 dark:border-brand-900/60 bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300',
+      items: filteredCandidates.filter(c => getCandidateStage(c) === 'interview'),
+      authoritativeCount: pipelineSummary?.stage_counts?.interview ?? 0
     },
     {
       id: 'review',
@@ -344,7 +767,8 @@ export default function CandidatePipeline() {
       subtitle: 'Scores & committee review',
       dotColor: 'bg-amber-500',
       badgeColor: 'border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300',
-      items: filteredCandidates.filter(c => getCandidateStage(c) === 'review')
+      items: filteredCandidates.filter(c => getCandidateStage(c) === 'review'),
+      authoritativeCount: pipelineSummary?.stage_counts?.review ?? 0
     },
     {
       id: 'completed',
@@ -352,7 +776,8 @@ export default function CandidatePipeline() {
       subtitle: 'Offer extended or archived',
       dotColor: 'bg-emerald-500',
       badgeColor: 'border-emerald-200 dark:border-emerald-900 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300',
-      items: filteredCandidates.filter(c => getCandidateStage(c) === 'completed')
+      items: filteredCandidates.filter(c => getCandidateStage(c) === 'completed'),
+      authoritativeCount: pipelineSummary?.stage_counts?.completed ?? 0
     }
   ];
 
@@ -432,7 +857,7 @@ export default function CandidatePipeline() {
             variant="outline"
             size="sm"
             icon={ShieldAlert}
-            onClick={() => navigate('/recruiter/proctor')}
+            onClick={() => smoothNavigate('/recruiter/proctor')}
           >
             Integrity HUD
           </Button>
@@ -444,7 +869,7 @@ export default function CandidatePipeline() {
               setJobToEdit(null);
               setIsJobModalOpen(true);
             }}
-            className="shadow-sm hover:shadow-md hover:shadow-teal-900/20 active:scale-95 transition-all duration-150"
+            className="shadow-sm hover:shadow-md hover:shadow-[#2A1B14]/20 active:scale-95 transition-all duration-150"
           >
             Post Job Opening
           </Button>
@@ -486,7 +911,7 @@ export default function CandidatePipeline() {
               label="AI Evaluated"
               value={<AnimatedCounter value={evaluatedCount} />}
               icon={Award}
-              trend={evaluatedCount > 0 ? `${Math.round((evaluatedCount / (totalApplicants || 1)) * 100)}%` : undefined}
+              trend={totalApplicants > 0 && evaluatedCount > 0 ? `${Math.min(100, Math.round((evaluatedCount / totalApplicants) * 100))}%` : undefined}
               trendDirection="up"
               subtitle="Completed assessment or interview"
               onClick={() => {
@@ -527,7 +952,7 @@ export default function CandidatePipeline() {
               }}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
                 activeTab === 'candidates'
-                  ? 'bg-brand-600 text-white shadow-sm shadow-teal-900/20'
+                  ? 'bg-brand-600 text-white shadow-sm shadow-[#2A1B14]/20'
                   : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
               }`}
             >
@@ -543,7 +968,7 @@ export default function CandidatePipeline() {
               }}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
                 activeTab === 'jobs'
-                  ? 'bg-brand-600 text-white shadow-sm shadow-teal-900/20'
+                  ? 'bg-brand-600 text-white shadow-sm shadow-[#2A1B14]/20'
                   : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
               }`}
             >
@@ -560,9 +985,9 @@ export default function CandidatePipeline() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onClear={() => setSearchQuery('')}
-                placeholder="Search candidates by name, skill, email..."
+                placeholder="Search candidates..."
                 shortcut="/"
-                className="w-full sm:w-64"
+                className="w-full sm:w-72"
               />
 
               {/* Job Selector Custom Dropdown */}
@@ -586,7 +1011,7 @@ export default function CandidatePipeline() {
                       }
                     }}
                     title="Edit this role requirement & compensation budget"
-                    className="h-9 px-2.5 rounded-lg bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/60 dark:hover:bg-teal-900 text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-teal-800 text-xs font-semibold flex items-center gap-1 transition shadow-subtle shrink-0"
+                    className="h-9 px-2.5 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold flex items-center gap-1 transition shadow-subtle shrink-0"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Edit Role</span>
@@ -632,20 +1057,121 @@ export default function CandidatePipeline() {
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
               </div>
+
+              {/* Phase 4E.4: Workflow Dimensions Filter Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters(prev => !prev)}
+                className={`h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border shrink-0 ${
+                  showAdvancedFilters || stageFilter !== 'ALL' || assessmentFilter !== 'ALL' || interviewFilter !== 'ALL' || decisionFilter !== 'ALL'
+                    ? 'bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/60 dark:hover:bg-brand-900 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-800'
+                    : 'bg-stone-100 hover:bg-stone-200 dark:bg-[#231F1B] dark:hover:bg-[#2A2520] text-stone-700 dark:text-stone-300 border-stone-200 dark:border-[#2A2520]'
+                }`}
+                title="Filter candidates across the 4 independent workflow dimensions"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                <span>Workflow Filters</span>
+                {(stageFilter !== 'ALL' || assessmentFilter !== 'ALL' || interviewFilter !== 'ALL' || decisionFilter !== 'ALL') && (
+                  <span className="w-2 h-2 rounded-full bg-brand-500" />
+                )}
+              </button>
             </div>
           )}
         </div>
+
+        {/* Phase 4E.4: 4 Independent Workflow Dimensions Filter Bar */}
+        {activeTab === 'candidates' && showAdvancedFilters && (
+          <div className="pt-2.5 border-t border-stone-200/60 dark:border-stone-800 space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
+                <SlidersHorizontal className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+                Authoritative 4-Dimensional Filters:
+              </span>
+              {(stageFilter !== 'ALL' || assessmentFilter !== 'ALL' || interviewFilter !== 'ALL' || decisionFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStageFilter('ALL');
+                    setAssessmentFilter('ALL');
+                    setInterviewFilter('ALL');
+                    setDecisionFilter('ALL');
+                  }}
+                  className="text-xs text-brand-600 dark:text-brand-400 hover:underline font-semibold"
+                >
+                  Reset Workflow Filters
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              <div>
+                <label className="block text-[10px] font-semibold text-stone-500 dark:text-stone-400 mb-1">
+                  1. Pipeline Stage
+                </label>
+                <CustomDropdown
+                  value={stageFilter}
+                  onChange={setStageFilter}
+                  options={stageDropdownOptions}
+                  icon={Layers}
+                  menuWidth="w-64"
+                  title="Filter by candidate pipeline stage"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-stone-500 dark:text-stone-400 mb-1">
+                  2. Assessment Status
+                </label>
+                <CustomDropdown
+                  value={assessmentFilter}
+                  onChange={setAssessmentFilter}
+                  options={assessmentDropdownOptions}
+                  icon={Code2}
+                  menuWidth="w-64"
+                  title="Filter by assessment lifecycle status"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-stone-500 dark:text-stone-400 mb-1">
+                  3. Interview Status
+                </label>
+                <CustomDropdown
+                  value={interviewFilter}
+                  onChange={setInterviewFilter}
+                  options={interviewDropdownOptions}
+                  icon={Calendar}
+                  menuWidth="w-64"
+                  title="Filter by interview lifecycle status"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-stone-500 dark:text-stone-400 mb-1">
+                  4. Hiring Decision
+                </label>
+                <CustomDropdown
+                  value={decisionFilter}
+                  onChange={setDecisionFilter}
+                  options={decisionDropdownOptions}
+                  icon={CheckCircle2}
+                  menuWidth="w-64"
+                  title="Filter by hiring decision status"
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Status Filters Bar */}
         {activeTab === 'candidates' && (
           <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-stone-200/60 dark:border-stone-800 text-xs">
             <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider font-sans flex items-center gap-1.5">
-              <Filter className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+              <Filter className="w-3 h-3 text-brand-600 dark:text-brand-400" />
               Quick Filter:
             </span>
             <div className="flex flex-wrap items-center gap-1.5">
               {[
-                { id: 'All', label: 'All Candidates', count: candidates.length },
+                { id: 'All', label: 'All Candidates', count: totalApplicants },
                 { id: 'Evaluated', label: 'Evaluated', count: evaluatedCount },
                 { id: 'Shortlisted', label: 'Shortlisted' },
                 { id: 'High Risk', label: 'Integrity Alerts', count: integrityFlaggedCount, alert: integrityFlaggedCount > 0 }
@@ -715,7 +1241,7 @@ export default function CandidatePipeline() {
                   <div className="p-3.5 rounded-xl bg-stone-50/80 dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-subtle">
                     <div className="space-y-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono uppercase bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                           Active Filtered Role
                         </span>
                         <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 truncate">
@@ -769,7 +1295,7 @@ export default function CandidatePipeline() {
                 <div className="p-3.5 rounded-xl bg-stone-50/80 dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] shadow-subtle space-y-2.5">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center border border-teal-500/30 shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-500/30 shrink-0">
                         <Inbox className="w-3.5 h-3.5" />
                       </div>
                       <div>
@@ -777,7 +1303,7 @@ export default function CandidatePipeline() {
                           <h3 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100">
                             Inbound Applications Inbox
                           </h3>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-300 dark:border-teal-800">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-brand-100 dark:bg-brand-950/80 text-brand-800 dark:text-brand-300 border border-brand-300 dark:border-brand-800">
                             {appliedCandidates.length} New
                           </span>
                         </div>
@@ -840,7 +1366,7 @@ export default function CandidatePipeline() {
                                 handleStageDrop(cand.id, 'screening');
                               }}
                               title="Advance to Screening"
-                              className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900 border border-teal-200 dark:border-teal-800 shrink-0 text-[10px] font-semibold flex items-center gap-1 transition"
+                              className="p-1.5 rounded-lg bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900 border border-brand-200 dark:border-brand-800 shrink-0 text-[10px] font-semibold flex items-center gap-1 transition"
                             >
                               <span>Screen</span>
                               <ArrowRight className="w-3 h-3" />
@@ -850,6 +1376,186 @@ export default function CandidatePipeline() {
                       })}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* ─── PHASE 4E.4: UNIFIED BULK ACTIONS TOOLBAR ─── */}
+              {selectedCandidateIds.length > 0 && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-brand-500/15 via-amber-500/10 to-[#1A1714] dark:from-brand-950/50 dark:via-amber-950/30 dark:to-[#1A1714] border border-brand-500/40 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-brand-600/30 font-bold font-mono text-xs">
+                      {selectedCandidateIds.length}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                          {selectedCandidateIds.length} Candidate{selectedCandidateIds.length > 1 ? 's' : ''} Selected
+                        </span>
+                        <span className="text-[11px] text-stone-500 dark:text-stone-400">
+                          • Bulk Pipeline Operations
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {selectedCandidateIds.slice(0, 5).map(cid => {
+                          const c = candidates.find(cand => String(cand.id) === String(cid));
+                          return (
+                            <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-white dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 shadow-2xs">
+                              <span className="truncate max-w-[100px]">{c?.name || cid}</span>
+                              <button type="button" onClick={() => toggleCandidateSelection(cid)} className="hover:text-rose-500 cursor-pointer">
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                        {selectedCandidateIds.length > 5 && (
+                          <span className="text-[11px] text-stone-500 font-mono">
+                            +{selectedCandidateIds.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 md:self-center">
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      icon={ArrowRight}
+                      disabled={isBulkActionLoading}
+                      onClick={() => {
+                        setBulkTargetStage('screening');
+                        setIsBulkStageModalOpen(true);
+                      }}
+                      title="Advance selected candidates to a chosen pipeline stage"
+                    >
+                      Advance Stage
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      icon={Code2}
+                      disabled={isBulkActionLoading}
+                      onClick={handleBulkInviteAssessment}
+                      title="Send technical assessment invitations to selected candidates"
+                    >
+                      Invite Assessment
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      icon={UserCheck}
+                      disabled={isBulkActionLoading}
+                      onClick={handleBulkShortlist}
+                      title="Mark selected candidates as Shortlisted"
+                    >
+                      Shortlist
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      icon={UserX}
+                      disabled={isBulkActionLoading}
+                      onClick={() => handleOpenRejectionModal(null)}
+                      className="text-rose-600 dark:text-rose-400 hover:border-rose-500"
+                      title="Reject selected candidates with audited feedback"
+                    >
+                      Reject
+                    </Button>
+
+                    {/* Phase 4E.3: Compare side-by-side button */}
+                    <Button
+                      variant="primary"
+                      size="xs"
+                      icon={Scale}
+                      disabled={selectedCandidateIds.length < 2 || selectedCandidateIds.length > 4 || isBulkActionLoading}
+                      onClick={handleBulkCompare}
+                      title={selectedCandidateIds.length < 2 ? "Select at least 2 candidates from same job to compare" : selectedCandidateIds.length > 4 ? "Select up to 4 candidates to compare" : "Open Phase 4E.3 side-by-side comparison"}
+                    >
+                      Compare ({Math.min(selectedCandidateIds.length, 4)})
+                    </Button>
+
+                    <button
+                      type="button"
+                      onClick={clearCandidateSelection}
+                      className="px-2.5 py-1 text-xs text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 transition cursor-pointer"
+                    >
+                      Deselect
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── STANDALONE CANDIDATE COMPARISON ACTION BAR (PHASE 4E.3) ─── */}
+              {selectedCandidateIds.length === 0 && selectedForComparison.length > 0 && (
+                <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-brand-500/10 via-amber-500/10 to-transparent dark:from-brand-950/40 dark:via-amber-950/30 dark:to-[#1A1714] border border-brand-500/30 dark:border-brand-500/30 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-brand-600/30">
+                      <Scale className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                          Candidate Comparison
+                        </span>
+                        <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-700 dark:text-brand-300 border border-brand-500/25">
+                          {selectedForComparison.length} of 4 selected
+                        </span>
+                        <span className="text-xs text-stone-400 hidden md:inline">•</span>
+                        <span className="text-xs font-medium text-stone-500 dark:text-stone-400 truncate hidden md:inline">
+                          Role: <strong className="text-stone-700 dark:text-stone-200">{comparisonJobTitle}</strong>
+                        </span>
+                      </div>
+
+                      {/* Selected candidate chips */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                        {selectedForComparison.map((candId) => {
+                          const cand = candidates.find(c => String(c.id) === String(candId));
+                          const candName = cand?.name || `Candidate #${candId}`;
+                          return (
+                            <span
+                              key={candId}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-medium bg-white dark:bg-[#1E1A16] border border-[#E5E0DA] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 shadow-2xs"
+                            >
+                              <Avatar name={candName} size="xs" />
+                              <span className="truncate max-w-[130px]">{candName}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => toggleCandidateComparison(candId, e)}
+                                title="Remove from comparison"
+                                className="text-stone-400 hover:text-rose-500 transition-colors ml-0.5 cursor-pointer"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 sm:self-center">
+                    <button
+                      type="button"
+                      onClick={clearComparisonSelection}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200 hover:bg-stone-200/50 dark:hover:bg-stone-800/50 transition cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={Scale}
+                      disabled={selectedForComparison.length < 2}
+                      onClick={() => setIsComparisonModalOpen(true)}
+                      title={selectedForComparison.length < 2 ? "Select at least 2 candidates to compare" : "Open side-by-side comparison"}
+                    >
+                      {selectedForComparison.length < 2 ? "Select 1 more" : `Compare Side-by-Side (${selectedForComparison.length})`}
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -889,8 +1595,11 @@ export default function CandidatePipeline() {
                             <span className={`w-2 h-2 rounded-full ${stage.dotColor} animate-pulse-subtle`} />
                             <span className="text-xs font-bold text-stone-900 dark:text-stone-100">{stage.name}</span>
                           </div>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-stone-100 dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] text-stone-700 dark:text-stone-300">
-                            {stage.items.length}
+                          <span 
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-stone-100 dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] text-stone-700 dark:text-stone-300"
+                            title={pipelineSummary ? `Authoritative stage count: ${stage.authoritativeCount}` : undefined}
+                          >
+                            {pipelineSummary ? (stage.items.length !== stage.authoritativeCount ? `${stage.items.length}/${stage.authoritativeCount}` : stage.authoritativeCount) : stage.items.length}
                           </span>
                         </div>
 
@@ -926,6 +1635,8 @@ export default function CandidatePipeline() {
                                   className={`p-3 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border transition-all duration-fast space-y-2 group select-none cursor-pointer animate-fade-in-up ${
                                     draggedCandidateId === cand.id 
                                       ? 'opacity-40 scale-95 border-dashed border-brand-500 shadow-none' 
+                                      : selectedCandidateIds.includes(cand.id) || selectedForComparison.includes(cand.id)
+                                      ? 'ring-2 ring-brand-500 border-brand-500/80 bg-brand-50/30 dark:bg-brand-950/20'
                                       : 'kanban-card active:scale-[0.98]'
                                   }`}
                                   style={{ animationDelay: `${Math.min(cardIndex * 50, 300)}ms` }}
@@ -933,6 +1644,18 @@ export default function CandidatePipeline() {
                                   {/* PRIMARY HIERARCHY: WHO & WHAT ROLE & FIT */}
                                   <div className="flex items-start justify-between gap-2 min-w-0">
                                     <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => toggleCandidateSelection(cand, e)}
+                                        title={selectedCandidateIds.includes(cand.id) ? "Deselect candidate" : "Select candidate for bulk operations"}
+                                        className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                                          selectedCandidateIds.includes(cand.id)
+                                            ? 'bg-brand-600 border-brand-600 text-white shadow-xs'
+                                            : 'border-stone-300 dark:border-stone-700 hover:border-brand-500 bg-white dark:bg-stone-900 text-transparent'
+                                        }`}
+                                      >
+                                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                      </button>
                                       <Avatar name={cand.name} size="xs" />
                                       <div className="min-w-0 flex-1">
                                         <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors tracking-tight">
@@ -985,9 +1708,9 @@ export default function CandidatePipeline() {
                                     })()}
                                   </div>
 
-                                  {/* PROGRESSIVE HIERARCHY: QUALIFICATIONS & REVIEW CUE */}
+                                  {/* PROGRESSIVE HIERARCHY: QUALIFICATIONS & ACTION BUTTONS */}
                                   <div className="pt-1.5 border-t border-stone-100 dark:border-[#2A2520] flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400">
-                                    <div className="flex items-center gap-1 truncate max-w-[150px]">
+                                    <div className="flex items-center gap-1 truncate max-w-[120px]">
                                       {cand.skills?.slice(0, 2).map((s, idx) => (
                                         <span key={idx} className="px-1.5 py-0.2 rounded bg-stone-100 dark:bg-[#231F1B] text-[10px] font-medium text-stone-700 dark:text-stone-300 truncate">
                                           {s}
@@ -997,10 +1720,112 @@ export default function CandidatePipeline() {
                                         <span className="text-[10px] font-mono font-semibold text-stone-600 dark:text-stone-300">+{cand.skills.length - 2}</span>
                                       )}
                                     </div>
-                                    <span className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 flex items-center gap-0.5 transition-colors">
-                                      <span>Review</span>
-                                      <ChevronRight className="w-3 h-3" />
-                                    </span>
+
+                                    {/* Quick Actions & Workspace Cue */}
+                                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      {NEXT_STAGE_MAP[getCandidateStage(cand)] && !['selected', 'rejected'].includes((cand.hiringDecision || cand.hiring_decision || '').toLowerCase()) && (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => handleQuickAdvance(cand, e)}
+                                          title={`Advance to ${STAGE_CONFIG[NEXT_STAGE_MAP[getCandidateStage(cand)]]?.label || NEXT_STAGE_MAP[getCandidateStage(cand)]}`}
+                                          className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900 border border-brand-200 dark:border-brand-800 transition flex items-center gap-0.5 cursor-pointer"
+                                        >
+                                          <span>{NEXT_STAGE_LABELS[getCandidateStage(cand)] || 'Advance'}</span>
+                                          <ArrowRight className="w-2.5 h-2.5" />
+                                        </button>
+                                      )}
+
+                                      <span 
+                                        onClick={() => handleOpenCandidate(cand)}
+                                        className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 flex items-center gap-0.5 transition-colors cursor-pointer"
+                                      >
+                                        <span>Review</span>
+                                        <ChevronRight className="w-3 h-3" />
+                                      </span>
+
+                                      {/* Quick 3-dots Menu */}
+                                      <div className="relative">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setActiveCardMenuId(prev => prev === cand.id ? null : cand.id);
+                                          }}
+                                          title="Quick candidate actions"
+                                          className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                                        >
+                                          <MoreHorizontal className="w-3.5 h-3.5" />
+                                        </button>
+
+                                        {activeCardMenuId === cand.id && (
+                                          <div 
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="absolute right-0 bottom-full mb-1.5 w-48 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] shadow-depth-elevated py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs"
+                                          >
+                                            {NEXT_STAGE_MAP[getCandidateStage(cand)] && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  handleQuickAdvance(cand, e);
+                                                  setActiveCardMenuId(null);
+                                                }}
+                                                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                              >
+                                                <ArrowRight className="w-3.5 h-3.5 text-brand-600" />
+                                                <span>Advance to {STAGE_CONFIG[NEXT_STAGE_MAP[getCandidateStage(cand)]]?.label}</span>
+                                              </button>
+                                            )}
+
+                                            {wf.assessmentStatus === 'not_invited' && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => handleQuickInviteAssessment(cand, e)}
+                                                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                              >
+                                                <Code2 className="w-3.5 h-3.5 text-purple-600" />
+                                                <span>Invite Assessment</span>
+                                              </button>
+                                            )}
+
+                                            {wf.hiringDecision !== 'shortlisted' && wf.hiringDecision !== 'selected' && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => handleQuickShortlist(cand, e)}
+                                                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                              >
+                                                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                                <span>Shortlist Candidate</span>
+                                              </button>
+                                            )}
+
+                                            {wf.hiringDecision !== 'rejected' && (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => handleOpenRejectionModal(cand, e)}
+                                                className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center gap-2 cursor-pointer"
+                                              >
+                                                <UserX className="w-3.5 h-3.5" />
+                                                <span>Reject Candidate</span>
+                                              </button>
+                                            )}
+
+                                            <div className="my-1 border-t border-stone-200 dark:border-[#2A2520]" />
+
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                toggleCandidateComparison(cand, e);
+                                                setActiveCardMenuId(null);
+                                              }}
+                                              className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                            >
+                                              <Scale className="w-3.5 h-3.5 text-amber-600" />
+                                              <span>{selectedForComparison.includes(cand.id) ? 'Remove Compare' : 'Add to Compare'}</span>
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
 
                                   {/* Mobile Touch Stage Selector */}
@@ -1012,7 +1837,7 @@ export default function CandidatePipeline() {
                                     <select
                                       value={stage.id}
                                       onChange={(e) => handleStageDrop(cand.id, e.target.value)}
-                                      className="text-[10px] font-semibold bg-stone-50 dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] rounded-lg px-2 py-0.5 text-stone-700 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                                      className="text-[10px] font-semibold bg-stone-50 dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] rounded-lg px-2 py-0.5 text-stone-700 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-brand-500 [&>option]:bg-white dark:[&>option]:bg-[#1A1714] dark:[&>option]:text-stone-100"
                                     >
                                       <option value="screening">Screening</option>
                                       <option value="assessment">Assessment</option>
@@ -1037,6 +1862,22 @@ export default function CandidatePipeline() {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-stone-100/80 dark:bg-[#14110F] border-b border-[#E5E0DA] dark:border-[#2A2520] text-[11px] font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider font-mono">
                     <tr>
+                      <th className="w-10 px-3 py-3 text-center">
+                        <button
+                          type="button"
+                          onClick={selectAllVisibleCandidates}
+                          title={selectedCandidateIds.length === filteredCandidates.length && filteredCandidates.length > 0 ? "Deselect all" : "Select all visible candidates"}
+                          className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all mx-auto cursor-pointer ${
+                            selectedCandidateIds.length > 0 && selectedCandidateIds.length === filteredCandidates.length
+                              ? 'bg-brand-600 border-brand-600 text-white shadow-xs'
+                              : selectedCandidateIds.length > 0
+                              ? 'bg-brand-600/30 border-brand-600 text-brand-600'
+                              : 'border-stone-300 dark:border-stone-700 hover:border-brand-500 bg-white dark:bg-stone-900 text-transparent'
+                          }`}
+                        >
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </button>
+                      </th>
                       <th className="px-4 py-3">Candidate</th>
                       <th className="px-4 py-3">Role Applied</th>
                       <th className="px-4 py-3">Compensation</th>
@@ -1056,8 +1897,26 @@ export default function CandidatePipeline() {
                         <tr
                           key={cand.id}
                           onClick={() => handleOpenCandidate(cand)}
-                          className="transition-all duration-150 hover:bg-stone-50/70 dark:hover:bg-stone-900/40 cursor-pointer group"
+                          className={`transition-all duration-150 cursor-pointer group ${
+                            selectedCandidateIds.includes(cand.id)
+                              ? 'bg-brand-500/10 dark:bg-brand-950/30'
+                              : 'hover:bg-stone-50/70 dark:hover:bg-stone-900/40'
+                          }`}
                         >
+                          <td className="w-10 px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={(e) => toggleCandidateSelection(cand, e)}
+                              title={selectedCandidateIds.includes(cand.id) ? "Deselect candidate" : "Select candidate"}
+                              className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all mx-auto cursor-pointer ${
+                                selectedCandidateIds.includes(cand.id)
+                                  ? 'bg-brand-600 border-brand-600 text-white shadow-xs'
+                                  : 'border-stone-300 dark:border-stone-700 hover:border-brand-500 bg-white dark:bg-stone-900 text-transparent'
+                              }`}
+                            >
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </button>
+                          </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <Avatar name={cand.name} size="sm" />
@@ -1115,18 +1974,121 @@ export default function CandidatePipeline() {
                               <Badge variant="success" size="xs">Verified</Badge>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-right">
-                            <Button
-                              variant="ghost"
-                              size="xs"
-                              iconRight={ChevronRight}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenCandidate(cand);
-                              }}
-                            >
-                              Review
-                            </Button>
+                          <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {NEXT_STAGE_MAP[getCandidateStage(cand)] && !['selected', 'rejected'].includes((cand.hiringDecision || cand.hiring_decision || '').toLowerCase()) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleQuickAdvance(cand, e)}
+                                  title={`Advance to ${STAGE_CONFIG[NEXT_STAGE_MAP[getCandidateStage(cand)]]?.label || NEXT_STAGE_MAP[getCandidateStage(cand)]}`}
+                                  className="px-2 py-1 rounded-md text-[11px] font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900 border border-brand-200 dark:border-brand-800 transition flex items-center gap-1 cursor-pointer"
+                                >
+                                  <span>{NEXT_STAGE_LABELS[getCandidateStage(cand)] || 'Advance'}</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              )}
+
+                              <Button
+                                variant="ghost"
+                                size="xs"
+                                iconRight={ChevronRight}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenCandidate(cand);
+                                }}
+                              >
+                                Review
+                              </Button>
+
+                              {/* 3-dots Quick Actions dropdown */}
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveCardMenuId(prev => prev === cand.id ? null : cand.id);
+                                  }}
+                                  title="Quick candidate actions"
+                                  className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                                >
+                                  <MoreHorizontal className="w-3.5 h-3.5" />
+                                </button>
+
+                                {activeCardMenuId === cand.id && (
+                                  <div 
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute right-0 bottom-full mb-1.5 w-48 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] shadow-depth-elevated py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs text-left"
+                                  >
+                                    {NEXT_STAGE_MAP[getCandidateStage(cand)] && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          handleQuickAdvance(cand, e);
+                                          setActiveCardMenuId(null);
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                      >
+                                        <ArrowRight className="w-3.5 h-3.5 text-brand-600" />
+                                        <span>Advance to {STAGE_CONFIG[NEXT_STAGE_MAP[getCandidateStage(cand)]]?.label}</span>
+                                      </button>
+                                    )}
+
+                                    {wf.assessmentStatus === 'not_invited' && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          handleQuickInviteAssessment(cand, e);
+                                          setActiveCardMenuId(null);
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                      >
+                                        <Send className="w-3.5 h-3.5 text-purple-600" />
+                                        <span>Invite Assessment</span>
+                                      </button>
+                                    )}
+
+                                    {wf.hiringDecision !== 'shortlisted' && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          handleQuickShortlist(cand, e);
+                                          setActiveCardMenuId(null);
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                      >
+                                        <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>Shortlist</span>
+                                      </button>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        toggleCandidateComparison(cand, e);
+                                        setActiveCardMenuId(null);
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                    >
+                                      <Scale className="w-3.5 h-3.5 text-amber-600" />
+                                      <span>{selectedForComparison.includes(cand.id) ? 'Remove Compare' : 'Add to Compare'}</span>
+                                    </button>
+
+                                    <div className="my-1 border-t border-stone-200 dark:border-stone-800" />
+
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        handleOpenRejectionModal(cand, e);
+                                      }}
+                                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 cursor-pointer"
+                                    >
+                                      <UserX className="w-3.5 h-3.5" />
+                                      <span>Reject Application...</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1436,6 +2398,218 @@ export default function CandidatePipeline() {
           }}
           jobToEdit={jobToEdit}
           onJobCreated={handleJobCreated}
+        />
+      )}
+
+      {/* ─── PHASE 4E.4: BULK STAGE TRANSITION MODAL ─── */}
+      {isBulkStageModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] shadow-2xl space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-brand-600" />
+                  <span>Advance Candidates in Bulk</span>
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                  Move <span className="font-bold text-brand-600 dark:text-brand-400">{selectedCandidateIds.length} selected candidate(s)</span> to a target stage.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBulkStageModalOpen(false);
+                  setBulkStageNotes('');
+                }}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#231F1B] transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              <div>
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
+                  Target Hiring Stage
+                </label>
+                <CustomDropdown
+                  value={bulkTargetStage}
+                  onChange={(val) => setBulkTargetStage(val)}
+                  options={[
+                    { value: 'screening', label: 'Screening' },
+                    { value: 'assessment', label: 'Technical Assessment' },
+                    { value: 'interview', label: 'Interview' },
+                    { value: 'review', label: 'Evaluation & Review' },
+                    { value: 'completed', label: 'Completed' }
+                  ]}
+                  className="w-full text-xs"
+                  menuWidth="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
+                  Audit Notes (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={bulkStageNotes}
+                  onChange={(e) => setBulkStageNotes(e.target.value)}
+                  placeholder="Reason for advancing candidates (e.g. Cleared resume screening round, bulk cohort progression)..."
+                  className="w-full px-3 py-2 rounded-xl text-xs bg-stone-50 dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-brand-500 resize-none"
+                />
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-stone-100/70 dark:bg-[#231F1B]/60 border border-[#E5E0DA] dark:border-[#2A2520] text-[11px] text-stone-500 dark:text-stone-400">
+                <span className="font-semibold text-stone-700 dark:text-stone-300">Guardrails: </span>
+                Candidates with finalized outcomes (Selected or Rejected) cannot be moved without reopening. Any invalid transitions will be reported.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsBulkStageModalOpen(false);
+                  setBulkStageNotes('');
+                }}
+                disabled={isBulkActionLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleBulkStageChange(bulkTargetStage, bulkStageNotes)}
+                isLoading={isBulkActionLoading}
+              >
+                Confirm Move ({selectedCandidateIds.length})
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── PHASE 4E.4: CANDIDATE REJECTION MODAL ─── */}
+      {isRejectionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] shadow-2xl space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                  <UserX className="w-5 h-5" />
+                  <span>Reject Application{rejectionTargetCandidate ? '' : ` (${selectedCandidateIds.length})`}</span>
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                  {rejectionTargetCandidate ? (
+                    <>Rejecting candidate: <span className="font-bold text-stone-900 dark:text-stone-100">{typeof rejectionTargetCandidate === 'object' ? rejectionTargetCandidate.name : 'Selected Candidate'}</span></>
+                  ) : (
+                    <>Rejecting <span className="font-bold text-rose-600 dark:text-rose-400">{selectedCandidateIds.length} candidate(s)</span> in bulk.</>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRejectionModalOpen(false);
+                  setRejectionTargetCandidate(null);
+                  setRejectionReasonText('');
+                }}
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 hover:bg-stone-100 dark:hover:bg-[#231F1B] transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              <div>
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
+                  Rejection Category
+                </label>
+                <CustomDropdown
+                  value={rejectionCategory}
+                  onChange={(val) => setRejectionCategory(val)}
+                  options={[
+                    { value: 'skills_mismatch', label: 'Core Skills Mismatch' },
+                    { value: 'assessment_failed', label: 'Failed Assessment Benchmark' },
+                    { value: 'interview_rejected', label: 'Interview Evaluation Rejection' },
+                    { value: 'experience_insufficient', label: 'Insufficient Experience' },
+                    { value: 'compensation_mismatch', label: 'Compensation Expectation Above Budget' },
+                    { value: 'cultural_fit', label: 'Role Fit / Collaboration Concerns' },
+                    { value: 'withdrawn', label: 'Candidate Withdrawn' },
+                    { value: 'other', label: 'Other Reason' }
+                  ]}
+                  className="w-full text-xs"
+                  menuWidth="w-full"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 block mb-1">
+                  Feedback / Audit Reason (Optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={rejectionReasonText}
+                  onChange={(e) => setRejectionReasonText(e.target.value)}
+                  placeholder="Specific feedback or rationale recorded for compliance..."
+                  className="w-full px-3 py-2 rounded-xl text-xs bg-stone-50 dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-rose-500 resize-none"
+                />
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900 text-[11px] text-rose-700 dark:text-rose-300">
+                <span className="font-semibold">Notice: </span>
+                This will set the candidate hiring decision dimension to <strong className="uppercase">Rejected</strong>. An immutable audit record will be logged in the database.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsRejectionModalOpen(false);
+                  setRejectionTargetCandidate(null);
+                  setRejectionReasonText('');
+                }}
+                disabled={isBulkActionLoading}
+              >
+                Cancel
+              </Button>
+              <button
+                type="button"
+                onClick={handleExecuteRejection}
+                disabled={isBulkActionLoading}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isBulkActionLoading ? (
+                  <span>Processing...</span>
+                ) : (
+                  <>
+                    <UserX className="w-3.5 h-3.5" />
+                    <span>Confirm Rejection</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── SIDE-BY-SIDE CANDIDATE COMPARISON MODAL (PHASE 4E.3) ─── */}
+      {isComparisonModalOpen && comparisonJobId && (
+        <CandidateComparisonModal
+          isOpen={isComparisonModalOpen}
+          onClose={() => setIsComparisonModalOpen(false)}
+          jobId={comparisonJobId}
+          jobTitle={comparisonJobTitle}
+          candidateIds={selectedForComparison}
+          onSelectCandidate={(candId, initialTab, compContext) => {
+            setIsComparisonModalOpen(false);
+            const target = candidates.find((c) => String(c.id) === String(candId));
+            if (target) handleOpenCandidate(target, initialTab || 'scorecard', { comparisonContext: compContext });
+          }}
         />
       )}
     </div>

@@ -18,19 +18,33 @@ export default {
         'xs-plus':['13px', { lineHeight: '18px' }],
       },
       colors: {
-        // ── Accent: Muted Teal (replaces indigo/cobalt) ──────────────────────
+        // ── Accent: Roasted Amber / Warm Caramel (Espresso Option A) ─────────
         brand: {
-          50:  '#F0FDFA',
-          100: '#CCFBF1',
-          200: '#99F6E4',
-          300: '#5EEAD4',
-          400: '#2DD4BF',
-          500: '#14B8A6',
-          600: '#0D9488',   // PRIMARY ACCENT
-          700: '#0F766E',
-          800: '#115E59',
-          900: '#134E4A',
-          950: '#042F2E',
+          50:  '#FFFBEB',   // warm honey-50
+          100: '#FEF3C7',   // warm cream-100
+          200: '#FDE68A',
+          300: '#FCD34D',
+          400: '#F59E0B',   // vibrant warm amber
+          500: '#D97706',   // rich caramel
+          600: '#C27803',   // PRIMARY ACCENT: ROASTED AMBER
+          700: '#B45309',   // deep bronze
+          800: '#92400E',   // dark roasted caramel
+          900: '#78350F',   // roasted coffee bean
+          950: '#451A03',   // dark mocha
+        },
+        // ── Espresso: Pure Deep Coffee & Cream tones ───────────────────────
+        espresso: {
+          50:  '#FAF8F5',   // light parchment
+          100: '#F4EFEB',   // warm latte wash
+          200: '#E8DFD8',   // subtle warm border
+          300: '#D5C7BC',
+          400: '#B09A88',
+          500: '#8C715D',
+          600: '#694F3E',
+          700: '#4E382A',
+          800: '#38261B',
+          900: '#2A1B14',   // PRIMARY DEEP ESPRESSO
+          950: '#1C130E',   // DARK ESPRESSO ROAST TEXT
         },
         // ── Stone: Warm neutrals (replaces cold slate) ─────────────────────
         stone: {
@@ -57,30 +71,30 @@ export default {
         },
         // ── Surface tokens for warmth ──────────────────────────────────────
         surface: {
-          // Light surfaces — warm stone/coffee
-          'page':            '#F2EFEB',
-          'card':            '#FDFCFA',
+          // Light surfaces — soft cream / latte & warm borders
+          'page':            '#F7F4EF',
+          'card':            '#FDFBF7',
           'raised':          '#FFFFFF',
-          'border':          '#E5E0DA',
-          'border-subtle':   '#EEEAE5',
-          // Dark surfaces — warm espresso/graphite
-          'page-dk':         '#110F0D',
-          'card-dk':         '#1A1714',
-          'raised-dk':       '#221E1A',
-          'border-dk':       '#2A2520',
-          'border-subtle-dk':'#231F1B',
+          'border':          '#E8DFD8',
+          'border-subtle':   '#F0EAE3',
+          // Dark surfaces — True Warm Luxury Espresso (visibly rich roasted coffee bean, never pitch-black)
+          'page-dk':         '#0F0E0D',
+          'card-dk':         '#2B201A',
+          'raised-dk':       '#352720',
+          'border-dk':       '#423229',
+          'border-subtle-dk':'#362820',
           // Legacy compat tokens (used across components)
-          light:             '#FDFCFA',
-          'card-light':      '#FDFCFA',
-          'page-light':      '#F2EFEB',
-          'subtle-light':    '#EEEAE5',
-          'border-light':    '#E5E0DA',
+          light:             '#FDFBF7',
+          'card-light':      '#FDFBF7',
+          'page-light':      '#F7F4EF',
+          'subtle-light':    '#F0EAE3',
+          'border-light':    '#E8DFD8',
           'elevated-light':  '#FFFFFF',
-          dark:              '#110F0D',
-          'card-dark':       '#1A1714',
-          'sidebar-dark':    '#0E0C0A',
-          'border-dark':     '#2A2520',
-          'elevated-dark':   '#221E1A',
+          dark:              '#0F0E0D',
+          'card-dark':       '#2B201A',
+          'sidebar-dark':    '#1B1310',
+          'border-dark':     '#423229',
+          'elevated-dark':   '#352720',
         },
         // ── IDE surface tokens ─────────────────────────────────────────────
         ide: {
@@ -109,9 +123,10 @@ export default {
         'depth-2':       '0 4px 12px -2px rgba(28, 20, 10, 0.10), 0 2px 6px -1px rgba(28, 20, 10, 0.05)',
         'depth-3':       '0 12px 28px -4px rgba(15, 10, 5, 0.18), 0 4px 10px -2px rgba(15, 10, 5, 0.08)',
         'depth-elevated':'0 20px 40px -8px rgba(15, 10, 5, 0.28)',
-        'glow-teal':     '0 0 20px -4px rgba(13, 148, 136, 0.18)',
+        'glow-teal':     '0 0 20px -4px rgba(194, 120, 3, 0.22)',
+        'glow-amber':    '0 0 20px -4px rgba(194, 120, 3, 0.25)',
         // Legacy compat name
-        'glow-cobalt':   '0 0 20px -4px rgba(13, 148, 136, 0.18)',
+        'glow-cobalt':   '0 0 20px -4px rgba(194, 120, 3, 0.22)',
       },
       transitionDuration: {
         'instant':  '80ms',
@@ -143,19 +158,19 @@ export default {
         },
         'fade-in-up': {
           from: { opacity: 0, transform: 'translateY(8px)' },
-          to:   { opacity: 1, transform: 'translateY(0)' },
+          to:   { opacity: 1, transform: 'none' },
         },
         'page-enter': {
-          from: { opacity: 0, transform: 'translateY(6px)' },
-          to:   { opacity: 1, transform: 'translateY(0)' },
+          from: { opacity: 0 },
+          to:   { opacity: 1 },
         },
         'modal-enter': {
           from: { opacity: 0, transform: 'scale(0.96) translateY(8px)' },
-          to:   { opacity: 1, transform: 'scale(1) translateY(0)' },
+          to:   { opacity: 1, transform: 'none' },
         },
         'drawer-enter': {
           from: { opacity: 0, transform: 'translateX(24px)' },
-          to:   { opacity: 1, transform: 'translateX(0)' },
+          to:   { opacity: 1, transform: 'none' },
         },
         'slide-in-right': {
           from: { opacity: 0, transform: 'translateX(-12px)' },
@@ -191,8 +206,8 @@ export default {
           '50%':      { opacity: 0.85, transform: 'scale(1.04)' },
         },
         'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 15px -3px rgba(13, 148, 136, 0.2)' },
-          '50%':      { boxShadow: '0 0 25px 0px rgba(13, 148, 136, 0.4)' },
+          '0%, 100%': { boxShadow: '0 0 15px -3px rgba(194, 120, 3, 0.2)' },
+          '50%':      { boxShadow: '0 0 25px 0px rgba(194, 120, 3, 0.4)' },
         },
       },
       transitionTimingFunction: {

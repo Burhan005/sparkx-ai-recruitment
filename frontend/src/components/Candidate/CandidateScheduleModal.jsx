@@ -188,13 +188,18 @@ export default function CandidateScheduleModal({
                 <p className="text-xs text-stone-600 dark:text-stone-400 max-w-sm mx-auto">
                   Your session is confirmed for <strong className="text-stone-900 dark:text-white">{successBooking.local_date} at {successBooking.local_start_time} ({successBooking.timezone})</strong>.
                 </p>
+                <p className="text-[11px] text-stone-500 max-w-xs mx-auto pt-1">
+                  You can review preparation notes, run pre-flight system checks, and launch the room directly from your application tracker.
+                </p>
               </div>
               <div className="pt-4 flex justify-center gap-3">
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="px-5 py-2 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition shadow-subtle"
+                  className="px-5 py-2.5 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition shadow-subtle flex items-center space-x-1.5"
                 >
-                  Done
+                  <span>Go to My Applications</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>

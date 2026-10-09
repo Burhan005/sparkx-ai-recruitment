@@ -3033,6 +3033,8 @@ def evaluate_adaptive_answer(
       4. Vague responses -> Probes specific architectural metrics/trade-offs.
       5. Advanced responses -> Issues scenario stress-tests.
     """
+    answer_clean = (answer or "").strip()
+
     # 1. Primary: Live LLM Dynamic Real-Time Evaluation (Gemini, Groq, OpenAI)
     # The LLM dynamically understands conversational nuance, candor vs depth, and context.
     llm_prompt = (

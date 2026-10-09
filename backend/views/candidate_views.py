@@ -4,17 +4,21 @@ Protected by Role-Based Access Control: Recruiter-only management & Candidate re
 """
 import os
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas import (
     CandidateApply, CandidateResponse, CandidateStatusUpdate, CandidateScheduleRequest,
     EmailSendRequest, CandidateApplicationItem, CandidateStageUpdate, HiringDecisionUpdate,
     AssessmentInviteRequest, ExpectedUpdateDateRequest, CandidateUpdateNotificationRequest,
-    CandidateReopenRequest
+    CandidateReopenRequest, PipelineStatsResponse, BulkCandidateActionRequest, BulkCandidateActionResponse,
+    CandidateScorecardResponse, CandidateComparisonRequest, CandidateComparisonResponse,
+    CandidateDecisionContextResponse, DecisionHistoryItem
 )
 from controllers.candidate_controller import CandidateController
-from models.db_models import UserModel, CandidateModel
+from services.candidate_scorecard_service import CandidateScorecardService
+from services.candidate_decision_service import CandidateDecisionService
+from models.db_models import UserModel, CandidateModel, JobModel
 from auth_dependencies import (
     get_current_user, require_recruiter, get_optional_current_user,
     verify_candidate_ownership, verify_recruiter_tenant
@@ -32,6 +36,43 @@ def _get_candidate_guarded(candidate_id: str, current_user: UserModel, db: Sessi
         verify_recruiter_tenant(current_user, cand, "candidate")
     return cand
 
+@router.get("/pipeline-summary", response_model=PipelineStatsResponse)
+def get_pipeline_summary(
+    job_id: Optional[str] = None,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Recruiter-only: Authoritative database-driven pipeline summary and counts across all 4 independent dimensions:
+    stage, assessment_status, interview_status, hiring_decision.
+    Scoped strictly to the recruiter's organization and optional job filter.
+    """
+    return CandidateController.get_pipeline_summary(
+        db,
+        organization_id=current_user.organization_id,
+        job_id=job_id
+    )
+
+@router.post("/bulk-action", response_model=BulkCandidateActionResponse)
+def execute_bulk_action(
+    payload: BulkCandidateActionRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Recruiter-only: Process batch candidate actions with atomic per-candidate validation,
+    transition guards, tenant verification, and state audit history logging.
+    """
+    result, err = CandidateController.execute_bulk_action(
+        payload=payload.dict(),
+        changed_by=current_user.email,
+        db=db,
+        organization_id=current_user.organization_id
+    )
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+    return result
+
 @router.get("/recruiter/update-timeline")
 def get_recruiter_update_timeline(
     current_user: UserModel = Depends(require_recruiter),
@@ -48,6 +89,10 @@ def get_candidates(
     skip: int = 0,
     limit: int = 100,
     job_id: Optional[str] = None,
+    stage: Optional[str] = None,
+    assessment_status: Optional[str] = None,
+    interview_status: Optional[str] = None,
+    hiring_decision: Optional[str] = None,
     compensation_status: Optional[str] = None,
     min_expected_ctc: Optional[float] = None,
     max_expected_ctc: Optional[float] = None,
@@ -61,6 +106,10 @@ def get_candidates(
         skip=skip,
         limit=limit,
         job_id=job_id,
+        stage=stage,
+        assessment_status=assessment_status,
+        interview_status=interview_status,
+        hiring_decision=hiring_decision,
         compensation_status=compensation_status,
         min_expected_ctc=min_expected_ctc,
         max_expected_ctc=max_expected_ctc,
@@ -231,6 +280,36 @@ def update_stage(
         raise HTTPException(status_code=400, detail=err)
     return cand
 
+@router.get("/{candidate_id}/decision-context", response_model=CandidateDecisionContextResponse)
+def get_candidate_decision_context(
+    candidate_id: str,
+    job_id: Optional[str] = Query(None, description="Optional target requisition ID"),
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Recruiter-only: Retrieve authoritative, evidence-backed decision context for candidate."""
+    _get_candidate_guarded(candidate_id, current_user, db)
+    return CandidateDecisionService.get_decision_context(
+        candidate_id=candidate_id,
+        job_id=job_id,
+        db=db,
+        current_user=current_user
+    )
+
+@router.get("/{candidate_id}/decision-history", response_model=List[DecisionHistoryItem])
+def get_candidate_decision_history(
+    candidate_id: str,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """Recruiter-only: Retrieve immutable decision audit history ledger for candidate."""
+    _get_candidate_guarded(candidate_id, current_user, db)
+    return CandidateDecisionService.get_decision_history(
+        candidate_id=candidate_id,
+        db=db,
+        current_user=current_user
+    )
+
 @router.patch("/{candidate_id}/decision", response_model=CandidateResponse)
 def update_decision(
     candidate_id: str,
@@ -238,22 +317,14 @@ def update_decision(
     current_user: UserModel = Depends(require_recruiter),
     db: Session = Depends(get_db)
 ):
-    """Recruiter-only: Record hiring decision without regressing pipeline stage."""
+    """Recruiter-only: Record evidence-based hiring decision without regressing pipeline stage."""
     _get_candidate_guarded(candidate_id, current_user, db)
-    cand, err = CandidateController.update_hiring_decision(
+    return CandidateDecisionService.record_decision(
         candidate_id=candidate_id,
-        new_decision=payload.decision,
-        recruiter_score=payload.recruiter_score,
-        rejection_reason=payload.rejection_reason,
-        rejection_category=payload.rejection_category,
-        hr_notes=payload.hr_notes or "",
-        changed_by=current_user.email,
+        payload=payload,
         db=db,
-        organization_id=current_user.organization_id
+        current_user=current_user
     )
-    if err:
-        raise HTTPException(status_code=400, detail=err)
-    return cand
 
 @router.post("/{candidate_id}/reopen", response_model=CandidateResponse)
 def reopen_application(
@@ -335,3 +406,107 @@ async def parse_resume(file: Optional[UploadFile] = File(None), raw_text: Option
 
     res = CandidateController.parse_resume_content(file_bytes=file_bytes, filename=filename, raw_text=raw_text)
     return res
+
+
+@router.get("/{candidate_id}/jobs/{job_id}/scorecard", response_model=CandidateScorecardResponse)
+def get_candidate_job_scorecard(
+    candidate_id: str,
+    job_id: str,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Phase 4E.7: Evidence-Based Candidate Scorecard contextual to Candidate + Job.
+    Derived exclusively from persisted database requirements and platform evidence.
+    Enforces multi-tenant isolation and BOLA/IDOR protection.
+    """
+    try:
+        return CandidateScorecardService.get_scorecard(
+            candidate_id=candidate_id,
+            job_id=job_id,
+            db=db,
+            current_user=current_user
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except PermissionError as pe:
+        raise HTTPException(status_code=403, detail=str(pe))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate scorecard: {str(e)}")
+
+
+@router.get("/{candidate_id}/scorecard", response_model=CandidateScorecardResponse)
+def get_candidate_default_scorecard(
+    candidate_id: str,
+    job_id: Optional[str] = None,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Convenience endpoint: Resolves scorecard for candidate's active applied job if job_id not provided.
+    """
+    cand = db.query(CandidateModel).filter(CandidateModel.id == candidate_id).first()
+    if not cand:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+
+    target_job_id = job_id or cand.job_id
+    if not target_job_id:
+        raise HTTPException(status_code=400, detail="Candidate does not have an associated job_id and none was provided")
+
+    try:
+        return CandidateScorecardService.get_scorecard(
+            candidate_id=candidate_id,
+            job_id=target_job_id,
+            db=db,
+            current_user=current_user
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except PermissionError as pe:
+        raise HTTPException(status_code=403, detail=str(pe))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate scorecard: {str(e)}")
+
+
+# ─── Phase 4E.8: Evidence-Based Candidate Comparison Endpoints ─────────────────
+
+@router.post("/compare", response_model=CandidateComparisonResponse)
+def compare_candidates_endpoint(
+    payload: CandidateComparisonRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Recruiter-only: Compares 2 or more candidates side-by-side against a specific job opening.
+    Enforces multi-tenant organization boundary and job association.
+    Produces deterministic, evidence-backed candidate ranking, gaps, and skill matrix.
+    """
+    try:
+        return CandidateScorecardService.compare_candidates(
+            job_id=payload.job_id,
+            candidate_ids=payload.candidate_ids,
+            db=db,
+            current_user=current_user
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except PermissionError as pe:
+        raise HTTPException(status_code=403, detail=str(pe))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Comparison evaluation failed: {str(e)}")
+
+
+@router.get("/compare/jobs/{job_id}", response_model=CandidateComparisonResponse)
+def compare_candidates_by_job_get(
+    job_id: str,
+    candidate_ids: List[str] = Query(..., description="List of candidate IDs to compare"),
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Convenience GET endpoint for candidate comparison.
+    """
+    payload = CandidateComparisonRequest(job_id=job_id, candidate_ids=candidate_ids)
+    return compare_candidates_endpoint(payload=payload, current_user=current_user, db=db)
+
+

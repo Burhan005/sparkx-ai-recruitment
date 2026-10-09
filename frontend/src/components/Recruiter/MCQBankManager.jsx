@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   FileText, 
   Search, 
@@ -403,36 +404,38 @@ export default function MCQBankManager({ activeJob, onAttachMCQs }) {
           />
         </div>
 
-        <select
+        <CustomDropdown
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500"
-        >
-          {CATEGORIES.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
+          onChange={setCategoryFilter}
+          options={CATEGORIES.map(cat => ({
+            value: cat,
+            label: cat === 'All Categories' ? 'All Categories' : cat.charAt(0).toUpperCase() + cat.slice(1)
+          }))}
+          className="w-full"
+        />
 
-        <select
+        <CustomDropdown
           value={difficultyFilter}
-          onChange={(e) => setDifficultyFilter(e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500"
-        >
-          <option value="">All Difficulties</option>
-          <option value="Easy">Easy</option>
-          <option value="Medium">Medium</option>
-          <option value="Hard">Hard</option>
-        </select>
+          onChange={setDifficultyFilter}
+          options={[
+            { value: '', label: 'All Difficulties' },
+            { value: 'Easy', label: 'Easy' },
+            { value: 'Medium', label: 'Medium' },
+            { value: 'Hard', label: 'Hard' }
+          ]}
+          className="w-full"
+        />
 
-        <select
+        <CustomDropdown
           value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500"
-        >
-          <option value="">All Sources</option>
-          <option value="system">Platform System MCQs</option>
-          <option value="custom">My Organization Custom MCQs</option>
-        </select>
+          onChange={setSourceFilter}
+          options={[
+            { value: '', label: 'All Sources' },
+            { value: 'system', label: 'Platform System MCQs' },
+            { value: 'custom', label: 'Organization Custom MCQs' }
+          ]}
+          className="w-full"
+        />
       </div>
 
       {/* ─── Question Grid & Preview ─── */}
@@ -636,9 +639,9 @@ export default function MCQBankManager({ activeJob, onAttachMCQs }) {
       </div>
 
       {/* ─── Authoring Modal (Create / Edit) ─── */}
-      {isAuthoringOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="w-full max-w-2xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      {isAuthoringOpen && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto overscroll-contain animate-fade-in">
+          <div className="w-full max-w-2xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden my-auto flex flex-col max-h-[90vh]">
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
                 <span className="p-2 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400">
@@ -675,29 +678,31 @@ export default function MCQBankManager({ activeJob, onAttachMCQs }) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="font-semibold text-slate-700 dark:text-slate-300">Difficulty</label>
-                  <select
+                  <CustomDropdown
                     value={formDifficulty}
-                    onChange={(e) => setFormDifficulty(e.target.value)}
-                    className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500"
-                  >
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                  </select>
+                    onChange={setFormDifficulty}
+                    options={[
+                      { value: 'Easy', label: 'Easy' },
+                      { value: 'Medium', label: 'Medium' },
+                      { value: 'Hard', label: 'Hard' }
+                    ]}
+                    className="w-full"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="font-semibold text-slate-700 dark:text-slate-300">Category</label>
-                  <select
+                  <CustomDropdown
                     value={formCategory}
-                    onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500"
-                  >
-                    <option value="technical">technical</option>
-                    <option value="domain">domain</option>
-                    <option value="scenario">scenario</option>
-                    <option value="aptitude">aptitude</option>
-                  </select>
+                    onChange={setFormCategory}
+                    options={[
+                      { value: 'technical', label: 'Technical' },
+                      { value: 'domain', label: 'Domain' },
+                      { value: 'scenario', label: 'Scenario' },
+                      { value: 'aptitude', label: 'Aptitude' }
+                    ]}
+                    className="w-full"
+                  />
                 </div>
               </div>
 
@@ -789,7 +794,8 @@ export default function MCQBankManager({ activeJob, onAttachMCQs }) {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

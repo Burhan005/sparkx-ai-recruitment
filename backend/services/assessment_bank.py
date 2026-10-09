@@ -259,6 +259,233 @@ TECHNICAL_MCQS: List[Dict[str, Any]] = [
         },
         "correct_option": "B",
         "explanation": "NLB operates at the transport layer (Layer 4) for extreme throughput, sub-millisecond latencies, and provides static Anycast IP addresses, whereas ALB operates at Layer 7 (HTTP/HTTPS)."
+    },
+
+    # ─── Finance, Accounting, Tax & Audit (Senior Controller & Financial Auditor) ───
+    {
+        "id": "mcq-fin-rev-rec",
+        "category": "finance",
+        "skills": ["finance", "accounting", "ifrs", "gaap", "revenue recognition", "financial reporting"],
+        "difficulty": "Senior",
+        "question": "Under IFRS 15 / ASC 606 (Revenue from Contracts with Customers), when must variable consideration (such as performance bonuses or volume discounts) be included in the transaction price?",
+        "options": {
+            "A": "Only after the contract has been completely fulfilled and final payment is received.",
+            "B": "Only to the extent it is highly probable that a significant reversal in cumulative revenue recognized will not occur when the uncertainty is resolved.",
+            "C": "It must always be included immediately at the maximum contractually stated value regardless of uncertainty.",
+            "D": "It must be amortized straight-line over a mandatory 5-year statutory period."
+        },
+        "correct_option": "B",
+        "explanation": "IFRS 15 paragraph 56 sets the constraint on variable consideration: it is included in transaction price only if it is highly probable that a significant reversal will not occur once uncertainty resolves."
+    },
+    {
+        "id": "mcq-fin-lease-ifrs16",
+        "category": "finance",
+        "skills": ["finance", "accounting", "ifrs", "financial reporting"],
+        "difficulty": "Senior",
+        "question": "Under IFRS 16, how does a lessee recognize an operating facility lease on the balance sheet at commencement date?",
+        "options": {
+            "A": "Off-balance sheet as periodic rental expense in operating expenses without any asset or liability recognition.",
+            "B": "Recognize a Right-of-Use (ROU) asset and a lease liability measured at the present value of future lease payments discounted using the incremental borrowing rate.",
+            "C": "As a contingent liability disclosed only in the footnotes until the lease reaches 50% maturity.",
+            "D": "At historical cost as fixed property, plant, and equipment with no corresponding financial liability."
+        },
+        "correct_option": "B",
+        "explanation": "IFRS 16 eliminated the distinction between operating and finance leases for lessees. Lessees recognize an ROU asset and lease liability discounted at the present value of future lease payments."
+    },
+    {
+        "id": "mcq-fin-tax-deferred",
+        "category": "finance",
+        "skills": ["taxation", "tax audit", "accounting", "ifrs", "compliance", "finance"],
+        "difficulty": "Senior",
+        "question": "Under IAS 12 (Income Taxes), what condition creates a Deferred Tax Asset (DTA), and what is the required criterion for its recognition on the balance sheet?",
+        "options": {
+            "A": "When accounting income is permanently higher than tax income; recognized unconditionally forever.",
+            "B": "When deductible temporary differences exist; recognized only to the extent probable that taxable profit will be available against which it can be utilized.",
+            "C": "When tax rates increase unexpectedly in foreign jurisdictions; recognized as an extraordinary gain in P&L.",
+            "D": "Only when the company is in liquidation and files an immediate tax refund claim."
+        },
+        "correct_option": "B",
+        "explanation": "A DTA arises from deductible temporary differences or unused tax loss carryforwards. IAS 12 requires that a DTA be recognized only to the extent that it is probable future taxable profits will be available."
+    },
+    {
+        "id": "mcq-fin-audit-risk",
+        "category": "finance",
+        "skills": ["auditing", "tax audit", "internal controls", "compliance", "finance"],
+        "difficulty": "Senior",
+        "question": "In the professional Audit Risk Model (Audit Risk = Inherent Risk × Control Risk × Detection Risk), if the auditor determines that Internal Controls are ineffective (Control Risk is High), how must the auditor respond to maintain acceptable overall Audit Risk?",
+        "options": {
+            "A": "Increase Detection Risk by reducing substantive audit procedures and relying on management representations.",
+            "B": "Lower Detection Risk by expanding the nature, timing, and extent of substantive testing and increasing sample sizes.",
+            "C": "Immediately issue an adverse audit opinion without performing substantive testing.",
+            "D": "Double the Inherent Risk assessment to mathematically balance the equation."
+        },
+        "correct_option": "B",
+        "explanation": "Detection risk is the only component the auditor controls. When Control Risk is High, the auditor must reduce Detection Risk by conducting more rigorous and extensive substantive testing."
+    },
+    {
+        "id": "mcq-fin-transfer-pricing",
+        "category": "finance",
+        "skills": ["taxation", "tax audit", "transfer pricing", "compliance", "finance"],
+        "difficulty": "Senior",
+        "question": "Under OECD Transfer Pricing Guidelines (BEPS Action 13), what is the core standard applied to cross-border intercompany transactions between associated enterprises?",
+        "options": {
+            "A": "Cost-plus 0% to minimize customs duties in all jurisdictions.",
+            "B": "The Arm's Length Principle: transactions must be priced as if they occurred between independent, unrelated entities under comparable market circumstances.",
+            "C": "Total tax elimination by routing all intellectual property royalties to tax havens with zero economic substance.",
+            "D": "Mandatory consolidation under the parent entity's domestic tax code without local documentation."
+        },
+        "correct_option": "B",
+        "explanation": "The cornerstone of transfer pricing is the Arm's Length Principle (Article 9 OECD Model Convention), requiring pricing between related entities to match terms agreed between independent market players."
+    },
+    {
+        "id": "mcq-fin-sox404-weakness",
+        "category": "finance",
+        "skills": ["internal controls", "auditing", "compliance", "sox", "finance"],
+        "difficulty": "Senior",
+        "question": "Under Sarbanes-Oxley (SOX) Section 404, what distinguishes a 'Material Weakness' from a 'Significant Deficiency' in internal control over financial reporting (ICFR)?",
+        "options": {
+            "A": "A significant deficiency always requires a restatement of prior period financial statements, while a material weakness does not.",
+            "B": "A material weakness is a deficiency, or combination thereof, such that there is a reasonable possibility that a material misstatement will not be prevented or detected on a timely basis.",
+            "C": "A material weakness only applies to cash fraud committed by executive officers.",
+            "D": "A significant deficiency is disclosed to the SEC, whereas a material weakness is handled exclusively internally by management."
+        },
+        "correct_option": "B",
+        "explanation": "Under PCAOB standards, a Material Weakness creates a reasonable possibility of a material misstatement not being prevented/detected, resulting in an adverse opinion on internal controls."
+    },
+    {
+        "id": "mcq-fin-variance-ebitda",
+        "category": "finance",
+        "skills": ["financial analysis", "finance", "accounting", "variance analysis"],
+        "difficulty": "Mid-Level",
+        "question": "When performing an EBITDA bridge variance analysis between Budget ($10M) and Actual ($8M), which breakdown correctly attributes the root causes of the variance?",
+        "options": {
+            "A": "Depreciating older equipment faster than straight-line schedules.",
+            "B": "Decomposing the $2M shortfall into Volume Variance, Price/Mix Variance, Cost of Goods Sold (COGS) Input Cost Variance, and Operating Expense (OpEx) Variance.",
+            "C": "Reallocating interest expense and tax provisions from financing activities.",
+            "D": "Amortizing intangible assets through other comprehensive income (OCI)."
+        },
+        "correct_option": "B",
+        "explanation": "A standard EBITDA bridge decomposes budget variances into Volume (quantity sold), Price/Mix (selling price and product composition), Input Costs (raw materials/direct labor), and OpEx."
+    },
+    {
+        "id": "mcq-fin-cashflow-indirect",
+        "category": "finance",
+        "skills": ["accounting", "finance", "financial reporting", "cash flow"],
+        "difficulty": "Mid-Level",
+        "question": "In the Indirect Method of the Statement of Cash Flows (IAS 7 / ASC 230), how does an increase in Accounts Receivable and an increase in Accounts Payable affect Cash Flow from Operating Activities?",
+        "options": {
+            "A": "Both increases are added back to Net Income.",
+            "B": "Increase in Accounts Receivable is deducted (cash not collected), while increase in Accounts Payable is added back (cash payment postponed).",
+            "C": "Increase in Accounts Receivable is added, while increase in Accounts Payable is deducted.",
+            "D": "Both increases are classified under Cash Flow from Financing Activities."
+        },
+        "correct_option": "B",
+        "explanation": "Under the indirect method: an increase in Accounts Receivable consumes operating cash (subtracted), whereas an increase in Accounts Payable conserves cash (added back)."
+    },
+    {
+        "id": "mcq-fin-impairment-ias36",
+        "category": "finance",
+        "skills": ["financial reporting", "accounting", "ifrs", "valuation", "finance"],
+        "difficulty": "Senior",
+        "question": "Under IAS 36 (Impairment of Assets), an asset's Recoverable Amount is defined as the higher of which two metrics?",
+        "options": {
+            "A": "Historical cost less accumulated depreciation and replacement cost.",
+            "B": "Fair Value less costs of disposal, and Value in Use (discounted present value of expected future cash flows).",
+            "C": "Current liquidation auction value and book value of equity.",
+            "D": "Insurable replacement value and statutory tax depreciable base."
+        },
+        "correct_option": "B",
+        "explanation": "IAS 36 paragraph 18 specifies Recoverable Amount = max(Fair Value Less Costs of Disposal, Value in Use). An impairment loss is recognized if carrying value exceeds this recoverable amount."
+    },
+    {
+        "id": "mcq-fin-ecl-ifrs9",
+        "category": "finance",
+        "skills": ["finance", "ifrs", "financial reporting", "compliance"],
+        "difficulty": "Senior",
+        "question": "Under IFRS 9 Financial Instruments, how does the 3-stage Expected Credit Loss (ECL) model evaluate credit risk on loan receivables?",
+        "options": {
+            "A": "Losses are only recognized when an actual legal bankruptcy or payment default has occurred (incurred loss model).",
+            "B": "Stage 1 recognizes 12-month ECL; Stage 2 (significant increase in credit risk) and Stage 3 (credit-impaired) recognize Lifetime ECL.",
+            "C": "A flat 1% general provision is deducted from all receivables regardless of individual creditworthiness.",
+            "D": "All credit loss evaluations are deferred until maturity of the underlying instrument."
+        },
+        "correct_option": "B",
+        "explanation": "IFRS 9 replaced the legacy incurred loss model with forward-looking ECL: Stage 1 = 12-month ECL, Stage 2 (significant deterioration) = Lifetime ECL, Stage 3 = Lifetime ECL."
+    },
+    {
+        "id": "mcq-fin-working-capital",
+        "category": "finance",
+        "skills": ["finance", "financial analysis", "cash flow", "working capital"],
+        "difficulty": "Mid-Level",
+        "question": "How is the Cash Conversion Cycle (CCC) calculated, and what does a decreasing CCC indicate about a company's operational efficiency?",
+        "options": {
+            "A": "CCC = Days Sales Outstanding (DSO) - Days Inventory Outstanding (DIO) + Days Payables Outstanding (DPO); indicates longer asset freeze.",
+            "B": "CCC = Days Inventory Outstanding (DIO) + Days Sales Outstanding (DSO) - Days Payables Outstanding (DPO); a decreasing CCC indicates faster liquidity conversion and superior working capital management.",
+            "C": "CCC = Quick Ratio × Current Ratio; indicates higher debt leverage.",
+            "D": "CCC = Net Profit Margin ÷ Total Asset Turnover; indicates DuPont return on equity."
+        },
+        "correct_option": "B",
+        "explanation": "CCC = DIO + DSO - DPO. A lower CCC means the firm converts investments in inventory and resources into cash flows much faster."
+    },
+    {
+        "id": "mcq-fin-consolidation-nci",
+        "category": "finance",
+        "skills": ["accounting", "ifrs", "financial reporting", "consolidation", "finance"],
+        "difficulty": "Senior",
+        "question": "When preparing consolidated financial statements under IFRS 10, how is a Non-Controlling Interest (NCI) presented in the Consolidated Statement of Financial Position?",
+        "options": {
+            "A": "As a current liability due within 12 months to outside minority shareholders.",
+            "B": "Within total equity, but presented separately from the equity of the parent company's shareholders.",
+            "C": "As an off-balance sheet contingent commitment disclosed only in notes.",
+            "D": "Deducted directly from goodwill on the asset side of the balance sheet."
+        },
+        "correct_option": "B",
+        "explanation": "IFRS 10 paragraph 22 mandates that Non-Controlling Interests (NCI) be presented within equity in the consolidated statement of financial position, separately from parent shareholders."
+    },
+    {
+        "id": "mcq-fin-tax-ifric23",
+        "category": "finance",
+        "skills": ["taxation", "tax audit", "compliance", "ifrs", "finance"],
+        "difficulty": "Senior",
+        "question": "Under IFRIC 23 (Uncertainty over Income Tax Treatments), when is an entity required to reflect the effect of uncertainty in determining taxable profit, tax bases, or tax rates?",
+        "options": {
+            "A": "Only after the tax authority has formally initiated a criminal tax evasion prosecution.",
+            "B": "If the entity concludes it is NOT probable that the taxation authority will accept an uncertain tax treatment, using either the most likely amount or the expected value method.",
+            "C": "Whenever the effective tax rate drops below 15% globally.",
+            "D": "Only when the tax filing is older than 7 statutory limitation years."
+        },
+        "correct_option": "B",
+        "explanation": "IFRIC 23 requires that if it is not probable the tax authority will accept the treatment, the entity must reflect uncertainty using the most likely amount or expected value method."
+    },
+    {
+        "id": "mcq-fin-forensic-audit",
+        "category": "finance",
+        "skills": ["auditing", "tax audit", "compliance", "internal controls", "finance"],
+        "difficulty": "Senior",
+        "question": "During a tax and statutory forensic audit, which analytical indicator is a prominent red flag for potential fraudulent financial reporting or fictitious revenue generation?",
+        "options": {
+            "A": "Days Sales Outstanding (DSO) increasing substantially while industry peers are flat, paired with uncollected receivables concentrated in the final week of the fiscal year.",
+            "B": "A decrease in administrative travel expenses following remote work policy adoption.",
+            "C": "Consistent payment of declared dividends from retained earnings.",
+            "D": "Early vendor invoice payments to capture 2/10 net 30 cash discount terms."
+        },
+        "correct_option": "A",
+        "explanation": "Surges in uncollected receivables at fiscal year-end combined with swelling DSO are classic symptoms of premature revenue recognition, bill-and-hold transactions, or fictitious channel-stuffing."
+    },
+    {
+        "id": "mcq-fin-cost-breakeven",
+        "category": "finance",
+        "skills": ["finance", "accounting", "cost accounting", "financial analysis"],
+        "difficulty": "Mid-Level",
+        "question": "If a division has Fixed Costs of $1,200,000, selling price per unit of $150, and Variable Cost per unit of $90, what is the Breakeven Point in sales dollars?",
+        "options": {
+            "A": "$1,200,000",
+            "B": "$3,000,000",
+            "C": "$2,000,000",
+            "D": "$4,500,000"
+        },
+        "correct_option": "B",
+        "explanation": "Contribution Margin Ratio = ($150 - $90) / $150 = $60 / $150 = 40% (0.40). Breakeven Sales = Fixed Costs / CM Ratio = $1,200,000 / 0.40 = $3,000,000."
     }
 ]
 
@@ -325,6 +552,26 @@ SCENARIO_QUESTIONS: List[Dict[str, Any]] = [
         "prompt": "Your recruitment platform must achieve an RTO (Recovery Time Objective) under 5 minutes and an RPO (Recovery Point Objective) under 1 minute in the event of an entire AWS Region outage (e.g. us-east-1). Detail your architecture covering Route53 DNS health checks, Aurora Global Database or cross-region RDS read replicas, S3 Cross-Region Replication (CRR), and automated failover orchestration.",
         "rubric_keywords": ["route 53", "dns failover", "rto", "rpo", "cross-region replication", "aurora global database", "health check", "terraform", "s3 crr"],
         "guidance": "Detail data tier replication (Aurora Global DB / Cross-region read replicas), stateless app tier scaling in secondary region, and Route53 DNS health check failover."
+    },
+    {
+        "id": "sc-fin-tax-audit-dispute",
+        "category": "scenario",
+        "skills": ["taxation", "tax audit", "compliance", "finance", "transfer pricing", "accounting"],
+        "difficulty": "Senior",
+        "title": "Cross-Border Transfer Pricing & Tax Audit Assessment Defense",
+        "prompt": "The State Tax Authority issues a formal audit assessment disallowing $4.2M in intercompany intellectual property royalties paid by your domestic subsidiary to your European headquarters over the past three fiscal years, assessing back taxes, 20% penalties, and interest. As Senior Financial Controller & Tax Auditor, outline your defense strategy: from assembling contemporaneous transfer pricing documentation and functional analysis to pursuing mutual agreement procedures (MAP) and evaluating deferred tax provision adjustments.",
+        "rubric_keywords": ["transfer pricing", "arm's length", "beps", "contemporaneous documentation", "comparable uncontrolled price", "map", "ifric 23", "tax provision"],
+        "guidance": "Focus on economic substance, benchmarking analysis under OECD guidelines, uncertain tax position adjustments under IFRIC 23, and dispute mitigation."
+    },
+    {
+        "id": "sc-fin-restatement-reconciliation",
+        "category": "scenario",
+        "skills": ["accounting", "financial reporting", "auditing", "internal controls", "ifrs", "finance"],
+        "difficulty": "Senior",
+        "title": "Revenue Misstatement & Material Weakness Remediation",
+        "prompt": "During year-end closing, you discover that a sales director booked $3.5M of software licenses as upfront revenue under ASC 606 / IFRS 15, despite the customer contract containing unfulfilled custom integration obligations and an unapproved return clause. Explain your step-by-step controller response: assessing materiality for prior-period restatement vs cumulative catch-up adjustment, coordinating with external auditors, and implementing preventative internal controls under SOX 404.",
+        "rubric_keywords": ["asc 606", "ifrs 15", "performance obligation", "material weakness", "restatement", "sox 404", "audit committee", "remediation"],
+        "guidance": "Address SAB 99 / IAS 8 qualitative and quantitative materiality assessment, SAB 108 rollover vs iron curtain approach, SEC 8-K disclosure, and internal control remediation."
     }
 ]
 
@@ -790,6 +1037,7 @@ def generate_job_assessment_bundle(job_skills: List[str], languages: List[str] =
     normalized_skills = [s.strip().lower() for s in (job_skills or [])]
 
     # Detect Job Technical Domain
+    is_finance = any(k in s for s in normalized_skills for k in ["finance", "accounting", "tax", "audit", "taxation", "ifrs", "gaap", "controller", "cfo", "budget", "compliance"])
     is_cloud_infra = any(k in s for s in normalized_skills for k in ["aws", "cloud", "docker", "docket", "kubernetes", "k8s", "devops", "infra", "linux", "terraform", "platform", "sre", "networking"])
     is_frontend = any(k in s for s in normalized_skills for k in ["react", "frontend", "css", "html", "ui", "ux", "canvas", "web", "tailwind"])
     is_backend = any(k in s for s in normalized_skills for k in ["python", "backend", "fastapi", "django", "sql", "postgres", "concurrency", "distributed"])
@@ -799,7 +1047,9 @@ def generate_job_assessment_bundle(job_skills: List[str], languages: List[str] =
     for q in TECHNICAL_MCQS:
         q_skills = [qs.lower() for qs in q["skills"]]
         has_direct = any(s in q_skills or any(qs in s for qs in q_skills) for s in normalized_skills)
-        if is_cloud_infra and any(k in q_skills for k in ["aws", "cloud", "docker", "docket", "kubernetes", "k8s", "devops", "networking"]):
+        if is_finance and (q.get("category") == "finance" or any(k in q_skills for k in ["finance", "accounting", "taxation", "auditing", "ifrs", "gaap", "tax audit"])):
+            matching_mcqs.append(q)
+        elif is_cloud_infra and any(k in q_skills for k in ["aws", "cloud", "docker", "docket", "kubernetes", "k8s", "devops", "networking"]):
             matching_mcqs.append(q)
         elif is_frontend and any(k in q_skills for k in ["react", "frontend", "javascript", "typescript", "performance"]):
             matching_mcqs.append(q)
@@ -818,7 +1068,9 @@ def generate_job_assessment_bundle(job_skills: List[str], languages: List[str] =
 
     # If fewer than 3, backfill from compatible domain pool only (NEVER cross incompatible domains)
     if len(unique_matches) < 3:
-        if is_cloud_infra:
+        if is_finance:
+            fallback_pool = [q for q in TECHNICAL_MCQS if q.get("category") == "finance" or any(k in q["skills"] for k in ["finance", "accounting", "taxation", "auditing"])]
+        elif is_cloud_infra:
             fallback_pool = [q for q in TECHNICAL_MCQS if any(k in q["skills"] for k in ["aws", "cloud", "docker", "kubernetes", "system design", "api", "devops"])]
         elif is_frontend:
             fallback_pool = [q for q in TECHNICAL_MCQS if any(k in q["skills"] for k in ["react", "frontend", "javascript", "typescript", "performance"])]
@@ -833,7 +1085,9 @@ def generate_job_assessment_bundle(job_skills: List[str], languages: List[str] =
     selected_mcqs = rng.sample(unique_matches, min(3, len(unique_matches)))
 
     # 2. Scenario Question: Domain-calibrated selection
-    if is_cloud_infra:
+    if is_finance:
+        scenario_pool = [q for q in SCENARIO_QUESTIONS if any(k in q["skills"] for k in ["finance", "taxation", "tax audit", "accounting", "auditing", "compliance"])]
+    elif is_cloud_infra:
         scenario_pool = [q for q in SCENARIO_QUESTIONS if any(k in q["skills"] for k in ["aws", "cloud", "kubernetes", "k8s", "docker", "devops"])]
     elif is_frontend:
         scenario_pool = [q for q in SCENARIO_QUESTIONS if any(k in q["skills"] for k in ["react", "frontend", "webrtc", "javascript"])]

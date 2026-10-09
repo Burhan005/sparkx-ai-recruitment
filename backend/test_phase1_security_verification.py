@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from main import app
 from database import get_db, SessionLocal
-from models.db_models import UserModel, CandidateModel, JobModel
+from models.db_models import UserModel, CandidateModel, JobModel, OrganizationModel
 from controllers.auth_controller import hash_password, create_access_token
 from services.sandbox_runner import SandboxRunner, LocalSubprocessSandbox
 from schemas import CodeRunRequest
@@ -31,7 +31,16 @@ client = TestClient(app)
 def setup_test_data():
     db = SessionLocal()
     try:
-        # Create Org A and Org B Users
+        # Ensure Organizations exist for FK constraints
+        for org_id, org_name, org_slug in [
+            ("org-alpha", "Alpha Corp Org", "alpha-corp"),
+            ("org-beta", "Beta Corp Org", "beta-corp"),
+            ("org-sparkx-default", "SparkX Default Org", "sparkx-default")
+        ]:
+            if not db.query(OrganizationModel).filter(OrganizationModel.id == org_id).first():
+                db.add(OrganizationModel(id=org_id, name=org_name, slug=org_slug, is_active=True))
+        db.flush()
+
         # Recruiter A (Org A)
         recruiter_a = db.query(UserModel).filter(UserModel.email == "test_recruiter_a@org-a.com").first()
         if not recruiter_a:

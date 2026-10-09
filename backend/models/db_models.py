@@ -77,6 +77,7 @@ class JobModel(Base):
     candidates = relationship("CandidateModel", back_populates="job", cascade="all, delete-orphan")
     assessments = relationship("AssessmentModel", back_populates="job", cascade="all, delete-orphan")
     interview_bookings = relationship("InterviewBookingModel", back_populates="job", cascade="all, delete-orphan")
+    skill_requirements = relationship("JobSkillRequirementModel", back_populates="job", cascade="all, delete-orphan")
 
 
 class CandidateModel(Base):
@@ -128,6 +129,7 @@ class CandidateModel(Base):
     scores = Column(JSON, default=dict)
     interview_summary = Column(Text, nullable=True)
     evidence_snippets = Column(JSON, default=list)
+    interview_transcript = Column(JSON, default=list)
     skill_gaps = Column(JSON, default=dict)
 
     # Human Decisions & Recruiter Evaluation
@@ -136,6 +138,8 @@ class CandidateModel(Base):
     recruiter_score = Column(Integer, nullable=True)
     rejection_reason = Column(Text, nullable=True)
     rejection_category = Column(String, nullable=True)
+    rationale_category = Column(String, nullable=True)
+    rationale_note = Column(Text, nullable=True)
     
     # Real-time Scheduling & Email Telemetry
     interview_scheduled_at = Column(String, nullable=True)
@@ -192,6 +196,7 @@ class CandidateModel(Base):
     coding_submissions = relationship("CodingSubmissionModel", back_populates="candidate", cascade="all, delete-orphan")
     mcq_submissions = relationship("MCQSubmissionModel", back_populates="candidate", cascade="all, delete-orphan")
     interview_bookings = relationship("InterviewBookingModel", back_populates="candidate", cascade="all, delete-orphan")
+    candidate_skills = relationship("CandidateSkillModel", back_populates="candidate", cascade="all, delete-orphan")
 
     @property
     def job_title(self) -> str:
@@ -208,6 +213,7 @@ class CandidateStateLogModel(Base):
     to_value = Column(String, nullable=False)
     changed_by = Column(String, default="system")
     notes = Column(Text, nullable=True)
+    rationale_category = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     candidate = relationship("CandidateModel", back_populates="state_logs")
@@ -294,6 +300,16 @@ class AssessmentModel(Base):
     passing_score = Column(Integer, default=70)
     is_active = Column(Boolean, default=True, index=True)
     version = Column(Integer, default=1, nullable=False)
+    status = Column(String, default="draft", index=True) # "draft" | "published" | "archived"
+    created_by = Column(String, nullable=True)
+    max_attempts = Column(Integer, default=1)
+    deadline_days = Column(Integer, nullable=True)
+    randomize_questions = Column(Boolean, default=False)
+    allow_review = Column(Boolean, default=True)
+    allow_unanswered = Column(Boolean, default=True)
+    allow_resume = Column(Boolean, default=True)
+    published_at = Column(DateTime, nullable=True)
+    archived_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -304,6 +320,62 @@ class AssessmentModel(Base):
     mcq_questions = relationship("AssessmentMCQModel", back_populates="assessment", cascade="all, delete-orphan", order_by="AssessmentMCQModel.display_order")
     submissions = relationship("CodingSubmissionModel", back_populates="assessment", cascade="all, delete-orphan")
     mcq_submissions = relationship("MCQSubmissionModel", back_populates="assessment", cascade="all, delete-orphan")
+    versions = relationship("AssessmentVersionModel", back_populates="assessment", cascade="all, delete-orphan", order_by="AssessmentVersionModel.version_number.desc()")
+    audit_logs = relationship("AssessmentAuditLogModel", back_populates="assessment", cascade="all, delete-orphan", order_by="AssessmentAuditLogModel.created_at.desc()")
+
+
+class AssessmentVersionModel(Base):
+    """
+    Immutable versioned snapshot of an Assessment.
+    Generated on publication to guarantee that candidates invited to a specific version
+    always experience the exact frozen questions, test cases, and scoring rules.
+    """
+    __tablename__ = "assessment_versions"
+    __table_args__ = (
+        UniqueConstraint("assessment_id", "version_number", name="uq_assessment_version"),
+        Index("ix_assessment_versions_asm_ver", "assessment_id", "version_number"),
+    )
+
+    id = Column(String, primary_key=True, index=True) # e.g. "asv-1a2b3c"
+    assessment_id = Column(String, ForeignKey("assessments.id", ondelete="CASCADE"), nullable=False, index=True)
+    version_number = Column(Integer, nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    duration_minutes = Column(Integer, default=45)
+    passing_score = Column(Integer, default=70)
+    max_attempts = Column(Integer, default=1)
+    deadline_days = Column(Integer, nullable=True)
+    randomize_questions = Column(Boolean, default=False)
+    allow_review = Column(Boolean, default=True)
+    allow_unanswered = Column(Boolean, default=True)
+    allow_resume = Column(Boolean, default=True)
+    snapshot_data = Column(JSON, nullable=False) # Frozen blueprint: all MCQs, options, coding problems, test cases, weights
+    published_by = Column(String, nullable=True)
+    published_at = Column(DateTime, default=datetime.utcnow)
+
+    assessment = relationship("AssessmentModel", back_populates="versions")
+
+
+class AssessmentAuditLogModel(Base):
+    """
+    Immutable audit ledger recording all Assessment Builder and Question lifecycle operations.
+    """
+    __tablename__ = "assessment_audit_logs"
+    __table_args__ = (
+        Index("ix_assessment_audit_logs_asm_created", "assessment_id", "created_at"),
+        Index("ix_assessment_audit_logs_org", "organization_id"),
+    )
+
+    id = Column(String, primary_key=True, index=True) # e.g. "aal-1a2b3c"
+    organization_id = Column(String, nullable=True, index=True)
+    assessment_id = Column(String, ForeignKey("assessments.id", ondelete="CASCADE"), nullable=True, index=True)
+    action = Column(String, nullable=False) # "created" | "updated" | "published" | "archived" | "question_added" | "question_removed" | "auto_selected" | "reordered"
+    performed_by = Column(String, nullable=False)
+    details = Column(JSON, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    assessment = relationship("AssessmentModel", back_populates="audit_logs")
+
 
 
 class AssessmentSectionModel(Base):
@@ -682,6 +754,151 @@ class InterviewBookingModel(Base):
     candidate = relationship("CandidateModel", back_populates="interview_bookings", foreign_keys=[candidate_id])
     recruiter = relationship("UserModel", foreign_keys=[recruiter_id])
     availability = relationship("RecruiterAvailabilityModel", back_populates="bookings", foreign_keys=[availability_id])
+
+
+# ─── PHASE 4E.1: RELATIONAL SKILL ARCHITECTURE MODELS ─────────────────────────
+
+class SkillModel(Base):
+    """
+    Canonical Skill Entity.
+    Defines unique canonical skills, slugs, categories, and active states.
+    Prevents duplicate canonical entries while serving as the authoritative root
+    for candidate skills, job requirements, and evidence.
+    """
+    __tablename__ = "skills"
+
+    id = Column(String, primary_key=True, index=True) # e.g. "skl-python" or "skl-1a2b3c"
+    name = Column(String, nullable=False, index=True) # Display Name: e.g. "Python", "Docker"
+    slug = Column(String, unique=True, index=True, nullable=False) # Normalized: e.g. "python", "docker"
+    category = Column(String, nullable=True, index=True) # e.g. "Programming Languages", "Cloud & DevOps"
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    candidate_skills = relationship("CandidateSkillModel", back_populates="skill", cascade="all, delete-orphan")
+    job_requirements = relationship("JobSkillRequirementModel", back_populates="skill", cascade="all, delete-orphan")
+    aliases = relationship("SkillAliasModel", back_populates="skill", cascade="all, delete-orphan")
+
+
+class SkillAliasModel(Base):
+    """
+    Canonical DB-backed skill aliases and common typos (e.g. 'pyhton' -> Python, 'k8s' -> Kubernetes).
+    Eliminates hardcoded in-memory dictionaries and scatter throughout frontend/backend.
+    """
+    __tablename__ = "skill_aliases"
+    __table_args__ = (
+        UniqueConstraint("skill_id", "alias", name="uq_skill_alias"),
+        Index("ix_skill_aliases_alias", "alias"),
+    )
+
+    id = Column(String, primary_key=True, index=True) # e.g. "ska-1a2b3c"
+    skill_id = Column(String, ForeignKey("skills.id", ondelete="CASCADE"), nullable=False, index=True)
+    alias = Column(String, nullable=False) # normalized lowercase alias string
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    skill = relationship("SkillModel", back_populates="aliases")
+
+
+class CandidateSkillModel(Base):
+    """
+    Relational association between a Candidate (Application) and a Skill.
+    Enforces uniqueness so a candidate cannot have duplicate entries for the same skill.
+    Stores proficiency level, years experience, verification status, and score.
+    """
+    __tablename__ = "candidate_skills"
+    __table_args__ = (
+        UniqueConstraint("candidate_id", "skill_id", name="uq_candidate_skill"),
+        Index("ix_candidate_skills_cand_skill", "candidate_id", "skill_id"),
+        Index("ix_candidate_skills_verified", "is_verified"),
+    )
+
+    id = Column(String, primary_key=True, index=True) # e.g. "csk-1a2b3c"
+    candidate_id = Column(String, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    skill_id = Column(String, ForeignKey("skills.id", ondelete="CASCADE"), nullable=False, index=True)
+    proficiency_level = Column(String, default="unspecified", nullable=True) # "unspecified" | "beginner" | "intermediate" | "advanced" | "expert"
+    years_experience = Column(Float, default=0.0, nullable=True)
+    is_verified = Column(Boolean, default=False, nullable=False, index=True)
+    verified_score = Column(Float, nullable=True) # 0 to 100
+    verification_source = Column(String, nullable=True) # "resume" | "coding_submission" | "mcq_submission" | "interview" | "certification" | "self_reported"
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    candidate = relationship("CandidateModel", back_populates="candidate_skills")
+    skill = relationship("SkillModel", back_populates="candidate_skills")
+    evidence = relationship("SkillEvidenceModel", back_populates="candidate_skill", cascade="all, delete-orphan")
+
+
+class JobSkillRequirementModel(Base):
+    """
+    Relational association between a Job opening and required/preferred skills.
+    Enforces uniqueness so a job cannot have duplicate requirements for the same skill.
+    Supports requirement type (must_have vs preferred), scoring weights, and minimum criteria.
+    """
+    __tablename__ = "job_skill_requirements"
+    __table_args__ = (
+        UniqueConstraint("job_id", "skill_id", name="uq_job_skill_requirement"),
+        Index("ix_job_skill_requirements_job_skill", "job_id", "skill_id"),
+        Index("ix_job_skill_requirements_type", "requirement_type"),
+    )
+
+    id = Column(String, primary_key=True, index=True) # e.g. "jsr-1a2b3c"
+    job_id = Column(String, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    skill_id = Column(String, ForeignKey("skills.id", ondelete="CASCADE"), nullable=False, index=True)
+    requirement_type = Column(String, default="must_have", nullable=False, index=True) # "must_have" | "preferred"
+    weight = Column(Float, default=1.0, nullable=False) # Scoring weight/multiplier
+    min_years = Column(Float, default=0.0, nullable=True)
+    min_proficiency = Column(String, default="intermediate", nullable=True) # "beginner" | "intermediate" | "advanced" | "expert"
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    job = relationship("JobModel", back_populates="skill_requirements")
+    skill = relationship("SkillModel", back_populates="job_requirements")
+
+
+class SkillEvidenceModel(Base):
+    """
+    Substantiating evidence linking a candidate skill to legitimate performance records.
+    Extensible across resume excerpts, coding problem submissions, MCQ submissions, and interview answers.
+    """
+    __tablename__ = "skill_evidence"
+    __table_args__ = (
+        Index("ix_skill_evidence_cand_skill", "candidate_skill_id"),
+        Index("ix_skill_evidence_type", "evidence_type"),
+    )
+
+    id = Column(String, primary_key=True, index=True) # e.g. "skev-1a2b3c"
+    candidate_skill_id = Column(String, ForeignKey("candidate_skills.id", ondelete="CASCADE"), nullable=False, index=True)
+    evidence_type = Column(String, nullable=False, index=True) # "resume" | "coding_submission" | "mcq_submission" | "interview" | "certification" | "assessment"
+    reference_id = Column(String, nullable=True, index=True) # ID of submission, question, or booking
+    score_contribution = Column(Float, default=0.0, nullable=True)
+    snippet = Column(Text, nullable=True) # verbatim excerpt or explanation
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    candidate_skill = relationship("CandidateSkillModel", back_populates="evidence")
+
+
+class QuestionSkillModel(Base):
+    """
+    Relational association linking questions (mcq or coding) to canonical SkillModel.
+    Supports skill relevancy weighting and category association.
+    """
+    __tablename__ = "question_skills"
+    __table_args__ = (
+        UniqueConstraint("question_type", "question_id", "skill_id", name="uq_question_skill"),
+        Index("ix_question_skills_skill", "skill_id"),
+        Index("ix_question_skills_q", "question_type", "question_id"),
+    )
+
+    id = Column(String, primary_key=True, index=True) # e.g. "qsk-1a2b3c"
+    question_type = Column(String, nullable=False, index=True) # "mcq" | "coding"
+    question_id = Column(String, nullable=False, index=True) # MCQQuestionModel.id or CodingProblemModel.id
+    skill_id = Column(String, ForeignKey("skills.id", ondelete="CASCADE"), nullable=False, index=True)
+    relevance_weight = Column(Float, default=1.0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    skill = relationship("SkillModel")
 
 
 # ─── AUTHORITATIVE SUPPORTED LANGUAGES REGISTRY ──────────────────────────────

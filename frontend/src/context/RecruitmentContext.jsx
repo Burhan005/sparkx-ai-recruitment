@@ -4,6 +4,7 @@
  * ALL data is fetched from the FastAPI backend — zero static/mock data.
  */
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { generateCandidateEvaluation } from '../services/aiRecruiterService';
 import { api, authEventBus } from '../services/api';
 import { fuzzySkillMatch, normalizeSkill } from '../utils/skillMatcher';
@@ -19,25 +20,93 @@ export const onContextToast = (fn) => {
 
 export function RecruitmentProvider({ children }) {
 
-  // ── Theme ──────────────────────────────────────────────────────────────────
+  // ── High-Performance Silky Theme State & View Transitions Engine ────────────
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('sparkx_theme');
     if (saved === 'dark' || saved === 'light') return saved;
     if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       return 'dark';
     }
-    return 'light'; // Default to browser/OS light mode if dark is not preferred
+    return 'light';
   });
-  useEffect(() => {
+
+  const applyThemeClasses = useCallback((targetTheme) => {
     const root = document.documentElement;
-    root.classList.add('theme-transition');
-    root.classList.toggle('dark',  theme === 'dark');
-    root.classList.toggle('light', theme !== 'dark');
-    localStorage.setItem('sparkx_theme', theme);
-    const t = setTimeout(() => root.classList.remove('theme-transition'), 480);
-    return () => clearTimeout(t);
-  }, [theme]);
-  const toggleTheme = () => setTheme(p => p === 'dark' ? 'light' : 'dark');
+    root.classList.toggle('dark',  targetTheme === 'dark');
+    root.classList.toggle('light', targetTheme !== 'dark');
+    try {
+      localStorage.setItem('sparkx_theme', targetTheme);
+    } catch {}
+  }, []);
+
+  const toggleTheme = useCallback((event) => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+
+    // 1. Calculate the exact epicenter (x, y) and maximum distance to viewport corners
+    let x = typeof window !== 'undefined' ? window.innerWidth / 2 : 0;
+    let y = typeof window !== 'undefined' ? window.innerHeight / 2 : 0;
+
+    if (event) {
+      if (event.currentTarget && typeof event.currentTarget.getBoundingClientRect === 'function') {
+        const rect = event.currentTarget.getBoundingClientRect();
+        x = rect.left + rect.width / 2;
+        y = rect.top + rect.height / 2;
+      } else if (event.clientX !== undefined && event.clientY !== undefined && (event.clientX > 0 || event.clientY > 0)) {
+        x = event.clientX;
+        y = event.clientY;
+      }
+    }
+
+    const endRadius = typeof window !== 'undefined'
+      ? Math.hypot(
+          Math.max(x, window.innerWidth - x),
+          Math.max(y, window.innerHeight - y)
+        )
+      : 1200;
+
+    const root = document.documentElement;
+
+    // 2. Set origin coordinates and radius in CSS variables for GPU-accelerated View Transition
+    root.style.setProperty('--theme-origin-x', `${Math.round(x)}px`);
+    root.style.setProperty('--theme-origin-y', `${Math.round(y)}px`);
+    root.style.setProperty('--theme-radius', `${Math.ceil(endRadius * 1.05)}px`);
+
+    // 3. Dispatch the Cosmic Supernova Starburst & Plasma Wavefront Event
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('sparkx:cosmic-theme', {
+        detail: { x, y, endRadius, targetTheme: nextTheme }
+      }));
+    }
+
+    // 4. Fallback if View Transitions API is not available or reduced motion is requested
+    if (
+      typeof document === 'undefined' ||
+      !document.startViewTransition ||
+      (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+    ) {
+      setTheme(nextTheme);
+      applyThemeClasses(nextTheme);
+      return;
+    }
+
+    // 5. Run native View Transitions animation (GPU-accelerated via CSS @keyframes)
+    try {
+      document.startViewTransition(() => {
+        flushSync(() => {
+          setTheme(nextTheme);
+          applyThemeClasses(nextTheme);
+        });
+      });
+    } catch {
+      setTheme(nextTheme);
+      applyThemeClasses(nextTheme);
+    }
+  }, [theme, applyThemeClasses]);
+
+  // Keep DOM classes in sync if theme changes externally
+  useEffect(() => {
+    applyThemeClasses(theme);
+  }, [theme, applyThemeClasses]);
 
   // ── Auth State Machine ───────────────────────────────────────────────────────
   // Initializing state is mandatory: currentUser starts null, userRole starts null.
@@ -484,6 +553,28 @@ export function RecruitmentProvider({ children }) {
     }
   };
 
+  const bulkCandidateAction = async (payload) => {
+    try {
+      const result = await api.bulkCandidateAction(payload);
+      if (result) {
+        await syncWithDatabase(true);
+        const { action, success_count, failure_count } = result;
+        const actionDisplay = (action || '').replace(/_/g, ' ');
+        if (failure_count === 0) {
+          toastBus.emit(`✓ Successfully updated ${success_count} candidate(s) (${actionDisplay})`, 'success');
+        } else if (success_count > 0) {
+          toastBus.emit(`Processed ${success_count} candidate(s); ${failure_count} could not be updated`, 'warning');
+        } else {
+          toastBus.emit(`Bulk action failed for all ${failure_count} candidate(s)`, 'error');
+        }
+        return result;
+      }
+    } catch (err) {
+      toastBus.emit(err.message || 'Bulk action failed', 'error');
+      throw err;
+    }
+  };
+
   const updateCandidateStatus = async (candidateId, newStatus, hrNotes = '', recruiterScore = null, rejectionReason = null, rejectionCategory = null) => {
     await api.updateCandidateStatus(candidateId, newStatus, hrNotes, recruiterScore, rejectionReason, rejectionCategory);
     const updated = await api.getCandidateById(candidateId);
@@ -667,6 +758,9 @@ export function RecruitmentProvider({ children }) {
       ...evaluation,
       coding_score: effectiveCodeScore,
       codingScore: effectiveCodeScore,
+      interview_status: 'completed',
+      interviewStatus: 'completed',
+      stage: 'review',
       status: canonicalStatus,
       finalDecision: canonicalStatus,
       integrityEvents,
@@ -679,9 +773,13 @@ export function RecruitmentProvider({ children }) {
         ...a, 
         status: canonicalStatus, 
         finalDecision: canonicalStatus, 
-        assessmentStatus: 'Completed',
-        coding_score: null, 
-        codingScore: null 
+        interviewStatus: 'completed',
+        interview_status: 'completed',
+        stage: 'review',
+        scores: evaluation?.scores || a.scores,
+        interview_summary: evaluation?.interview_summary || a.interview_summary,
+        coding_score: effectiveCodeScore, 
+        codingScore: effectiveCodeScore 
       } : a));
     }
     setSelectedCandidate(updatedData);
@@ -689,7 +787,7 @@ export function RecruitmentProvider({ children }) {
       refreshMyApplications(currentUser.email);
     }
 
-    toastBus.emit('Assessment submitted successfully.', 'success');
+    toastBus.emit('Interview session submitted and evaluated successfully.', 'success');
     return evaluation;
   };
 
@@ -710,6 +808,7 @@ export function RecruitmentProvider({ children }) {
       activeJob, setActiveJobId,
       createJob, updateJob, changeJobStatus, updateCandidateStatus, applyForJob,
       updateCandidateStage, updateHiringDecision, reopenCandidate, inviteAssessment,
+      bulkCandidateAction,
       scheduleInterview, sendEmail,
       currentInterviewSession, setCurrentInterviewSession,
       completeInterviewAndEvaluate,

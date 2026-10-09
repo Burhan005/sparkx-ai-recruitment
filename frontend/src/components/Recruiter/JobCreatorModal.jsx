@@ -885,8 +885,8 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-stone-200 dark:border-[#2A2520]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-300 shadow-subtle">
-              {jobToEdit ? <Save className="w-5 h-5 text-teal-700 dark:text-teal-300" /> : <Sparkles className="w-5 h-5 text-teal-700 dark:text-teal-300" />}
+            <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 flex items-center justify-center text-brand-700 dark:text-brand-300 shadow-subtle">
+              {jobToEdit ? <Save className="w-5 h-5 text-brand-700 dark:text-brand-300" /> : <Sparkles className="w-5 h-5 text-brand-700 dark:text-brand-300" />}
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100">
@@ -915,7 +915,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
               </span>
               <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase ${
                 currentTrack.isCoding 
-                  ? 'bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-200 dark:border-teal-800'
+                  ? 'bg-brand-100 dark:bg-brand-950/80 text-brand-800 dark:text-brand-300 border border-brand-200 dark:border-brand-800'
                   : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
               }`}>
                 {currentTrack.isCoding ? 'Coding Challenges' : 'Executive Simulation (Non-Coding)'}
@@ -1227,7 +1227,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                     {currentTrack.supportedLanguagesTitle || 'Supported Programming Languages for Coding Assessment *'}
                   </label>
                   {activeSubTrack && activeSubTrack !== 'backend' && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-semibold border border-teal-200 dark:border-teal-800/50">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-semibold border border-brand-200 dark:border-brand-800/50">
                       {currentTrack.label}
                     </span>
                   )}
@@ -1269,7 +1269,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       onClick={() => setFormData({ ...formData, codingDifficulty: lvl })}
                       className={`px-3 py-1 rounded-md text-xs font-bold transition border ${
                         formData.codingDifficulty === lvl
-                          ? 'bg-teal-50 dark:bg-teal-950/70 border-teal-500 text-teal-700 dark:text-teal-300'
+                          ? 'bg-brand-50 dark:bg-brand-950/70 border-brand-500 text-brand-700 dark:text-brand-300'
                           : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E8E4DF] dark:border-[#2A2520] text-stone-500 hover:border-stone-400'
                       }`}
                     >
@@ -1366,10 +1366,10 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
           </div>
 
           {/* AI Question Generation trigger */}
-          <div className="p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-teal-200 dark:border-teal-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-subtle">
+          <div className="p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-brand-200 dark:border-brand-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-subtle">
             <div>
-              <div className="flex items-center space-x-2 text-teal-700 dark:text-teal-300 font-semibold text-xs">
-                <BrainCircuit className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <div className="flex items-center space-x-2 text-brand-700 dark:text-brand-300 font-semibold text-xs">
+                <BrainCircuit className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                 <span>AI Interview Question & Assessment Generator</span>
               </div>
               <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
@@ -1397,7 +1397,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 <div key={q.id || idx} className="text-xs p-3 rounded-lg bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 shadow-subtle">
                   <div className="font-semibold text-stone-900 dark:text-stone-100 flex items-center justify-between">
                     <span>Q{idx+1}: {q.type}</span>
-                    <span className="text-[10px] text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-500/15 border border-teal-200 dark:border-teal-500/30 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/15 border border-brand-200 dark:border-brand-500/30 px-2 py-0.5 rounded-md">
                       Adaptive Probe Ready
                     </span>
                   </div>

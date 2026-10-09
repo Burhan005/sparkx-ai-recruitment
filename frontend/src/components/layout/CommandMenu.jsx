@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
+import { useSmoothNavigate } from '../../context/PageTransitionContext';
 import { 
   Search, 
   Briefcase, 
@@ -24,6 +25,7 @@ import {
 
 export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
   const navigate = useNavigate();
+  const { smoothNavigate } = useSmoothNavigate();
   const { 
     candidates = [], 
     jobs = [], 
@@ -83,15 +85,15 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
 
   // Build searchable items based on real application state
   const navItems = userRole === 'recruiter' ? [
-    { id: 'nav-recruiter', label: 'Recruiter Command Center', icon: Briefcase, category: 'Navigation', action: () => navigate('/recruiter') },
-    { id: 'nav-pipeline', label: 'Candidate Pipeline', icon: Users, category: 'Navigation', action: () => navigate('/recruiter') },
-    { id: 'nav-telemetry', label: 'Integrity Telemetry HUD', icon: ShieldAlert, category: 'Navigation', action: () => navigate('/recruiter/proctor') },
+    { id: 'nav-recruiter', label: 'Recruiter Command Center', icon: Briefcase, category: 'Navigation', action: () => smoothNavigate('/recruiter') },
+    { id: 'nav-pipeline', label: 'Candidate Pipeline', icon: Users, category: 'Navigation', action: () => smoothNavigate('/recruiter') },
+    { id: 'nav-telemetry', label: 'Integrity Telemetry HUD', icon: ShieldAlert, category: 'Navigation', action: () => smoothNavigate('/recruiter/proctor') },
   ] : [
-    { id: 'nav-jobs', label: 'Browse Job Catalog', icon: Briefcase, category: 'Navigation', action: () => navigate('/jobs') },
-    { id: 'nav-my-apps', label: 'My Applications & Status', icon: FileText, category: 'Navigation', action: () => navigate('/my-applications') },
-    { id: 'nav-interview', label: 'AI Adaptive Interview', icon: Video, category: 'Navigation', action: () => navigate('/interview') },
-    { id: 'nav-assessment', label: 'Technical Assessment IDE', icon: Code2, category: 'Navigation', action: () => navigate('/assessment') },
-    { id: 'nav-skillgap', label: 'Skill Gap Analysis', icon: TrendingUp, category: 'Navigation', action: () => navigate('/skill-gap') },
+    { id: 'nav-jobs', label: 'Browse Job Catalog', icon: Briefcase, category: 'Navigation', action: () => smoothNavigate('/jobs') },
+    { id: 'nav-my-apps', label: 'My Applications & Status', icon: FileText, category: 'Navigation', action: () => smoothNavigate('/my-applications') },
+    { id: 'nav-interview', label: 'AI Adaptive Interview', icon: Video, category: 'Navigation', action: () => smoothNavigate('/interview') },
+    { id: 'nav-assessment', label: 'Technical Assessment IDE', icon: Code2, category: 'Navigation', action: () => smoothNavigate('/assessment') },
+    { id: 'nav-skillgap', label: 'Skill Gap Analysis', icon: TrendingUp, category: 'Navigation', action: () => smoothNavigate('/skill-gap') },
   ];
 
   // Candidates matching query
@@ -109,7 +111,7 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
     category: 'Candidates',
     action: () => {
       setSelectedCandidate(c);
-      navigate(`/recruiter/candidates/${c.id}`);
+      smoothNavigate(`/recruiter/candidates/${c.id}`);
     }
   }));
 
@@ -129,9 +131,9 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
     action: () => {
       setActiveJobId(j.id);
       if (userRole === 'recruiter') {
-        navigate(`/recruiter/jobs/${j.id}`);
+        smoothNavigate(`/recruiter/jobs/${j.id}`);
       } else {
-        navigate(`/jobs/${j.id}`);
+        smoothNavigate(`/jobs/${j.id}`);
       }
     }
   }));

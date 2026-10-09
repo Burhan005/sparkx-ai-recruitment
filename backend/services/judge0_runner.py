@@ -349,6 +349,8 @@ class Judge0Runner(BaseSandboxRunner):
                 tc_status = "timed_out"
                 tc_err = f"Time Limit Exceeded: {status_desc}"
                 actual_out = tc_err
+                if not global_runtime_err:
+                    global_runtime_err = f"Timeout: {status_desc}"
             elif status_id in (7, 8, 9, 10, 11, 12) or raw_stderr.strip():
                 # Runtime Error
                 tc_status = "runtime_error"
@@ -406,5 +408,7 @@ class Judge0Runner(BaseSandboxRunner):
             test_results=results,
             console_output="\n".join(console_logs),
             execution_ms=elapsed_total,
-            memory_mb=mem_mb
+            memory_mb=mem_mb,
+            compilation_error=global_compilation_err,
+            runtime_error=global_runtime_err
         )
