@@ -1166,4 +1166,21 @@ def sanitize_mcq_for_candidate(q: MCQQuestionModel) -> Dict[str, Any]:
         "options": options_dict
     }
 
+class AssistantAuditLogModel(Base):
+    """
+    Operational audit log for Recruiter AI Decision Assistant queries.
+    Stores metadata, validation status, and evidence citations without storing raw sensitive resumes or secrets.
+    """
+    __tablename__ = "assistant_audit_logs"
 
+    id = Column(String, primary_key=True, index=True)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    candidate_id = Column(String, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(String, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    query_preview = Column(String(255), nullable=False)
+    request_id = Column(String, nullable=True, index=True)
+    provider = Column(String, nullable=True)
+    validation_status = Column(String, default="VALIDATED", index=True)
+    evidence_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)

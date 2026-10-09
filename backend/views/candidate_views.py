@@ -13,11 +13,13 @@ from schemas import (
     AssessmentInviteRequest, ExpectedUpdateDateRequest, CandidateUpdateNotificationRequest,
     CandidateReopenRequest, PipelineStatsResponse, BulkCandidateActionRequest, BulkCandidateActionResponse,
     CandidateScorecardResponse, CandidateComparisonRequest, CandidateComparisonResponse,
-    CandidateDecisionContextResponse, DecisionHistoryItem
+    CandidateDecisionContextResponse, DecisionHistoryItem,
+    DecisionAssistantRequest, DecisionAssistantResponse
 )
 from controllers.candidate_controller import CandidateController
 from services.candidate_scorecard_service import CandidateScorecardService
 from services.candidate_decision_service import CandidateDecisionService
+from services.recruiter_decision_assistant_service import RecruiterDecisionAssistantService
 from models.db_models import UserModel, CandidateModel, JobModel
 from auth_dependencies import (
     get_current_user, require_recruiter, get_optional_current_user,
@@ -510,3 +512,24 @@ def compare_candidates_by_job_get(
     return compare_candidates_endpoint(payload=payload, current_user=current_user, db=db)
 
 
+# ─── Phase 4G.2: Recruiter AI Decision Assistant Endpoint ─────────────────────
+
+@router.post("/{candidate_id}/decision-assistant", response_model=DecisionAssistantResponse)
+def query_decision_assistant(
+    candidate_id: str,
+    payload: DecisionAssistantRequest,
+    current_user: UserModel = Depends(require_recruiter),
+    db: Session = Depends(get_db)
+):
+    """
+    Recruiter-only: Evidence-grounded AI decision assistant for candidate evaluations.
+    Strictly enforces tenant isolation, prompt-injection defense, and authoritative scorecard grounding.
+    """
+    return RecruiterDecisionAssistantService.answer_query(
+        candidate_id=candidate_id,
+        recruiter_query=payload.query,
+        current_user=current_user,
+        db=db,
+        job_id=payload.job_id,
+        cohort_candidate_ids=payload.cohort_candidate_ids
+    )

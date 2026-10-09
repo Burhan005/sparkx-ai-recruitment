@@ -34,7 +34,7 @@ import api from '../../../services/api';
  * Answers: "How well does this candidate fit this specific job, and what real evidence supports that conclusion?"
  * Derived exclusively from persisted platform data with deterministic scoring and zero hardcoding.
  */
-export default function CandidateScorecardTab({ candidate, activeJob, onNavigateTab, onOpenComparison }) {
+export default function CandidateScorecardTab({ candidate, activeJob, onNavigateTab, onOpenComparison, onOpenAskSparkx }) {
   if (!candidate) return null;
 
   const [scorecard, setScorecard] = useState(null);
@@ -349,6 +349,18 @@ export default function CandidateScorecardTab({ candidate, activeJob, onNavigate
                 >
                   <Scale className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                   <span>Compare Cohort</span>
+                </button>
+              )}
+
+              {onOpenAskSparkx && (
+                <button
+                  type="button"
+                  onClick={() => onOpenAskSparkx(candidate)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/25 hover:bg-brand-500/20 transition shadow-xs cursor-pointer"
+                  title="Ask Recruiter AI Decision Assistant about this candidate's fit"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                  <span>Explain with AI</span>
                 </button>
               )}
 

@@ -370,6 +370,7 @@ export default function CandidateWorkspace({
                   activeJob={activeJob} 
                   onNavigateTab={handleTabChange}
                   onOpenComparison={canCompareCohort ? () => setIsComparisonModalOpen(true) : undefined}
+                  onOpenAskSparkx={onOpenAskSparkx}
                 />
               )}
               {activeTab === 'integrity' && (
@@ -384,6 +385,7 @@ export default function CandidateWorkspace({
                   onUpdateDecision={updateHiringDecision} 
                   onReopen={reopenCandidate}
                   comparisonContext={comparisonContext}
+                  onOpenAskSparkx={onOpenAskSparkx}
                 />
               )}
               {activeTab === 'timeline' && (

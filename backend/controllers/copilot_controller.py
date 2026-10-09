@@ -5,8 +5,10 @@ Integrates real-time database facts, workflow telemetry, and Gemini / LLM synthe
 import re
 from datetime import datetime, timedelta, date
 from typing import Dict, Any, List, Optional
+from fastapi import HTTPException
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
-from models.db_models import CandidateModel, JobModel
+from models.db_models import CandidateModel, JobModel, UserModel
 from schemas import CopilotQueryRequest, CopilotQueryResponse
 from ai_engine import call_llm, get_llm_status
 from services.compensation_service import (
@@ -25,9 +27,25 @@ from services.compensation_service import (
 
 class CopilotController:
     @staticmethod
-    def process_query(payload: CopilotQueryRequest, db: Session, organization_id: Optional[str] = None) -> Dict[str, Any]:
+    def process_query(
+        payload: CopilotQueryRequest,
+        db: Session,
+        current_user: Optional[UserModel] = None,
+        organization_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         query = (payload.query or "").strip()
         q_lower = query.lower()
+
+        # Enforce server-side user identity from current_user
+        if current_user:
+            payload.user_role = getattr(current_user, "role", "recruiter")
+            if payload.user_role == "candidate":
+                payload.user_email = getattr(current_user, "email", payload.user_email)
+                organization_id = None
+            else:
+                organization_id = getattr(current_user, "organization_id", organization_id)
+            if not payload.user_name and hasattr(current_user, "name"):
+                payload.user_name = current_user.name
 
         is_candidate_user = (payload.user_role == "candidate")
 
@@ -82,20 +100,78 @@ class CopilotController:
                 "uncertainty": ""
             }
 
-        # Load live database context with multi-tenant isolation
+        # Load live database context with strict multi-tenant & candidate IDOR isolation at DB boundary
         cand_query = db.query(CandidateModel)
         job_query = db.query(JobModel)
-        if organization_id:
+
+        if is_candidate_user:
+            # Candidate queries are strictly partitioned to their own application records at the DB boundary
+            user_id = getattr(current_user, "id", None) if current_user else None
+            user_email = (getattr(current_user, "email", "") or payload.user_email or "").strip().lower()
+
+            filter_clauses = []
+            if user_id:
+                filter_clauses.append(CandidateModel.user_id == user_id)
+            if user_email:
+                filter_clauses.append(func.lower(CandidateModel.email) == user_email)
+
+            if filter_clauses:
+                cand_query = cand_query.filter(or_(*filter_clauses))
+            else:
+                cand_query = cand_query.filter(False)
+
+            # Candidate can only query active public jobs
+            job_query = job_query.filter(JobModel.status.in_(["Active", "active"]))
+        elif organization_id:
+            # Recruiter / tenant queries are strictly partitioned to their organization
             cand_query = cand_query.filter(CandidateModel.organization_id == organization_id)
             job_query = job_query.filter(JobModel.organization_id == organization_id)
+
         candidates: List[CandidateModel] = cand_query.all()
         jobs: List[JobModel] = job_query.all()
+
+        # Guard: Validate requested candidate_id against authorization scope
+        if payload.candidate_id:
+            cand_record = db.query(CandidateModel).filter(CandidateModel.id == str(payload.candidate_id)).first()
+            if not cand_record:
+                raise HTTPException(status_code=404, detail="Candidate not found")
+            if is_candidate_user:
+                cand_matches = (
+                    (current_user and current_user.id and cand_record.user_id == current_user.id) or
+                    (current_user and current_user.email and cand_record.email and cand_record.email.lower() == current_user.email.lower()) or
+                    (payload.user_email and cand_record.email and cand_record.email.lower() == payload.user_email.lower())
+                )
+                if not cand_matches:
+                    raise HTTPException(status_code=403, detail="Access denied: Candidates cannot query other candidate records.")
+            elif organization_id and cand_record.organization_id and cand_record.organization_id != organization_id:
+                raise HTTPException(status_code=403, detail="Cross-tenant access forbidden: Candidate belongs to another organization.")
+
+        # Guard: Validate requested job_id against authorization scope
+        if payload.job_id:
+            job_record = db.query(JobModel).filter(JobModel.id == str(payload.job_id)).first()
+            if not job_record:
+                raise HTTPException(status_code=404, detail="Job requisition not found")
+            if not is_candidate_user and organization_id and job_record.organization_id and job_record.organization_id != organization_id:
+                raise HTTPException(status_code=403, detail="Cross-tenant access forbidden: Job belongs to another organization.")
 
         # ── 3. CANDIDATE SELF-QUERY: "who am i", "which profiles have i applied to", "my applications" ──
         is_self_query = any(phrase in q_lower for phrase in [
             "who am i", "which profiles", "profiles i", "i applied", "i ve applied", "have i applied",
             "my applications", "my application", "my profile", "my status", "where did i apply", "what did i apply"
         ])
+
+        # Guard: Disallow candidate users from asking recruiter pipeline or candidate triage queries
+        if is_candidate_user:
+            recruiter_intents = ["pipeline", "bottleneck", "triage", "action today", "proctor", "cheat", "integrity flag", "ctc budget", "all candidates", "all applicants", "applicants"]
+            if any(term in q_lower for term in recruiter_intents) and not is_self_query:
+                return {
+                    "text": "Access restricted: Pipeline and candidate review operations require recruiter permissions.",
+                    "database_facts": [],
+                    "metrics": [],
+                    "ai_interpretation": "As a candidate, you can ask about your own active application status or interview preparation.",
+                    "uncertainty": ""
+                }
+
         if is_self_query or (is_candidate_user and any(w in q_lower for w in ["profile", "apply", "applied", "application", "status", "role"])):
             user_cands = []
             if payload.user_email:
@@ -140,19 +216,36 @@ class CopilotController:
         # Target candidate context
         # 1. Check if a candidate is explicitly named in the query
         mentioned_cand = None
-        for c in candidates:
-            if c.name and c.name.lower().strip() in q_lower:
-                mentioned_cand = c
-                break
-        if not mentioned_cand:
-            # Token match (e.g. user typed "neha", "burhan", "kapasi", "aarav")
+        if not is_candidate_user:
+            # Recruiters can match names among candidates in their authorized organization
             for c in candidates:
-                if not c.name:
-                    continue
-                tokens = [t for t in re.split(r'[\s\-_]+', c.name.lower().strip()) if len(t) >= 3]
-                if any(re.search(r'\b' + re.escape(t) + r'\b', q_lower) for t in tokens):
+                if c.name and c.name.lower().strip() in q_lower:
                     mentioned_cand = c
                     break
+            if not mentioned_cand:
+                # Token match (e.g. user typed "neha", "burhan", "kapasi", "aarav")
+                for c in candidates:
+                    if not c.name:
+                        continue
+                    tokens = [t for t in re.split(r'[\s\-_]+', c.name.lower().strip()) if len(t) >= 3]
+                    if any(re.search(r'\b' + re.escape(t) + r'\b', q_lower) for t in tokens):
+                        mentioned_cand = c
+                        break
+        else:
+            # Candidate users can only ever resolve to their own application
+            for c in candidates:
+                if c.name and c.name.lower().strip() in q_lower:
+                    mentioned_cand = c
+                    break
+            # If candidate user tried to query someone else by name
+            if not mentioned_cand and any(w in q_lower for w in ["tell me about", "who is", "what about", "scores of"]):
+                return {
+                    "text": "Access denied: Candidate accounts cannot inspect or query other applicant records.",
+                    "database_facts": [],
+                    "metrics": [],
+                    "ai_interpretation": "You are only permitted to review your own submitted application records.",
+                    "uncertainty": ""
+                }
 
         # 2. Resolve target_cand:
         # Explicit mention in query takes precedence; otherwise bind to active context candidate

@@ -61,7 +61,7 @@ export default function SignOutModal() {
               id="signout-modal-title"
               className="text-lg font-bold text-stone-900 dark:text-stone-100 font-display tracking-tight"
             >
-              Sign out of SparkX?
+              Sign out of ARETE?
             </h3>
             <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5 leading-relaxed">
               Are you sure you want to log out? You will need to sign back in to access your dashboard.

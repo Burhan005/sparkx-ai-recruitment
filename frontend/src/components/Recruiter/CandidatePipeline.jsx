@@ -783,18 +783,24 @@ export default function CandidatePipeline() {
 
   // If a candidate route is active, render the dedicated Candidate Intelligence Workspace directly
   if (routeCandidateId) {
+    const activeRouteCandidate = candidates.find(c => String(c.id) === String(routeCandidateId)) || selectedCandidate;
+    const activeRouteJob = activeRouteCandidate?.jobId ? jobs.find(j => String(j.id) === String(activeRouteCandidate.jobId)) : activeJob;
     return (
       <div className="w-full h-full min-w-0 flex flex-col overflow-hidden">
         <CandidateWorkspace
           candidateId={routeCandidateId}
           onClose={handleCloseCandidateModal}
-          onOpenAskSparkx={() => setIsAskSparkxOpen(true)}
+          onOpenAskSparkx={(cand) => {
+            if (cand) setSelectedCandidate(cand);
+            setIsAskSparkxOpen(true);
+          }}
         />
         {/* Contextual Ask SparkX Intelligence Drawer */}
         <AskSparkxDrawer
           isOpen={isAskSparkxOpen}
           onClose={() => setIsAskSparkxOpen(false)}
-          candidateContext={selectedCandidate}
+          initialContextCandidate={activeRouteCandidate}
+          initialContextJob={activeRouteJob}
         />
       </div>
     );
@@ -2385,7 +2391,8 @@ export default function CandidatePipeline() {
       <AskSparkxDrawer
         isOpen={isAskSparkxOpen}
         onClose={() => setIsAskSparkxOpen(false)}
-        candidateContext={selectedCandidate}
+        initialContextCandidate={selectedCandidate}
+        initialContextJob={activeJob}
       />
 
       {/* Job Creator & Editor Modal */}

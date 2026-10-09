@@ -37,7 +37,7 @@ class SlidingWindowRateLimiter:
         p = path.lower()
         if any(a in p for a in ["/api/auth/login", "/api/auth/register", "/api/auth/forgot-password", "/api/auth/reset-password"]):
             return "auth"
-        if any(a in p for a in ["/api/candidates/parse-resume", "/api/assessment/generate", "/api/copilot/query"]):
+        if any(a in p for a in ["/api/candidates/parse-resume", "/api/assessment/generate", "/api/copilot/query", "decision-assistant"]):
             return "ai"
         if "/api/assessment/run-code" in p:
             return "sandbox"

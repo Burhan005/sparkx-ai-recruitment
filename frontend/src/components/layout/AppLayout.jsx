@@ -16,6 +16,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { formatShortcut } from '../../utils/keyboardShortcut';
+import AreteLogo from '../ui/AreteLogo';
 
 export function OfflineScreen({ error, onRetry }) {
   return (
@@ -117,13 +118,10 @@ export default function AppLayout() {
               <Menu className="w-5 h-5" />
             </button>
             <div 
-              className="flex items-center gap-2 cursor-pointer"
+              className="cursor-pointer"
               onClick={() => smoothNavigate(userRole === 'recruiter' ? '/recruiter' : '/jobs')}
             >
-              <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center text-white shadow-sm shadow-amber-950/20 font-bold text-xs">
-                SX
-              </div>
-              <span className="font-bold text-sm text-stone-900 dark:text-stone-100 tracking-tight font-display">SparkX</span>
+              <AreteLogo size="xs" />
             </div>
           </div>
 
@@ -132,10 +130,10 @@ export default function AppLayout() {
               type="button"
               onClick={() => setIsAskSparkxOpen(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-stone-200 dark:border-stone-700 text-xs font-semibold"
-              title={`Ask SparkX Copilot (${formatShortcut('J')})`}
+              title={`ARETE Copilot (${formatShortcut('J')})`}
             >
               <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-              <span>Ask AI</span>
+              <span>ARETE AI</span>
             </button>
             <button
               type="button"

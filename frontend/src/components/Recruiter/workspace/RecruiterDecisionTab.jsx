@@ -43,7 +43,8 @@ export default function RecruiterDecisionTab({
   activeJob, 
   onUpdateDecision, 
   onReopen,
-  comparisonContext 
+  comparisonContext,
+  onOpenAskSparkx
 }) {
   if (!candidate) return null;
   const wf = normalizeWorkflow(candidate);
@@ -294,9 +295,23 @@ export default function RecruiterDecisionTab({
           )}
         </div>
 
-        {/* Right side: Reopen button if application is finalized & locked */}
-        {decisionContext?.is_final_decision && (
-          <div className="shrink-0 flex items-center gap-2">
+        {/* Right side: Action buttons & Reopen button if application is finalized & locked */}
+        <div className="shrink-0 flex items-center gap-2">
+          {onOpenAskSparkx && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenAskSparkx(candidate)}
+              className="gap-2 border-brand-200 dark:border-brand-900/60 bg-brand-50/50 dark:bg-brand-950/20 text-brand-700 dark:text-brand-300 hover:bg-brand-100/50 transition cursor-pointer"
+              title="Consult Recruiter AI Decision Assistant regarding this decision"
+            >
+              <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <span>Ask Decision Assistant</span>
+            </Button>
+          )}
+
+          {decisionContext?.is_final_decision && (
             <Button
               type="button"
               variant="outline"
@@ -307,8 +322,8 @@ export default function RecruiterDecisionTab({
               <RotateCcw className="w-4 h-4 text-brand-600 dark:text-brand-400" />
               <span>Reopen Application</span>
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* ── 3-PILLAR EVIDENCE INTELLIGENCE SURFACE ── */}

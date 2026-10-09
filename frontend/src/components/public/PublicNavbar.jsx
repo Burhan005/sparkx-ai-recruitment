@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 import { useSmoothNavigate } from '../../context/PageTransitionContext';
+import AreteLogo from '../ui/AreteLogo';
 
 export default function PublicNavbar() {
   const navigate = useNavigate();
@@ -156,7 +157,7 @@ export default function PublicNavbar() {
       <div className="w-full max-w-[1520px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
         <div className="flex items-center justify-between h-16 sm:h-18">
           
-          {/* ── Left: Brand Identity & Monogram ── */}
+          {/* ── Left: ARETE Brand Identity & Keystone Emblem ── */}
           <div 
             onClick={() => {
               if (location.pathname !== '/' && location.pathname !== '/home') {
@@ -165,24 +166,13 @@ export default function PublicNavbar() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }
             }}
-            className="flex items-center gap-3 cursor-pointer group select-none shrink-0 active:scale-[0.98] transition-transform"
+            className="cursor-pointer group select-none shrink-0 active:scale-[0.98] transition-transform"
           >
-            <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-subtle group-hover:bg-brand-500 transition-colors">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base sm:text-lg tracking-tight text-stone-900 dark:text-stone-100 font-display">
-                  SparkX
-                </span>
-                <span className="text-[10px] font-bold font-mono tracking-wider px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/25">
-                  AI OS
-                </span>
-              </div>
-              <span className="hidden sm:block text-[11px] text-stone-500 dark:text-stone-400 font-medium tracking-tight">
-                Recruitment Intelligence Platform
-              </span>
-            </div>
+            <AreteLogo
+              size="md"
+              badge="AI OS"
+              subtitle="Talent Intelligence Platform"
+            />
           </div>
 
           {/* ── Center: Desktop Navigation Links ── */}

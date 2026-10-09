@@ -11,6 +11,7 @@ import {
   CheckCircle2, ArrowLeft, Sun, Moon, Upload, FileText, Loader2,
   Lock, Mail
 } from 'lucide-react';
+import AreteLogo from '../ui/AreteLogo';
 
 export default function LoginScreen({ mode, onLogin }) {
   const navigate = useNavigate();
@@ -338,16 +339,13 @@ export default function LoginScreen({ mode, onLogin }) {
         {/* Logo */}
         <div 
           onClick={() => smoothNavigate('/home')}
-          className="relative z-10 flex items-center space-x-3 cursor-pointer group active:scale-[0.98] transition-transform select-none"
-          title="Return to SparkX Home"
+          className="relative z-10 cursor-pointer group active:scale-[0.98] transition-transform select-none"
+          title="Return to ARETE Home"
         >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#2A1B14] via-[#38261B] to-[#C27803] dark:from-[#2A1B14] dark:to-amber-500 group-hover:from-[#1C130E] group-hover:to-brand-500 transition-all duration-200 flex items-center justify-center text-white shadow-md shadow-[#2A1B14]/30">
-            <Sparkles className="w-5 h-5 text-amber-300" />
-          </div>
-          <div>
-            <div className="text-xl font-bold text-[#1C130E] dark:text-white tracking-tight group-hover:text-[#C27803] dark:group-hover:text-amber-400 transition-colors">SparkX AI</div>
-            <div className="text-xs text-stone-500 dark:text-stone-400 font-mono">Recruitment Operating System</div>
-          </div>
+          <AreteLogo
+            size="lg"
+            subtitle="Enterprise Talent Intelligence"
+          />
         </div>
 
         {/* Value Prop */}
@@ -404,13 +402,10 @@ export default function LoginScreen({ mode, onLogin }) {
           {/* Mobile Header Logo */}
           <div 
             onClick={() => smoothNavigate('/home')}
-            className="lg:hidden flex items-center space-x-2 cursor-pointer group active:scale-[0.98] transition-transform select-none"
-            title="Return to SparkX Home"
+            className="lg:hidden cursor-pointer group active:scale-[0.98] transition-transform select-none"
+            title="Return to ARETE Home"
           >
-            <div className="w-8 h-8 rounded-lg bg-[#2A1B14] dark:bg-[#2A1B14] flex items-center justify-center text-white shadow-subtle group-hover:bg-[#C27803] transition-colors">
-              <Sparkles className="w-4 h-4 text-amber-300" />
-            </div>
-            <span className="text-lg font-bold text-[#1C130E] dark:text-white font-display">SparkX AI</span>
+            <AreteLogo size="sm" />
           </div>
 
           <div className="flex items-center gap-2">
@@ -418,7 +413,7 @@ export default function LoginScreen({ mode, onLogin }) {
               type="button"
               onClick={() => smoothNavigate('/home')}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-stone-300 dark:border-[#423229] bg-white dark:bg-[#2B201A] text-stone-700 dark:text-stone-300 hover:text-[#C27803] dark:hover:text-amber-400 active:scale-[0.98] transition shadow-2xs text-xs font-semibold cursor-pointer"
-              title="Back to SparkX Home"
+              title="Back to ARETE Home"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span className="text-[11px]">Back to Home</span>
@@ -499,7 +494,7 @@ export default function LoginScreen({ mode, onLogin }) {
             {/* Heading */}
             <div className="text-center space-y-1 mb-6 w-full">
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1C130E] dark:text-white tracking-tight font-display">
-                {tab === 'signin' && 'Sign in to SparkX'}
+                {tab === 'signin' && 'Sign in to ARETE'}
                 {tab === 'signup' && 'Register New Account'}
                 {tab === 'forgot' && (forgotStep === 1 ? 'Recover Password' : 'Set New Password')}
               </h2>

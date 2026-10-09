@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { Avatar } from '../ui/Primitives';
 import { formatShortcut } from '../../utils/keyboardShortcut';
+import AreteLogo, { AreteEmblem } from '../ui/AreteLogo';
 
 export default function AppSidebar({ 
   onOpenCommandMenu, 
@@ -321,36 +322,24 @@ export default function AppSidebar({
           <button
             type="button"
             onClick={toggleCollapse}
-            className="w-9 h-9 rounded-xl bg-brand-600 hover:bg-brand-700 flex items-center justify-center text-white font-bold text-xs tracking-tight shadow-sm shadow-[#2A1B14]/20 group transition-all"
+            className="w-9 h-9 rounded-xl bg-[#100F0D] hover:bg-stone-900 border border-[#D6B477]/30 flex items-center justify-center text-white shadow-sm shadow-[#2A1B14]/20 group transition-all cursor-pointer"
             title={`Expand sidebar (${formatShortcut('B')})`}
           >
-            <span className="group-hover:hidden">SX</span>
-            <ChevronRight className="w-4 h-4 hidden group-hover:block transition-transform" />
+            <AreteEmblem size={20} className="group-hover:hidden" />
+            <ChevronRight className="w-4 h-4 text-[#D6B477] hidden group-hover:block transition-transform" />
           </button>
         ) : (
           <>
             <div 
               className="flex items-center gap-2.5 cursor-pointer group min-w-0"
               onClick={() => smoothNavigate('/')}
-              title="SparkX AI Recruitment OS • Click to return to Home"
+              title="ARETE • Intelligence in Every Decision"
             >
-              {/* Refined Brand Monogram Mark */}
-              <div className="w-8 h-8 rounded-xl bg-brand-600 hover:bg-brand-700 flex items-center justify-center text-white font-bold text-xs tracking-tight shadow-sm shadow-[#2A1B14]/20 shrink-0">
-                SX
-              </div>
-              
-              <div className="flex flex-col min-w-0">
-                <div className="flex items-center gap-1.5 leading-none">
-                  <span className="text-[13px] font-bold text-stone-900 dark:text-stone-100 tracking-tight font-display animate-slide-in">SparkX</span>
-                  <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-brand-500/10 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 border border-brand-500/20 font-sans">
-                    {userRole === 'recruiter' ? 'OS' : 'PRO'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-stone-500 dark:text-stone-400 mt-1 font-medium truncate font-sans">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="truncate">{userRole === 'recruiter' ? 'Enterprise Intelligence' : 'Candidate Portal'}</span>
-                </div>
-              </div>
+              <AreteLogo
+                size="sm"
+                badge={userRole === 'recruiter' ? 'OS' : 'PRO'}
+                subtitle={userRole === 'recruiter' ? 'Talent Intelligence' : 'Candidate Portal'}
+              />
             </div>
 
             {/* Desktop Collapse Trigger */}
@@ -416,11 +405,11 @@ export default function AppSidebar({
               ? 'w-8 h-8 justify-center p-0 rounded-lg' 
               : 'w-full justify-between px-2.5 py-1.5 rounded-lg'
           } bg-amber-500/10 hover:bg-amber-500/15 dark:bg-[#2E2018] dark:hover:bg-[#3A281E] text-amber-950 dark:text-amber-200 border border-amber-300/60 dark:border-amber-700/60 transition text-xs shadow-xs hover:shadow-md hover:shadow-amber-900/10 dark:hover:shadow-amber-900/30`}
-          title={`Ask SparkX Intelligence Copilot (${formatShortcut('J')})`}
+          title={`ARETE Intelligence Copilot (${formatShortcut('J')})`}
         >
           <div className="flex items-center gap-2 min-w-0">
             <Sparkles className="w-3.5 h-3.5 shrink-0 text-brand-600 dark:text-amber-400 group-hover:scale-105 transition-transform" />
-            {!isCollapsed && <span className="font-semibold text-amber-950 dark:text-amber-200 text-xs truncate">Ask SparkX AI</span>}
+            {!isCollapsed && <span className="font-semibold text-amber-950 dark:text-amber-200 text-xs truncate">ARETE Copilot</span>}
           </div>
           {!isCollapsed && (
             <kbd className="px-1.5 py-0.5 text-[10px] font-sans text-brand-700 dark:text-amber-300 bg-white/90 dark:bg-[#1C1410] border border-amber-200 dark:border-amber-800/80 rounded shadow-xs shrink-0">
@@ -698,7 +687,7 @@ export default function AppSidebar({
             {/* Subtle Regulatory & Engine Stamp */}
             <div className="flex items-center justify-between px-1.5 pt-0.5 text-[10px] text-stone-400 dark:text-[#9E9085] select-none font-sans">
               <span>EEOC & SOC2 Certified</span>
-              <span className="font-semibold text-stone-500 dark:text-[#B5A89E]">SparkX v2.5</span>
+              <span className="font-semibold text-stone-500 dark:text-[#B5A89E]">ARETE v3.0</span>
             </div>
           </>
         )}

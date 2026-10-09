@@ -95,8 +95,10 @@ export default function AskSparkxDrawer({
   isOpen,
   onClose,
   initialContextCandidate = null,
-  initialContextJob = null
+  initialContextJob = null,
+  candidateContext = null
 }) {
+  const effectiveInitCand = initialContextCandidate || candidateContext;
   const { 
     candidates = [], 
     jobs = [], 
@@ -111,17 +113,18 @@ export default function AskSparkxDrawer({
   const scrollRef = useRef(null);
 
   // Active Context
-  const [contextCandidate, setContextCandidate] = useState(initialContextCandidate);
+  const [contextCandidate, setContextCandidate] = useState(effectiveInitCand);
   const [contextJob, setContextJob] = useState(initialContextJob);
-  const contextCandidateRef = useRef(initialContextCandidate);
+  const contextCandidateRef = useRef(effectiveInitCand);
 
   useEffect(() => {
-    if (initialContextCandidate) {
-      setContextCandidate(initialContextCandidate);
-      contextCandidateRef.current = initialContextCandidate;
+    const nextCand = initialContextCandidate || candidateContext;
+    if (nextCand) {
+      setContextCandidate(nextCand);
+      contextCandidateRef.current = nextCand;
     }
     if (initialContextJob) setContextJob(initialContextJob);
-  }, [initialContextCandidate, initialContextJob]);
+  }, [initialContextCandidate, initialContextJob, candidateContext]);
 
   useEffect(() => {
     contextCandidateRef.current = contextCandidate;
@@ -206,10 +209,10 @@ export default function AskSparkxDrawer({
           {
             id: `ai-${Date.now()}`,
             sender: 'ai',
-            text: 'Hello! I am **Ask SparkX**, your AI recruitment intelligence copilot. How can I help you today?',
+            text: 'Hello! I am **ARETE AI**, your talent intelligence and decision copilot. How can I help you today?',
             databaseFacts: [],
             metrics: [],
-            aiInterpretation: 'I can help you review candidate dossiers, detect skill gaps, analyze coding submissions, or uncover pipeline bottlenecks. Feel free to ask about any candidate or job role!',
+            aiInterpretation: 'I can help you review candidate dossiers, detect skill gaps, analyze coding submissions, or explain evidence-based hiring decisions. Feel free to ask about any candidate or job requisition!',
             uncertainty: ''
           }
         ]);
@@ -227,10 +230,10 @@ export default function AskSparkxDrawer({
           {
             id: `ai-${Date.now()}`,
             sender: 'ai',
-            text: 'I am the **SparkX Recruitment Copilot**, powered by real-time database grounding and AI synthesis.',
+            text: 'I am the **ARETE Decision Intelligence Copilot**, powered by authoritative database grounding and multi-modal evidence synthesis.',
             databaseFacts: [],
             metrics: [],
-            aiInterpretation: 'Here is what I can do for you:\n• Candidate Deep-Dives: "Tell me about Aarav" or "What are Priya\'s skill gaps?"\n• Action Items: "Which candidates need action today?"\n• Skill Search: "Which applicants know Python and React?"\n• Integrity Checks: "Are there any high-risk proctor flags?"\n• Pipeline Bottlenecks: "Where are candidates getting stuck?"',
+            aiInterpretation: 'Here is what I can do for you:\n• Candidate Deep-Dives: "Tell me about Ada" or "What are her skill gaps?"\n• Evidence Explanations: "Why is this candidate rated a Strong Fit?"\n• Skill Alignment: "Which applicants satisfy all must-have competencies?"\n• Integrity Checks: "Are there any high-risk proctor flags?"\n• Decision Briefings: "Summarize this candidate\'s verified strengths and gaps."',
             uncertainty: ''
           }
         ]);
@@ -257,6 +260,43 @@ export default function AskSparkxDrawer({
     }
 
     const candidateIdForQuery = eagerCandidate?.id || contextCandidateRef.current?.id || contextCandidate?.id;
+
+    // 2.5 Recruiter Decision Assistant: When evaluating a candidate, query authoritative Decision Assistant first
+    if (userRole === 'recruiter' && candidateIdForQuery) {
+      try {
+        const assistantRes = await api.queryDecisionAssistant({
+          candidateId: candidateIdForQuery,
+          query: userText,
+          jobId: contextJob?.id,
+          cohortCandidateIds: null
+        });
+
+        if (assistantRes && assistantRes.answer) {
+          setConversation(prev => [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              sender: 'ai',
+              text: assistantRes.answer,
+              authoritativeScore: assistantRes.authoritative_score,
+              fitTier: assistantRes.fit_tier,
+              mustHaveCoverage: assistantRes.must_have_coverage,
+              preferredCoverage: assistantRes.preferred_coverage,
+              statusBreakdown: assistantRes.status_breakdown,
+              citedEvidence: assistantRes.cited_evidence || [],
+              materialGaps: assistantRes.material_gaps || [],
+              provider: assistantRes.provider,
+              limitations: assistantRes.limitations_disclaimer,
+              isDecisionAssistant: true
+            }
+          ]);
+          setIsProcessing(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('[DecisionAssistant] Assistant query returned error, falling back to general copilot:', err);
+      }
+    }
 
     // 3. Try Backend Copilot API first
     try {
@@ -660,26 +700,26 @@ export default function AskSparkxDrawer({
       <div 
         role="dialog"
         aria-modal="true"
-        aria-label="Ask SparkX Recruitment Copilot"
+        aria-label="ARETE Decision Intelligence Copilot"
         className="relative w-full max-w-xl bg-white dark:bg-[#14161F] border-l border-[#E8E8E4] dark:border-[#222634] shadow-depth-elevated flex flex-col z-10 animate-slide-in"
       >
         {/* Drawer Header */}
         <div className="px-5 py-4 border-b border-[#E8E8E4] dark:border-[#222634] flex items-center justify-between bg-white dark:bg-[#14161F]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-[#E8E8E4] dark:border-slate-700 flex items-center justify-center text-slate-800 dark:text-slate-200 shadow-subtle">
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-[#1B1310] border border-[#E8E8E4] dark:border-[#382B22] flex items-center justify-center text-stone-800 dark:text-[#D6B477] shadow-subtle">
               <Bot className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white">Ask SparkX Copilot</h2>
-                <span className="text-[10px] font-semibold font-mono px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-[#E8E8E4] dark:border-slate-700">
+                <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 font-display">ARETE Copilot</h2>
+                <span className="text-[10px] font-semibold font-mono px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-[#E8E8E4] dark:border-stone-700">
                   {userRole === 'candidate' ? 'Career Assistant' : 'Recruiter AI'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400">
                 {userRole === 'candidate' 
                   ? 'Personalized application guidance & interview preparation' 
-                  : 'Grounded recruitment intelligence with evidence paths'}
+                  : 'Grounded recruitment intelligence with verified evidence paths'}
               </p>
             </div>
           </div>
@@ -813,6 +853,87 @@ export default function AskSparkxDrawer({
                           <FormattedMarkdownText content={msg.uncertainty} />
                         </div>
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Decision Assistant Authoritative Evidence Card */}
+                {msg.sender === 'ai' && msg.isDecisionAssistant && (
+                  <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                    {/* Scorecard Benchmark Pill Bar */}
+                    <div className="p-3 rounded-xl bg-stone-100/80 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-800 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500">
+                          Authoritative Scorecard
+                        </span>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                          {msg.authoritativeScore}% Fit • {String(msg.fitTier || '').replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[10.5px] font-mono">
+                        <div className="p-1.5 rounded-lg bg-white dark:bg-[#1A1714] border border-stone-200 dark:border-stone-800">
+                          <span className="text-stone-400 block text-[9px]">Must-Have Coverage</span>
+                          <strong className="text-emerald-600 dark:text-emerald-400">{msg.mustHaveCoverage}%</strong>
+                        </div>
+                        <div className="p-1.5 rounded-lg bg-white dark:bg-[#1A1714] border border-stone-200 dark:border-stone-800">
+                          <span className="text-stone-400 block text-[9px]">Preferred Coverage</span>
+                          <strong className="text-brand-600 dark:text-brand-400">{msg.preferredCoverage}%</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Grounded Evidence Citations */}
+                    {msg.citedEvidence?.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Grounded Competency Proof ({msg.citedEvidence.length})</span>
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {msg.citedEvidence.slice(0, 6).map((c, i) => (
+                            <span
+                              key={i}
+                              className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border flex items-center gap-1 ${
+                                c.status === 'VERIFIED'
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+                                  : c.status === 'EVIDENCED'
+                                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                                  : c.status === 'CLAIMED'
+                                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25'
+                                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25'
+                              }`}
+                              title={c.reason}
+                            >
+                              <span>{c.skill_name}</span>
+                              <span className="text-[8.5px] opacity-75">[{c.status}]</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Material Gaps */}
+                    {msg.materialGaps?.length > 0 && (
+                      <div className="space-y-1 text-[10.5px]">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          <span>Gaps to Address ({msg.materialGaps.length})</span>
+                        </span>
+                        <ul className="space-y-1">
+                          {msg.materialGaps.slice(0, 2).map((g, i) => (
+                            <li key={i} className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20 text-stone-700 dark:text-stone-300 text-[10.5px]">
+                              <strong className="text-amber-700 dark:text-amber-400">{g.skill_name}:</strong> {g.mitigation_recommendation}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Limitations Disclaimer */}
+                    {msg.limitations && (
+                      <p className="text-[9.5px] text-stone-400 dark:text-stone-500 italic pt-1">
+                        ⚠️ {msg.limitations}
+                      </p>
                     )}
                   </div>
                 )}

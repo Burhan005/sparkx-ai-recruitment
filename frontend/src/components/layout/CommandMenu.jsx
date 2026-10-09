@@ -317,8 +317,8 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
             <span>ESC Close</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Command className="w-3 h-3" />
-            <span>SparkX Command OS</span>
+            <Command className="w-3 h-3 text-[#D6B477]" />
+            <span className="font-semibold text-stone-600 dark:text-stone-300">ARETE Command OS</span>
           </div>
         </div>
       </div>

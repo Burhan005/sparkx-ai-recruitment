@@ -1722,6 +1722,29 @@ export const api = {
     }
   },
 
+  // ─── PHASE 4G.2: RECRUITER AI DECISION ASSISTANT ───────────────────────────
+  async queryDecisionAssistant({ candidateId, query, jobId = null, cohortCandidateIds = null }) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/decision-assistant`, {
+        method: 'POST',
+        body: JSON.stringify({
+          query,
+          job_id: jobId,
+          cohort_candidate_ids: cohortCandidateIds
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Decision assistant query failed');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] queryDecisionAssistant error:', err.message);
+      throw err;
+    }
+  },
+
   // ─── PHASE 4C: INTERVIEW AVAILABILITY & SCHEDULING ────────────────────────
   async getRecruiterAvailabilities({ jobId = null, date = null } = {}) {
     try {

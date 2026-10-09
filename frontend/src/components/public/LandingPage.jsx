@@ -6,6 +6,7 @@ import ScrollReveal from './ScrollReveal';
 import { TypingTerminal, TiltCard, MagneticWrap, GradientDivider } from './HomeExtras';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { useSmoothNavigate } from '../../context/PageTransitionContext';
+import AreteLogo from '../ui/AreteLogo';
 import { 
   Sparkles, 
   ArrowRight, 
@@ -960,24 +961,11 @@ export default function LandingPage() {
             
             {/* Col 1: Brand & Mission (2 cols on lg) */}
             <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center text-white font-bold font-mono shadow-sm">
-                  <Sparkles className="w-4 h-4 text-white" />
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-base tracking-tight text-stone-900 dark:text-stone-100 font-display">
-                      SparkX
-                    </span>
-                    <span className="text-[10px] font-bold font-mono tracking-wider px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/25">
-                      AI OS v2.5
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-stone-500 dark:text-stone-400 font-medium">
-                    Autonomous Talent & Recruitment Intelligence
-                  </span>
-                </div>
-              </div>
+              <AreteLogo
+                size="md"
+                badge="AI OS"
+                subtitle="Autonomous Talent & Recruitment Intelligence"
+              />
 
               <p className="text-xs text-stone-600 dark:text-stone-400 max-w-sm leading-relaxed">
                 Empirical hiring powered by verifiable skill telemetry, zero-bias committee scoring, multi-language sandbox execution, and structured evaluation governance.
@@ -1100,7 +1088,7 @@ export default function LandingPage() {
           {/* Sub-Bar: Copyright & Legal */}
           <div className="pt-8 border-t border-[#E8DFD8] dark:border-[#382A22] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-stone-500 dark:text-stone-400">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="font-semibold text-stone-700 dark:text-stone-300">© 2026 SparkX AI Inc.</span>
+              <span className="font-semibold text-stone-700 dark:text-stone-300">© 2026 ARETE Technologies Inc.</span>
               <span>•</span>
               <span className="text-stone-500 dark:text-stone-400">Enterprise Autonomous Talent Intelligence Platform</span>
               <span>•</span>

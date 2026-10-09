@@ -17,8 +17,12 @@ import urllib.error
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
-# Load environment variables from backend/.env
-load_dotenv()
+# Load environment variables from backend/.env regardless of current working directory
+_backend_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+if os.path.exists(_backend_env_path):
+    load_dotenv(dotenv_path=_backend_env_path)
+else:
+    load_dotenv()
 
 # LLM API Keys from environment
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")

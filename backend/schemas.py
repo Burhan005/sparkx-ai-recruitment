@@ -1703,4 +1703,35 @@ class CandidateDecisionContextResponse(BaseModel):
     rejection_reason: Optional[str] = None
     hr_notes: Optional[str] = None
 
+class DecisionAssistantRequest(BaseModel):
+    query: str
+    job_id: Optional[str] = None
+    cohort_candidate_ids: Optional[List[str]] = None
 
+class EvidenceCitationItem(BaseModel):
+    skill_name: str
+    status: str # "VERIFIED" | "EVIDENCED" | "CLAIMED" | "MISSING"
+    requirement_type: str # "must_have" | "preferred"
+    evidence_count: int = 0
+    evidence_strength: str = "NONE" # "STRONG" | "MODERATE" | "SUPPORTING" | "NONE"
+    sources: List[str] = []
+    reason: Optional[str] = None
+
+class DecisionAssistantResponse(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    job_id: str
+    job_title: str
+    query: str
+    answer: str
+    authoritative_score: float
+    fit_tier: str
+    must_have_coverage: float
+    preferred_coverage: float
+    status_breakdown: Dict[str, int]
+    cited_evidence: List[EvidenceCitationItem] = []
+    material_gaps: List[Dict[str, Any]] = []
+    cohort_comparison: Optional[Dict[str, Any]] = None
+    provider: str
+    is_live_llm: bool = True
+    limitations_disclaimer: str

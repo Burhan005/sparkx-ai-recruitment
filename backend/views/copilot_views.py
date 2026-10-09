@@ -25,9 +25,9 @@ def query_copilot(
     """
     # Enforce authenticated user role to prevent privilege escalation in copilot queries
     payload.user_role = current_user.role
-    if current_user.role == "candidate":
-        payload.candidate_email = current_user.email
+    payload.user_email = current_user.email
     if not payload.user_name and hasattr(current_user, "name"):
         payload.user_name = current_user.name
-    org_id = current_user.organization_id if current_user.role == "recruiter" else None
-    return CopilotController.process_query(payload, db, organization_id=org_id)
+    org_id = current_user.organization_id if current_user.role in ("recruiter", "admin") else None
+    return CopilotController.process_query(payload, db, current_user=current_user, organization_id=org_id)
+
