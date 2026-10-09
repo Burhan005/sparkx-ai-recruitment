@@ -1268,12 +1268,12 @@ class CandidateController:
             if google_event_link:
                 credentials_block += f"• Google Calendar Event: {google_event_link}\n"
         elif meet_provider == "jitsi":
-            platform_name = "SparkX Video Room (Jitsi)"
+            platform_name = "ARETE Video Room (Jitsi)"
             platform_icon = "🎥"
             join_instruction = f"Click the video link below to join. No login required — works in any browser."
             credentials_block = (
                 f"VIDEO CONFERENCE CREDENTIALS:\n"
-                f"• Platform: SparkX Video Room (Jitsi — HD Video, no login needed)\n"
+                f"• Platform: ARETE Video Room (Jitsi — HD Video, no login needed)\n"
                 f"• Direct Video Link: {meet_url}\n"
             )
         else:
@@ -1285,7 +1285,7 @@ class CandidateController:
                 f"• Meeting Link: {meet_url}\n"
             )
 
-        subject = f"[SPARKX RESCHEDULED] AI Video Interview: {job_title}" if is_reschedule else f"[SPARKX CONFIRMED] AI Video Interview: {job_title}"
+        subject = f"[ARETE RESCHEDULED] AI Video Interview: {job_title}" if is_reschedule else f"[ARETE CONFIRMED] AI Video Interview: {job_title}"
         body = (
             f"Dear {candidate.name},\n\n"
             f"Your AI Video Interview for the position of {job_title} has been officially {'rescheduled to a revised time slot' if is_reschedule else 'confirmed'}!\n\n"
@@ -1299,7 +1299,7 @@ class CandidateController:
             f"2. Meeting Link: {meet_url}\n"
             f"3. Ensure your webcam, microphone, and a quiet environment are ready.\n\n"
             f"Best regards,\n"
-            f"SparkX AI Recruitment Team"
+            f"ARETE Talent Intelligence Team"
         )
 
         # Provider-aware credential box color
@@ -1309,7 +1309,8 @@ class CandidateController:
         html = f"""
         <div style="font-family: Arial, sans-serif; background-color: #070A12; color: #FFFFFF; padding: 32px; border-radius: 16px; max-width: 540px; margin: 0 auto; border: 1px solid #1e293b;">
           <div style="margin-bottom: 20px;">
-            <span style="font-size: 20px; font-weight: 800; color: #818cf8; font-family: Arial, sans-serif;">SparkX AI Recruitment</span>
+            <span style="font-size: 20px; font-weight: 800; color: #d4af37; font-family: Arial, sans-serif;">ARETE</span>
+            <span style="font-size: 13px; color: #a8a29e; margin-left: 8px;">Where Talent Meets Intelligence</span>
           </div>
           <h2 style="color: #ffffff; margin-top: 0; font-size: 22px; font-family: Arial, sans-serif;">{'AI Video Interview Rescheduled' if is_reschedule else 'AI Video Interview Confirmed'}</h2>
           <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; font-family: Arial, sans-serif;">Hello <strong>{candidate.name}</strong>,</p>
@@ -1433,54 +1434,54 @@ class CandidateController:
             meet_line = "• Meeting Link: To be shared prior to interview\n"
 
         if payload.template_type == "interview_invitation":
-            subject = f"[SPARKX INTERVIEW] Invitation for {job_title}"
+            subject = f"[ARETE INTERVIEW] Invitation for {job_title}"
             body = (
                 f"Dear {candidate.name},\n\n"
-                f"You are invited to an AI Video Interview for the position of {job_title} at SparkX AI.\n\n"
+                f"You are invited to an AI Video Interview for the position of {job_title} at ARETE.\n\n"
                 f"• Scheduled Slot: {scheduled_slot}\n"
                 f"{meet_line}"
-                f"• SparkX Portal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n\n"
+                f"• ARETE Portal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n\n"
                 f"{payload.custom_message or 'Please join at the scheduled time using the link above.'}\n\n"
-                f"Best regards,\nSparkX AI Recruitment Team"
+                f"Best regards,\nARETE Talent Intelligence Team"
             )
         elif payload.template_type == "interview_reminder":
-            subject = f"[SPARKX REMINDER] Upcoming AI Interview for {job_title}"
+            subject = f"[ARETE REMINDER] Upcoming AI Interview for {job_title}"
             body = (
                 f"Dear {candidate.name},\n\n"
                 f"This is a reminder for your upcoming AI Video Interview for {job_title}.\n\n"
                 f"• Scheduled Time: {scheduled_slot}\n"
                 f"{meet_line}"
-                f"• SparkX Portal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n\n"
+                f"• ARETE Portal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n\n"
                 f"{payload.custom_message or 'Please ensure your camera and microphone are ready before joining.'}\n\n"
-                f"Best regards,\nSparkX AI Recruitment Team"
+                f"Best regards,\nARETE Talent Intelligence Team"
             )
         elif payload.template_type == "offer_letter":
-            subject = f"[SPARKX OFFER] Official Offer Letter: {job_title}"
+            subject = f"[ARETE OFFER] Official Offer Letter: {job_title}"
             body = (
                 f"Dear {candidate.name},\n\n"
-                f"Congratulations! We are delighted to officially offer you the position of {job_title} at SparkX AI.\n\n"
+                f"Congratulations! We are delighted to officially offer you the position of {job_title} at ARETE.\n\n"
                 f"{payload.custom_message or 'Our recruitment team was highly impressed with your interview performance and technical competencies.'}\n\n"
                 f"Please log in to your candidate portal at {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')} to view your formal offer details.\n\n"
-                f"Warmest regards,\nSparkX AI Talent Acquisition"
+                f"Warmest regards,\nARETE Talent Acquisition"
             )
         elif payload.template_type == "rejection_notice":
-            subject = f"[SPARKX NOTICE] Update on your application for {job_title}"
+            subject = f"[ARETE NOTICE] Update on your application for {job_title}"
             body = (
                 f"Dear {candidate.name},\n\n"
-                f"Thank you for your interest in the position of {job_title} at SparkX AI and for taking the time to participate in our recruitment assessment.\n\n"
+                f"Thank you for your interest in the position of {job_title} at ARETE and for taking the time to participate in our recruitment assessment.\n\n"
                 f"After careful consideration of all applications, we regret to inform you that we will not be moving forward with your candidacy for this position at this time.\n\n"
                 f"{payload.custom_message or 'Our hiring team reviewed your qualifications thoroughly; however, we have chosen to advance candidates whose immediate background more directly aligns with the specific requirements of this opening.'}\n\n"
-                f"We genuinely appreciate your time, effort, and interest in SparkX AI. We will keep your resume on file for future opportunities that match your expertise.\n\n"
+                f"We genuinely appreciate your time, effort, and interest in ARETE. We will keep your resume on file for future opportunities that match your expertise.\n\n"
                 f"We wish you the very best in your professional endeavors.\n\n"
-                f"Sincerely,\nSparkX AI Talent Acquisition Team"
+                f"Sincerely,\nARETE Talent Acquisition Team"
             )
         else:
-            subject = f"[SPARKX UPDATE] Application Status for {job_title}"
+            subject = f"[ARETE UPDATE] Application Status for {job_title}"
             body = (
                 f"Dear {candidate.name},\n\n"
                 f"{payload.custom_message or f'Thank you for your interest in the {job_title} position. This is an update regarding your application status.'}\n\n"
                 f"Portal URL: {os.environ.get('FRONTEND_BASE_URL', 'http://localhost:5173')}\n\n"
-                f"Best regards,\nSparkX AI Recruitment Team"
+                f"Best regards,\nARETE Talent Intelligence Team"
             )
 
         # Status badge for HTML card
@@ -1498,7 +1499,8 @@ class CandidateController:
           <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
             <tr>
               <td align="left">
-                <span style="font-size: 18px; font-weight: 800; color: #818cf8; font-family: Arial, sans-serif;">SparkX AI Recruitment</span>
+                <span style="font-size: 18px; font-weight: 800; color: #d4af37; font-family: Arial, sans-serif;">ARETE</span>
+                <span style="font-size: 12px; color: #a8a29e; margin-left: 6px;">Where Talent Meets Intelligence</span>
               </td>
               <td align="right">
                 <span style="background-color: {status_badge_color}; color: #ffffff; padding: 4px 12px; border-radius: 9999px; font-size: 11px; font-weight: bold; font-family: Arial, sans-serif; display: inline-block;">{status_badge_text}</span>
@@ -1523,7 +1525,7 @@ class CandidateController:
             </tr>
           </table>
           <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;" />
-          <p style="color: #64748b; font-size: 11px; text-align: center; font-family: Arial, sans-serif;">SparkX AI Recruitment Intelligence Platform</p>
+          <p style="color: #64748b; font-size: 11px; text-align: center; font-family: Arial, sans-serif;">ARETE Talent Intelligence Platform</p>
         </div>
         """
 

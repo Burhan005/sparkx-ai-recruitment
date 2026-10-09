@@ -55,14 +55,14 @@ class CopilotController:
         if is_greeting:
             if is_candidate_user:
                 return {
-                    "text": f"Hello {payload.user_name or ''}! I am **Ask SparkX**, your AI career copilot. How can I help you today?",
+                    "text": f"Hello {payload.user_name or ''}! I am **ARETE Copilot**, your AI career advisor. How can I help you today?",
                     "database_facts": [],
                     "metrics": [],
                     "ai_interpretation": "I can help you check the status of your applications, review your interview preparation points, or advise you on skill development roadmaps for your target positions.",
                     "uncertainty": ""
                 }
             return {
-                "text": "Hello! I am **Ask SparkX**, your AI recruitment intelligence copilot. How can I help you today?",
+                "text": "Hello! I am **ARETE Copilot**, your recruitment intelligence copilot. How can I help you today?",
                 "database_facts": [],
                 "metrics": [],
                 "ai_interpretation": "I can help you review candidate dossiers, detect skill gaps, analyze coding assessments, highlight integrity events, or uncover pipeline bottlenecks. Feel free to ask about any candidate or role!",
@@ -73,7 +73,7 @@ class CopilotController:
         if any(phrase in q_lower for phrase in ["who are you", "what can you do", "what are you", "help me", "how to use"]):
             if is_candidate_user:
                 return {
-                    "text": "I am the **SparkX Career Copilot**, designed to support you throughout your hiring journey.",
+                    "text": "I am the **ARETE Career Copilot**, designed to support you throughout your hiring journey.",
                     "database_facts": [],
                     "metrics": [],
                     "ai_interpretation": (
@@ -86,7 +86,7 @@ class CopilotController:
                     "uncertainty": ""
                 }
             return {
-                "text": "I am the **SparkX Recruitment Copilot**, powered by real-time database grounding and AI synthesis.",
+                "text": "I am the **ARETE Recruitment Copilot**, powered by real-time database grounding and AI synthesis.",
                 "database_facts": [],
                 "metrics": [],
                 "ai_interpretation": (
@@ -548,7 +548,7 @@ class CopilotController:
                     f"- Resume Summary: {target_cand.resume_summary or 'N/A'}\n\n"
                     f"Provide a concise, professional 2-3 sentence recruiter briefing answering the recruiter's query."
                 )
-                llm_response = call_llm(prompt, "You are Ask SparkX, an expert AI recruitment intelligence assistant.")
+                llm_response = call_llm(prompt, "You are ARETE Copilot, an expert talent intelligence assistant.")
                 if llm_response:
                     interpretation = llm_response.strip()
 
@@ -729,7 +729,7 @@ class CopilotController:
                         f"Database Verified Facts:\n{schedule_context}\n\n"
                         f"Provide a clear, professional 2-sentence response directly answering if anyone is scheduled at the requested time, and what is currently scheduled instead."
                     )
-                    llm_ans = call_llm(prompt, "You are Ask SparkX, an expert AI recruitment intelligence assistant.")
+                    llm_ans = call_llm(prompt, "You are ARETE Copilot, an expert talent intelligence assistant.")
                     if llm_ans:
                         interpretation = llm_ans.strip()
 
@@ -796,7 +796,7 @@ class CopilotController:
                         "text": "Compensation Guidance:",
                         "database_facts": ["No active submitted applications found under your account."],
                         "metrics": [],
-                        "ai_interpretation": "When applying to open roles on SparkX, you can indicate exact or range expectations in LPA (INR) to ensure transparent compensation calibration.",
+                        "ai_interpretation": "When applying to open roles on ARETE, you can indicate exact or range expectations in LPA (INR) to ensure transparent compensation calibration.",
                         "uncertainty": ""
                     }
 
@@ -1093,7 +1093,7 @@ class CopilotController:
                 f"- Total Candidates: {len(candidates)}\n\n"
                 f"Answer the recruiter's question professionally, insightfully, and concisely."
             )
-            llm_text = call_llm(prompt, "You are Ask SparkX, an elite AI recruitment copilot.")
+            llm_text = call_llm(prompt, "You are ARETE Copilot, an elite talent intelligence copilot.")
             if llm_text:
                 return {
                     "text": llm_text.strip(),
