@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, model_validator
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 
 VALID_CTC_TYPES = {"fixed", "range", "starting_from"}
 VALID_CANDIDATE_CTC_TYPES = {"fixed", "range"}
