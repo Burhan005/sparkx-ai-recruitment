@@ -171,7 +171,7 @@ export default function PublicNavbar() {
             <AreteLogo
               size="md"
               badge="AI OS"
-              subtitle="Talent Intelligence Platform"
+              subtitle="Where Talent Meets Intelligence"
             />
           </div>
 

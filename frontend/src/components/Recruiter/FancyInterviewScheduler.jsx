@@ -74,7 +74,7 @@ export default function FancyInterviewScheduler({
     if (initialMeetingUrl && (initialMeetingUrl.includes('Onsite') || initialMeetingUrl.includes('onsite'))) return 'onsite';
     return 'technical_assessment'; // Default to technical assessment / MCQ first!
   });
-  const [onsiteLocation, setOnsiteLocation] = useState('SparkX Engineering Campus, Innovation Block, Floor 3');
+  const [onsiteLocation, setOnsiteLocation] = useState('ARETE Engineering Campus, Innovation Block, Floor 3');
 
   const ROUND_OPTIONS = useMemo(() => [
     {
@@ -91,10 +91,10 @@ export default function FancyInterviewScheduler({
       id: 'ai_interview',
       title: 'Round 2: Autonomous AI Technical Screen',
       shortTitle: 'AI Voice Interview',
-      badge: 'SparkX AI Room',
+      badge: 'ARETE AI Room',
       icon: Bot,
-      desc: 'Candidate enters SparkX AI Interview Room for automated conversational screening on core competencies.',
-      defaultNote: `AI Voice Technical Screening round. Please enter the SparkX AI room with working microphone and webcam.`,
+      desc: 'Candidate enters ARETE AI Interview Room for automated conversational screening on core competencies.',
+      defaultNote: `AI Voice Technical Screening round. Please enter the ARETE AI room with working microphone and webcam.`,
       url: `${typeof window !== 'undefined' ? window.location.origin : ''}/interview`
     },
     {
@@ -123,7 +123,7 @@ export default function FancyInterviewScheduler({
   const candIdClean = (candidate?.id || 'candidate').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10);
 
   // 100% Guaranteed Automatic Instant Meeting Room (Zero login, zero errors, HD video)
-  const autoInstantRoomUrl = `https://meet.jit.si/SparkX-Interview-${candIdClean}`;
+  const autoInstantRoomUrl = `https://meet.jit.si/ARETE-Interview-${candIdClean}`;
 
   // Recruiter saved default Google Meet URL from localStorage
   const savedGoogleMeetUrl = typeof window !== 'undefined' ? (localStorage.getItem('sparkx_saved_google_meet_url') || '') : '';
@@ -174,7 +174,7 @@ export default function FancyInterviewScheduler({
   };
 
   const handleDisconnectGoogle = async () => {
-    if (window.confirm('Disconnect your Google account from SparkX?')) {
+    if (window.confirm('Disconnect your Google account from ARETE?')) {
       await api.disconnectGoogleMeet();
       fetchGoogleStatus();
     }
@@ -1034,7 +1034,7 @@ export default function FancyInterviewScheduler({
                 </p>
               </button>
 
-              {/* Tab 2: SparkX Instant Video Room (Jitsi Quick Join) */}
+              {/* Tab 2: ARETE Instant Video Room (Jitsi Quick Join) */}
               <button
                 type="button"
                 onClick={() => setSelectedProvider('auto_instant')}
@@ -1047,7 +1047,7 @@ export default function FancyInterviewScheduler({
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="font-black text-xs flex items-center space-x-2 text-brand-700 dark:text-brand-300">
                     <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-                    <span>SparkX Instant Video (Jitsi — 1-Click Quick)</span>
+                    <span>ARETE Instant Video (Jitsi — 1-Click Quick)</span>
                   </span>
                   {selectedProvider === 'auto_instant' && <Check className="w-4 h-4 text-brand-600 dark:text-brand-400" />}
                 </div>
@@ -1099,7 +1099,7 @@ export default function FancyInterviewScheduler({
                 {googleStatus.connected ? (
                   <div className="p-3 rounded-xl bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200/60 dark:border-brand-900/40 text-xs text-brand-900 dark:text-brand-200">
                     <p className="font-semibold">
-                      ✨ Auto-Provisioning Active: When you click <strong>Confirm Schedule</strong>, SparkX will automatically create an authentic Google Meet conference under your connected Google account and send the real link to <strong>{candidate?.name || 'the candidate'}</strong> and <strong>{googleStatus.email}</strong>.
+                      ✨ Auto-Provisioning Active: When you click <strong>Confirm Schedule</strong>, ARETE will automatically create an authentic Google Meet conference under your connected Google account and send the real link to <strong>{candidate?.name || 'the candidate'}</strong> and <strong>{googleStatus.email}</strong>.
                     </p>
                   </div>
                 ) : (
@@ -1207,7 +1207,7 @@ export default function FancyInterviewScheduler({
                 type="text"
                 value={onsiteLocation}
                 onChange={e => setOnsiteLocation(e.target.value)}
-                placeholder="e.g. SparkX HQ, Building 4, Floor 3, Meeting Room 302 - 500 Tech Boulevard"
+                placeholder="e.g. ARETE HQ, Building 4, Floor 3, Meeting Room 302 - 500 Tech Boulevard"
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white text-xs focus:border-emerald-500 focus:outline-none"
               />
             </div>

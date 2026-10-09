@@ -131,7 +131,7 @@ export default function LandingPage() {
       capabilities: [
         'HackerRank for Work REST API: Dynamic test creation, candidate invitation links, and automated percentile synchronization',
         'LeetCode Verified Links: Tracked challenge sessions with recruiter verification and solution review',
-        'CodeSignal Enterprise: Direct score import into SparkX candidate evidence timelines',
+        'CodeSignal Enterprise: Direct score import into ARETE candidate evidence timelines',
         'Judge0 Cloud/Self-Hosted Engine: 50+ programming language compilers on-demand with Docker isolation',
         'Centralized Evidence Dossier: All external test submissions stored alongside interview notes and resume benchmarks'
       ],
@@ -139,7 +139,7 @@ export default function LandingPage() {
       secondaryAction: { label: 'View Candidate Pipeline', path: '/recruiter' }
     },
     copilot: {
-      title: 'Ask SparkX AI Copilot',
+      title: 'ARETE AI Copilot',
       badge: 'Gemini 2.5 • xAI Grok • Multi-Model Orchestration',
       color: 'amber',
       icon: Cpu,
@@ -338,7 +338,7 @@ export default function LandingPage() {
               className={`text-sm sm:text-base md:text-lg text-stone-600 dark:text-stone-300 max-w-2xl mx-auto leading-relaxed ${prefersReduced ? '' : 'animate-fade-in-up'}`} 
               style={prefersReduced ? {} : { animationDelay: '180ms' }}
             >
-              SparkX combines dynamic job requirement blueprinting, multi-language sandbox execution, live AI proctoring telemetry, and structured committee workflows for definitive hiring decisions.
+              ARETE combines dynamic job requirement blueprinting, multi-language sandbox execution, live AI proctoring telemetry, and structured committee workflows for definitive hiring decisions.
             </p>
 
             {/* CTAs */}
@@ -481,13 +481,13 @@ export default function LandingPage() {
               
               <div className="max-w-2xl space-y-3">
                 <span className="text-xs font-bold font-mono uppercase tracking-wider text-brand-600 dark:text-brand-400">
-                  About SparkX Platform
+                  About ARETE Platform
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-stone-900 dark:text-stone-100 font-display">
                   Engineered for Objective, Evidence-Driven Talent Intelligence
                 </h2>
                 <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 leading-relaxed">
-                  Traditional hiring relies on subjective resume filtering and disconnected interview notes. SparkX transforms technical and organizational recruitment into an empirical, auditable science.
+                  Traditional hiring relies on subjective resume filtering and disconnected interview notes. ARETE transforms technical and organizational recruitment into an empirical, auditable science.
                 </p>
               </div>
 
@@ -663,7 +663,7 @@ export default function LandingPage() {
                     <div className="w-11 h-11 rounded-xl bg-amber-500/10 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-xs shadow-amber-500/20 group-hover:scale-110 group-hover:bg-amber-500/20 transition-all duration-300">
                       <Cpu className="w-5 h-5" />
                     </div>
-                    <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">Ask SparkX AI Copilot</h3>
+                    <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">ARETE AI Copilot</h3>
                     <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
                       Global recruitment intelligence assistant powered by Gemini, xAI Grok, or offline deterministic NLP to query candidate records and compensation data.
                     </p>
@@ -800,7 +800,7 @@ export default function LandingPage() {
                 </div>
                 <h4 className="text-sm font-bold text-stone-900 dark:text-stone-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">Resume & Screening</h4>
                 <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
-                  Candidates upload resumes. SparkX auto-extracts technical competencies and computes fuzzy skill alignment rankings.
+                  Candidates upload resumes. ARETE auto-extracts technical competencies and computes fuzzy skill alignment rankings.
                 </p>
               </div>
 
@@ -856,17 +856,17 @@ export default function LandingPage() {
                 Request an Enterprise Walkthrough
               </h2>
               <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 leading-relaxed">
-                Interested in deploying SparkX across your engineering and talent teams? Reach out to schedule a live product demonstration.
+                Interested in deploying ARETE across your engineering and talent teams? Reach out to schedule a live product demonstration.
               </p>
 
               <div className="space-y-3 pt-2 text-xs text-stone-700 dark:text-stone-300">
                 <div className="flex items-center gap-2.5">
                   <Mail className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-                  <span>support@sparkx.ai</span>
+                  <span>support@arete.ai</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Building2 className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-                  <span>SparkX Recruitment Technologies Inc.</span>
+                  <span>ARETE Technologies Inc.</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <Database className="w-4 h-4 text-brand-600 dark:text-brand-400" />
@@ -1090,7 +1090,7 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center gap-3">
               <span className="font-semibold text-stone-700 dark:text-stone-300">© 2026 ARETE Technologies Inc.</span>
               <span>•</span>
-              <span className="text-stone-500 dark:text-stone-400">Enterprise Autonomous Talent Intelligence Platform</span>
+              <span className="text-stone-500 dark:text-stone-400">Where Talent Meets Intelligence</span>
               <span>•</span>
               <span className="text-emerald-700 dark:text-emerald-400 font-medium">SOC2 Type II & EEOC Certified</span>
             </div>

@@ -112,7 +112,7 @@ export default function LoginScreen({ mode, onLogin }) {
       return;
     }
 
-    const displayName = user.name || (user.role === 'recruiter' ? 'SparkX Admin' : 'Candidate');
+    const displayName = user.name || (user.role === 'recruiter' ? 'ARETE Recruiter' : 'Candidate');
     setSuccessMsg(`Welcome back, ${displayName}! Authentication verified. Loading your workspace...`);
     
     // Smooth transition allowing the user to see verified authentication state
@@ -236,7 +236,7 @@ export default function LoginScreen({ mode, onLogin }) {
     }
 
     const displayName = user?.name || name.trim() || 'Candidate';
-    setSuccessMsg(`Account created successfully! Welcome to SparkX, ${displayName}. Loading your workspace...`);
+    setSuccessMsg(`Account created successfully! Welcome to ARETE, ${displayName}. Loading your workspace...`);
 
     setTimeout(() => {
       effectiveLogin(user);
@@ -952,7 +952,7 @@ export default function LoginScreen({ mode, onLogin }) {
                       value={forgotEmail}
                       onChange={e => setForgotEmail(e.target.value)}
                       required
-                      placeholder="e.g. candidate@sparkx.ai or admin@sparkx.ai"
+                      placeholder="e.g. candidate@arete.ai or recruiter@arete.ai"
                       className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#14110F] border border-[#E8DFD8] dark:border-[#2A2520] focus:bg-[#FAF7F2] dark:focus:bg-[#2B201A] text-[#1C130E] dark:text-white text-xs sm:text-sm placeholder-stone-400 focus:outline-none focus:border-[#C27803] dark:focus:border-amber-500 focus:ring-2 focus:ring-[#C27803]/20 dark:focus:ring-amber-500/20 shadow-2xs transition-all"
                     />
                   </div>

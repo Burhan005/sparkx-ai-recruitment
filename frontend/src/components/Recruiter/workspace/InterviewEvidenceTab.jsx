@@ -215,7 +215,7 @@ export default function InterviewEvidenceTab({ candidate, onScheduleInterview })
                     {msg.speaker === 'ai' ? (
                       <>
                         <Bot className="w-3.5 h-3.5 text-brand-500" />
-                        <span className="text-brand-600 dark:text-brand-400">SparkX AI Interviewer</span>
+                        <span className="text-brand-600 dark:text-brand-400">ARETE AI Interviewer</span>
                       </>
                     ) : (
                       <>

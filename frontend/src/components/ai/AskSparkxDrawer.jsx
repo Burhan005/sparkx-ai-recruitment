@@ -141,7 +141,7 @@ export default function AskSparkxDrawer({
             {
               id: 'init-0',
               sender: 'ai',
-              text: `Hello ${currentUser?.name || ''}! I am **Ask SparkX**, your AI career copilot. Ask me about the status of your applications, interview preparation points, or role requirements.`,
+              text: `Hello ${currentUser?.name || ''}! I am **ARETE Copilot**, your AI career advisor. Ask me about the status of your applications, interview preparation points, or role requirements.`,
               facts: [
                 `Logged in as: ${currentUser?.name || 'Candidate'} (${currentUser?.email || ''})`,
                 `Active Applications: ${myApplications?.length || 0}`
@@ -155,7 +155,7 @@ export default function AskSparkxDrawer({
               sender: 'ai',
               text: candName
                 ? `Hello! I have active context loaded for **${candName}** (${contextCandidate.jobTitle || 'Candidate'}). Ask me to analyze their skills, summarize assessment code, evaluate interview responses, or check for hiring flags.`
-                : `Hello! I am **Ask SparkX**, your recruitment intelligence copilot. I am connected directly to your pipeline (${candidates.length} candidates, ${jobs.length} open roles). Ask me about candidate status, pipeline bottlenecks, skill gaps, or role matching.`,
+                : `Hello! I am **ARETE Copilot**, your talent intelligence copilot. I am connected directly to your pipeline (${candidates.length} candidates, ${jobs.length} open roles). Ask me about candidate status, pipeline bottlenecks, skill gaps, or role matching.`,
               facts: [
                 `Live pipeline records: ${candidates.length} candidates, ${jobs.length} open roles.`,
                 candName ? `Loaded candidate dossier: ${candName} (ID: ${contextCandidate.id})` : 'Global recruiter scope active.'
@@ -728,7 +728,7 @@ export default function AskSparkxDrawer({
             type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
-            aria-label="Close Ask SparkX drawer"
+            aria-label="Close ARETE Copilot drawer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -980,7 +980,7 @@ export default function AskSparkxDrawer({
             onChange={e => setQuery(e.target.value)}
             placeholder={contextCandidate ? `Ask about ${contextCandidate.name}...` : "Ask about candidates, jobs, or pipeline status..."}
             className="flex-1 px-3.5 py-2 bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-            aria-label="Ask SparkX prompt input"
+            aria-label="ARETE Copilot prompt input"
           />
           <button
             type="submit"

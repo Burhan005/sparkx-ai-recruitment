@@ -930,7 +930,7 @@ export default function CandidateComparisonModal({
         <footer className="px-6 py-4 bg-white/90 dark:bg-[#1A1714]/90 border-t border-[#E8DFD8] dark:border-[#2A2520] flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2 text-xs text-stone-500 dark:text-stone-400">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
-            <span>Authoritative evidence-backed scoring powered by SparkX Skill Engine. Zero client-side computation.</span>
+            <span>Authoritative evidence-backed scoring powered by ARETE Skill Engine. Zero client-side computation.</span>
           </div>
           <Button variant="secondary" size="sm" onClick={onClose}>
             Done Comparing

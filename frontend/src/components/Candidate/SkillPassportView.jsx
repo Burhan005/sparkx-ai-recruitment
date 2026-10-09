@@ -233,7 +233,7 @@ export default function SkillPassportView() {
             <div className="flex items-center gap-2.5 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                SparkX Verified Identity
+                ARETE Verified Identity
               </span>
               <span className="text-xs text-stone-400 font-mono">
                 EEOC & SOC2 Certified • Evidence-Backed

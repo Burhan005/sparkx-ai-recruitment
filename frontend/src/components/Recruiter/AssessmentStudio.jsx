@@ -447,7 +447,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
               Assessment & Interview Studio
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
-              SparkX analyzes the actual job requirements and generates a role-appropriate evaluation. Review, customize, and publish what candidates will receive.
+              ARETE analyzes the actual job requirements and generates a role-appropriate evaluation. Review, customize, and publish what candidates will receive.
             </p>
           </div>
 
@@ -553,7 +553,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
           <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
           <div>
             <p className="font-semibold text-slate-900 dark:text-white text-sm">Analyzing job requirements…</p>
-            <p className="text-xs text-slate-500 mt-1">SparkX is reading the actual job data to determine the appropriate evaluation methods for this role.</p>
+            <p className="text-xs text-slate-500 mt-1">ARETE is reading the actual job data to determine the appropriate evaluation methods for this role.</p>
           </div>
         </div>
       )}
@@ -681,7 +681,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                         {q.is_recruiter_custom ? (
                           <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">Recruiter Custom</span>
                         ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-medium text-slate-400">SparkX AI</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-medium text-slate-400">ARETE AI</span>
                         )}
                       </div>
                       <button

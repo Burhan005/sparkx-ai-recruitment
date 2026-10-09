@@ -133,7 +133,7 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
             Recruiter Availability & Bookings
           </h2>
           <p className="text-xs text-stone-500 dark:text-stone-400">
-            Define your working interview hours and blocked periods. SparkX derives collision-free slots for candidates.
+            Define your working interview hours and blocked periods. ARETE derives collision-free slots for candidates.
           </p>
         </div>
 

@@ -27,7 +27,7 @@ export function OfflineScreen({ error, onRetry }) {
       <div className="space-y-2">
         <h2 className="text-2xl font-black text-stone-100">Backend Offline</h2>
         <p className="text-stone-400 text-sm max-w-md mx-auto">
-          The SparkX API server is not reachable. All data is served from the backend — there is no static data.
+          The ARETE API server is not reachable. All data is served from the backend — there is no static data.
         </p>
       </div>
       <div className="p-4 rounded-2xl bg-[#1A1714] border border-[#2A2520] text-left max-w-md w-full space-y-3">

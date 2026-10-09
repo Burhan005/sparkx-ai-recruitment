@@ -1212,7 +1212,7 @@ export default function CandidateOverviewTab({
                     className="w-full py-2.5 px-3 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-900/60 text-xs font-bold transition flex items-center justify-center space-x-2"
                   >
                     <Bot className="w-3.5 h-3.5" />
-                    <span>Ask SparkX Deep-Dive on Candidate</span>
+                    <span>Ask ARETE Copilot Deep-Dive</span>
                   </button>
                 )}
 

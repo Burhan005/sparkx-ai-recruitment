@@ -223,7 +223,7 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
         ref={containerRef}
         role="dialog"
         aria-modal="true"
-        aria-label="SparkX Command Menu"
+        aria-label="ARETE Command Menu"
         className="relative w-full max-w-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-popover overflow-hidden z-10 animate-modal-enter"
       >
         {/* Search Input Bar */}

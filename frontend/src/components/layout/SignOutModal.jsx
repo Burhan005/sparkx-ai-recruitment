@@ -26,8 +26,8 @@ export default function SignOutModal() {
 
   if (!isLogoutModalOpen) return null;
 
-  const displayName = currentUser?.name || (userRole === 'recruiter' ? 'SparkX Admin' : 'Candidate');
-  const displayEmail = currentUser?.email || (userRole === 'recruiter' ? 'admin@sparkx.ai' : 'candidate@sparkx.ai');
+  const displayName = currentUser?.name || (userRole === 'recruiter' ? 'ARETE Recruiter' : 'Candidate');
+  const displayEmail = currentUser?.email || (userRole === 'recruiter' ? 'recruiter@arete.ai' : 'candidate@arete.ai');
 
   return (
     <div

@@ -10,11 +10,7 @@ export function AreteEmblem({
   className = '',
   variant = 'brand' // 'brand' | 'monochrome-dark' | 'monochrome-light'
 }) {
-  const crownFill = variant === 'monochrome-dark' ? '#FAF8F5' : '#D6B477';
-  const crownLeftOpacity = variant === 'monochrome-dark' ? 0.35 : 0.45;
-  const crownRightOpacity = variant === 'monochrome-dark' ? 0.75 : 0.85;
-  const fluteFill = variant === 'monochrome-dark' ? '#FAF8F5' : 'currentColor';
-  const apexFill = variant === 'monochrome-dark' ? '#FAF8F5' : '#D6B477';
+  const isDarkMono = variant === 'monochrome-dark';
 
   return (
     <svg
@@ -26,21 +22,61 @@ export function AreteEmblem({
       className={`shrink-0 select-none ${className}`}
       aria-hidden="true"
     >
-      {/* Keystone Crown */}
-      <polygon points="27,14 53,14 60,34 20,34" fill={crownFill} />
-      <polygon points="20,34 27,14 34,34" fill="#FFFFFF" fillOpacity={crownLeftOpacity} />
-      <polygon points="46,34 53,14 60,34" fill="#100F0D" fillOpacity={crownRightOpacity} />
+      <defs>
+        <linearGradient id="arete-gold-grad" x1="20" y1="14" x2="60" y2="34" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#E2C58A" />
+          <stop offset="50%" stopColor="#D4AF37" />
+          <stop offset="100%" stopColor="#B38938" />
+        </linearGradient>
+        <linearGradient id="arete-apex-grad" x1="40" y1="36" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#EAD29B" />
+          <stop offset="100%" stopColor="#C69B4C" />
+        </linearGradient>
+      </defs>
 
-      {/* Outer Wing Flutes */}
-      <polygon points="12,41 20,37 27,67 18,69" fill={fluteFill} />
-      <polygon points="68,41 60,37 53,67 62,69" fill={fluteFill} />
+      {/* ── Top Keystone Headpiece (Faceted Architectural Crown) ── */}
+      <polygon
+        points="26,14 54,14 62,33 18,33"
+        fill={isDarkMono ? '#FAF8F5' : 'url(#arete-gold-grad)'}
+      />
+      {/* Crown Left Bevel Highlight */}
+      <polygon
+        points="18,33 26,14 34,33"
+        fill="#FFFFFF"
+        fillOpacity={isDarkMono ? 0.3 : 0.4}
+      />
+      {/* Crown Right Bevel Shadow */}
+      <polygon
+        points="46,33 54,14 62,33"
+        fill="#000000"
+        fillOpacity={isDarkMono ? 0.25 : 0.28}
+      />
 
-      {/* Converging Evidence Vectors */}
-      <polygon points="22,69 36,44 40,44 27,70" fill={fluteFill} />
-      <polygon points="58,69 44,44 40,44 53,70" fill={fluteFill} />
+      {/* ── Outer Architectural Struts / Wings ── */}
+      <polygon
+        points="12,39 21,36 29,67 20,69"
+        fill={isDarkMono ? '#FAF8F5' : 'currentColor'}
+      />
+      <polygon
+        points="68,39 59,36 51,67 60,69"
+        fill={isDarkMono ? '#FAF8F5' : 'currentColor'}
+      />
 
-      {/* Center Apex Portal */}
-      <polygon points="40,36 32,71 36,71 40,55 44,71 48,71" fill={apexFill} />
+      {/* ── Converging Inner Evidence Vectors ── */}
+      <polygon
+        points="24,69 36,42 40,42 28,70"
+        fill={isDarkMono ? '#FAF8F5' : 'currentColor'}
+      />
+      <polygon
+        points="56,69 44,42 40,42 52,70"
+        fill={isDarkMono ? '#FAF8F5' : 'currentColor'}
+      />
+
+      {/* ── Central Convergent Apex Spear ── */}
+      <polygon
+        points="40,36 34,68 37.5,68 40,54 42.5,68 46,68"
+        fill={isDarkMono ? '#FAF8F5' : 'url(#arete-apex-grad)'}
+      />
     </svg>
   );
 }
@@ -60,10 +96,10 @@ export default function AreteLogo({
   onClick,
 }) {
   const pixelSizes = {
-    xs: { mark: 18, text: 'text-xs tracking-[0.22em]', gap: 'gap-2', badge: 'text-[9px] px-1 py-0.2' },
-    sm: { mark: 24, text: 'text-sm tracking-[0.24em]', gap: 'gap-2.5', badge: 'text-[9px] px-1.5 py-0.5' },
-    md: { mark: 32, text: 'text-base sm:text-lg tracking-[0.26em]', gap: 'gap-3', badge: 'text-[10px] px-2 py-0.5' },
-    lg: { mark: 42, text: 'text-xl sm:text-2xl tracking-[0.28em]', gap: 'gap-3.5', badge: 'text-[11px] px-2.5 py-0.5' },
+    xs: { mark: 18, text: 'text-xs tracking-[0.14em]', gap: 'gap-2', badge: 'text-[9px] px-1 py-0.2' },
+    sm: { mark: 24, text: 'text-sm tracking-[0.15em]', gap: 'gap-2.5', badge: 'text-[9px] px-1.5 py-0.5' },
+    md: { mark: 32, text: 'text-base sm:text-lg tracking-[0.16em]', gap: 'gap-3', badge: 'text-[10px] px-2 py-0.5' },
+    lg: { mark: 42, text: 'text-xl sm:text-2xl tracking-[0.18em]', gap: 'gap-3.5', badge: 'text-[11px] px-2.5 py-0.5' },
   };
 
   const currentSize = pixelSizes[size] || pixelSizes.md;
@@ -106,17 +142,17 @@ export default function AreteLogo({
 
       <div className="flex flex-col min-w-0">
         <div className="flex items-center gap-2 leading-none">
-          <span className={`font-black uppercase font-display text-stone-900 dark:text-stone-100 ${currentSize.text} transition-colors group-hover:text-brand-600 dark:group-hover:text-amber-400`}>
+          <span className={`font-bold uppercase tracking-[0.18em] text-stone-900 dark:text-stone-100 ${currentSize.text} transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-400 select-none`}>
             ARETE
           </span>
           {badge && (
-            <span className={`font-mono font-bold uppercase rounded-md bg-brand-500/10 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 border border-brand-500/25 ${currentSize.badge}`}>
+            <span className={`font-mono font-bold uppercase rounded-md bg-amber-500/10 dark:bg-amber-400/15 text-amber-800 dark:text-amber-300 border border-amber-500/25 ${currentSize.badge}`}>
               {badge}
             </span>
           )}
         </div>
         {subtitle && (
-          <span className="text-[10px] text-stone-500 dark:text-stone-400 font-medium tracking-tight mt-1 truncate">
+          <span className="text-[10px] text-stone-500 dark:text-stone-400 font-medium tracking-normal mt-0.5 truncate">
             {subtitle}
           </span>
         )}

@@ -534,7 +534,7 @@ export default function RecruiterDecisionTab({
                   Terminal Decision Recorded: <span className="capitalize">{wf.hiringDecision}</span>
                 </h4>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                  Under SparkX Governance, terminal decisions (Selected / Rejected) cannot be overwritten through standard decision controls to prevent unintended regression of completed applications.
+                  Under ARETE Governance, terminal decisions (Selected / Rejected) cannot be overwritten through standard decision controls to prevent unintended regression of completed applications.
                 </p>
               </div>
             </div>

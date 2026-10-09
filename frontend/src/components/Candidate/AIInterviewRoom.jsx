@@ -191,7 +191,7 @@ export default function AIInterviewRoom() {
     {
       id: 'init-0',
       speaker: 'ai',
-      text: `Hello ${currentInterviewSession?.candidateName || activeCandidate?.name || 'Candidate'}! Welcome to your SparkX AI interview${activeJob ? ` for the ${activeJob.title} position` : ''}. I will ask you role-specific questions and may ask adaptive follow-ups based on your depth. Let's begin!`,
+      text: `Hello ${currentInterviewSession?.candidateName || activeCandidate?.name || 'Candidate'}! Welcome to your ARETE AI interview${activeJob ? ` for the ${activeJob.title} position` : ''}. I will ask you role-specific questions and may ask adaptive follow-ups based on your depth. Let's begin!`,
       timestamp: '00:00'
     }
   ]);
@@ -1143,7 +1143,7 @@ export default function AIInterviewRoom() {
 
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-slate-900 dark:text-white text-sm">SparkX AI Interviewer</span>
+                    <span className="font-bold text-slate-900 dark:text-white text-sm">ARETE AI Interviewer</span>
                     {isFollowUpActive && (
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 font-mono">
                         Adaptive Follow-Up
@@ -1244,7 +1244,7 @@ export default function AIInterviewRoom() {
               >
                 <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                   <span className="flex items-center space-x-1.5">
-                    <span>{msg.speaker === 'ai' ? '🤖 SparkX AI' : '👤 You (Candidate)'}</span>
+                    <span>{msg.speaker === 'ai' ? '🤖 ARETE AI' : '👤 You (Candidate)'}</span>
                     {msg.isAdaptive && (
                       <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[9px] font-bold">
                         ADAPTIVE

@@ -33,7 +33,7 @@ const THEME_STYLES = {
     badge: 'text-[#C27803] dark:text-amber-400 bg-amber-500/15 dark:bg-amber-400/20 shadow-xs shadow-amber-500/20',
     border: 'border-[#C27803]/30 dark:border-amber-500/40',
     accent: 'from-amber-500/20 via-[#C27803] to-amber-500/20',
-    label: 'SPARKX',
+    label: 'ARETE',
   },
 };
 

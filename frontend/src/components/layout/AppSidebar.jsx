@@ -661,15 +661,15 @@ export default function AppSidebar({
             <div className="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-[#231A15] border border-stone-200/90 dark:border-[#3E2E24] shadow-xs hover:bg-stone-100/60 dark:hover:bg-[#2B201A] transition-colors duration-150">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="relative">
-                  <Avatar name={currentUser?.name || (userRole === 'recruiter' ? 'SparkX Admin' : 'Candidate')} size="sm" />
+                  <Avatar name={currentUser?.name || (userRole === 'recruiter' ? 'ARETE Recruiter' : 'Candidate')} size="sm" />
                   <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#231A15]" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-semibold text-stone-900 dark:text-[#F3ECE6] truncate">
-                    {currentUser?.name || (userRole === 'recruiter' ? 'SparkX Admin' : 'Candidate')}
+                    {currentUser?.name || (userRole === 'recruiter' ? 'ARETE Recruiter' : 'Candidate')}
                   </div>
                   <div className="text-[10px] text-stone-500 dark:text-[#BAACA1] truncate">
-                    {currentUser?.email || (userRole === 'recruiter' ? 'admin@sparkx.ai' : 'candidate@sparkx.ai')}
+                    {currentUser?.email || (userRole === 'recruiter' ? 'recruiter@arete.ai' : 'candidate@arete.ai')}
                   </div>
                 </div>
               </div>
