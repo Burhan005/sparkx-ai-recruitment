@@ -91,7 +91,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="h-screen w-screen flex bg-[#F2EFEB] dark:bg-[#0F0E0D] text-stone-900 dark:text-stone-100 selection:bg-brand-500/20 selection:text-brand-700 dark:selection:text-brand-300 overflow-hidden">
+    <div className="h-screen w-screen flex bg-[#F7F4EF] dark:bg-[#0F0E0D] text-stone-900 dark:text-stone-100 selection:bg-brand-500/20 selection:text-brand-700 dark:selection:text-brand-300 overflow-hidden">
       {/* Sidebar (Desktop Collapsible & Mobile Drawer) - Fixed in place, never scrolls */}
       <AppSidebar
         onOpenCommandMenu={() => setIsCommandMenuOpen(true)}
@@ -107,7 +107,7 @@ export default function AppLayout() {
         className="flex-1 flex flex-col h-full min-w-0 overflow-y-auto scrollbar-thin"
       >
         {/* Mobile Top Header */}
-        <header className="lg:hidden sticky top-0 z-30 h-14 bg-[#FDFCFA]/95 dark:bg-[#1A1714]/95 backdrop-blur-xl border-b border-stone-200 dark:border-stone-800 px-4 flex items-center justify-between">
+        <header className="lg:hidden sticky top-0 z-30 h-14 bg-[#FAF8F5]/95 dark:bg-[#18120F]/95 backdrop-blur-xl border-b border-[#E8DFD8] dark:border-[#2C2019] px-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"

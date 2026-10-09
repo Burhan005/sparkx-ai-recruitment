@@ -946,24 +946,32 @@ export default function CandidatePipeline() {
       </div>
 
       {/* ── UNIFIED TABS & CONTROLS TOOLBAR (NATURAL CONTINUOUS SCROLLING) ── */}
-      <div className="sticky top-0 z-20 p-3 sm:p-4 rounded-xl bg-[#FDFCFA]/95 dark:bg-[#1A1714]/95 backdrop-blur-md border border-[#E5E0DA] dark:border-[#2A2520] shadow-md shadow-black/10 space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* View Tab Buttons */}
-          <div className="flex items-center gap-2">
+      <div className="sticky top-0 z-20 p-3 sm:p-4 rounded-2xl bg-[#FAF8F5]/90 dark:bg-[#150F0D]/90 backdrop-blur-xl border border-[#E7DFD4] dark:border-[#281D17] shadow-[0_4px_24px_-4px_rgba(28,19,14,0.06)] dark:shadow-[0_4px_24px_-4px_rgba(0,0,0,0.5)] space-y-3">
+        {/* Row 1: Segmented Switcher & Search & Controls */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          {/* Segmented Entity Switcher */}
+          <div className="inline-flex p-1 rounded-xl bg-[#F0EAE1] dark:bg-[#1E1510] border border-[#E0D7CC] dark:border-[#2C1F17] shrink-0">
             <button
               type="button"
               onClick={() => {
                 setActiveTab('candidates');
                 setSearchParams({});
               }}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all duration-200 cursor-pointer ${
                 activeTab === 'candidates'
-                  ? 'bg-brand-600 text-white shadow-sm shadow-[#2A1B14]/20'
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                  ? 'bg-[#2E2017] dark:bg-[#2C1F18] text-[#FDFBF7] dark:text-[#F3ECE6] shadow-2xs border border-amber-600/35 dark:border-amber-500/30'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-[#2A1B14] dark:hover:text-stone-200'
               }`}
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>Candidates ({filteredCandidates.length})</span>
+              <Users className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+              <span>Candidates</span>
+              <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
+                activeTab === 'candidates' 
+                  ? 'bg-amber-500/20 text-amber-300 dark:text-amber-300' 
+                  : 'bg-stone-300/40 dark:bg-[#251A14] text-stone-700 dark:text-stone-400'
+              }`}>
+                {filteredCandidates.length}
+              </span>
             </button>
 
             <button
@@ -972,20 +980,27 @@ export default function CandidatePipeline() {
                 setActiveTab('jobs');
                 setSearchParams({ tab: 'jobs' });
               }}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition ${
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all duration-200 cursor-pointer ${
                 activeTab === 'jobs'
-                  ? 'bg-brand-600 text-white shadow-sm shadow-[#2A1B14]/20'
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700'
+                  ? 'bg-[#2E2017] dark:bg-[#2C1F18] text-[#FDFBF7] dark:text-[#F3ECE6] shadow-2xs border border-amber-600/35 dark:border-amber-500/30'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-[#2A1B14] dark:hover:text-stone-200'
               }`}
             >
-              <Briefcase className="w-3.5 h-3.5" />
-              <span>Job Postings ({jobs.length})</span>
+              <Briefcase className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+              <span>Job Postings</span>
+              <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
+                activeTab === 'jobs' 
+                  ? 'bg-amber-500/20 text-amber-300 dark:text-amber-300' 
+                  : 'bg-stone-300/40 dark:bg-[#251A14] text-stone-700 dark:text-stone-400'
+              }`}>
+                {jobs.length}
+              </span>
             </button>
           </div>
 
-          {/* Controls: Search, Job Filter, Compensation, View Mode */}
+          {/* Controls Cluster */}
           {activeTab === 'candidates' && (
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               <SearchInput
                 ref={searchInputRef}
                 value={searchQuery}
@@ -993,10 +1008,10 @@ export default function CandidatePipeline() {
                 onClear={() => setSearchQuery('')}
                 placeholder="Search candidates..."
                 shortcut="/"
-                className="w-full sm:w-72"
+                className="w-full sm:w-60 md:w-64"
               />
 
-              {/* Job Selector Custom Dropdown */}
+              {/* Job Selector Dropdown */}
               <div className="flex items-center gap-1.5">
                 <CustomDropdown
                   value={selectedJobFilter}
@@ -1016,8 +1031,8 @@ export default function CandidatePipeline() {
                         setIsJobModalOpen(true);
                       }
                     }}
-                    title="Edit this role requirement & compensation budget"
-                    className="h-9 px-2.5 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900 text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-semibold flex items-center gap-1 transition shadow-subtle shrink-0"
+                    title="Edit role requirement & compensation budget"
+                    className="h-9 px-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-[#C27803] dark:text-amber-400 border border-amber-500/30 text-xs font-semibold flex items-center gap-1 transition-all shrink-0 cursor-pointer"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Edit Role</span>
@@ -1025,7 +1040,7 @@ export default function CandidatePipeline() {
                 )}
               </div>
 
-              {/* Compensation Relationship Custom Dropdown */}
+              {/* Compensation Dropdown */}
               <CustomDropdown
                 value={compensationFilter}
                 onChange={setCompensationFilter}
@@ -1037,15 +1052,15 @@ export default function CandidatePipeline() {
               />
 
               {/* Display Mode Switcher */}
-              <div className="flex items-center rounded-lg border border-stone-200 dark:border-stone-800 p-0.5 bg-stone-50 dark:bg-[#13110F]">
+              <div className="flex items-center rounded-xl border border-[#E0D7CC] dark:border-[#33241C] p-0.5 bg-stone-200/50 dark:bg-[#1E1510] shrink-0">
                 <button
                   type="button"
                   onClick={() => setDisplayMode('kanban')}
-                  title="Kanban Board"
-                  className={`p-1.5 rounded-md transition ${
+                  title="Kanban Board View"
+                  className={`p-2 rounded-lg transition-all cursor-pointer ${
                     displayMode === 'kanban'
-                      ? 'bg-white dark:bg-stone-800 text-brand-600 dark:text-brand-400 shadow-subtle'
-                      : 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-300'
+                      ? 'bg-white dark:bg-[#2A1D15] text-[#C27803] dark:text-amber-400 shadow-xs font-bold ring-1 ring-amber-400/40'
+                      : 'text-stone-400 hover:text-stone-700 dark:hover:text-stone-300'
                   }`}
                 >
                   <Columns className="w-3.5 h-3.5" />
@@ -1053,32 +1068,32 @@ export default function CandidatePipeline() {
                 <button
                   type="button"
                   onClick={() => setDisplayMode('list')}
-                  title="High-Density Table"
-                  className={`p-1.5 rounded-md transition ${
+                  title="High-Density Table View"
+                  className={`p-2 rounded-lg transition-all cursor-pointer ${
                     displayMode === 'list'
-                      ? 'bg-white dark:bg-stone-800 text-brand-600 dark:text-brand-400 shadow-subtle'
-                      : 'text-stone-400 hover:text-stone-600 dark:hover:text-stone-300'
+                      ? 'bg-white dark:bg-[#2A1D15] text-[#C27803] dark:text-amber-400 shadow-xs font-bold ring-1 ring-amber-400/40'
+                      : 'text-stone-400 hover:text-stone-700 dark:hover:text-stone-300'
                   }`}
                 >
                   <LayoutGrid className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              {/* Phase 4E.4: Workflow Dimensions Filter Toggle */}
+              {/* Workflow Dimensions Filter Toggle */}
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters(prev => !prev)}
-                className={`h-9 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border shrink-0 ${
+                className={`h-9 px-3.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all border shrink-0 cursor-pointer ${
                   showAdvancedFilters || stageFilter !== 'ALL' || assessmentFilter !== 'ALL' || interviewFilter !== 'ALL' || decisionFilter !== 'ALL'
-                    ? 'bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/60 dark:hover:bg-brand-900 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-800'
-                    : 'bg-stone-100 hover:bg-stone-200 dark:bg-[#231F1B] dark:hover:bg-[#2A2520] text-stone-700 dark:text-stone-300 border-stone-200 dark:border-[#2A2520]'
+                    ? 'bg-amber-500/15 text-[#C27803] dark:text-amber-400 border-amber-500/40 shadow-xs'
+                    : 'bg-white dark:bg-[#1A120E] hover:bg-stone-100 dark:hover:bg-[#241913] text-stone-700 dark:text-stone-300 border-[#E0D7CC] dark:border-[#33241C]'
                 }`}
                 title="Filter candidates across the 4 independent workflow dimensions"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                <SlidersHorizontal className="w-3.5 h-3.5 text-[#C27803] dark:text-amber-400" />
                 <span>Workflow Filters</span>
                 {(stageFilter !== 'ALL' || assessmentFilter !== 'ALL' || interviewFilter !== 'ALL' || decisionFilter !== 'ALL') && (
-                  <span className="w-2 h-2 rounded-full bg-brand-500" />
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
                 )}
               </button>
             </div>
@@ -1170,50 +1185,53 @@ export default function CandidatePipeline() {
 
         {/* Status Filters Bar */}
         {activeTab === 'candidates' && (
-          <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-stone-200/60 dark:border-stone-800 text-xs">
-            <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider font-sans flex items-center gap-1.5">
-              <Filter className="w-3 h-3 text-brand-600 dark:text-brand-400" />
-              Quick Filter:
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {[
-                { id: 'All', label: 'All Candidates', count: totalApplicants },
-                { id: 'Evaluated', label: 'Evaluated', count: evaluatedCount },
-                { id: 'Shortlisted', label: 'Shortlisted' },
-                { id: 'High Risk', label: 'Integrity Alerts', count: integrityFlaggedCount, alert: integrityFlaggedCount > 0 }
-              ].map(({ id, label, count, alert }) => {
-                const isActive = filterStatus === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setFilterStatus(id)}
-                    className={`px-3 py-1 rounded-lg font-medium transition-all text-xs flex items-center gap-1.5 select-none ${
-                      isActive
-                        ? 'bg-brand-600 text-white shadow-subtle font-semibold'
-                        : 'bg-stone-100 dark:bg-stone-800/80 text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700/80 border border-transparent hover:border-stone-300 dark:hover:border-stone-700'
-                    }`}
-                  >
-                    {alert && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse-subtle" />}
-                    <span>{label}</span>
-                    {count !== undefined && (
-                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#E7DFD4] dark:border-[#281D17] text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold font-mono tracking-widest uppercase text-stone-500 dark:text-stone-400 flex items-center gap-1.5 select-none">
+                <Filter className="w-3 h-3 text-[#C27803] dark:text-amber-400" />
+                FILTER:
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: 'All', label: 'All Candidates', count: totalApplicants },
+                  { id: 'Evaluated', label: 'Evaluated', count: evaluatedCount },
+                  { id: 'Shortlisted', label: 'Shortlisted' },
+                  { id: 'High Risk', label: 'Integrity Alerts', count: integrityFlaggedCount, alert: integrityFlaggedCount > 0 }
+                ].map(({ id, label, count, alert }) => {
+                  const isActive = filterStatus === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setFilterStatus(id)}
+                      className={`px-3 py-1.5 rounded-xl font-medium transition-all duration-200 text-xs flex items-center gap-2 select-none cursor-pointer ${
                         isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-stone-200/80 dark:bg-stone-700 text-stone-600 dark:text-stone-400'
-                      }`}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+                          ? 'bg-[#2E2017] dark:bg-[#2C1F18] text-[#FDFBF7] dark:text-[#F3ECE6] shadow-2xs font-bold border border-amber-600/35 dark:border-amber-500/30'
+                          : 'bg-[#F4EFEB] dark:bg-[#1E1510] text-stone-700 dark:text-[#C5B8AC] hover:bg-[#ECE4DA] dark:hover:bg-[#251A14] border border-[#E0D7CC] dark:border-[#2C1F17]'
+                      }`}
+                    >
+                      {alert && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />}
+                      <span className="tracking-tight">{label}</span>
+                      {count !== undefined && (
+                        <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+                          isActive
+                            ? 'bg-amber-500/20 text-amber-300 dark:text-amber-300'
+                            : 'bg-stone-300/40 dark:bg-[#251A14] text-stone-700 dark:text-stone-300 border border-stone-200/50 dark:border-[#33241C]'
+                        }`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
             {filterStatus !== 'All' && (
               <button
                 type="button"
                 onClick={() => setFilterStatus('All')}
-                className="text-xs text-brand-600 dark:text-brand-400 hover:underline ml-auto font-medium"
+                className="text-xs text-[#C27803] dark:text-amber-400 hover:underline font-semibold cursor-pointer"
               >
                 Reset filter
               </button>
@@ -1224,7 +1242,7 @@ export default function CandidatePipeline() {
 
       {/* CONTENT: CANDIDATES TAB */}
       {activeTab === 'candidates' && (
-        <>
+        <div key="candidates-content-view" className="space-y-3 animate-fade-in duration-300">
           {filteredCandidates.length === 0 ? (
             <EmptyState
               icon={Users}
@@ -2106,7 +2124,7 @@ export default function CandidatePipeline() {
           )}
           </div>
         )}
-        </>
+        </div>
       )}
 
       {/* CONTENT: JOBS TAB */}

@@ -56,7 +56,11 @@ export function PageTransitionProvider({ children }) {
 
   // Instant smooth navigation (zero lag, zero artificial timeout)
   const smoothNavigate = useCallback((to, options = {}) => {
-    if (to === location.pathname || (typeof to === 'string' && to.startsWith('#'))) {
+    const currentFull = location.pathname + location.search;
+    const isTargetSame = (to === currentFull);
+    const hasSpecialState = Boolean(options?.state);
+
+    if ((isTargetSame && !hasSpecialState) || (typeof to === 'string' && to.startsWith('#'))) {
       if (typeof to === 'string' && to.startsWith('#')) {
         const el = document.getElementById(to.slice(1));
         if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -74,7 +78,7 @@ export function PageTransitionProvider({ children }) {
     // Navigate immediately without artificial lag
     navigate(to, options);
     resetScrollPositions();
-  }, [navigate, location.pathname, resetScrollPositions]);
+  }, [navigate, location.pathname, location.search, resetScrollPositions]);
 
   return (
     <PageTransitionContext.Provider value={{ smoothNavigate, isTransitioning: laserActive }}>

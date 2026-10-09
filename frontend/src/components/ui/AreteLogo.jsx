@@ -1,19 +1,81 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+
+/**
+ * Hook to reactively track dark mode on <html> tag
+ */
+function useIsDarkMode() {
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+  });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    setIsDark(document.documentElement.classList.contains('dark'));
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => observer.disconnect();
+  }, []);
+
+  return isDark;
+}
 
 /**
  * AreteEmblem — The Interlocking Ribbon "A"
  * High-precision vector architecture replicating the proprietary mobius ribbon structure:
- * - Loop 1: Charcoal & Espresso outer curve with smooth bevel and inner drop shadow
- * - Loop 2: Champagne & Gold satin ribbon wrapping through the central apex
+ * - Loop 1: Adaptive Keystone Outer Loop
+ *     - Light mode: Deep Charcoal & Espresso (#1E1A17 -> #0A0807)
+ *     - Dark mode: Luminous Warm Ivory Pearl (#FFFFFF -> #FAF8F5 -> #D5C7B5)
+ * - Loop 2: Champagne & Gold satin ribbon wrapping through the central apex (#DFD2C0 -> #B39369)
  * - Right Leg: Structural warm stone/taupe architectural pillar
  */
 export function AreteEmblem({
   size = 36,
   className = '',
-  variant = 'brand' // 'brand' | 'monochrome-dark' | 'monochrome-light'
+  variant = 'brand', // 'brand' | 'monochrome-dark' | 'monochrome-light'
+  forceTheme, // optional override: 'light' | 'dark'
 }) {
   const isDarkMono = variant === 'monochrome-dark';
   const isLightMono = variant === 'monochrome-light';
+  const systemIsDark = useIsDarkMode();
+  const isDark = forceTheme ? forceTheme === 'dark' : systemIsDark;
+
+  const loopFill = isDarkMono
+    ? '#FAF8F5'
+    : isLightMono
+    ? '#1C1917'
+    : isDark
+    ? 'url(#arete-ivory-body)'
+    : 'url(#arete-charcoal-body)';
+
+  const bevelFill = isDarkMono
+    ? '#FAF8F5'
+    : isLightMono
+    ? '#1C1917'
+    : isDark
+    ? 'url(#arete-ivory-bevel)'
+    : 'url(#arete-charcoal-bevel)';
+
+  const pillarFill = isDarkMono
+    ? '#FAF8F5'
+    : isLightMono
+    ? '#1C1917'
+    : isDark
+    ? 'url(#arete-dark-pillar)'
+    : 'url(#arete-pillar-facet)';
+
+  const pillarFootFill = isDarkMono
+    ? '#FAF8F5'
+    : isLightMono
+    ? '#1C1917'
+    : isDark
+    ? '#5A4F44'
+    : '#63594D';
 
   return (
     <svg
@@ -40,14 +102,21 @@ export function AreteEmblem({
           <stop offset="100%" stopColor="#C8AE8C" />
         </linearGradient>
 
-        {/* Architectural Pillar Gradient (Right Leg) */}
+        {/* Architectural Pillar Gradient (Right Leg) - Light Mode */}
         <linearGradient id="arete-pillar-facet" x1="56" y1="38" x2="84" y2="84" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#A89E92" />
           <stop offset="50%" stopColor="#93887B" />
           <stop offset="100%" stopColor="#7B7063" />
         </linearGradient>
 
-        {/* Deep Charcoal Outer Loop Gradients */}
+        {/* Architectural Pillar Gradient (Right Leg) - Dark Mode */}
+        <linearGradient id="arete-dark-pillar" x1="56" y1="38" x2="84" y2="84" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#C4B8AA" />
+          <stop offset="50%" stopColor="#9E9283" />
+          <stop offset="100%" stopColor="#7E7264" />
+        </linearGradient>
+
+        {/* Deep Charcoal Outer Loop Gradients (Light Mode) */}
         <linearGradient id="arete-charcoal-body" x1="16" y1="22" x2="48" y2="78" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#1E1A17" />
           <stop offset="40%" stopColor="#120F0D" />
@@ -59,9 +128,22 @@ export function AreteEmblem({
           <stop offset="100%" stopColor="#1A1512" />
         </linearGradient>
 
+        {/* Luminous Warm Ivory Outer Loop Gradients (Dark Mode) */}
+        <linearGradient id="arete-ivory-body" x1="16" y1="22" x2="48" y2="78" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="30%" stopColor="#FAF8F5" />
+          <stop offset="70%" stopColor="#EAE0D5" />
+          <stop offset="100%" stopColor="#D5C7B5" />
+        </linearGradient>
+
+        <linearGradient id="arete-ivory-bevel" x1="22" y1="18" x2="48" y2="34" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#FFFFFF" />
+          <stop offset="100%" stopColor="#EDE5DC" />
+        </linearGradient>
+
         {/* Subtle Inner Ambience Filter */}
         <filter id="arete-subtle-shadow" x="-8%" y="-8%" width="120%" height="120%" filterUnits="userSpaceOnUse">
-          <feDropShadow dx="1" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.35" />
+          <feDropShadow dx="1" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity={isDark ? "0.2" : "0.35"} />
         </filter>
       </defs>
 
@@ -70,41 +152,45 @@ export function AreteEmblem({
         {/* Main Pillar Body */}
         <path
           d="M 52 34 L 72 74 L 88 74 L 62 26 Z"
-          fill={isDarkMono ? '#FAF8F5' : isLightMono ? '#1C1917' : 'url(#arete-pillar-facet)'}
+          fill={pillarFill}
+          className="arete-emblem-pillar transition-colors duration-300"
         />
         {/* Right Ground Foot Bevel */}
         <path
           d="M 72 74 L 88 74 L 88 78 L 72 78 Z"
-          fill={isDarkMono ? '#FAF8F5' : isLightMono ? '#1C1917' : '#63594D'}
-          opacity="0.8"
+          fill={pillarFootFill}
+          opacity="0.85"
         />
         {/* Left Shadow on Pillar */}
         <path
           d="M 52 34 L 62 26 L 65 33 L 56 42 Z"
           fill="#000000"
-          opacity={isDarkMono ? '0' : '0.35'}
+          opacity={isDarkMono ? '0' : isDark ? '0.2' : '0.35'}
         />
       </g>
 
-      {/* ── 2. DARK CHARCOAL OUTER LOOP (Left A-Stroke & Cross Wrap) ── */}
-      <g id="charcoal-loop">
+      {/* ── 2. ADAPTIVE KEYSTONE OUTER LOOP (Left A-Stroke & Cross Wrap) ── */}
+      <g id="keystone-loop">
         {/* Left Upright Stem to Apex */}
         <path
           d="M 18 70 C 13 62 17 44 28 28 C 34 20 42 16 48 18 C 54 20 56 26 51 34 L 38 56 C 34 62 28 68 22 71 C 20 72 18 71 18 70 Z"
-          fill={isDarkMono ? '#FAF8F5' : isLightMono ? '#1C1917' : 'url(#arete-charcoal-body)'}
+          fill={loopFill}
+          className="arete-emblem-loop transition-colors duration-300"
         />
 
         {/* Apex Outer Bevel Crown */}
         <path
           d="M 28 28 C 34 20 42 16 48 18 C 53 20 55 24 51 31 C 46 25 39 22 33 26 C 29 28 27 31 26 34 Z"
-          fill={isDarkMono ? '#FAF8F5' : isLightMono ? '#1C1917' : 'url(#arete-charcoal-bevel)'}
-          opacity="0.9"
+          fill={bevelFill}
+          className="arete-emblem-bevel transition-colors duration-300"
+          opacity="0.95"
         />
 
         {/* Bottom Left Sweeping Cradle / Curve */}
         <path
           d="M 18 70 C 18 75 24 81 33 80 C 44 79 56 68 64 54 C 62 52 59 50 56 53 C 48 64 38 73 30 73 C 24 73 20 69 20 65 C 20 61 24 53 28 47 L 23 44 C 18 52 17 66 18 70 Z"
-          fill={isDarkMono ? '#FAF8F5' : isLightMono ? '#1C1917' : 'url(#arete-charcoal-body)'}
+          fill={loopFill}
+          className="arete-emblem-loop transition-colors duration-300"
         />
       </g>
 
@@ -146,6 +232,7 @@ export default function AreteLogo({
   subtitle = 'WHERE TALENT MEETS INTELLIGENCE',
   showSubtitle = true,
   badge,
+  forceTheme, // optional: 'light' | 'dark'
   className = '',
   onClick,
 }) {
@@ -169,10 +256,10 @@ export default function AreteLogo({
     return (
       <div
         onClick={onClick}
-        className={`${tileSizes[size] || tileSizes.md} bg-[#100F0D] border border-[#3E2E24] shadow-md flex items-center justify-center shrink-0 ${onClick ? 'cursor-pointer hover:border-amber-500/40' : ''} ${className}`}
+        className={`${tileSizes[size] || tileSizes.md} bg-[#100F0D] border border-amber-600/35 shadow-md flex items-center justify-center shrink-0 ${onClick ? 'cursor-pointer hover:border-amber-500/60' : ''} ${className}`}
         title="ARETE"
       >
-        <AreteEmblem size={currentSize.mark} />
+        <AreteEmblem size={currentSize.mark} forceTheme="dark" />
       </div>
     );
   }
@@ -181,7 +268,7 @@ export default function AreteLogo({
   if (variant === 'mark') {
     return (
       <div onClick={onClick} className={`inline-flex items-center shrink-0 ${onClick ? 'cursor-pointer' : ''} ${className}`}>
-        <AreteEmblem size={currentSize.mark} />
+        <AreteEmblem size={currentSize.mark} forceTheme={forceTheme} />
       </div>
     );
   }
@@ -194,7 +281,7 @@ export default function AreteLogo({
     >
       {/* Interlocking Mobius Emblem */}
       <div className="shrink-0 flex items-center justify-center">
-        <AreteEmblem size={currentSize.mark} />
+        <AreteEmblem size={currentSize.mark} forceTheme={forceTheme} />
       </div>
 
       {/* Editorial Typography Lockup */}

@@ -987,3 +987,27 @@ html {
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 1.8px), #000 calc(100% - 1.3px));
   mask: radial-gradient(farthest-side, transparent calc(100% - 1.8px), #000 calc(100% - 1.3px));
 }
+
+/* ── ARETE Emblem Adaptive Theming ── */
+.arete-emblem-loop {
+  fill: url(#arete-charcoal-body);
+  transition: fill 0.3s ease;
+}
+.arete-emblem-bevel {
+  fill: url(#arete-charcoal-bevel);
+  transition: fill 0.3s ease;
+}
+.arete-emblem-pillar {
+  fill: url(#arete-pillar-facet);
+  transition: fill 0.3s ease;
+}
+
+.dark .arete-emblem-loop {
+  fill: url(#arete-ivory-body) !important;
+}
+.dark .arete-emblem-bevel {
+  fill: url(#arete-ivory-bevel) !important;
+}
+.dark .arete-emblem-pillar {
+  fill: url(#arete-dark-pillar) !important;
+}
