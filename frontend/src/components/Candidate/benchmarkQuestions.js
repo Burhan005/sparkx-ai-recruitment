@@ -477,12 +477,44 @@ export function enrichCodingQuestion(q, idx = 0) {
     `Return the computed result directly from the target function.`
   );
 
-  const cleanEntryPoint = (q.title || 'solve')
-    .replace(/[^a-zA-Z0-9]/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-    .join('');
+  // Intelligently resolve entry_point without blindly camelCasing long sentence titles
+  let cleanEntryPoint = q.entry_point || matchedBenchmark?.entry_point;
+  if (!cleanEntryPoint) {
+    const sigStr = (q.function_signature && (q.function_signature.python || q.function_signature.javascript)) ||
+                    (matchedBenchmark?.function_signature && (matchedBenchmark.function_signature.python || matchedBenchmark.function_signature.javascript)) || '';
+    const match = sigStr.match(/(?:def|function)\s+([a-zA-Z0-9_]+)/);
+    if (match && match[1]) {
+      cleanEntryPoint = match[1];
+    }
+  }
+  if (!cleanEntryPoint) {
+    const sc = (q.starter_code && (q.starter_code.python || q.starter_code.javascript)) || '';
+    const scMatch = sc.match(/(?:def|function)\s+([a-zA-Z0-9_]+)/);
+    if (scMatch && scMatch[1]) {
+      cleanEntryPoint = scMatch[1];
+    }
+  }
+  if (!cleanEntryPoint) {
+    const rawTitle = (q.title || '').replace(/[^a-zA-Z0-9\s]/g, ' ').trim();
+    const words = rawTitle.split(/\s+/).filter(Boolean);
+    if (words.length > 0 && words.length <= 2) {
+      cleanEntryPoint = words.map((w, i) => i === 0 ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+    } else {
+      cleanEntryPoint = 'solve';
+    }
+  }
+
+  // Ensure function_signature is always populated
+  const resolvedSignatures = {
+    ...(matchedBenchmark?.function_signature || {}),
+    ...(q.function_signature || {})
+  };
+  if (!resolvedSignatures.python) {
+    resolvedSignatures.python = `def ${cleanEntryPoint}(data):`;
+  }
+  if (!resolvedSignatures.javascript) {
+    resolvedSignatures.javascript = `function ${cleanEntryPoint}(data)`;
+  }
 
   // Assemble full 13-language starter codes
   const allLangs = ['python', 'javascript', 'typescript', 'java', 'cpp', 'c', 'csharp', 'go', 'rust', 'swift', 'kotlin', 'ruby', 'php'];
@@ -502,7 +534,8 @@ export function enrichCodingQuestion(q, idx = 0) {
     instructions: hasExistingRichInstructions ? q.instructions : fallbackInstructions,
     examples: (q.examples && q.examples.length > 0) ? q.examples : (matchedBenchmark?.examples || []),
     constraints: (q.constraints && q.constraints.length > 0) ? q.constraints : (matchedBenchmark?.constraints || []),
-    function_signature: q.function_signature || matchedBenchmark?.function_signature || {},
+    function_signature: resolvedSignatures,
+    entry_point: cleanEntryPoint,
     starter_code: compiledStarterCodes,
     sample_test_cases: (q.sample_test_cases && q.sample_test_cases.length > 0)
       ? q.sample_test_cases

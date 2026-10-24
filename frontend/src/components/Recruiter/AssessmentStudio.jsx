@@ -433,20 +433,20 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
     <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 pb-20 animate-fade-in-up">
 
       {/* ── Studio Header ── */}
-      <div className="p-4 sm:p-6 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card">
+      <div className="p-4 sm:p-6 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25">
                 Evaluation Authoring Suite
               </span>
-              <span className="text-xs text-slate-400">•</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Recruiter Mode: Author & Customize</span>
+              <span className="text-[#A89A8D]">•</span>
+              <span className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] font-medium">Recruiter Mode: Author & Customize</span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#2E2017] dark:text-[#FDFBF7] tracking-tight">
               Assessment & Interview Studio
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-2xl">
+            <p className="text-xs sm:text-sm text-[#7A6B5D] dark:text-[#A89A8D] max-w-2xl">
               ARETE analyzes the actual job requirements and generates a role-appropriate evaluation. Review, customize, and publish what candidates will receive.
             </p>
           </div>
@@ -486,7 +486,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                 icon={Save}
                 onClick={handleSaveConfiguration}
                 disabled={isSaving || isLoadingConfig || !studioConfig}
-                className="flex-1 lg:flex-none shadow-sm shadow-brand-500/20"
+                className="flex-1 lg:flex-none shadow-sm shadow-amber-500/20"
               >
                 {isSaving ? 'Publishing…' : 'Save & Publish'}
               </Button>
@@ -496,7 +496,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
         {/* Save success banner */}
         {saveSuccess && (
-          <div className="mt-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs sm:text-sm font-semibold flex items-center justify-between animate-fade-in">
+          <div className="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-800 dark:text-emerald-200 text-xs sm:text-sm font-semibold flex items-center justify-between animate-fade-in">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>✓ Published evaluation configuration for "{currentJob?.title}". Candidates invited to this role will receive your customized plan.</span>
@@ -507,21 +507,21 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
         {/* Role metadata strip */}
         {currentJob && studioConfig && (
-          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="mt-4 pt-4 border-t border-[#E8DFD8] dark:border-[#3D2C22] flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-slate-500 font-medium">Configuring:</span>
-              <span className="font-semibold text-slate-900 dark:text-white font-mono">{currentJob.title}</span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="text-slate-500">{currentJob.department}</span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-[#7A6B5D] font-medium">Configuring:</span>
+              <span className="font-semibold text-[#2E2017] dark:text-[#FDFBF7] font-mono">{currentJob.title}</span>
+              <span className="text-[#A89A8D]">•</span>
+              <span className="text-[#7A6B5D]">{currentJob.department}</span>
+              <span className="text-[#A89A8D]">•</span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border font-mono ${domainChipClass}`}>
                 {domainLabel}
               </span>
               {studioConfig.domain_rationale && (
-                <span className="text-slate-400 italic hidden lg:inline">— {studioConfig.domain_rationale}</span>
+                <span className="text-[#7A6B5D] italic hidden lg:inline">— {studioConfig.domain_rationale}</span>
               )}
               {studioConfig.generated_by === 'llm' && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
                   AI Generated
                 </span>
               )}
@@ -549,17 +549,17 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
       {/* ── Loading / Error State ── */}
       {isLoadingConfig && (
-        <div className="p-10 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-4 text-center">
-          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
+        <div className="p-10 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] flex flex-col items-center justify-center gap-4 text-center">
+          <Loader2 className="w-8 h-8 text-[#F59E0B] animate-spin" />
           <div>
-            <p className="font-semibold text-slate-900 dark:text-white text-sm">Analyzing job requirements…</p>
-            <p className="text-xs text-slate-500 mt-1">ARETE is reading the actual job data to determine the appropriate evaluation methods for this role.</p>
+            <p className="font-semibold text-[#2E2017] dark:text-[#FDFBF7] text-sm">Analyzing job requirements…</p>
+            <p className="text-xs text-[#7A6B5D] mt-1">ARETE is reading the actual job data to determine the appropriate evaluation methods for this role.</p>
           </div>
         </div>
       )}
 
       {!isLoadingConfig && configLoadError && (
-        <div className="p-6 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-rose-200 dark:border-rose-900 flex items-center gap-4">
+        <div className="p-6 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-rose-500/25 flex items-center gap-4">
           <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-rose-700 dark:text-rose-400">{configLoadError}</p>
@@ -572,7 +572,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
       {!isLoadingConfig && studioConfig && (
         <>
           {/* Tab Navigation — dynamic based on domain */}
-          <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-px overflow-x-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-1 border-b border-[#E8DFD8] dark:border-[#3D2C22] pb-px overflow-x-auto scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {availableTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -590,16 +590,16 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                   onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-xs sm:text-sm font-semibold transition border-b-2 whitespace-nowrap ${
                     isActive
-                      ? 'border-brand-600 text-brand-600 dark:text-brand-400 bg-[#FDFCFA] dark:bg-[#1A1714] shadow-xs'
-                      : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/40'
+                      ? 'border-[#F59E0B] text-[#C27803] dark:text-[#F59E0B] bg-white dark:bg-[#201814] shadow-xs'
+                      : 'border-transparent text-[#7A6B5D] hover:text-[#2E2017] dark:hover:text-[#FDFBF7] hover:bg-[#F7F4EF] dark:hover:bg-[#150F0D]'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-brand-500' : 'text-slate-400'}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#C27803] dark:text-[#F59E0B]' : 'text-[#A89A8D]'}`} />
                   <span>{tab.label}</span>
                   <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
                     isActive
-                      ? 'bg-brand-100 dark:bg-brand-950/80 text-brand-700 dark:text-brand-300 font-bold'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                      ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 font-bold'
+                      : 'bg-[#F7F4EF] dark:bg-[#150F0D] text-[#7A6B5D] dark:text-[#A89A8D]'
                   }`}>{count}</span>
                 </button>
               );
@@ -609,45 +609,45 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
           {/* ── TAB: AI INTERVIEW QUESTIONS ── */}
           {activeTab === 'interview' && (
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-3">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-brand-600" />
+              <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm space-y-3">
+                <h3 className="text-sm font-bold text-[#2E2017] dark:text-[#FDFBF7] flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                   <span>Add Custom Interview Question</span>
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D]">
                   Authored questions will be presented to the candidate by the AI interviewer during their session.
                 </p>
                 <form onSubmit={handleAddCustomQuestion} className="space-y-3 pt-1">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="sm:col-span-1">
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Question Category</label>
+                      <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Question Category</label>
                       <input
                         type="text"
                         value={newQuestionType}
                         onChange={(e) => setNewQuestionType(e.target.value)}
                         placeholder={`e.g. ${domainLabel} — Core Competency`}
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]"
                       />
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Rubric Keywords (comma-separated)</label>
+                      <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Rubric Keywords (comma-separated)</label>
                       <input
                         type="text"
                         placeholder="e.g. GAAP compliance, variance analysis, controls"
                         value={newQuestionRubric}
                         onChange={(e) => setNewQuestionRubric(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100"
+                        className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Question Prompt</label>
+                    <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Question Prompt</label>
                     <textarea
                       rows={2}
                       placeholder="Type your custom interview question here…"
                       value={newQuestionText}
                       onChange={(e) => setNewQuestionText(e.target.value)}
-                      className="w-full p-2.5 text-xs sm:text-sm rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500"
+                      className="w-full p-2.5 text-xs sm:text-sm rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7] focus:outline-none focus:border-[#F59E0B]"
                     />
                   </div>
                   <div className="flex justify-end">
@@ -658,53 +658,53 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between px-1">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                  <h4 className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7] uppercase tracking-wider font-mono">
                     Active Interview Plan ({interviewQuestions.length} Questions)
                   </h4>
-                  <span className="text-[11px] text-slate-400">~{interviewQuestions.length * 5} minutes estimated</span>
+                  <span className="text-[11px] text-[#A89A8D]">~{interviewQuestions.length * 5} minutes estimated</span>
                 </div>
                 {interviewQuestions.length === 0 && (
-                  <div className="p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400">
+                  <div className="p-6 rounded-xl border border-dashed border-[#E8DFD8] dark:border-[#3D2C22] text-center text-xs text-[#A89A8D]">
                     No questions yet. Regenerate with AI or add custom questions above.
                   </div>
                 )}
                 {interviewQuestions.map((q, idx) => (
-                  <div key={q.id || idx} className="p-4 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-xs space-y-2 transition-all hover:border-slate-300 dark:hover:border-slate-700">
+                  <div key={q.id || idx} className="p-4 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-xs space-y-2 transition-all hover:border-[#D0C4B8] dark:hover:border-[#4D3A2F]">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold font-mono text-slate-600 dark:text-slate-300 flex items-center justify-center">
+                        <span className="w-5 h-5 rounded-full bg-[#F7F4EF] dark:bg-[#150F0D] text-[10px] font-bold font-mono text-[#5C4D42] dark:text-[#C7B9AD] flex items-center justify-center">
                           {idx + 1}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold font-mono bg-[#F7F4EF] dark:bg-[#150F0D] text-[#5C4D42] dark:text-[#C7B9AD] border border-[#E8DFD8] dark:border-[#33241C]">
                           {q.type}
                         </span>
                         {q.is_recruiter_custom ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">Recruiter Custom</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25">Recruiter Custom</span>
                         ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-medium text-slate-400">ARETE AI</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-medium text-[#A89A8D]">ARETE AI</span>
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => setInterviewQuestions(prev => prev.filter((_, i) => i !== idx))}
-                        className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                        className="p-1 rounded text-[#A89A8D] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <p className="text-xs sm:text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">"{q.prompt}"</p>
+                    <p className="text-xs sm:text-sm font-medium text-[#2E2017] dark:text-[#FDFBF7] leading-relaxed">"{q.prompt}"</p>
                     {q.rubric && q.rubric.length > 0 && (
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[10px] font-mono font-semibold text-slate-400 uppercase">Rubric:</span>
+                      <div className="pt-2 border-t border-[#E8DFD8] dark:border-[#33241C] flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-mono font-semibold text-[#A89A8D] uppercase">Rubric:</span>
                         {q.rubric.map((r, rIdx) => (
-                          <span key={rIdx} className="px-2 py-0.5 rounded-full text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">{r}</span>
+                          <span key={rIdx} className="px-2 py-0.5 rounded-full text-[10px] bg-[#F7F4EF] dark:bg-[#150F0D] text-[#5C4D42] dark:text-[#C7B9AD] font-medium">{r}</span>
                         ))}
                       </div>
                     )}
                     {(q.follow_up_vague || q.follow_up_expert) && (
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 space-y-1">
-                        {q.follow_up_vague && <p className="text-[10px] text-slate-400 font-mono">↩ Vague: <span className="text-slate-500">{q.follow_up_vague}</span></p>}
-                        {q.follow_up_expert && <p className="text-[10px] text-slate-400 font-mono">↗ Expert: <span className="text-slate-500">{q.follow_up_expert}</span></p>}
+                      <div className="pt-2 border-t border-[#E8DFD8] dark:border-[#33241C] space-y-1">
+                        {q.follow_up_vague && <p className="text-[10px] text-[#A89A8D] font-mono">↩ Vague: <span className="text-[#5C4D42] dark:text-[#C7B9AD]">{q.follow_up_vague}</span></p>}
+                        {q.follow_up_expert && <p className="text-[10px] text-[#A89A8D] font-mono">↗ Expert: <span className="text-[#5C4D42] dark:text-[#C7B9AD]">{q.follow_up_expert}</span></p>}
                       </div>
                     )}
                   </div>
@@ -716,14 +716,14 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
           {/* ── TAB: KNOWLEDGE MCQs ── */}
           {activeTab === 'mcq' && (
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
+              <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-brand-600" />
+                    <h3 className="text-sm font-bold text-[#2E2017] dark:text-[#FDFBF7] flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                       <span>{domainLabel} MCQs ({mcqList.length})</span>
                     </h3>
-                    <p className="text-xs text-slate-500">Multiple-choice questions evaluate conceptual mastery, standards, and domain knowledge specific to this role.</p>
+                    <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D]">Multiple-choice questions evaluate conceptual mastery, standards, and domain knowledge specific to this role.</p>
                   </div>
                   <div className="flex items-center space-x-2">
                     <Button variant="outline" size="xs" icon={Layers} onClick={() => handleTabChange('mcq_bank')}>
@@ -736,23 +736,23 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                 </div>
 
                 {isAddingMcq && (
-                  <form onSubmit={handleAddCustomMcq} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 space-y-3 animate-fade-in">
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">New MCQ</h4>
+                  <form onSubmit={handleAddCustomMcq} className="p-4 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] space-y-3 animate-fade-in">
+                    <h4 className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7] uppercase tracking-wider font-mono">New MCQ</h4>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Question</label>
-                      <textarea rows={2} value={newMcqQuestion} onChange={(e) => setNewMcqQuestion(e.target.value)} placeholder="Enter your MCQ question…" className="w-full p-2.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700" />
+                      <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Question</label>
+                      <textarea rows={2} value={newMcqQuestion} onChange={(e) => setNewMcqQuestion(e.target.value)} placeholder="Enter your MCQ question…" className="w-full p-2.5 text-xs rounded-xl bg-white dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {[['A', newMcqOptA, setNewMcqOptA], ['B', newMcqOptB, setNewMcqOptB], ['C', newMcqOptC, setNewMcqOptC], ['D', newMcqOptD, setNewMcqOptD]].map(([key, val, setter]) => (
                         <div key={key} className="flex items-center gap-2">
-                          <input type="radio" name="mcq_correct" checked={newMcqCorrect === key} onChange={() => setNewMcqCorrect(key)} className="text-brand-600" title="Mark correct" />
-                          <input type="text" placeholder={`Option ${key}`} value={val} onChange={(e) => setter(e.target.value)} className="flex-1 px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700" />
+                          <input type="radio" name="mcq_correct" checked={newMcqCorrect === key} onChange={() => setNewMcqCorrect(key)} className="text-[#F59E0B]" title="Mark correct" />
+                          <input type="text" placeholder={`Option ${key}`} value={val} onChange={(e) => setter(e.target.value)} className="flex-1 px-2.5 py-1.5 text-xs rounded-xl bg-white dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]" />
                         </div>
                       ))}
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Explanation</label>
-                      <input type="text" value={newMcqExplanation} onChange={(e) => setNewMcqExplanation(e.target.value)} placeholder="Why is this the correct answer?" className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700" />
+                      <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Explanation</label>
+                      <input type="text" value={newMcqExplanation} onChange={(e) => setNewMcqExplanation(e.target.value)} placeholder="Why is this the correct answer?" className="w-full px-2.5 py-1.5 text-xs rounded-xl bg-white dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]" />
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button type="submit" variant="primary" size="xs" icon={Plus}>Save MCQ</Button>
@@ -762,7 +762,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
                 <div className="space-y-3">
                   {mcqList.length === 0 && (
-                    <div className="p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400">
+                    <div className="p-6 rounded-xl border border-dashed border-[#E8DFD8] dark:border-[#3D2C22] text-center text-xs text-[#A89A8D]">
                       No MCQs yet. Regenerate with AI or add custom MCQs above.
                     </div>
                   )}
@@ -770,13 +770,13 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                     const options = getMcqOptions(mcq);
                     const correctKey = getMcqCorrectKey(mcq);
                     return (
-                      <div key={mcq.id || idx} className="p-3.5 rounded-xl bg-slate-50/60 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 text-xs space-y-2">
+                      <div key={mcq.id || idx} className="p-3.5 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] text-xs space-y-2">
                         <div className="flex items-start justify-between gap-2">
-                          <span className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
-                            <span className="font-mono text-slate-400">#{idx + 1}</span>
+                          <span className="font-semibold text-[#2E2017] dark:text-[#FDFBF7] flex items-center gap-1.5">
+                            <span className="font-mono text-[#A89A8D]">#{idx + 1}</span>
                             <span>{mcq.question}</span>
                           </span>
-                          <button type="button" onClick={() => setMcqList(prev => prev.filter((_, i) => i !== idx))} className="text-slate-400 hover:text-rose-500 p-1">
+                          <button type="button" onClick={() => setMcqList(prev => prev.filter((_, i) => i !== idx))} className="text-[#A89A8D] hover:text-rose-500 p-1">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -784,8 +784,8 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                           {options.map(({ key, text }) => (
                             <div key={key} className={`p-2 rounded-lg border text-[11px] font-medium flex items-center gap-2 ${
                               key === correctKey
-                                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                                ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30'
+                                : 'bg-white dark:bg-[#201814] text-[#5C4D42] dark:text-[#C7B9AD] border-[#E8DFD8] dark:border-[#33241C]'
                             }`}>
                               <span className="font-mono font-bold">{key}.</span>
                               <span className="truncate">{text}</span>
@@ -794,7 +794,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                           ))}
                         </div>
                         {mcq.explanation && (
-                          <p className="text-[10px] text-slate-400 pt-1 italic font-mono">Rationale: {mcq.explanation}</p>
+                          <p className="text-[10px] text-[#A89A8D] pt-1 italic font-mono">Rationale: {mcq.explanation}</p>
                         )}
                       </div>
                     );
@@ -807,16 +807,16 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
           {/* ── TAB: PRACTICAL TASK (Coding / Hands-On / Financial / Written) ── */}
           {activeTab === 'assessment' && (
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
+              <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm space-y-4">
                 {handsOnTask ? (
                   <>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E8DFD8] dark:border-[#3D2C22]">
                       <div>
-                        <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                          {isCoding ? <Code2 className="w-4 h-4 text-brand-600" /> : <PenLine className="w-4 h-4 text-amber-600" />}
+                        <h3 className="text-sm font-bold text-[#2E2017] dark:text-[#FDFBF7] flex items-center gap-2">
+                          {isCoding ? <Code2 className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" /> : <PenLine className="w-4 h-4 text-amber-600" />}
                           <span>{handsOnTask.title || 'Practical Task'}</span>
                         </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] mt-0.5">
                           Task type: <span className="font-mono font-medium">{(handsOnTask.task_type || (isCoding ? 'coding' : 'written_case_study')).replace(/_/g, ' ')}</span>
                           {handsOnTask.difficulty && <> · Difficulty: <span className="font-medium">{handsOnTask.difficulty}</span></>}
                         </p>
@@ -825,74 +825,74 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
                     {/* Title */}
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Task Title</label>
+                      <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Task Title</label>
                       <input
                         type="text"
                         value={handsOnTask.title || ''}
                         onChange={(e) => setHandsOnTask(prev => ({ ...prev, title: e.target.value }))}
-                        className="w-full px-3 py-2 text-xs sm:text-sm rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500"
+                        className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7] focus:outline-none focus:border-[#F59E0B]"
                       />
                     </div>
 
                     {/* Instructions */}
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">
                         {isCoding ? 'Problem Statement & Instructions' : 'Task Instructions & Deliverable Brief'}
                       </label>
                       <textarea
                         rows={5}
                         value={handsOnTask.instructions || ''}
                         onChange={(e) => setHandsOnTask(prev => ({ ...prev, instructions: e.target.value }))}
-                        className="w-full p-3 text-xs sm:text-sm rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500"
+                        className="w-full p-3 text-xs sm:text-sm rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7] focus:outline-none focus:border-[#F59E0B]"
                       />
                     </div>
 
                     {/* Deliverable description */}
                     {handsOnTask.deliverable_description && (
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Expected Deliverable</label>
+                        <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Expected Deliverable</label>
                         <input
                           type="text"
                           value={handsOnTask.deliverable_description || ''}
                           onChange={(e) => setHandsOnTask(prev => ({ ...prev, deliverable_description: e.target.value }))}
-                          className="w-full px-3 py-2 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:border-brand-500"
+                          className="w-full px-3 py-2 text-xs rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7] focus:outline-none focus:border-[#F59E0B]"
                         />
                       </div>
                     )}
 
                     {/* Coding-only: test cases */}
                     {isCoding && (
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                      <div className="pt-3 border-t border-[#E8DFD8] dark:border-[#3D2C22] space-y-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+                          <h4 className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7] uppercase tracking-wider font-mono">
                             Test Cases ({(handsOnTask.sample_test_cases || []).length} Public, {(handsOnTask.hidden_test_cases || []).length} Hidden)
                           </h4>
                         </div>
                         <div className="space-y-2">
                           {(handsOnTask.sample_test_cases || []).map((tc, idx) => (
-                            <div key={idx} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs flex items-center justify-between gap-3">
+                            <div key={idx} className="p-2.5 rounded-lg bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] text-xs flex items-center justify-between gap-3">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">Public #{idx + 1}</span>
-                                <span className="font-mono text-slate-600 dark:text-slate-300 truncate">Input: <code className="text-slate-900 dark:text-white">{tc.input}</code> → Expected: <code className="text-emerald-600 dark:text-emerald-400">{tc.expected || tc.expected_output}</code></span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25">Public #{idx + 1}</span>
+                                <span className="font-mono text-[#5C4D42] dark:text-[#C7B9AD] truncate">Input: <code className="text-[#2E2017] dark:text-[#FDFBF7]">{tc.input}</code> → Expected: <code className="text-emerald-600 dark:text-emerald-400">{tc.expected || tc.expected_output}</code></span>
                               </div>
-                              <button type="button" onClick={() => setHandsOnTask(prev => ({ ...prev, sample_test_cases: prev.sample_test_cases.filter((_, i) => i !== idx) }))} className="text-slate-400 hover:text-rose-500 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                              <button type="button" onClick={() => setHandsOnTask(prev => ({ ...prev, sample_test_cases: prev.sample_test_cases.filter((_, i) => i !== idx) }))} className="text-[#A89A8D] hover:text-rose-500 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
                           ))}
                           {(handsOnTask.hidden_test_cases || []).map((tc, idx) => (
-                            <div key={idx} className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs flex items-center justify-between gap-3">
+                            <div key={idx} className="p-2.5 rounded-lg bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] text-xs flex items-center justify-between gap-3">
                               <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">Hidden #{idx + 1}</span>
-                                <span className="font-mono text-slate-600 dark:text-slate-300 truncate">Input: <code className="text-slate-900 dark:text-white">{tc.input}</code> → Expected: <code className="text-emerald-600 dark:text-emerald-400">{tc.expected || tc.expected_output}</code></span>
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/25">Hidden #{idx + 1}</span>
+                                <span className="font-mono text-[#5C4D42] dark:text-[#C7B9AD] truncate">Input: <code className="text-[#2E2017] dark:text-[#FDFBF7]">{tc.input}</code> → Expected: <code className="text-emerald-600 dark:text-emerald-400">{tc.expected || tc.expected_output}</code></span>
                               </div>
-                              <button type="button" onClick={() => setHandsOnTask(prev => ({ ...prev, hidden_test_cases: prev.hidden_test_cases.filter((_, i) => i !== idx) }))} className="text-slate-400 hover:text-rose-500 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
+                              <button type="button" onClick={() => setHandsOnTask(prev => ({ ...prev, hidden_test_cases: prev.hidden_test_cases.filter((_, i) => i !== idx) }))} className="text-[#A89A8D] hover:text-rose-500 p-1"><Trash2 className="w-3.5 h-3.5" /></button>
                             </div>
                           ))}
                         </div>
-                        <form onSubmit={handleAddTestCase} className="p-3 rounded-xl bg-slate-100/60 dark:bg-slate-900/40 border border-dashed border-slate-300 dark:border-slate-700 flex flex-wrap items-center gap-2 text-xs">
-                          <input type="text" placeholder="Input" value={newTestInput} onChange={(e) => setNewTestInput(e.target.value)} className="flex-1 min-w-[140px] px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-xs" />
-                          <input type="text" placeholder="Expected Output" value={newTestOutput} onChange={(e) => setNewTestOutput(e.target.value)} className="flex-1 min-w-[140px] px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono text-xs" />
-                          <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 select-none cursor-pointer">
-                            <input type="checkbox" checked={newTestIsHidden} onChange={(e) => setNewTestIsHidden(e.target.checked)} className="rounded text-brand-600" />
+                        <form onSubmit={handleAddTestCase} className="p-3 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-dashed border-[#E8DFD8] dark:border-[#33241C] flex flex-wrap items-center gap-2 text-xs">
+                          <input type="text" placeholder="Input" value={newTestInput} onChange={(e) => setNewTestInput(e.target.value)} className="flex-1 min-w-[140px] px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] font-mono text-xs text-[#2E2017] dark:text-[#FDFBF7]" />
+                          <input type="text" placeholder="Expected Output" value={newTestOutput} onChange={(e) => setNewTestOutput(e.target.value)} className="flex-1 min-w-[140px] px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] font-mono text-xs text-[#2E2017] dark:text-[#FDFBF7]" />
+                          <label className="flex items-center gap-1.5 text-[#5C4D42] dark:text-[#C7B9AD] select-none cursor-pointer">
+                            <input type="checkbox" checked={newTestIsHidden} onChange={(e) => setNewTestIsHidden(e.target.checked)} className="rounded text-[#F59E0B]" />
                             <span>Hidden</span>
                           </label>
                           <Button type="submit" variant="primary" size="xs" icon={Plus}>Add Test</Button>
@@ -901,7 +901,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                     )}
                   </>
                 ) : (
-                  <div className="p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400">
+                  <div className="p-6 rounded-xl border border-dashed border-[#E8DFD8] dark:border-[#3D2C22] text-center text-xs text-[#A89A8D]">
                     No hands-on task configured. Regenerate with AI to generate a domain-appropriate practical task for this role.
                   </div>
                 )}
@@ -911,43 +911,43 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
           {/* ── TAB: SCENARIO & JUDGMENT ── */}
           {activeTab === 'scenario' && (
-            <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E8DFD8] dark:border-[#3D2C22]">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-[#2E2017] dark:text-[#FDFBF7] flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-500" />
                     <span>Scenario & Judgment Assessment</span>
                   </h3>
-                  <p className="text-xs text-slate-500">Tests high-level decision-making, domain judgment, and professional problem-solving under realistic constraints.</p>
+                  <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D]">Tests high-level decision-making, domain judgment, and professional problem-solving under realistic constraints.</p>
                 </div>
               </div>
               {scenarioData ? (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Scenario Title</label>
-                    <input type="text" value={scenarioData.title || ''} onChange={(e) => setScenarioData(prev => ({ ...prev, title: e.target.value }))} className="w-full px-3 py-2 text-xs sm:text-sm rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700" />
+                    <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Scenario Title</label>
+                    <input type="text" value={scenarioData.title || ''} onChange={(e) => setScenarioData(prev => ({ ...prev, title: e.target.value }))} className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Scenario Description</label>
-                    <textarea rows={5} value={scenarioData.prompt || ''} onChange={(e) => setScenarioData(prev => ({ ...prev, prompt: e.target.value }))} className="w-full p-3 text-xs sm:text-sm rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700" />
+                    <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Scenario Description</label>
+                    <textarea rows={5} value={scenarioData.prompt || ''} onChange={(e) => setScenarioData(prev => ({ ...prev, prompt: e.target.value }))} className="w-full p-3 text-xs sm:text-sm rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]" />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Guidance (What Strong Answers Reference)</label>
-                    <textarea rows={2} value={scenarioData.guidance || ''} onChange={(e) => setScenarioData(prev => ({ ...prev, guidance: e.target.value }))} className="w-full p-3 text-xs rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700" />
+                    <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Guidance (What Strong Answers Reference)</label>
+                    <textarea rows={2} value={scenarioData.guidance || ''} onChange={(e) => setScenarioData(prev => ({ ...prev, guidance: e.target.value }))} className="w-full p-3 text-xs rounded-xl bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]" />
                   </div>
                   {scenarioData.ideal_keywords && scenarioData.ideal_keywords.length > 0 && (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Ideal Keywords</label>
+                      <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] mb-1">Ideal Keywords</label>
                       <div className="flex flex-wrap gap-1.5">
                         {scenarioData.ideal_keywords.map((kw, i) => (
-                          <span key={i} className="px-2 py-0.5 rounded-full text-[10px] bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-mono">{kw}</span>
+                          <span key={i} className="px-2 py-0.5 rounded-full text-[10px] bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25 font-mono">{kw}</span>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="p-6 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-400">
+                <div className="p-6 rounded-xl border border-dashed border-[#E8DFD8] dark:border-[#3D2C22] text-center text-xs text-[#A89A8D]">
                   No scenario configured. Regenerate with AI to generate a domain-appropriate scenario for this role.
                 </div>
               )}
@@ -985,20 +985,20 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
           {/* ── TAB: EXTERNAL CODING PLATFORMS ── */}
           {activeTab === 'external' && (
-            <div className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-6">
+            <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm space-y-6">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#E8DFD8] dark:border-[#3D2C22]">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-brand-500" />
+                  <h3 className="text-sm font-bold text-[#2E2017] dark:text-[#FDFBF7] flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                     <span>External Coding Platforms Integration</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] mt-0.5">
                     Recruiters can select questions from external platforms (LeetCode, HackerRank, CodeSignal) alongside AI-generated and custom questions.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 font-bold">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25 font-bold">
                     {selectedExtQuestions.length} Selected
                   </span>
                 </div>
@@ -1006,7 +1006,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
               {/* Platform Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Target External Platform</label>
+                <label className="text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD]">Target External Platform</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { id: 'hackerrank', name: 'HackerRank for Work', desc: 'REST API v3 · Org Question Bank & Sync' },
@@ -1022,21 +1022,21 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                         onClick={() => setSelectedPlatform(p.id)}
                         className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all ${
                           isSelected
-                            ? 'border-brand-500 bg-brand-50/40 dark:bg-brand-950/30 shadow-xs'
-                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300'
+                            ? 'border-[#F59E0B] bg-amber-500/10 dark:bg-amber-500/15 shadow-xs'
+                            : 'border-[#E8DFD8] dark:border-[#3D2C22] bg-[#F7F4EF] dark:bg-[#150F0D] hover:border-[#D0C4B8]'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-slate-900 dark:text-white">{p.name}</span>
+                          <span className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7]">{p.name}</span>
                           <span className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded ${
                             isConfigured
-                              ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                              : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-amber-500/10 text-amber-800 dark:text-amber-300'
                           }`}>
                             {isConfigured ? 'Ready' : 'Setup Required'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 leading-snug">{p.desc}</p>
+                        <p className="text-[11px] text-[#7A6B5D] dark:text-[#A89A8D] leading-snug">{p.desc}</p>
                       </div>
                     );
                   })}
@@ -1044,30 +1044,30 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
               </div>
 
               {/* Filters Bar */}
-              <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center gap-3">
+              <div className="p-3 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] flex flex-wrap items-center gap-3">
                 <input
                   type="text"
                   placeholder={`Search ${selectedPlatform} questions by topic/keyword...`}
                   value={extQuery}
                   onChange={(e) => setExtQuery(e.target.value)}
-                  className="flex-1 min-w-[200px] px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                  className="flex-1 min-w-[200px] px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]"
                 />
                 <select
                   value={extDifficulty}
                   onChange={(e) => setExtDifficulty(e.target.value)}
-                  className="px-3 py-1.5 text-xs rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700"
+                  className="px-3 py-1.5 text-xs rounded-xl bg-white dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#FDFBF7]"
                 >
                   <option value="">All Difficulties</option>
                   <option value="Easy">Easy</option>
                   <option value="Medium">Medium</option>
                   <option value="Hard">Hard</option>
                 </select>
-                {isLoadingExt && <Loader2 className="w-4 h-4 text-brand-500 animate-spin" />}
+                {isLoadingExt && <Loader2 className="w-4 h-4 text-[#F59E0B] animate-spin" />}
               </div>
 
               {/* Questions Catalog */}
               <div className="space-y-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Available Questions</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#7A6B5D] dark:text-[#A89A8D] font-mono">Available Questions</span>
                 <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                   {availableExtQuestions.length > 0 ? (
                     availableExtQuestions.map(q => {
@@ -1077,8 +1077,8 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                           key={q.id}
                           className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs transition ${
                             isChecked
-                              ? 'border-brand-500/60 bg-brand-50/40 dark:bg-brand-950/20'
-                              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/40 hover:border-slate-300'
+                              ? 'border-[#F59E0B]/60 bg-amber-500/10 dark:bg-amber-500/15'
+                              : 'border-[#E8DFD8] dark:border-[#3D2C22] bg-white dark:bg-[#201814] hover:border-[#D0C4B8]'
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1092,17 +1092,17 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                                   setSelectedExtQuestions(prev => prev.filter(sq => (sq.id || sq) !== q.id));
                                 }
                               }}
-                              className="rounded text-brand-600 focus:ring-brand-500 cursor-pointer"
+                              className="rounded text-[#F59E0B] focus:ring-[#F59E0B] cursor-pointer"
                             />
                             <div className="min-w-0">
-                              <span className="font-semibold text-slate-900 dark:text-white truncate block">{q.title}</span>
+                              <span className="font-semibold text-[#2E2017] dark:text-[#FDFBF7] truncate block">{q.title}</span>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className={`text-[10px] font-bold ${
                                   q.difficulty === 'Easy' ? 'text-emerald-600' :
                                   q.difficulty === 'Hard' ? 'text-rose-500' : 'text-amber-600'
-                                }}`}>{q.difficulty}</span>
-                                <span className="text-slate-400">•</span>
-                                <span className="text-[10px] font-mono text-slate-400">{q.type || 'coding'}</span>
+                                }`}>{q.difficulty}</span>
+                                <span className="text-[#A89A8D]">•</span>
+                                <span className="text-[10px] font-mono text-[#7A6B5D] dark:text-[#A89A8D]">{q.type || 'coding'}</span>
                               </div>
                             </div>
                           </div>
@@ -1111,7 +1111,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                               href={q.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-slate-400 hover:text-brand-500 flex items-center gap-1 shrink-0 text-[11px]"
+                              className="text-[#7A6B5D] hover:text-[#C27803] dark:hover:text-[#F59E0B] flex items-center gap-1 shrink-0 text-[11px]"
                             >
                               <span>Inspect</span>
                               <ExternalLink className="w-3 h-3" />
@@ -1121,7 +1121,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                       );
                     })
                   ) : (
-                    <div className="p-8 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400">
+                    <div className="p-8 rounded-xl border border-dashed border-[#E8DFD8] dark:border-[#3D2C22] text-center text-xs text-[#A89A8D]">
                       {isLoadingExt ? 'Searching catalog…' : 'No questions found for the selected filters.'}
                     </div>
                   )}
@@ -1130,9 +1130,9 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
 
               {/* Selected Questions Summary Banner */}
               {selectedExtQuestions.length > 0 && (
-                <div className="p-4 rounded-xl bg-brand-50/60 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 space-y-2">
+                <div className="p-4 rounded-xl bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/25 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-brand-900 dark:text-brand-300">
+                    <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
                       {selectedExtQuestions.length} {selectedPlatform.toUpperCase()} question(s) will be attached to this assessment.
                     </span>
                     <button
@@ -1143,7 +1143,7 @@ export default function AssessmentStudio({ defaultTab = 'assessment' }) {
                       Clear Selection
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-[#7A6B5D] dark:text-[#A89A8D]">
                     Click "Save & Publish" at the top to save this external configuration into the requisition blueprint.
                   </p>
                 </div>

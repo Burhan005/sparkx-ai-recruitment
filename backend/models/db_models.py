@@ -1176,7 +1176,7 @@ class AssistantAuditLogModel(Base):
     id = Column(String, primary_key=True, index=True)
     organization_id = Column(String, ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True, index=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
-    candidate_id = Column(String, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True)
+    candidate_id = Column(String, ForeignKey("candidates.id", ondelete="CASCADE"), nullable=True, index=True)
     job_id = Column(String, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
     query_preview = Column(String(255), nullable=False)
     request_id = Column(String, nullable=True, index=True)
@@ -1184,3 +1184,97 @@ class AssistantAuditLogModel(Base):
     validation_status = Column(String, default="VALIDATED", index=True)
     evidence_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ResumeDocumentModel(Base):
+    """
+    Authoritative persisted resume document for candidate AI Resume Studio.
+    Supports structured sections (contact, summary, experience, education, skills, projects, certifications),
+    target job tailoring, versioning chains, and candidate ownership.
+    """
+    __tablename__ = "resume_documents"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String, ForeignKey("organizations.id", ondelete="SET NULL"), default="org-sparkx-default", nullable=True, index=True)
+    title = Column(String, nullable=False, default="My Resume")
+    target_job_id = Column(String, ForeignKey("jobs.id", ondelete="SET NULL"), nullable=True, index=True)
+    target_job_title = Column(String, nullable=True)
+    is_base_resume = Column(Boolean, default=False)
+
+    # Structured resume sections
+    contact_info = Column(JSON, default=dict)
+    summary = Column(Text, nullable=True)
+    experience = Column(JSON, default=list)
+    education = Column(JSON, default=list)
+    skills = Column(JSON, default=list)
+    projects = Column(JSON, default=list)
+    certifications = Column(JSON, default=list)
+    languages = Column(JSON, default=list)
+    awards = Column(JSON, default=list)
+    volunteering = Column(JSON, default=list)
+
+    # Versioning & Audit
+    version = Column(Integer, default=1)
+    parent_resume_id = Column(String, ForeignKey("resume_documents.id", ondelete="SET NULL"), nullable=True)
+    change_summary = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("UserModel", foreign_keys=[user_id])
+    target_job = relationship("JobModel", foreign_keys=[target_job_id])
+    match_analyses = relationship("ResumeMatchAnalysisModel", back_populates="resume", cascade="all, delete-orphan")
+
+
+class ResumeMatchAnalysisModel(Base):
+    """
+    Authoritative persisted resume ↔ job description match analysis.
+    Stores deterministic skill matching, grounded evidence citations,
+    category alignment scores, actionable recommendations, and data quality warnings.
+    Supports candidate ownership, resume versioning, and reanalysis history.
+    """
+    __tablename__ = "resume_match_analyses"
+    __table_args__ = (
+        Index("ix_resume_match_user_job", "user_id", "job_id"),
+        Index("ix_resume_match_resume_job", "resume_id", "job_id"),
+    )
+
+    id = Column(String, primary_key=True, index=True) # e.g. "rma-1a2b3c"
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    resume_id = Column(String, ForeignKey("resume_documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    job_id = Column(String, ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False, index=True)
+    resume_version = Column(Integer, default=1, nullable=False)
+
+    # Core Match Scores
+    match_score = Column(Float, nullable=False, default=0.0) # 0.0 to 100.0
+    status = Column(String, nullable=False, default="moderate_match") # "strong_match" | "good_match" | "moderate_match" | "low_match" | "no_match"
+    summary_verdict = Column(Text, nullable=False)
+
+    # Category Alignment Breakdown
+    category_scores = Column(JSON, default=dict) # { domain_skills: X, experience: Y, responsibilities: Z, education: W }
+
+    # Detailed Skill Matching & Traceable Evidence
+    skill_breakdown = Column(JSON, default=dict) # { must_have: [...], preferred: [...], skills: [...] }
+
+    # Experience & Qualification Alignment
+    experience_alignment = Column(JSON, default=dict) # { required_years, candidate_years, status, explanation }
+    education_alignment = Column(JSON, default=dict) # { required_education, candidate_education, status, explanation }
+    role_alignment = Column(JSON, default=dict) # { overlap_score, explanation }
+
+    # Actionable Improvement Recommendations & Grounded Gaps
+    recommendations = Column(JSON, default=list) # List of specific, truthful improvement suggestions
+
+    # Analysis Limitations & Untrusted Input Disclaimers
+    limitations = Column(JSON, default=list) # Data quality disclaimers, missing evidence notices
+
+    # Metadata
+    is_live_llm = Column(Boolean, default=False)
+    provider = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("UserModel", foreign_keys=[user_id])
+    resume = relationship("ResumeDocumentModel", back_populates="match_analyses", foreign_keys=[resume_id])
+    job = relationship("JobModel", foreign_keys=[job_id])

@@ -3,12 +3,18 @@ import { createPortal } from 'react-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { formatJobCTC } from '../../utils/compensationFormatter';
 import { 
-  Sparkles, X, Plus, CheckCircle2, 
+  X, Plus, CheckCircle2, 
   BrainCircuit, Sliders, ArrowRight,
   Code2, DollarSign, Users, TrendingUp,
   Target, ShieldCheck, FileSpreadsheet, Check,
-  Save, IndianRupee
+  Save, IndianRupee, Palette, Wand2,
+  Sparkles, RefreshCw, Send, AlertTriangle,
+  FileText, Shield, Layers, Eye, Edit3,
+  HelpCircle, ChevronDown, ChevronRight, Info, CheckCircle
 } from 'lucide-react';
+import { AreteEmblem } from '../ui/AreteLogo';
+import FancyStudioDropdown from '../ui/FancyStudioDropdown';
+import { api } from '../../services/api';
 
 const TRACK_CONFIGS = {
   technical: {
@@ -226,7 +232,7 @@ const TRACK_CONFIGS = {
     label: 'Product & UX',
     shortLabel: 'Product & UX',
     department: 'Product & Design',
-    icon: Sparkles,
+    icon: Palette,
     isCoding: false,
     titlePlaceholder: 'e.g. Principal Product Manager & UX Lead',
     assessmentTitle: 'Product PRD & User Experience Simulation',
@@ -505,7 +511,7 @@ function detectTrackFromText(title = '', department = '') {
   return null;
 }
 
-export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
+export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null, onJobCreated = null }) {
   const { createJob, updateJob } = useRecruitment();
   const [roleTrack, setRoleTrack] = useState('technical');
   const [hasManuallySelectedTrack, setHasManuallySelectedTrack] = useState(false);
@@ -531,9 +537,30 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
     variablePayMax: '',
   });
 
+  // ─── Phase 4H: AI Job Description Builder State ───
+  const [showAiBuilder, setShowAiBuilder] = useState(false);
+  const [roleBrief, setRoleBrief] = useState('');
+  const [seniorityLevel, setSeniorityLevel] = useState('Mid-Level');
+  const [workArrangement, setWorkArrangement] = useState('Hybrid');
+  const [mustHaveSkillsList, setMustHaveSkillsList] = useState([]);
+  const [mustHaveSkillInput, setMustHaveSkillInput] = useState('');
+  const [preferredSkillsList, setPreferredSkillsList] = useState([]);
+  const [preferredSkillInput, setPreferredSkillInput] = useState('');
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [isAiRefining, setIsAiRefining] = useState(false);
+  const [aiDraft, setAiDraft] = useState(null);
+  const [aiError, setAiError] = useState(null);
+  const [activeDraftTab, setActiveDraftTab] = useState('preview'); // 'preview' | 'responsibilities' | 'qualifications' | 'skills' | 'audit'
+  const [customRefineInstruction, setCustomRefineInstruction] = useState('');
+  const [aiAppliedNotification, setAiAppliedNotification] = useState(false);
+
+  // Submissions & Status
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitIntent, setSubmitIntent] = useState('Active'); // 'Draft' | 'Active'
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedQuestions, setGeneratedQuestions] = useState([]);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const activeSubTrack = roleTrack === 'technical' ? getTechnicalSubTrack(formData.title, formData.requiredSkills) : null;
 
@@ -570,6 +597,11 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
         ? jobToEdit.languages 
         : (detected === 'technical' ? (TECHNICAL_SUBTRACKS[sub]?.defaultLanguages || ['Python', 'JavaScript', 'TypeScript']) : []);
 
+      const reqSkillsStr = Array.isArray(jobToEdit.requiredSkills) ? jobToEdit.requiredSkills.join(', ') : (jobToEdit.requiredSkills || '');
+      const skillsArray = Array.isArray(jobToEdit.requiredSkills)
+        ? jobToEdit.requiredSkills
+        : (jobToEdit.requiredSkills ? jobToEdit.requiredSkills.split(',').map(s => s.trim()).filter(Boolean) : []);
+
       setRoleTrack(detected);
       setHasManuallySelectedTrack(true);
       setFormData({
@@ -580,7 +612,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
         minExperienceYears: jobToEdit.minExperienceYears ?? jobToEdit.min_experience_years ?? 3,
         education: jobToEdit.education || '',
         description: jobToEdit.description || '',
-        requiredSkills: Array.isArray(jobToEdit.requiredSkills) ? jobToEdit.requiredSkills.join(', ') : (jobToEdit.requiredSkills || ''),
+        requiredSkills: reqSkillsStr,
         languages: initialLangs,
         codingDifficulty: jobToEdit.codingDifficulty || jobToEdit.coding_difficulty || 'Mid-Level',
         status: jobToEdit.status || 'Active',
@@ -593,6 +625,12 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
         variablePayMax: jobToEdit.variablePayMax ?? jobToEdit.variable_pay_max ?? '',
       });
       setGeneratedQuestions(jobToEdit.questions || []);
+      setMustHaveSkillsList(skillsArray);
+      setPreferredSkillsList([]);
+      setRoleBrief(jobToEdit.description ? jobToEdit.description.slice(0, 300) : '');
+      setAiDraft(null);
+      setAiError(null);
+      setShowAiBuilder(false);
     } else {
       setRoleTrack('technical');
       setHasManuallySelectedTrack(false);
@@ -617,6 +655,12 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
         variablePayMax: '',
       });
       setGeneratedQuestions([]);
+      setMustHaveSkillsList([]);
+      setPreferredSkillsList([]);
+      setRoleBrief('');
+      setAiDraft(null);
+      setAiError(null);
+      setShowAiBuilder(false);
     }
   }, [isOpen, jobToEdit]);
 
@@ -779,14 +823,163 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
     }, 700);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const addMustHaveSkill = (skill) => {
+    const s = (skill || mustHaveSkillInput).trim();
+    if (s && !mustHaveSkillsList.includes(s)) {
+      const updated = [...mustHaveSkillsList, s];
+      setMustHaveSkillsList(updated);
+      setMustHaveSkillInput('');
+      setFormData(prev => ({
+        ...prev,
+        requiredSkills: updated.join(', ')
+      }));
+    }
+  };
+
+  const removeMustHaveSkill = (skillToRemove) => {
+    const updated = mustHaveSkillsList.filter(s => s !== skillToRemove);
+    setMustHaveSkillsList(updated);
+    setFormData(prev => ({
+      ...prev,
+      requiredSkills: updated.join(', ')
+    }));
+  };
+
+  const addPreferredSkill = (skill) => {
+    const s = (skill || preferredSkillInput).trim();
+    if (s && !preferredSkillsList.includes(s)) {
+      setPreferredSkillsList([...preferredSkillsList, s]);
+      setPreferredSkillInput('');
+    }
+  };
+
+  const removePreferredSkill = (skillToRemove) => {
+    setPreferredSkillsList(preferredSkillsList.filter(s => s !== skillToRemove));
+  };
+
+  const handleGenerateJobDescription = async () => {
+    if (!formData.title?.trim()) {
+      setAiError('Please enter a Job Title before generating the description.');
+      return;
+    }
+
+    setIsAiGenerating(true);
+    setAiError(null);
+
+    // Combine must-have skills from list and string input
+    const mustHaves = [...mustHaveSkillsList];
+    if (formData.requiredSkills?.trim()) {
+      formData.requiredSkills.split(',').map(s => s.trim()).filter(Boolean).forEach(s => {
+        if (!mustHaves.includes(s)) mustHaves.push(s);
+      });
+    }
+
+    try {
+      const payload = {
+        title: formData.title,
+        department: formData.department,
+        location: formData.location,
+        seniority_level: seniorityLevel,
+        experience_years: Number(formData.minExperienceYears) || 3,
+        work_arrangement: workArrangement,
+        role_brief: roleBrief?.trim() || undefined,
+        qualifications: formData.education?.trim() || undefined,
+        must_have_skills: mustHaves,
+        preferred_skills: preferredSkillsList,
+        assessment_expectations: currentTrack.assessmentTitle || undefined,
+      };
+
+      const result = await api.generateJobDescription(payload);
+      if (result) {
+        setAiDraft(result);
+        if (result.full_description) {
+          setFormData(prev => ({
+            ...prev,
+            description: result.full_description,
+          }));
+        }
+        if (result.must_have_skills?.length || result.preferred_skills?.length) {
+          const combined = [...(result.must_have_skills || []), ...(result.preferred_skills || [])];
+          setFormData(prev => ({
+            ...prev,
+            requiredSkills: combined.join(', '),
+          }));
+          setMustHaveSkillsList(result.must_have_skills || []);
+          setPreferredSkillsList(result.preferred_skills || []);
+        }
+        setActiveDraftTab('preview');
+        setAiAppliedNotification(true);
+        setTimeout(() => setAiAppliedNotification(false), 3000);
+      }
+    } catch (err) {
+      console.error('[AI Job Description Builder] Generation failed:', err);
+      setAiError(err.message || 'Failed to synthesize job description draft. Please try again.');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const handleRefineJobDescription = async (mode, customInstruction = '') => {
+    const currentText = formData.description || aiDraft?.full_description;
+    if (!currentText?.trim()) {
+      setAiError('No job description found to refine. Please generate or enter a description first.');
+      return;
+    }
+
+    setIsAiRefining(true);
+    setAiError(null);
+
+    try {
+      const payload = {
+        current_description: currentText,
+        title: formData.title || 'Position',
+        department: formData.department || 'Department',
+        refinement_mode: mode,
+        custom_instruction: customInstruction?.trim() || undefined,
+        must_have_skills: mustHaveSkillsList.length ? mustHaveSkillsList : undefined,
+        preferred_skills: preferredSkillsList.length ? preferredSkillsList : undefined,
+      };
+
+      const result = await api.refineJobDescription(payload);
+      if (result) {
+        setAiDraft(result);
+        if (result.full_description) {
+          setFormData(prev => ({
+            ...prev,
+            description: result.full_description,
+          }));
+        }
+        if (result.must_have_skills?.length || result.preferred_skills?.length) {
+          const combined = [...(result.must_have_skills || []), ...(result.preferred_skills || [])];
+          setFormData(prev => ({
+            ...prev,
+            requiredSkills: combined.join(', '),
+          }));
+        }
+        setActiveDraftTab('preview');
+        setCustomRefineInstruction('');
+        setAiAppliedNotification(true);
+        setTimeout(() => setAiAppliedNotification(false), 3000);
+      }
+    } catch (err) {
+      console.error('[AI Job Description Builder] Refinement failed:', err);
+      setAiError(err.message || 'Failed to refine job description. Please try again.');
+    } finally {
+      setIsAiRefining(false);
+    }
+  };
+
+  const handleSubmit = async (e, forcedStatus = null) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const targetStatus = forcedStatus || formData.status || 'Active';
+    setSubmitIntent(targetStatus);
+
     const skillsArray = formData.requiredSkills.split(',').map(s => s.trim()).filter(Boolean);
-    if (skillsArray.length === 0) {
+    if (skillsArray.length === 0 && mustHaveSkillsList.length === 0) {
       alert("Please specify at least one required skill for this position.");
       return;
     }
-    const effectiveSkills = skillsArray;
+    const effectiveSkills = skillsArray.length > 0 ? skillsArray : mustHaveSkillsList;
     const isCoding = currentTrack.isCoding;
 
     const parseNum = (v) => (v !== '' && v !== null && v !== undefined && !isNaN(Number(v))) ? Number(v) : null;
@@ -808,67 +1001,116 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
       variable_pay_max: parseNum(formData.variablePayMax),
     };
 
-    if (jobToEdit) {
-      const updatePayload = {
-        title: formData.title,
-        department: formData.department,
-        location: formData.location,
-        minExperienceYears: Number(formData.minExperienceYears),
-        education: formData.education,
-        description: formData.description,
-        requiredSkills: effectiveSkills,
-        languages: isCoding ? (formData.languages || ['Python', 'JavaScript']) : [],
-        codingDifficulty: isCoding ? formData.codingDifficulty : null,
-        ...compensationFields,
-      };
-      await updateJob(jobToEdit.id, updatePayload);
-    } else {
-      const newJob = {
-        id: `job-${Date.now()}`,
-        title: formData.title,
-        department: formData.department,
-        location: formData.location,
-        experience: `${formData.minExperienceYears}+ years`,
-        minExperienceYears: Number(formData.minExperienceYears),
-        education: formData.education,
-        description: formData.description || `We are looking for an exceptional ${formData.title} to join our high-impact team.`,
-        requiredSkills: effectiveSkills,
-        languages: isCoding ? (formData.languages || ['Python', 'JavaScript']) : [],
-        codingDifficulty: isCoding ? formData.codingDifficulty : null,
-        coding_difficulty: isCoding ? formData.codingDifficulty : null,
-        is_coding: isCoding,
-        ...compensationFields,
-        codingAssessment: isCoding ? {
-          title: `${formData.title} Practical Task`,
-          language: (formData.languages?.[0] || 'JavaScript').toLowerCase(),
-          is_coding: true,
-          instructions: "Implement the core handler and system logic.",
-          initialCode: "function handler(data) {\n  return data;\n}"
-        } : {
-          title: currentTrack.assessmentTitle,
-          is_coding: false,
-          domain_category: roleTrack,
-          deliverable_type: currentTrack.deliverableType,
-          rubrics: currentTrack.rubrics,
-          instructions: `Review the operational scenario and provide an executive deliverable for ${formData.title}.`,
-          initialCode: "Provide executive summary, core analysis, and action recommendations."
-        },
-        questions: generatedQuestions.length > 0 ? generatedQuestions : currentTrack.generateQuestions(
-          effectiveSkills[0] || 'Core Domain Competence',
-          effectiveSkills[1] || 'Specialized Execution',
-          formData.minExperienceYears || 3
-        ),
-        status: 'Active'
-      };
+    setIsSubmitting(true);
+    let savedJob = null;
 
-      await createJob(newJob);
+    try {
+      if (jobToEdit) {
+        const updatePayload = {
+          title: formData.title,
+          department: formData.department,
+          location: formData.location,
+          minExperienceYears: Number(formData.minExperienceYears),
+          education: formData.education,
+          description: formData.description,
+          requiredSkills: effectiveSkills,
+          languages: isCoding ? (formData.languages || ['Python', 'JavaScript']) : [],
+          codingDifficulty: isCoding ? formData.codingDifficulty : null,
+          status: targetStatus,
+          ...compensationFields,
+        };
+        savedJob = await updateJob(jobToEdit.id, updatePayload);
+      } else {
+        const newJob = {
+          id: `job-${Date.now()}`,
+          title: formData.title,
+          department: formData.department,
+          location: formData.location,
+          experience: `${formData.minExperienceYears}+ years`,
+          minExperienceYears: Number(formData.minExperienceYears),
+          education: formData.education,
+          description: formData.description || `We are looking for an exceptional ${formData.title} to join our high-impact team.`,
+          requiredSkills: effectiveSkills,
+          languages: isCoding ? (formData.languages || ['Python', 'JavaScript']) : [],
+          codingDifficulty: isCoding ? formData.codingDifficulty : null,
+          coding_difficulty: isCoding ? formData.codingDifficulty : null,
+          is_coding: isCoding,
+          status: targetStatus,
+          ...compensationFields,
+          codingAssessment: isCoding ? {
+            title: `${formData.title} Practical Task`,
+            language: (formData.languages?.[0] || 'JavaScript').toLowerCase(),
+            is_coding: true,
+            instructions: "Implement the core handler and system logic.",
+            initialCode: "function handler(data) {\n  return data;\n}"
+          } : {
+            title: currentTrack.assessmentTitle,
+            is_coding: false,
+            domain_category: roleTrack,
+            deliverable_type: currentTrack.deliverableType,
+            rubrics: currentTrack.rubrics,
+            instructions: `Review the operational scenario and provide an executive deliverable for ${formData.title}.`,
+            initialCode: "Provide executive summary, core analysis, and action recommendations."
+          },
+          questions: generatedQuestions.length > 0 ? generatedQuestions : currentTrack.generateQuestions(
+            effectiveSkills[0] || 'Core Domain Competence',
+            effectiveSkills[1] || 'Specialized Execution',
+            formData.minExperienceYears || 3
+          ),
+        };
+
+        savedJob = await createJob(newJob);
+      }
+
+      // Relational Skill Taxonomy Synchronization via API
+      const targetJobId = savedJob?.id || jobToEdit?.id;
+      if (targetJobId) {
+        try {
+          let skillsToSync = [];
+          if (aiDraft?.skill_mappings?.length) {
+            skillsToSync = aiDraft.skill_mappings.map(m => ({
+              skill_name: m.canonical_name || m.raw_name,
+              requirement_type: m.requirement_type || 'must_have',
+              weight: m.weight || 1.0,
+            }));
+          } else {
+            skillsToSync = [
+              ...mustHaveSkillsList.map(s => ({ skill_name: s, requirement_type: 'must_have', weight: 1.0 })),
+              ...preferredSkillsList.map(s => ({ skill_name: s, requirement_type: 'preferred', weight: 0.5 })),
+            ];
+            if (skillsToSync.length === 0) {
+              skillsToSync = effectiveSkills.map(s => ({ skill_name: s, requirement_type: 'must_have', weight: 1.0 }));
+            }
+          }
+
+          if (skillsToSync.length > 0) {
+            await api.syncJobSkills(targetJobId, { skills: skillsToSync });
+          }
+        } catch (syncErr) {
+          console.warn('[JobCreatorModal] Skill sync warning:', syncErr.message);
+        }
+      }
+
+      if (onJobCreated && savedJob) {
+        onJobCreated(savedJob);
+      }
+
+      setSuccessMessage(
+        targetStatus === 'Draft'
+          ? (jobToEdit ? 'Requisition draft updated!' : 'Requisition saved as Draft (hidden from candidates)!')
+          : (jobToEdit ? 'Requisition updated & published!' : 'Requisition published to active pipeline!')
+      );
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsSuccess(false);
+        onClose();
+      }, 700);
+    } catch (err) {
+      console.error('[JobCreatorModal] Submit failed:', err);
+      alert(`Failed to save requisition: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsSuccess(false);
-      onClose();
-    }, 600);
   };
 
   return createPortal(
@@ -880,16 +1122,16 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
         aria-hidden="true"
       />
       {/* Modal dialog with spring physics and elevated depth */}
-      <div className="relative w-full max-w-3xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-depth-elevated p-5 sm:p-7 text-stone-900 dark:text-stone-100 my-auto max-h-[92vh] overflow-y-auto animate-modal-spring z-10">
+      <div className="relative w-full max-w-3xl bg-[#FDFBF7] dark:bg-[#1A120E] border border-[#E8DFD8] dark:border-[#33241C] rounded-2xl shadow-depth-elevated p-5 sm:p-7 text-stone-900 dark:text-stone-100 my-auto max-h-[92vh] overflow-y-auto animate-modal-spring z-10">
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-stone-200 dark:border-[#2A2520]">
+        <div className="flex items-center justify-between pb-4 border-b border-[#EFE9E2] dark:border-[#2D2018]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800 flex items-center justify-center text-brand-700 dark:text-brand-300 shadow-subtle">
-              {jobToEdit ? <Save className="w-5 h-5 text-brand-700 dark:text-brand-300" /> : <Sparkles className="w-5 h-5 text-brand-700 dark:text-brand-300" />}
+            <div className="w-10 h-10 rounded-xl bg-[#FAF8F5] dark:bg-[#201814] border border-amber-500/40 dark:border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-300 shadow-2xs">
+              {jobToEdit ? <Save className="w-5 h-5 text-amber-700 dark:text-amber-300" /> : <AreteEmblem size={24} />}
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100">
+              <h2 className="text-base sm:text-lg font-bold font-sans text-stone-900 dark:text-stone-100 tracking-tight">
                 {jobToEdit ? `Edit Job Requirement: ${jobToEdit.title}` : 'Create New Job Requirement'}
               </h2>
               <p className="text-xs text-stone-500 dark:text-stone-400">
@@ -900,14 +1142,14 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
           <button 
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#231F1B] transition"
+            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Role Track Selector */}
-        <div className="mt-5 p-3 sm:p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
+        <div className="mt-5 p-3.5 sm:p-4 rounded-xl bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#33241C]">
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center space-x-2">
               <span className="text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 font-mono">
@@ -915,7 +1157,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
               </span>
               <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase ${
                 currentTrack.isCoding 
-                  ? 'bg-brand-100 dark:bg-brand-950/80 text-brand-800 dark:text-brand-300 border border-brand-200 dark:border-brand-800'
+                  ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/70 dark:border-amber-800'
                   : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
               }`}>
                 {currentTrack.isCoding ? 'Coding Challenges' : 'Executive Simulation (Non-Coding)'}
@@ -936,13 +1178,13 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   type="button"
                   onClick={() => handleSelectTrack(key)}
                   title={cfg.label}
-                  className={`px-3 py-2 rounded-lg text-xs font-semibold transition border flex items-center space-x-2 ${
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold transition border flex items-center space-x-2 cursor-pointer ${
                     isSelected
-                      ? 'bg-brand-600 text-white border-brand-600 shadow-subtle ring-2 ring-brand-500/30'
-                      : 'bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-700 dark:text-stone-300 border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400 dark:hover:border-brand-600 hover:bg-stone-100 dark:hover:bg-[#231F1B]'
+                      ? 'bg-amber-100/90 dark:bg-[#2C1F18] text-amber-950 dark:text-[#F3ECE6] border-amber-600/70 dark:border-amber-500/30 shadow-xs font-bold'
+                      : 'bg-[#FDFBF7] dark:bg-[#201814] text-stone-700 dark:text-stone-300 border-[#E8DFD8] dark:border-[#3D2C22] hover:border-amber-400 dark:hover:border-amber-600 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17]'
                   }`}
                 >
-                  <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-white' : 'text-brand-500 dark:text-brand-400'}`} />
+                  <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#C27803] dark:text-amber-400' : 'text-amber-600 dark:text-amber-400'}`} />
                   <span className="truncate">{cfg.shortLabel || cfg.label}</span>
                 </button>
               );
@@ -960,7 +1202,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 value={formData.title}
                 onChange={e => handleTitleChange(e.target.value)}
                 placeholder={currentTrack.titlePlaceholder || "e.g. Senior Backend Engineer"}
-                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
+                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 transition-colors"
                 required
               />
             </div>
@@ -970,7 +1212,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 type="text"
                 value={formData.department}
                 onChange={e => setFormData({ ...formData, department: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
+                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 transition-colors"
                 required
               />
             </div>
@@ -985,7 +1227,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 max="25"
                 value={formData.minExperienceYears}
                 onChange={e => setFormData({ ...formData, minExperienceYears: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
+                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 transition-colors"
                 required
               />
             </div>
@@ -995,7 +1237,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 type="text"
                 value={formData.location}
                 onChange={e => setFormData({ ...formData, location: e.target.value })}
-                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
+                className="w-full px-3.5 py-2 text-xs sm:text-sm bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 transition-colors"
                 required
               />
             </div>
@@ -1007,14 +1249,14 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
               type="text"
               value={formData.requiredSkills}
               onChange={e => setFormData({ ...formData, requiredSkills: e.target.value })}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 transition-colors"
               placeholder={currentTrack.skillsPlaceholder}
               required
             />
           </div>
 
           {/* COMPENSATION & AUTHORITATIVE CTC BUDGET SPECIFICATION */}
-          <div className="p-4 sm:p-5 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] space-y-4">
+          <div className="p-4 sm:p-5 rounded-xl bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#33241C] space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -1033,27 +1275,33 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 </div>
               </div>
 
-              {/* Currency & Period Pickers */}
+              {/* Currency & Period Pickers (Fancy Studio Dropdowns — Zero native select tags) */}
               <div className="flex items-center space-x-2 self-start sm:self-auto">
-                <select
-                  value={formData.ctcCurrency}
-                  onChange={e => setFormData({ ...formData, ctcCurrency: e.target.value })}
-                  className="px-2.5 py-1.5 text-xs font-semibold bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:border-brand-500 shadow-subtle"
-                >
-                  <option value="INR">INR (₹)</option>
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                </select>
+                <div className="w-28 sm:w-32">
+                  <FancyStudioDropdown
+                    value={formData.ctcCurrency}
+                    onChange={newVal => setFormData(prev => ({ ...prev, ctcCurrency: newVal }))}
+                    options={[
+                      { value: 'INR', label: 'INR (₹)', badge: '₹' },
+                      { value: 'USD', label: 'USD ($)', badge: '$' },
+                      { value: 'EUR', label: 'EUR (€)', badge: '€' },
+                      { value: 'GBP', label: 'GBP (£)', badge: '£' }
+                    ]}
+                    menuWidth="w-36"
+                  />
+                </div>
 
-                <select
-                  value={formData.ctcPeriod}
-                  onChange={e => setFormData({ ...formData, ctcPeriod: e.target.value })}
-                  className="px-2.5 py-1.5 text-xs font-semibold bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-800 dark:text-stone-200 focus:outline-none focus:border-brand-500 shadow-subtle"
-                >
-                  <option value="per_annum">{formData.ctcCurrency === 'INR' ? 'Per Annum (LPA)' : 'Per Annum (Annual)'}</option>
-                  <option value="per_month">Per Month</option>
-                </select>
+                <div className="w-36 sm:w-44">
+                  <FancyStudioDropdown
+                    value={formData.ctcPeriod}
+                    onChange={newVal => setFormData(prev => ({ ...prev, ctcPeriod: newVal }))}
+                    options={[
+                      { value: 'per_annum', label: formData.ctcCurrency === 'INR' ? 'Per Annum (LPA)' : 'Per Annum (Annual)' },
+                      { value: 'per_month', label: 'Per Month' }
+                    ]}
+                    menuWidth="w-48"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1069,10 +1317,10 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   key={tab.id}
                   type="button"
                   onClick={() => setFormData({ ...formData, ctcType: tab.id })}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition border cursor-pointer ${
                     formData.ctcType === tab.id
-                      ? 'bg-brand-600 text-white border-brand-600 shadow-subtle'
-                      : 'bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-600 dark:text-stone-300 border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400'
+                      ? 'bg-amber-100/90 dark:bg-[#2C1F18] text-amber-950 dark:text-[#F3ECE6] border-amber-600/70 dark:border-amber-500/30 shadow-xs font-bold'
+                      : 'bg-[#FDFBF7] dark:bg-[#201814] text-stone-600 dark:text-stone-300 border-[#E8DFD8] dark:border-[#3D2C22] hover:border-amber-400'
                   }`}
                 >
                   {tab.label}
@@ -1098,7 +1346,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       value={formData.ctcMin}
                       onChange={e => setFormData({ ...formData, ctcMin: e.target.value })}
                       placeholder="e.g. 8.0"
-                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
+                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500 shadow-2xs"
                       required
                     />
                   </div>
@@ -1118,7 +1366,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       value={formData.ctcMax}
                       onChange={e => setFormData({ ...formData, ctcMax: e.target.value })}
                       placeholder="e.g. 12.0"
-                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
+                      className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500 shadow-2xs"
                       required
                     />
                   </div>
@@ -1142,7 +1390,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                     value={formData.ctcMin}
                     onChange={e => setFormData({ ...formData, ctcMin: e.target.value, ctcMax: e.target.value })}
                     placeholder="e.g. 10.0"
-                    className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
+                    className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500 shadow-2xs"
                     required
                   />
                 </div>
@@ -1165,7 +1413,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                     value={formData.ctcMin}
                     onChange={e => setFormData({ ...formData, ctcMin: e.target.value, ctcMax: '' })}
                     placeholder="e.g. 8.0"
-                    className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
+                    className="w-full pl-7 pr-3 py-1.5 text-xs bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500 shadow-2xs"
                     required
                   />
                 </div>
@@ -1179,7 +1427,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
             )}
 
             {/* Variable Pay (Performance bonus) */}
-            <div className="pt-3 border-t border-stone-200 dark:border-[#2A2520]">
+            <div className="pt-3 border-t border-[#EFE9E2] dark:border-[#2D2018]">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[11px] font-semibold text-stone-700 dark:text-stone-300">
                   Optional Variable Pay / Performance Bonus
@@ -1194,7 +1442,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   value={formData.variablePayMin}
                   onChange={e => setFormData({ ...formData, variablePayMin: e.target.value })}
                   placeholder={`Min Variable ${formData.ctcCurrency === 'INR' ? '(e.g. 1.0 LPA)' : ''}`}
-                  className="w-full px-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
+                  className="w-full px-3 py-1.5 text-xs bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500 shadow-2xs"
                 />
                 <input
                   type="number"
@@ -1203,13 +1451,13 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   value={formData.variablePayMax}
                   onChange={e => setFormData({ ...formData, variablePayMax: e.target.value })}
                   placeholder={`Max Variable ${formData.ctcCurrency === 'INR' ? '(e.g. 2.0 LPA)' : ''}`}
-                  className="w-full px-3 py-1.5 text-xs bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-brand-500 shadow-subtle"
+                  className="w-full px-3 py-1.5 text-xs bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500 shadow-2xs"
                 />
               </div>
             </div>
 
             {/* Live Candidate Discovery Badge Preview */}
-            <div className="pt-2 border-t border-stone-200 dark:border-[#2A2520] flex items-center justify-between text-xs">
+            <div className="pt-2 border-t border-[#EFE9E2] dark:border-[#2D2018] flex items-center justify-between text-xs">
               <span className="text-stone-500 dark:text-stone-400 font-medium">Candidate Discovery Badge Preview:</span>
               <div className="inline-flex items-center px-3 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 font-bold font-mono">
                 {candidatePreviewText}
@@ -1220,14 +1468,14 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
           {/* DYNAMIC ASSESSMENT SECTION: CONDITIONAL CODING VS NON-CODING */}
           {currentTrack.isCoding ? (
             /* TECHNICAL TRACK: Coding languages & challenge difficulty */
-            <div className="p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] space-y-3">
+            <div className="p-4 rounded-xl bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#33241C] space-y-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
                     {currentTrack.supportedLanguagesTitle || 'Supported Programming Languages for Coding Assessment *'}
                   </label>
                   {activeSubTrack && activeSubTrack !== 'backend' && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-semibold border border-brand-200 dark:border-brand-800/50">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-800/50">
                       {currentTrack.label}
                     </span>
                   )}
@@ -1243,10 +1491,10 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                         key={lang}
                         type="button"
                         onClick={() => toggleLanguage(lang)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border flex items-center space-x-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition border flex items-center space-x-1.5 cursor-pointer ${
                           isChecked
-                            ? 'bg-brand-600 text-white border-brand-600 shadow-subtle'
-                            : 'bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-600 dark:text-stone-300 border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400'
+                            ? 'bg-brand-600 text-white border-brand-600 shadow-2xs'
+                            : 'bg-[#FDFBF7] dark:bg-[#201814] text-stone-600 dark:text-stone-300 border-[#E8DFD8] dark:border-[#3D2C22] hover:border-amber-400'
                         }`}
                       >
                         <span>{isChecked ? '✓' : '+'}</span>
@@ -1257,7 +1505,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-stone-200 dark:border-[#2A2520] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="pt-2 border-t border-[#EFE9E2] dark:border-[#2D2018] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
                   {activeSubTrack === 'network' ? 'Network Diagnostics & Scenario Difficulty:' : activeSubTrack === 'devops' ? 'Hands-on Scenario Difficulty:' : 'Coding Assessment Difficulty:'}
                 </label>
@@ -1267,10 +1515,10 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       key={lvl}
                       type="button"
                       onClick={() => setFormData({ ...formData, codingDifficulty: lvl })}
-                      className={`px-3 py-1 rounded-md text-xs font-bold transition border ${
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition border cursor-pointer ${
                         formData.codingDifficulty === lvl
-                          ? 'bg-brand-50 dark:bg-brand-950/70 border-brand-500 text-brand-700 dark:text-brand-300'
-                          : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E8E4DF] dark:border-[#2A2520] text-stone-500 hover:border-stone-400'
+                          ? 'bg-amber-50 dark:bg-amber-950/70 border-amber-500 text-amber-800 dark:text-amber-300'
+                          : 'bg-[#FDFBF7] dark:bg-[#201814] border-[#E8DFD8] dark:border-[#3D2C22] text-stone-500 hover:border-stone-400'
                       }`}
                     >
                       {lvl}
@@ -1308,7 +1556,7 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                   {currentTrack.rubrics.map((r, i) => (
                     <span 
                       key={i}
-                      className="px-2.5 py-0.5 rounded-md text-[10px] font-medium bg-[#FDFCFA] dark:bg-[#1A1714] border border-emerald-200 dark:border-emerald-800/50 text-stone-700 dark:text-stone-300 flex items-center space-x-1"
+                      className="px-2.5 py-0.5 rounded-md text-[10px] font-medium bg-[#FDFBF7] dark:bg-[#1A120E] border border-emerald-200 dark:border-emerald-800/50 text-stone-700 dark:text-stone-300 flex items-center space-x-1"
                     >
                       <Check className="w-3 h-3 text-emerald-500" />
                       <span>{r}</span>
@@ -1328,10 +1576,10 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
                       key={lvl}
                       type="button"
                       onClick={() => setFormData({ ...formData, codingDifficulty: lvl })}
-                      className={`px-3 py-1 rounded-md text-xs font-bold transition border ${
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition border cursor-pointer ${
                         formData.codingDifficulty === lvl
                           ? 'bg-emerald-100 dark:bg-emerald-900/50 border-emerald-500 text-emerald-800 dark:text-emerald-300'
-                          : 'bg-[#FDFCFA] dark:bg-[#1A1714] border-[#E8E4DF] dark:border-[#2A2520] text-stone-500 hover:border-emerald-400'
+                          : 'bg-[#FDFBF7] dark:bg-[#201814] border-[#E8DFD8] dark:border-[#3D2C22] text-stone-500 hover:border-emerald-400'
                       }`}
                     >
                       {lvl}
@@ -1349,27 +1597,532 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
               value={formData.education}
               onChange={e => setFormData({ ...formData, education: e.target.value })}
               placeholder={currentTrack.educationPlaceholder}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 transition-colors"
               required
             />
           </div>
 
+          {/* ═══════════════════════════════════════════════════════════════════════
+              PHASE 4H: AI JOB DESCRIPTION BUILDER STUDIO
+          ═══════════════════════════════════════════════════════════════════════ */}
+          <div className="rounded-2xl border border-amber-500/30 dark:border-amber-500/25 bg-[#FAF8F5] dark:bg-[#160F0C] overflow-hidden shadow-depth-card">
+            {/* Studio Header Bar */}
+            <div className="p-4 sm:p-4.5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border-b border-[#E8DFD8] dark:border-[#2D2018] flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-amber-400 shadow-2xs">
+                  <Sparkles className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+                      AI Job Description Builder Studio
+                    </h3>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                      Phase 4H
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    Database-grounded requisition synthesis with canonical skill taxonomy mapping & contextual refinement
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAiBuilder(!showAiBuilder)}
+                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-stone-700 dark:text-stone-300 hover:border-amber-500/50 transition flex items-center space-x-1.5 cursor-pointer shadow-2xs"
+              >
+                <span>{showAiBuilder ? 'Hide Studio' : 'Open AI Studio'}</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAiBuilder ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+
+            {/* Studio Body */}
+            {showAiBuilder && (
+              <div className="p-4 sm:p-5 space-y-4">
+                {/* Role Brief Input */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-stone-800 dark:text-stone-200">
+                      Role Brief & Strategic Intent
+                    </label>
+                    <span className="text-[11px] text-stone-400">
+                      Fenced prompt input — zero untrusted injection
+                    </span>
+                  </div>
+                  <textarea
+                    rows="3"
+                    value={roleBrief}
+                    onChange={e => setRoleBrief(e.target.value)}
+                    placeholder="e.g. Lead the architecture of low-latency payment microservices, mentor 4 engineers, establish robust data contracts, and collaborate with security auditors."
+                    className="w-full px-3.5 py-2.5 text-xs bg-[#FDFBF7] dark:bg-[#1E1510] border border-[#E8DFD8] dark:border-[#33241C] rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition leading-relaxed shadow-inner"
+                  />
+                </div>
+
+                {/* Seniority & Work Arrangement Pickers */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">
+                      Seniority Level
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Junior', 'Mid-Level', 'Senior', 'Staff / Lead', 'Principal / Architect'].map(lvl => (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => setSeniorityLevel(lvl)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition border cursor-pointer ${
+                            seniorityLevel === lvl
+                              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-500/60 font-bold shadow-2xs'
+                              : 'bg-[#FDFBF7] dark:bg-[#201814] text-stone-600 dark:text-stone-400 border-[#E8DFD8] dark:border-[#33241C] hover:border-amber-400'
+                          }`}
+                        >
+                          {lvl}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">
+                      Work Arrangement
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {['Hybrid', 'Remote', 'On-site'].map(arr => (
+                        <button
+                          key={arr}
+                          type="button"
+                          onClick={() => setWorkArrangement(arr)}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition border cursor-pointer ${
+                            workArrangement === arr
+                              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 border-amber-500/60 font-bold shadow-2xs'
+                              : 'bg-[#FDFBF7] dark:bg-[#201814] text-stone-600 dark:text-stone-400 border-[#E8DFD8] dark:border-[#33241C] hover:border-amber-400'
+                          }`}
+                        >
+                          {arr}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Must-Have vs Preferred Skills Tag Managers */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Must-Have Skills */}
+                  <div className="p-3 rounded-xl bg-[#FDFBF7] dark:bg-[#1E1510] border border-[#E8DFD8] dark:border-[#33241C] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center space-x-1">
+                        <span>Must-Have Skills (Non-Negotiable)</span>
+                      </label>
+                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-mono font-bold">
+                        {mustHaveSkillsList.length} items
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <input
+                        type="text"
+                        value={mustHaveSkillInput}
+                        onChange={e => setMustHaveSkillInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addMustHaveSkill();
+                          }
+                        }}
+                        placeholder="Add skill (e.g. FastAPI, Docker)..."
+                        className="flex-1 px-2.5 py-1 text-xs bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => addMustHaveSkill()}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 transition cursor-pointer"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 min-h-6">
+                      {mustHaveSkillsList.map(s => (
+                        <span
+                          key={s}
+                          className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 flex items-center space-x-1"
+                        >
+                          <span>{s}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeMustHaveSkill(s)}
+                            className="text-amber-600 hover:text-amber-900 dark:hover:text-amber-100 cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {mustHaveSkillsList.length === 0 && (
+                        <span className="text-[11px] text-stone-400 italic">No must-have skills added yet.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preferred Skills */}
+                  <div className="p-3 rounded-xl bg-[#FDFBF7] dark:bg-[#1E1510] border border-[#E8DFD8] dark:border-[#33241C] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-stone-800 dark:text-stone-200">
+                        Preferred Skills (High-Value Plus)
+                      </label>
+                      <span className="text-[10px] text-stone-500 dark:text-stone-400 font-mono font-bold">
+                        {preferredSkillsList.length} items
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <input
+                        type="text"
+                        value={preferredSkillInput}
+                        onChange={e => setPreferredSkillInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addPreferredSkill();
+                          }
+                        }}
+                        placeholder="Add skill (e.g. Kubernetes, Redis)..."
+                        className="flex-1 px-2.5 py-1 text-xs bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => addPreferredSkill()}
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-stone-200 dark:bg-stone-800 hover:bg-stone-300 text-stone-700 dark:text-stone-300 transition cursor-pointer"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 min-h-6">
+                      {preferredSkillsList.map(s => (
+                        <span
+                          key={s}
+                          className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-stone-100 dark:bg-[#251A14] border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 flex items-center space-x-1"
+                        >
+                          <span>{s}</span>
+                          <button
+                            type="button"
+                            onClick={() => removePreferredSkill(s)}
+                            className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                      {preferredSkillsList.length === 0 && (
+                        <span className="text-[11px] text-stone-400 italic">No preferred skills added yet.</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Error Alert */}
+                {aiError && (
+                  <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 flex items-start space-x-2 text-xs text-red-800 dark:text-red-300">
+                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                    <span className="flex-1">{aiError}</span>
+                  </div>
+                )}
+
+                {/* Synthesis Trigger Button */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center space-x-2 text-xs text-stone-500 dark:text-stone-400">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>Resolves canonical skills against database taxonomy & generates structured requisition.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateJobDescription}
+                    disabled={isAiGenerating}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-bold transition flex items-center justify-center space-x-2 shadow-depth-button cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {isAiGenerating ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                        <span>Synthesizing Grounded Draft...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 text-amber-200" />
+                        <span>✨ Synthesize Description with AI</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* ─── Structured Draft Review Surface (When aiDraft exists) ─── */}
+                {aiDraft && (
+                  <div className="mt-4 p-4 rounded-xl bg-[#FDFBF7] dark:bg-[#1A120E] border border-amber-500/30 dark:border-amber-500/20 space-y-4">
+                    {/* Refinement Actions Bar */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-stone-800 dark:text-stone-200 flex items-center space-x-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          <span>Contextual Refinement Tools</span>
+                        </label>
+                        {isAiRefining && (
+                          <span className="text-[11px] text-amber-600 dark:text-amber-400 font-bold flex items-center space-x-1">
+                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <span>Refining draft...</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Quick Refinement Chips */}
+                      <div className="flex flex-wrap gap-1.5 mb-2.5">
+                        {[
+                          { mode: 'improve_clarity', label: 'Improve Clarity' },
+                          { mode: 'make_actionable', label: 'Make Actionable' },
+                          { mode: 'separate_qualifications', label: 'Separate Qualifications' },
+                          { mode: 'inclusive_wording', label: 'Inclusive Language' },
+                          { mode: 'reduce_restrictive_filters', label: 'Reduce Restrictive Filters' },
+                          { mode: 'detect_contradictions', label: 'Detect Contradictions' },
+                          { mode: 'improve_structure', label: 'Improve Structure' },
+                        ].map(rf => (
+                          <button
+                            key={rf.mode}
+                            type="button"
+                            onClick={() => handleRefineJobDescription(rf.mode)}
+                            disabled={isAiRefining || isAiGenerating}
+                            className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-stone-700 dark:text-stone-300 hover:border-amber-500 hover:text-amber-800 dark:hover:text-amber-300 transition cursor-pointer disabled:opacity-50"
+                          >
+                            {rf.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Custom Prompt Instruction Field */}
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={customRefineInstruction}
+                          onChange={e => setCustomRefineInstruction(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (customRefineInstruction.trim()) {
+                                handleRefineJobDescription('custom', customRefineInstruction);
+                              }
+                            }
+                          }}
+                          placeholder="Custom prompt directive... (e.g. 'Emphasize cloud security audit experience')"
+                          className="flex-1 px-3 py-1.5 text-xs bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-amber-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (customRefineInstruction.trim()) {
+                              handleRefineJobDescription('custom', customRefineInstruction);
+                            }
+                          }}
+                          disabled={isAiRefining || !customRefineInstruction.trim()}
+                          className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition flex items-center space-x-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <Send className="w-3 h-3" />
+                          <span>Refine</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Draft Navigation Tabs */}
+                    <div className="flex items-center space-x-1 border-b border-[#E8DFD8] dark:border-[#2D2018] pt-1">
+                      {[
+                        { id: 'preview', label: 'Full Markdown Requisition', icon: FileText },
+                        { id: 'responsibilities', label: `Responsibilities (${aiDraft.responsibilities?.length || 0})`, icon: Check },
+                        { id: 'qualifications', label: 'Qualifications & Exp', icon: ShieldCheck },
+                        { id: 'skills', label: `Taxonomy Mapping (${aiDraft.skill_mappings?.length || 0})`, icon: Layers },
+                        { id: 'audit', label: `Audit & Warnings (${aiDraft.missing_information_notices?.length || 0})`, icon: AlertTriangle },
+                      ].map(t => {
+                        const Icon = t.icon;
+                        const isTabActive = activeDraftTab === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setActiveDraftTab(t.id)}
+                            className={`px-3 py-1.5 text-xs font-semibold border-b-2 transition flex items-center space-x-1.5 cursor-pointer ${
+                              isTabActive
+                                ? 'border-amber-600 text-amber-900 dark:text-amber-200 bg-amber-500/5'
+                                : 'border-transparent text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            <span>{t.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Tab Contents */}
+                    <div className="pt-2">
+                      {activeDraftTab === 'preview' && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
+                            <span>Authoritative Requisition Draft (Synced to form description)</span>
+                            {aiAppliedNotification && (
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center space-x-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Applied to Requisition Form!</span>
+                              </span>
+                            )}
+                          </div>
+                          <textarea
+                            rows="8"
+                            value={formData.description}
+                            onChange={e => setFormData({ ...formData, description: e.target.value })}
+                            className="w-full px-3.5 py-2.5 text-xs font-mono bg-[#FAF8F5] dark:bg-[#150F0C] border border-[#E8DFD8] dark:border-[#33241C] rounded-xl text-stone-900 dark:text-stone-100 leading-relaxed shadow-inner focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      )}
+
+                      {activeDraftTab === 'responsibilities' && (
+                        <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                          {(aiDraft.responsibilities || []).map((resp, i) => (
+                            <div
+                              key={i}
+                              className="p-2.5 rounded-lg bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-xs text-stone-800 dark:text-stone-200 flex items-start space-x-2"
+                            >
+                              <span className="text-amber-600 dark:text-amber-400 font-bold mt-0.5">•</span>
+                              <span className="leading-relaxed">{resp}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {activeDraftTab === 'qualifications' && (
+                        <div className="space-y-3">
+                          <div>
+                            <span className="block text-xs font-bold text-stone-800 dark:text-stone-200 mb-1">
+                              Prerequisite Qualifications:
+                            </span>
+                            <div className="space-y-1.5">
+                              {(aiDraft.qualifications || []).map((q, i) => (
+                                <div
+                                  key={i}
+                                  className="p-2 rounded-lg bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-xs text-stone-800 dark:text-stone-200 flex items-start space-x-2"
+                                >
+                                  <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                  <span>{q}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="block text-xs font-bold text-stone-800 dark:text-stone-200 mb-1">
+                              Relevant Domain Experience:
+                            </span>
+                            <p className="text-xs text-stone-600 dark:text-stone-300 bg-[#FAF8F5] dark:bg-[#201814] p-2.5 rounded-lg border border-[#E8DFD8] dark:border-[#3D2C22]">
+                              {aiDraft.relevant_experience}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {activeDraftTab === 'skills' && (
+                        <div className="space-y-3">
+                          <span className="block text-xs font-bold text-stone-800 dark:text-stone-200">
+                            Canonical Database Skill Resolution:
+                          </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                            {(aiDraft.skill_mappings || []).map((sm, i) => (
+                              <div
+                                key={i}
+                                className={`p-2 rounded-lg border text-xs flex items-center justify-between ${
+                                  sm.is_resolved
+                                    ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/40 text-stone-800 dark:text-stone-200'
+                                    : 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800/50 text-stone-800 dark:text-stone-200'
+                                }`}
+                              >
+                                <div>
+                                  <div className="font-bold">{sm.canonical_name || sm.raw_name}</div>
+                                  <div className="text-[10px] text-stone-500 dark:text-stone-400">
+                                    {sm.category || 'General'} • {sm.requirement_type === 'must_have' ? 'Must-Have' : 'Preferred'} (w: {sm.weight})
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-bold ${
+                                    sm.is_resolved
+                                      ? 'bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-300'
+                                      : 'bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-300'
+                                  }`}
+                                >
+                                  {sm.is_resolved ? 'RESOLVED' : 'UNRESOLVED'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {aiDraft.unresolved_skills?.length > 0 && (
+                            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200">
+                              <span className="font-bold block mb-1">Unresolved Taxonomy Items:</span>
+                              <p className="text-[11px] leading-relaxed">
+                                {aiDraft.unresolved_skills.join(', ')} — these skills are not yet indexed in the canonical database. Saving this requisition will register them safely as authorized requirements.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {activeDraftTab === 'audit' && (
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between text-xs pb-1 border-b border-[#E8DFD8] dark:border-[#2D2018]">
+                            <span className="font-semibold text-stone-700 dark:text-stone-300">Engine Attribution:</span>
+                            <span className="font-mono text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                              {aiDraft.provider}
+                            </span>
+                          </div>
+
+                          <span className="block text-xs font-bold text-stone-800 dark:text-stone-200">
+                            Completeness & Boundary Notices:
+                          </span>
+                          <div className="space-y-1.5">
+                            {(aiDraft.missing_information_notices || []).map((notice, i) => (
+                              <div
+                                key={i}
+                                className="p-2 rounded-lg bg-stone-100 dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-xs text-stone-700 dark:text-stone-300 flex items-start space-x-2"
+                              >
+                                <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                <span>{notice}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="p-2.5 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 text-[11px] text-stone-600 dark:text-stone-400 leading-relaxed">
+                            <strong>Mandatory Audit Note:</strong> AI generation outputs are advisory drafts. No job description is published or indexed for candidate matching until you explicitly click "Publish Requisition".
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Standard Role Description Field (If AI Studio is collapsed or for manual editing) */}
           <div>
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">Role Description</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
+                Authoritative Role Description (Candidate Facing) *
+              </label>
+              <span className="text-[11px] text-stone-400">
+                {formData.description ? `${formData.description.split(/\s+/).filter(Boolean).length} words` : 'Empty'}
+              </span>
+            </div>
             <textarea
-              rows="2"
+              rows="3"
               value={formData.description}
               onChange={e => setFormData({ ...formData, description: e.target.value })}
               placeholder={currentTrack.descriptionPlaceholder}
-              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500"
+              className="w-full px-3.5 py-2 text-xs sm:text-sm bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500 transition-colors"
             />
           </div>
 
           {/* AI Question Generation trigger */}
-          <div className="p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-brand-200 dark:border-brand-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-subtle">
+          <div className="p-4 rounded-xl bg-[#FAF8F5] dark:bg-[#18110D] border border-amber-300/60 dark:border-amber-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
             <div>
-              <div className="flex items-center space-x-2 text-brand-700 dark:text-brand-300 font-semibold text-xs">
-                <BrainCircuit className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <div className="flex items-center space-x-2 text-amber-800 dark:text-amber-300 font-semibold text-xs">
+                <BrainCircuit className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 <span>AI Interview Question & Assessment Generator</span>
               </div>
               <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
@@ -1380,24 +2133,24 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
               type="button"
               onClick={handleGenerateAIQuestions}
               disabled={isGenerating}
-              className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-subtle whitespace-nowrap"
+              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-2xs whitespace-nowrap cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Wand2 className="w-3.5 h-3.5" />
               <span>{isGenerating ? "Synthesizing..." : "Preview Questions"}</span>
             </button>
           </div>
 
           {/* Questions preview */}
           {generatedQuestions.length > 0 && (
-            <div className="space-y-2 mt-2 max-h-48 overflow-y-auto p-3 bg-stone-50 dark:bg-[#14110F] rounded-xl border border-[#E8E4DF] dark:border-[#2A2520]">
-              <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider font-mono">
+            <div className="space-y-2 mt-2 max-h-48 overflow-y-auto p-3 bg-[#FAF8F5] dark:bg-[#18110D] rounded-xl border border-[#E8DFD8] dark:border-[#33241C]">
+              <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider font-mono">
                 Generated Adaptive Question Set ({generatedQuestions.length})
               </span>
               {generatedQuestions.map((q, idx) => (
-                <div key={q.id || idx} className="text-xs p-3 rounded-lg bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 shadow-subtle">
+                <div key={q.id || idx} className="text-xs p-3 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-stone-700 dark:text-stone-300 shadow-2xs">
                   <div className="font-semibold text-stone-900 dark:text-stone-100 flex items-center justify-between">
                     <span>Q{idx+1}: {q.type}</span>
-                    <span className="text-[10px] text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/15 border border-brand-200 dark:border-brand-500/30 px-2 py-0.5 rounded-md">
+                    <span className="text-[10px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/40 px-2 py-0.5 rounded-md font-mono">
                       Adaptive Probe Ready
                     </span>
                   </div>
@@ -1407,32 +2160,63 @@ export default function JobCreatorModal({ isOpen, onClose, jobToEdit = null }) {
             </div>
           )}
 
-          {/* Submit */}
-          <div className="pt-4 flex items-center justify-end space-x-3 border-t border-stone-200 dark:border-[#2A2520]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSuccess}
-              className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition flex items-center space-x-2 shadow-sm shadow-brand-500/20"
-            >
-              {isSuccess ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-                  <span>{jobToEdit ? 'Requirement Saved!' : 'Requirement Created!'}</span>
-                </>
-              ) : (
-                <>
-                  {jobToEdit ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                  <span>{jobToEdit ? 'Save Requirement Changes' : 'Publish Requirement'}</span>
-                </>
-              )}
-            </button>
+          {/* ═══════════════════════════════════════════════════════════════════════
+              MODAL FOOTER: DUAL ACTION (SAVE AS DRAFT vs PUBLISH REQUISITION)
+          ═══════════════════════════════════════════════════════════════════════ */}
+          <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-[#EFE9E2] dark:border-[#2D2018]">
+            <div className="flex items-center space-x-2 text-xs text-stone-500 dark:text-stone-400">
+              <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>Requisition Status:</span>
+              <span className={`font-bold font-mono px-2 py-0.5 rounded-md text-[10px] ${
+                formData.status === 'Draft'
+                  ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+              }`}>
+                {formData.status || 'Active'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2.5">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="px-3.5 py-2 text-xs font-semibold text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              {/* Action 1: Save as Draft */}
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, 'Draft')}
+                disabled={isSubmitting || isSuccess}
+                className="px-4 py-2 rounded-xl bg-[#F0EAE1] dark:bg-[#281D17] hover:bg-[#E8DFD4] dark:hover:bg-[#33241C] text-stone-800 dark:text-stone-200 border border-[#DCD3C7] dark:border-[#3D2C22] text-xs font-semibold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5 text-stone-600 dark:text-stone-400" />
+                <span>{isSubmitting && submitIntent === 'Draft' ? 'Saving Draft...' : 'Save as Draft'}</span>
+              </button>
+
+              {/* Action 2: Publish Requisition */}
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, 'Active')}
+                disabled={isSubmitting || isSuccess}
+                className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+              >
+                {isSuccess ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                    <span>{successMessage}</span>
+                  </>
+                ) : (
+                  <>
+                    {jobToEdit ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    <span>{isSubmitting && submitIntent === 'Active' ? 'Publishing...' : (jobToEdit ? 'Publish Updates' : 'Publish Requisition')}</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
 

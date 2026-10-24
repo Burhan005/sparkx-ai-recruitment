@@ -213,7 +213,7 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-28 px-4">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 bg-[#0F0E0D]/75 backdrop-blur-md transition-opacity" 
         onClick={onClose}
         aria-hidden="true" 
       />
@@ -224,11 +224,14 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
         role="dialog"
         aria-modal="true"
         aria-label="ARETE Command Menu"
-        className="relative w-full max-w-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-popover overflow-hidden z-10 animate-modal-enter"
+        className="relative w-full max-w-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-2xl shadow-depth-elevated overflow-hidden z-10 animate-modal-enter"
       >
+        {/* Subtle gold hairline accent */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent pointer-events-none" />
+
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3 border-b border-stone-200 dark:border-[#2A2520] gap-3">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="flex items-center px-4 py-3.5 border-b border-[#E8DFD8] dark:border-[#38281F] bg-[#FAF8F5]/85 dark:bg-[#1A120E]/85 gap-3">
+          <Search className="w-4 h-4 text-brand-600 dark:text-amber-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -238,21 +241,21 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Search commands, candidates, roles..."
-            className="w-full bg-transparent text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+            placeholder="Search commands, requisitions, candidates..."
+            className="w-full bg-transparent text-xs sm:text-sm text-stone-900 dark:text-[#EDE8E3] placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none font-medium"
             aria-label="Command search input"
           />
           {query && (
             <button 
               type="button" 
               onClick={() => setQuery('')}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="p-1 rounded-md text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition-colors"
               aria-label="Clear search input"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-subtle">
+          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-stone-500 dark:text-amber-400/80 bg-[#F4EFEB] dark:bg-[#281D17] border border-[#E8DFD8] dark:border-[#423229] rounded shadow-subtle">
             ESC
           </kbd>
         </div>
@@ -260,8 +263,8 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
         {/* Results List - overflow-x-hidden strictly enforced to eliminate root cause scrollbars */}
         <div className="max-h-80 overflow-y-auto overflow-x-hidden p-2 space-y-1">
           {allFiltered.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400">
-              No matching commands or records found for "{query}".
+            <div className="py-10 text-center text-xs text-stone-400 dark:text-stone-500">
+              No matching commands or records found for &ldquo;{query}&rdquo;.
             </div>
           ) : (
             allFiltered.map((item, idx) => {
@@ -276,32 +279,32 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
                     onClose();
                   }}
                   onMouseEnter={() => setSelectedIndex(idx)}
-                  className={`w-full max-w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition-all duration-150 gap-2 active:scale-[0.98] cursor-pointer ${
+                  className={`w-full max-w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all duration-150 gap-2 active:scale-[0.98] cursor-pointer ${
                     isSelected 
-                      ? 'bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-white font-medium' 
-                      : 'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/60'
+                      ? 'bg-[#F4EFEB] dark:bg-[#2C1F18] text-stone-900 dark:text-[#FAF8F5] border border-[#E8DFD8] dark:border-[#523B2F] shadow-xs' 
+                      : 'text-stone-700 dark:text-stone-300 hover:bg-[#F4EFEB]/60 dark:hover:bg-[#251A14] border border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border transition-all ${
                       isSelected 
-                        ? 'bg-brand-600 text-white' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                        ? 'bg-brand-600 border-brand-500 text-white shadow-xs' 
+                        : 'bg-[#F4EFEB] dark:bg-[#251A14] border-[#E8DFD8] dark:border-[#38281F] text-stone-600 dark:text-stone-400'
                     }`}>
                       <Icon className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0 flex-1 truncate">
-                      <div className="text-xs sm:text-sm font-semibold truncate">{item.label}</div>
+                      <div className="text-xs sm:text-sm font-semibold truncate text-stone-900 dark:text-[#EDE8E3]">{item.label}</div>
                       {item.subLabel && (
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{item.subLabel}</div>
+                        <div className="text-[11px] text-stone-500 dark:text-stone-400 truncate mt-0.5">{item.subLabel}</div>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
-                    <span className="text-[10px] uppercase font-mono tracking-[0.08em] text-slate-400 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                    <span className="text-[10px] uppercase font-mono tracking-[0.08em] text-stone-500 dark:text-stone-400 px-1.5 py-0.5 rounded bg-[#FAF8F5] dark:bg-[#1E1510] border border-[#E8DFD8] dark:border-[#38281F]">
                       {item.category}
                     </span>
-                    {isSelected && <ArrowRight className="w-3.5 h-3.5 text-brand-500 shrink-0" />}
+                    {isSelected && <ArrowRight className="w-3.5 h-3.5 text-brand-600 dark:text-amber-400 shrink-0" />}
                   </div>
                 </button>
               );
@@ -310,15 +313,15 @@ export default function CommandMenu({ isOpen, onClose, onOpenAIConfig }) {
         </div>
 
         {/* Footer info bar */}
-        <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+        <div className="px-4 py-2.5 border-t border-[#E8DFD8] dark:border-[#38281F] bg-[#FAF8F5]/90 dark:bg-[#18110D]/90 flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400 font-mono">
           <div className="flex items-center gap-3">
-            <span>↑↓ Navigate</span>
-            <span>↵ Select</span>
-            <span>ESC Close</span>
+            <span className="flex items-center gap-1"><kbd className="px-1 py-0.2 bg-[#F4EFEB] dark:bg-[#241A14] border border-[#E8DFD8] dark:border-[#38281F] rounded text-[10px]">↑↓</kbd> Navigate</span>
+            <span className="flex items-center gap-1"><kbd className="px-1 py-0.2 bg-[#F4EFEB] dark:bg-[#241A14] border border-[#E8DFD8] dark:border-[#38281F] rounded text-[10px]">↵</kbd> Select</span>
+            <span className="flex items-center gap-1"><kbd className="px-1 py-0.2 bg-[#F4EFEB] dark:bg-[#241A14] border border-[#E8DFD8] dark:border-[#38281F] rounded text-[10px]">ESC</kbd> Close</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <Command className="w-3 h-3 text-[#D6B477]" />
-            <span className="font-semibold text-stone-600 dark:text-stone-300">ARETE Command OS</span>
+            <Command className="w-3 h-3 text-brand-600 dark:text-amber-400" />
+            <span className="font-serif font-bold text-stone-700 dark:text-[#EDE8E3]">ARETE Command OS</span>
           </div>
         </div>
       </div>

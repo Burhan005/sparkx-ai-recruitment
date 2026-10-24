@@ -3,11 +3,10 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { api } from '../../services/api';
-import { normalizeSkill } from '../../utils/skillMatcher';
 import { formatJobCTC, formatCandidateExpectedCTC } from '../../utils/compensationFormatter';
 import { 
   X, Upload, FileText, Sparkles, CheckCircle2, 
-  AlertTriangle, ArrowRight, Bot, Zap, Loader2, DollarSign
+  AlertCircle, ArrowRight, Loader2, DollarSign, Zap
 } from 'lucide-react';
 
 export default function ResumeUploadModal({ job, onClose }) {
@@ -47,10 +46,11 @@ export default function ResumeUploadModal({ job, onClose }) {
 
   const [isScanning,  setIsScanning]  = useState(false);
   const [scanResult,  setScanResult]  = useState(null);
+  const [validationError, setValidationError] = useState(null);
   const [isSubmitting, setIsSubmitting]= useState(false);
   const [submittedCandidate, setSubmittedCandidate] = useState(null);
 
-  // ── Presets fetched from backend (no hardcoded data) ────────────────────────
+  // ── Presets fetched from backend (authoritative live database) ──────────────
   const [presets,       setPresets]       = useState([]);
   const [presetsLoading,setPresetsLoading]= useState(true);
 
@@ -63,6 +63,7 @@ export default function ResumeUploadModal({ job, onClose }) {
 
   // ── Preset selection ─────────────────────────────────────────────────────────
   const applyPreset = (preset) => {
+    setValidationError(null);
     setCandidateName(preset.name);
     const exp = Number(preset.experience || 0);
     setExperienceYears(String(preset.experience));
@@ -96,6 +97,7 @@ export default function ResumeUploadModal({ job, onClose }) {
   const triggerScan = async (skillsArr, expYears, name, textContent, summaryContent, edu) => {
     setIsScanning(true);
     setScanResult(null);
+    setValidationError(null);
 
     const skills = skillsArr || skillsString.split(',').map(s => s.trim()).filter(Boolean);
     const years = Number(expYears !== undefined ? expYears : experienceYears || 0);
@@ -104,7 +106,7 @@ export default function ResumeUploadModal({ job, onClose }) {
     const educationVal = edu !== undefined ? edu : education;
     const candidateNameVal = name || candidateName;
 
-    // Fraud detection based on actual data
+    // Preserve verification flags internally for recruiter submission
     const fraudFlags = [];
     if (years > 10 && skills.length < 3) fraudFlags.push('Experience claim inconsistent with demonstrated skill set.');
     if (summary && summary.toLowerCase().includes('template')) fraudFlags.push('Resume text matches common template patterns.');
@@ -144,6 +146,23 @@ export default function ResumeUploadModal({ job, onClose }) {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    setValidationError(null);
+
+    // Client-side file type and size validation
+    const allowedExtensions = ['.pdf', '.docx', '.txt'];
+    const lowerName = file.name.toLowerCase();
+    const isAllowed = allowedExtensions.some(ext => lowerName.endsWith(ext));
+    if (!isAllowed) {
+      setValidationError("Please select a supported resume format (.pdf, .docx, or .txt).");
+      return;
+    }
+
+    const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_SIZE_BYTES) {
+      setValidationError("Resume file exceeds the 10MB limit. Please upload a smaller file.");
+      return;
+    }
 
     setSelectedFileName(file.name);
     setIsScanning(true);
@@ -188,64 +207,73 @@ export default function ResumeUploadModal({ job, onClose }) {
   };
 
   const handleSubmitApplication = async () => {
+    setValidationError(null);
     const skills = skillsString.split(',').map(s => s.trim()).filter(Boolean);
-    if (!candidateName || !candidateEmail) return;
+    if (!candidateName.trim() || !candidateEmail.trim()) {
+      setValidationError("Please enter your name and email address to continue.");
+      return;
+    }
 
     const parseNum = (v) => (v !== '' && v !== null && v !== undefined && !isNaN(Number(v))) ? Number(v) : null;
     const minNum = parseNum(expectedCtcMin);
     const maxNum = parseNum(expectedCtcMax);
 
     if (expectedCtcType === 'range' && minNum !== null && maxNum !== null && minNum > maxNum) {
-      alert("Validation error: Minimum Expected CTC cannot exceed Maximum Expected CTC");
+      setValidationError("Minimum expected compensation cannot exceed maximum expected compensation.");
       return;
     }
 
     setIsSubmitting(true);
-    const saved = await applyForJob({
-      jobId: job.id,
-      companyName: job.companyName || 'SparkX Technologies',
-      name: candidateName,
-      email: candidateEmail,
-      phone: candidatePhone || '+91 98000 00000',
-      experienceYears: Number(experienceYears || 0),
-      education: education || 'B.Tech / Technical Degree',
-      skills,
-      resumeSummary,
-      resumeFilename: selectedFileName || null,
-      resumeText: resumeText || null,
-      fraudFlags: scanResult?.fraudFlags || [],
-      currentCtc: parseNum(currentCtc),
-      expectedCtcType,
-      expectedCtcMin: expectedCtcType === 'fixed' ? minNum : minNum,
-      expectedCtcMax: expectedCtcType === 'fixed' ? minNum : maxNum,
-      ctcCurrency: ctcCurrency || 'INR',
-    });
-    setIsSubmitting(false);
-    setSubmittedCandidate(saved || {
-      name: candidateName,
-    });
+    try {
+      const saved = await applyForJob({
+        jobId: job.id,
+        companyName: job.companyName || 'SparkX Technologies',
+        name: candidateName,
+        email: candidateEmail,
+        phone: candidatePhone || '+91 98000 00000',
+        experienceYears: Number(experienceYears || 0),
+        education: education || 'B.Tech / Technical Degree',
+        skills,
+        resumeSummary,
+        resumeFilename: selectedFileName || null,
+        resumeText: resumeText || null,
+        fraudFlags: scanResult?.fraudFlags || [],
+        currentCtc: parseNum(currentCtc),
+        expectedCtcType,
+        expectedCtcMin: expectedCtcType === 'fixed' ? minNum : minNum,
+        expectedCtcMax: expectedCtcType === 'fixed' ? minNum : maxNum,
+        ctcCurrency: ctcCurrency || 'INR',
+      });
+      setIsSubmitting(false);
+      setSubmittedCandidate(saved || {
+        name: candidateName,
+      });
+    } catch (err) {
+      setIsSubmitting(false);
+      setValidationError(err?.message || "Unable to submit application. Please verify your details and try again.");
+    }
   };
 
   return createPortal(
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 backdrop-blur-md p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F0E0D]/75 backdrop-blur-md p-4 overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative w-full max-w-3xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-popover text-slate-900 dark:text-slate-100 my-auto max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-3xl bg-[#FDFBF7] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-depth-elevated text-stone-900 dark:text-stone-100 my-auto max-h-[90vh] flex flex-col overflow-hidden">
 
         {/* Pinned Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 pb-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-6 pb-4 border-b border-[#E8E4DF] dark:border-[#2A2520] shrink-0 bg-[#FAF8F5]/80 dark:bg-[#161311]/80 backdrop-blur-sm">
           <div>
             <div className="flex items-center space-x-2">
               <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider font-mono">Candidate Application</span>
-              <span className="text-slate-400 dark:text-slate-600">•</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">{job.title}</span>
+              <span className="text-stone-400">•</span>
+              <span className="text-xs text-stone-500 dark:text-stone-400 font-medium">{job.title}</span>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mt-1">
-              {submittedCandidate ? 'Application Status' : 'Upload Resume & Apply'}
+            <h2 className="text-lg sm:text-xl font-bold text-stone-900 dark:text-stone-100 mt-1">
+              {submittedCandidate ? 'Application Submitted' : 'Submit Application & Resume'}
             </h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <button onClick={onClose} className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#231F1B] transition">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -258,48 +286,48 @@ export default function ResumeUploadModal({ job, onClose }) {
             </div>
 
             <div className="space-y-2">
-              <span className="px-3 py-1 rounded-md text-[11px] font-bold font-mono bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-400 border border-brand-200 dark:border-brand-500/20 uppercase tracking-wider">
-                Current Stage: 📋 Recruiter Screening
+              <span className="px-3 py-1 rounded-md text-[11px] font-bold font-mono bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800 uppercase tracking-wider">
+                Current Status: 📋 Recruiter Screening
               </span>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-white">Application Received!</h3>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-lg mx-auto leading-relaxed">
-                Thank you, <strong>{submittedCandidate.name}</strong>. Your profile and resume have been submitted for <strong>{job.title}</strong> at <strong>{job.companyName || 'SparkX Technologies'}</strong>.
+              <h3 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Application Received</h3>
+              <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 max-w-lg mx-auto leading-relaxed">
+                Thank you, <strong>{submittedCandidate.name}</strong>. Your profile and application have been recorded for <strong>{job.title}</strong> at <strong>{job.companyName || 'SparkX Technologies'}</strong>.
               </p>
             </div>
 
             {/* Lifecycle Explainer */}
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 text-left max-w-md mx-auto space-y-3 text-xs shadow-subtle">
-              <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">Official Hiring Workflow</span>
+            <div className="p-4 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] text-left max-w-md mx-auto space-y-3 text-xs shadow-subtle">
+              <div className="flex items-center justify-between text-stone-500 dark:text-stone-400 border-b border-[#E8E4DF] dark:border-[#2A2520] pb-2">
+                <span className="font-semibold text-stone-800 dark:text-stone-200">Application Journey</span>
                 <span className="text-brand-600 dark:text-brand-400 font-bold font-mono">Stage 1 of 4</span>
               </div>
               <div className="space-y-2.5 text-[11px]">
                 <div className="flex items-start space-x-2.5">
                   <div className="w-5 h-5 rounded-full bg-brand-600 text-white font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5 shadow-subtle">1</div>
                   <div>
-                    <strong className="text-slate-900 dark:text-white">Stage 1: Application Screening (Active)</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Your application and resume have been placed in the recruiter screening pipeline for qualification review.</p>
+                    <strong className="text-stone-900 dark:text-stone-100">Stage 1: Application Screening (Active)</strong>
+                    <p className="text-stone-500 dark:text-stone-400 mt-0.5">Your qualifications and resume are currently in the recruiter screening pipeline for initial review.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
+                  <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">2</div>
                   <div>
-                    <strong className="text-slate-700 dark:text-slate-300">Stage 2: Recruiter Review & Scheduling (Next)</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">The recruiter screens your profile. When shortlisted, the recruiter will schedule your evaluation and send an official slot invite.</p>
+                    <strong className="text-stone-700 dark:text-stone-300">Stage 2: Recruiter Review & Scheduling (Next)</strong>
+                    <p className="text-stone-500 dark:text-stone-400 mt-0.5">The hiring team evaluates role fit. When shortlisted, you will receive an invitation to select an assessment schedule.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
+                  <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">3</div>
                   <div>
-                    <strong className="text-slate-700 dark:text-slate-300">Stage 3: Role Assessment & AI Interview</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">Unlocked once scheduled or invited by the recruiter. Complete your tailored assessment and live conversational interview.</p>
+                    <strong className="text-stone-700 dark:text-stone-300">Stage 3: Interactive Skills Assessment</strong>
+                    <p className="text-stone-500 dark:text-stone-400 mt-0.5">Unlocked once scheduled. Complete your hands-on coding or scenario evaluation and AI conversation room.</p>
                   </div>
                 </div>
                 <div className="flex items-start space-x-2.5">
-                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">4</div>
+                  <div className="w-5 h-5 rounded-full bg-stone-200 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 font-bold flex items-center justify-center text-[10px] shrink-0 mt-0.5">4</div>
                   <div>
-                    <strong className="text-slate-700 dark:text-slate-300">Stage 4: Recruiter Committee Decision</strong>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">The hiring committee reviews all signals to make final shortlisting, interview, or offer decisions.</p>
+                    <strong className="text-stone-700 dark:text-stone-300">Stage 4: Hiring Decision</strong>
+                    <p className="text-stone-500 dark:text-stone-400 mt-0.5">The recruiter and hiring manager review all demonstrated evidence to make an informed, objective decision.</p>
                   </div>
                 </div>
               </div>
@@ -324,9 +352,9 @@ export default function ResumeUploadModal({ job, onClose }) {
                   onClose();
                   navigate('/jobs');
                 }}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition"
+                className="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-[#E8E4DF] dark:border-[#2A2520] hover:bg-stone-50 dark:hover:bg-[#231F1B] text-stone-600 dark:text-stone-300 font-semibold text-xs transition"
               >
-                Browse More Job Openings
+                Browse More Positions
               </button>
             </div>
           </div>
@@ -334,26 +362,40 @@ export default function ResumeUploadModal({ job, onClose }) {
           /* Form Content */
           <>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-              {/* Demo Presets — fetched from backend /api/presets */}
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 shadow-subtle">
+              
+              {/* Validation Error Alert */}
+              {validationError && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-200 text-xs flex items-center justify-between animate-fade-in-up">
+                  <div className="flex items-center space-x-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <span>{validationError}</span>
+                  </div>
+                  <button onClick={() => setValidationError(null)} className="p-0.5 rounded text-amber-600 dark:text-amber-400 hover:opacity-75">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Sample Profiles — fetched live from backend /api/presets */}
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] shadow-subtle">
                 <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5 font-mono">
-                    <Zap className="w-3.5 h-3.5 text-brand-500 dark:text-brand-400" />
-                    <span>1-Click Sample Resumes (Live from Backend):</span>
+                  <span className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center space-x-1.5 font-mono">
+                    <Zap className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                    <span>Fast-Track with Verified Sample Profile (Live Data):</span>
                   </span>
-                  <span className="text-[10px] text-slate-500 font-mono">Fast-Track Demo</span>
+                  <span className="text-[10px] text-stone-500 font-mono">Quick Fill</span>
                 </div>
                 {presetsLoading ? (
-                  <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400 py-2">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-500" /><span>Loading presets from server...</span>
+                  <div className="flex items-center space-x-2 text-xs text-stone-500 dark:text-stone-400 py-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-brand-600" /><span>Loading profile presets...</span>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {presets.map((preset, idx) => (
                       <button key={idx} type="button" onClick={() => applyPreset(preset)}
-                        className="text-left p-2.5 rounded-lg bg-white dark:bg-[#1A1714] hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200 dark:border-slate-800 hover:border-brand-500 transition text-xs group shadow-subtle">
-                        <div className="font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 line-clamp-1">{preset.name}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{preset.experience} yrs • {preset.skills[0]}</div>
+                        className="text-left p-2.5 rounded-lg bg-white dark:bg-[#1A1714] hover:bg-stone-50 dark:hover:bg-[#231F1B] border border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-500 transition text-xs group shadow-subtle">
+                        <div className="font-bold text-stone-900 dark:text-stone-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 line-clamp-1">{preset.name}</div>
+                        <div className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">{preset.experience} yrs • {preset.skills[0]}</div>
                       </button>
                     ))}
                   </div>
@@ -361,53 +403,49 @@ export default function ResumeUploadModal({ job, onClose }) {
               </div>
 
               {/* Upload Dropzone */}
-              <div className="relative border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 rounded-xl p-5 text-center transition bg-slate-50/60 dark:bg-[#14110F]/60 group">
+              <div className="relative border-2 border-dashed border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-500 rounded-xl p-5 text-center transition bg-stone-50/60 dark:bg-[#14110F]/60 group">
                 <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                 <div className="flex flex-col items-center justify-center space-y-2">
                   <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center border border-brand-200 dark:border-brand-800 shrink-0">
                     <Upload className="w-5 h-5" />
                   </div>
-                  <div className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
-                    {selectedFileName ? selectedFileName : 'Drag & drop your resume (PDF/DOCX) or browse'}
+                  <div className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100">
+                    {selectedFileName ? selectedFileName : 'Choose your resume (PDF, DOCX, or TXT under 10MB) or browse'}
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">AI parses skills, education, dates, and cross-checks for timeline anomalies.</p>
+                  <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                    Automated parsing extracts skills and work history to pre-fill your application.
+                  </p>
                 </div>
                 {isScanning && (
                   <div className="absolute inset-0 bg-white/95 dark:bg-[#14110F]/95 backdrop-blur-sm rounded-xl flex flex-col items-center justify-center space-y-2 z-20">
                     <Loader2 className="w-6 h-6 text-brand-600 dark:text-brand-400 animate-spin" />
-                    <div className="text-xs font-bold text-slate-900 dark:text-white tracking-wide">AI Extracting Profile & Matching Criteria...</div>
+                    <div className="text-xs font-bold text-stone-900 dark:text-stone-100 tracking-wide">Extracting Profile & Skills...</div>
                   </div>
                 )}
               </div>
 
             {/* Scan Result */}
             {scanResult && (
-              <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] space-y-3 shadow-md">
+              <div className="mt-4 p-4 rounded-2xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] space-y-3 shadow-subtle">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3.5">
-                    <div className="w-11 h-11 rounded-2xl border flex items-center justify-center font-black text-sm shadow-sm bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-xl border flex items-center justify-center font-black text-sm shadow-sm bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center space-x-2">
-                        <span>Profile & Resume Parsed</span>
+                      <div className="text-xs font-bold text-stone-900 dark:text-stone-100">
+                        Profile & Resume Parsed Successfully
                       </div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {scanResult.skillsCount || 0} skills detected • Form fields pre-filled below
+                      <div className="text-[11px] text-stone-500 dark:text-stone-400">
+                        {scanResult.skillsCount || 0} skills detected • Fields pre-filled below for your review
                       </div>
                     </div>
                   </div>
-                  {scanResult.fraudFlags?.length > 0 && (
-                    <span className="text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-3 py-1.5 rounded-full border border-rose-200 dark:border-rose-800/60 flex items-center space-x-1.5 shadow-sm">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                      <span>{scanResult.fraudFlags.length} Flag{scanResult.fraudFlags.length > 1 ? 's' : ''} Detected</span>
-                    </span>
-                  )}
                 </div>
 
-                <div className="text-[11px] text-slate-600 dark:text-slate-400 bg-white/60 dark:bg-slate-900/40 p-2.5 rounded-xl border border-slate-200/60 dark:border-white/[0.04] flex items-center space-x-2">
-                  <Sparkles className="w-3.5 h-3.5 text-brand-500 shrink-0" />
-                  <span>Resume data extracted. Review your profile details below and submit your application for recruiter screening.</span>
+                <div className="text-[11px] text-stone-600 dark:text-stone-300 bg-white dark:bg-[#1A1714] p-2.5 rounded-xl border border-[#E8E4DF] dark:border-[#2A2520] flex items-center space-x-2">
+                  <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0" />
+                  <span>Resume data extracted. Review and refine your details below before submitting.</span>
                 </div>
               </div>
             )}
@@ -423,33 +461,33 @@ export default function ResumeUploadModal({ job, onClose }) {
                 { label: 'Parsed Skills (comma-separated)', span: 2, val: skillsString, set: setSkillsString, type: 'text', ph: 'React, Python, FastAPI...' },
               ].map(({ label, val, set, type, ph, span }) => (
                 <div key={label} className={span ? `sm:col-span-${span}` : ''}>
-                  <label className="block text-slate-700 dark:text-slate-400 font-semibold mb-1">{label}</label>
+                  <label className="block text-stone-700 dark:text-stone-300 font-semibold mb-1">{label}</label>
                   <input type={type} value={val} onChange={e => set(e.target.value)} placeholder={ph}
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-[#06080E] border border-slate-300 dark:border-slate-700/80 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-brand-500 transition shadow-inner" />
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-[#161311] border border-[#E8E4DF] dark:border-[#2A2520] rounded-xl text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-600 focus:outline-none focus:border-brand-500 transition shadow-inner" />
                 </div>
               ))}
             </div>
 
-            {/* Compensation & CTC Expectations */}
-            <div className="mt-4 p-4 rounded-2xl bg-slate-50 dark:bg-[#06080E] border border-slate-200 dark:border-white/[0.08] space-y-3.5 shadow-inner">
+            {/* Compensation Expectations */}
+            <div className="mt-4 p-4 rounded-2xl bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] space-y-3.5 shadow-inner">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                 <div className="flex items-center space-x-2">
                   <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                     <DollarSign className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                    <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">
                       Compensation & CTC Expectations
                     </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Share your current compensation and salary expectations for this role.
+                    <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                      State your current compensation and salary expectations for this role.
                     </p>
                   </div>
                 </div>
 
                 {/* Job Advertised Budget Badge for transparency */}
-                <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 self-start sm:self-auto">
-                  <span className="text-slate-400 mr-1">Role Budget:</span>
+                <div className="text-[11px] font-medium text-stone-500 dark:text-stone-400 self-start sm:self-auto">
+                  <span className="text-stone-400 mr-1">Role Budget:</span>
                   <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/40">
                     {formatJobCTC(job)}
                   </span>
@@ -458,14 +496,14 @@ export default function ResumeUploadModal({ job, onClose }) {
 
               {/* CTC Type Mode: Range vs Exact */}
               <div className="flex items-center space-x-2 pt-1">
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 mr-1 font-mono">Expected Structure:</span>
+                <span className="text-[11px] font-semibold text-stone-600 dark:text-stone-400 mr-1 font-mono">Expected Structure:</span>
                 <button
                   type="button"
                   onClick={() => setExpectedCtcType('range')}
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition border ${
                     expectedCtcType === 'range'
                       ? 'bg-brand-600 text-white border-brand-600 shadow-subtle'
-                      : 'bg-white dark:bg-[#14110F] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400'
+                      : 'bg-white dark:bg-[#1A1714] text-stone-600 dark:text-stone-300 border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400'
                   }`}
                 >
                   Range (Min – Max)
@@ -476,7 +514,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                   className={`px-2.5 py-1 rounded-lg text-xs font-medium transition border ${
                     expectedCtcType === 'fixed'
                       ? 'bg-brand-600 text-white border-brand-600 shadow-subtle'
-                      : 'bg-white dark:bg-[#14110F] text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400'
+                      : 'bg-white dark:bg-[#1A1714] text-stone-600 dark:text-stone-300 border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-400'
                   }`}
                 >
                   Exact Figure
@@ -487,11 +525,11 @@ export default function ResumeUploadModal({ job, onClose }) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Current CTC */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Current CTC (LPA) <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
+                  <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    Current CTC (LPA) <span className="text-[10px] text-stone-400 font-normal">(Optional)</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">₹</span>
+                    <span className="absolute left-3 top-2 text-xs text-stone-400 font-bold">₹</span>
                     <input
                       type="number"
                       step="0.01"
@@ -499,18 +537,18 @@ export default function ResumeUploadModal({ job, onClose }) {
                       value={currentCtc}
                       onChange={e => setCurrentCtc(e.target.value)}
                       placeholder="e.g. 8.5"
-                      className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#14110F] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
+                      className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#161311] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
                     />
                   </div>
                 </div>
 
                 {/* Expected CTC Min */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
                     {expectedCtcType === 'range' ? 'Min Expected CTC (LPA) *' : 'Expected CTC (LPA) *'}
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">₹</span>
+                    <span className="absolute left-3 top-2 text-xs text-stone-400 font-bold">₹</span>
                     <input
                       type="number"
                       step="0.01"
@@ -518,7 +556,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                       value={expectedCtcMin}
                       onChange={e => setExpectedCtcMin(e.target.value)}
                       placeholder="e.g. 10.0"
-                      className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#14110F] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
+                      className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#161311] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
                     />
                   </div>
                 </div>
@@ -526,11 +564,11 @@ export default function ResumeUploadModal({ job, onClose }) {
                 {/* Expected CTC Max (if Range) */}
                 {expectedCtcType === 'range' && (
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-[11px] font-semibold text-stone-700 dark:text-stone-300 mb-1">
                       Max Expected CTC (LPA) *
                     </label>
                     <div className="relative">
-                      <span className="absolute left-3 top-2 text-xs text-slate-400 font-bold">₹</span>
+                      <span className="absolute left-3 top-2 text-xs text-stone-400 font-bold">₹</span>
                       <input
                         type="number"
                         step="0.01"
@@ -538,7 +576,7 @@ export default function ResumeUploadModal({ job, onClose }) {
                         value={expectedCtcMax}
                         onChange={e => setExpectedCtcMax(e.target.value)}
                         placeholder="e.g. 14.0"
-                        className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#14110F] border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
+                        className="w-full pl-6 pr-3 py-1.5 text-xs bg-white dark:bg-[#161311] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-stone-900 dark:text-stone-100 placeholder-stone-400 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 shadow-subtle"
                       />
                     </div>
                   </div>
@@ -547,8 +585,8 @@ export default function ResumeUploadModal({ job, onClose }) {
 
               {/* Expectation Preview */}
               {(expectedCtcMin || expectedCtcMax) && (
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
-                  <span className="text-slate-500 dark:text-slate-400">Your expectation preview:</span>
+                <div className="pt-2 border-t border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between text-xs">
+                  <span className="text-stone-500 dark:text-stone-400">Your expectation preview:</span>
                   <span className="font-bold text-brand-600 dark:text-brand-400 font-mono">
                     {formatCandidateExpectedCTC({
                       expectedCtcType,
@@ -563,8 +601,8 @@ export default function ResumeUploadModal({ job, onClose }) {
           </div>
 
           {/* Pinned Footer Actions */}
-          <div className="p-4 sm:p-6 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#1A1714]">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition">
+          <div className="p-4 sm:p-6 py-3 border-t border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between shrink-0 bg-[#FAF8F5]/90 dark:bg-[#161311]/90">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200 transition">
               Cancel
             </button>
             <button 

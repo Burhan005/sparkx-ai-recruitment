@@ -7,6 +7,8 @@ import {
   Search, 
   CheckCircle2, 
   AlertCircle, 
+  AlertTriangle,
+  Award,
   Database, 
   TrendingUp, 
   FileText, 
@@ -14,7 +16,11 @@ import {
   MessageSquare,
   ArrowRight,
   Layers,
-  HelpCircle
+  HelpCircle,
+  RotateCcw,
+  ExternalLink,
+  Users,
+  Target
 } from 'lucide-react';
 import { useRecruitment } from '../../context/RecruitmentContext';
 import { normalizeWorkflow } from '../../utils/workflowContract';
@@ -53,14 +59,14 @@ function FormattedMarkdownText({ content, className = '' }) {
           if (matchedStr.startsWith('**') && matchedStr.endsWith('**')) {
             const inner = matchedStr.slice(2, -2);
             parts.push(
-              <strong key={pKey++} className="font-bold text-slate-900 dark:text-white">
+              <strong key={pKey++} className="font-bold text-stone-900 dark:text-stone-100">
                 {inner}
               </strong>
             );
           } else if (matchedStr.startsWith('`') && matchedStr.endsWith('`')) {
             const inner = matchedStr.slice(1, -1);
             parts.push(
-              <code key={pKey++} className="px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-brand-600 dark:text-brand-400 font-mono text-[10.5px]">
+              <code key={pKey++} className="px-1.5 py-0.5 rounded bg-stone-200/80 dark:bg-[#2A2520] text-brand-700 dark:text-brand-300 font-mono text-[10.5px]">
                 {inner}
               </code>
             );
@@ -109,6 +115,7 @@ export default function AskSparkxDrawer({
   const [query, setQuery] = useState('');
   const [conversation, setConversation] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [lastFailedQuery, setLastFailedQuery] = useState(null);
   const inputRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -242,26 +249,57 @@ export default function AskSparkxDrawer({
       return;
     }
 
-    // Eagerly check if query explicitly mentions any candidate name or token
-    let eagerCandidate = candidates.find(c => c.name && q.includes(c.name.toLowerCase()));
-    if (!eagerCandidate) {
-      for (const c of candidates) {
-        if (!c.name) continue;
-        const tokens = c.name.toLowerCase().split(/[\s\-_]+/).filter(t => t.length >= 3);
-        if (tokens.some(t => new RegExp(`\\b${t}\\b`, 'i').test(q))) {
-          eagerCandidate = c;
-          break;
+    // Candidate Scope Protection & Recruiter Context Resolution
+    let eagerCandidate = null;
+    if (userRole === 'recruiter') {
+      eagerCandidate = candidates.find(c => c.name && q.includes(c.name.toLowerCase()));
+      if (!eagerCandidate) {
+        for (const c of candidates) {
+          if (!c.name) continue;
+          const tokens = c.name.toLowerCase().split(/[\s\-_]+/).filter(t => t.length >= 3);
+          if (tokens.some(t => new RegExp(`\\b${t}\\b`, 'i').test(q))) {
+            eagerCandidate = c;
+            break;
+          }
         }
       }
-    }
-    if (eagerCandidate) {
-      setContextCandidate(eagerCandidate);
-      contextCandidateRef.current = eagerCandidate;
+      if (eagerCandidate) {
+        setContextCandidate(eagerCandidate);
+        contextCandidateRef.current = eagerCandidate;
+      }
+    } else {
+      // Candidate protection: Ensure candidates cannot query other applicants or cross-pipeline dossiers
+      const isCrossCandidateQuery = candidates.some(c => c.name && c.email !== currentUser?.email && q.includes(c.name.toLowerCase())) ||
+        /other candidates|other applicants|who else applied|competitors|all candidates|pipeline overview|compare candidates|other applicant/i.test(q);
+      
+      if (isCrossCandidateQuery) {
+        setTimeout(() => {
+          setConversation(prev => [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              sender: 'ai',
+              text: 'For candidate privacy, compliance, and equal opportunity governance, applicant access is strictly scoped to your own application files and public role listings.',
+              databaseFacts: [
+                `Active User: ${currentUser?.name || 'Candidate'} (${currentUser?.email || ''})`,
+                `Role: Candidate Portal (RBAC Protected)`
+              ],
+              metrics: [],
+              aiInterpretation: 'You can ask about your own application statuses, preparation guidance for upcoming AI interviews, or criteria for open roles in our job catalog.',
+              uncertainty: ''
+            }
+          ]);
+          setIsProcessing(false);
+        }, 200);
+        return;
+      }
     }
 
-    const candidateIdForQuery = eagerCandidate?.id || contextCandidateRef.current?.id || contextCandidate?.id;
+    const candidateIdForQuery = userRole === 'candidate'
+      ? (currentUser?.id || null)
+      : (eagerCandidate?.id || contextCandidateRef.current?.id || contextCandidate?.id);
 
-    // 2.5 Recruiter Decision Assistant: When evaluating a candidate, query authoritative Decision Assistant first
+    // 2.5 Recruiter Decision Assistant: When evaluating a candidate, query authoritative Decision Assistant
     if (userRole === 'recruiter' && candidateIdForQuery) {
       try {
         const assistantRes = await api.queryDecisionAssistant({
@@ -285,9 +323,13 @@ export default function AskSparkxDrawer({
               statusBreakdown: assistantRes.status_breakdown,
               citedEvidence: assistantRes.cited_evidence || [],
               materialGaps: assistantRes.material_gaps || [],
+              suggestedFollowUps: assistantRes.suggested_follow_ups || [],
+              evidenceRecords: assistantRes.evidence_records || [],
               provider: assistantRes.provider,
               limitations: assistantRes.limitations_disclaimer,
-              isDecisionAssistant: true
+              isDecisionAssistant: true,
+              candidateId: assistantRes.candidate_id,
+              candidateName: assistantRes.candidate_name
             }
           ]);
           setIsProcessing(false);
@@ -295,6 +337,42 @@ export default function AskSparkxDrawer({
         }
       } catch (err) {
         console.warn('[DecisionAssistant] Assistant query returned error, falling back to general copilot:', err);
+      }
+    }
+
+    // 2.6 Recruiter Job Pool Decision Assistant: When querying within a job requisition without an active candidate context
+    const targetJobIdForQuery = contextJob?.id || activeJobId;
+    if (userRole === 'recruiter' && targetJobIdForQuery && !candidateIdForQuery) {
+      try {
+        const jobAssistantRes = await api.queryJobDecisionAssistant({
+          jobId: targetJobIdForQuery,
+          query: userText,
+          limit: 10
+        });
+
+        if (jobAssistantRes && jobAssistantRes.answer) {
+          setConversation(prev => [
+            ...prev,
+            {
+              id: `ai-${Date.now()}`,
+              sender: 'ai',
+              text: jobAssistantRes.answer,
+              jobTitle: jobAssistantRes.job_title,
+              totalCandidates: jobAssistantRes.total_candidates,
+              topCandidates: jobAssistantRes.top_candidates || [],
+              requiredSkillsBreakdown: jobAssistantRes.required_skills_breakdown || [],
+              unverifiedSkills: jobAssistantRes.unverified_skills || [],
+              suggestedFollowUps: jobAssistantRes.suggested_follow_ups || [],
+              provider: jobAssistantRes.provider,
+              limitations: jobAssistantRes.limitations_disclaimer,
+              isJobDecisionAssistant: true
+            }
+          ]);
+          setIsProcessing(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('[JobDecisionAssistant] Job assistant query error, falling back:', err);
       }
     }
 
@@ -662,7 +740,11 @@ export default function AskSparkxDrawer({
         aiResponse.text = `Here is what I can tell you regarding "${userText}":`;
         aiResponse.databaseFacts = [];
         aiResponse.metrics = [];
-        aiResponse.aiInterpretation = `I analyzed your query against the recruitment database (${candidates.length} candidates, ${jobs.length} jobs). You can ask me to evaluate specific candidates (e.g. "Tell me about Aarav"), check candidate skill gaps, review pending action items, or inspect pipeline bottlenecks.`;
+        if (userRole === 'candidate') {
+          aiResponse.aiInterpretation = `I am your ARETE career advisor. You can ask me about the status of your submitted applications (${myApplications?.length || 0} active), how to prepare for upcoming technical or AI interviews, or explore requirements for open positions in the job catalog.`;
+        } else {
+          aiResponse.aiInterpretation = `I analyzed your query against the recruitment database (${candidates.length} candidates, ${jobs.length} jobs). You can ask me to evaluate specific candidates (e.g. "Tell me about ${candidates[0]?.name || 'a candidate'}"), check candidate skill gaps, review pending action items, or inspect pipeline bottlenecks.`;
+        }
         aiResponse.uncertainty = '';
       }
 
@@ -672,17 +754,30 @@ export default function AskSparkxDrawer({
   };
 
   const handleSend = (e) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+    if (e && e.preventDefault) e.preventDefault();
+    if (!query.trim() || isProcessing) return;
+    const qText = query.trim();
+    setLastFailedQuery(null);
     const userMsg = {
       id: `user-${Date.now()}`,
       sender: 'user',
-      text: query.trim()
+      text: qText
     };
     setConversation(prev => [...prev, userMsg]);
-    const qText = query.trim();
     setQuery('');
     processQuery(qText);
+  };
+
+  const handleRetry = (retryText) => {
+    if (!retryText || isProcessing) return;
+    setLastFailedQuery(null);
+    const userMsg = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text: retryText
+    };
+    setConversation(prev => [...prev, userMsg]);
+    processQuery(retryText);
   };
 
   if (!isOpen) return null;
@@ -691,7 +786,7 @@ export default function AskSparkxDrawer({
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 bg-stone-950/60 backdrop-blur-sm transition-opacity" 
         onClick={onClose}
         aria-hidden="true" 
       />
@@ -701,18 +796,18 @@ export default function AskSparkxDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="ARETE Decision Intelligence Copilot"
-        className="relative w-full max-w-xl bg-white dark:bg-[#14161F] border-l border-[#E8E8E4] dark:border-[#222634] shadow-depth-elevated flex flex-col z-10 animate-slide-in"
+        className="relative w-full max-w-xl bg-[#FDFBF7] dark:bg-[#161311] border-l border-[#E8E4DF] dark:border-[#2A2520] shadow-depth-elevated flex flex-col z-10 animate-slide-in"
       >
         {/* Drawer Header */}
-        <div className="px-5 py-4 border-b border-[#E8E8E4] dark:border-[#222634] flex items-center justify-between bg-white dark:bg-[#14161F]">
+        <div className="px-5 py-4 border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between bg-[#FDFBF7] dark:bg-[#161311]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-[#1B1310] border border-[#E8E8E4] dark:border-[#382B22] flex items-center justify-center text-stone-800 dark:text-[#D6B477] shadow-subtle">
+            <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-[#1B1310] border border-[#E8E4DF] dark:border-[#382B22] flex items-center justify-center text-stone-800 dark:text-[#D6B477] shadow-subtle">
               <Bot className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100 font-display">ARETE Copilot</h2>
-                <span className="text-[10px] font-semibold font-mono px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border border-[#E8E8E4] dark:border-stone-700">
+                <span className="text-[10px] font-semibold font-mono px-2 py-0.5 rounded-md bg-stone-100 dark:bg-[#24201D] text-stone-700 dark:text-stone-300 border border-[#E8E4DF] dark:border-[#36302A]">
                   {userRole === 'candidate' ? 'Career Assistant' : 'Recruiter AI'}
                 </span>
               </div>
@@ -727,7 +822,7 @@ export default function AskSparkxDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition"
+            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#24201D] transition"
             aria-label="Close ARETE Copilot drawer"
           >
             <X className="w-4 h-4" />
@@ -736,11 +831,11 @@ export default function AskSparkxDrawer({
 
         {/* Active Context Banner */}
         {contextCandidate && (
-          <div className="px-5 py-2.5 bg-slate-50 dark:bg-[#0E1017] border-b border-[#E8E8E4] dark:border-[#222634] flex items-center justify-between text-xs">
+          <div className="px-5 py-2.5 bg-stone-100/70 dark:bg-[#1A1714] border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between text-xs">
             <div className="flex items-center gap-2 truncate">
               <span className="font-mono text-[10px] uppercase font-bold text-brand-600 dark:text-brand-400">Context:</span>
-              <span className="font-bold text-slate-900 dark:text-white truncate">{contextCandidate.name}</span>
-              <span className="text-slate-500 dark:text-slate-400 text-[11px]">({contextCandidate.jobTitle || 'Role'})</span>
+              <span className="font-bold text-stone-900 dark:text-stone-100 truncate">{contextCandidate.name}</span>
+              <span className="text-stone-500 dark:text-stone-400 text-[11px]">({contextCandidate.jobTitle || 'Role'})</span>
             </div>
             <button
               type="button"
@@ -762,16 +857,37 @@ export default function AskSparkxDrawer({
               <div className={`p-4 rounded-xl text-xs max-w-[90%] leading-relaxed ${
                 msg.sender === 'user'
                   ? 'bg-brand-600 text-white shadow-subtle'
-                  : 'bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-subtle'
+                  : msg.isError
+                  ? 'bg-rose-50/80 dark:bg-rose-950/25 border border-rose-200 dark:border-rose-900/40 text-stone-900 dark:text-stone-100 shadow-subtle'
+                  : 'bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-900 dark:text-stone-100 shadow-subtle'
               }`}>
                 <FormattedMarkdownText 
                   content={msg.text} 
-                  className={msg.sender === 'user' ? 'text-white' : 'font-semibold text-slate-900 dark:text-white'} 
+                  className={msg.sender === 'user' ? 'text-white' : 'font-semibold text-stone-900 dark:text-stone-100'} 
                 />
 
+                {/* Error Recovery CTA */}
+                {msg.isError && msg.failedQuery && (
+                  <div className="mt-3 pt-2.5 border-t border-rose-200/70 dark:border-rose-900/40 flex items-center justify-between gap-2">
+                    <span className="text-[10.5px] text-rose-600 dark:text-rose-400 font-medium flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Temporary assistant error</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRetry(msg.failedQuery)}
+                      disabled={isProcessing}
+                      className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#24201D] hover:bg-stone-100 dark:hover:bg-[#36302A] text-stone-800 dark:text-stone-200 border border-[#E8E4DF] dark:border-[#36302A] text-[11px] font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Retry Query</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Structured Evidence Callouts for AI messages */}
-                {msg.sender === 'ai' && (msg.databaseFacts?.length > 0 || msg.metrics?.length > 0 || msg.aiInterpretation) && (
-                  <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                {msg.sender === 'ai' && !msg.isError && (msg.databaseFacts?.length > 0 || msg.metrics?.length > 0 || msg.aiInterpretation) && (
+                  <div className="mt-3.5 pt-3 border-t border-[#E8E4DF] dark:border-[#2A2520] space-y-3">
                     {/* Database Facts (Strict facts from database) */}
                     {msg.databaseFacts?.length > 0 && (
                       <div className="space-y-1.5">
@@ -857,11 +973,11 @@ export default function AskSparkxDrawer({
                   </div>
                 )}
 
-                {/* Decision Assistant Authoritative Evidence Card */}
+                {/* Decision Assistant Authoritative Evidence Card (Candidate Scope) */}
                 {msg.sender === 'ai' && msg.isDecisionAssistant && (
-                  <div className="mt-3.5 pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                  <div className="mt-3.5 pt-3 border-t border-[#E8E4DF] dark:border-[#2A2520] space-y-3">
                     {/* Scorecard Benchmark Pill Bar */}
-                    <div className="p-3 rounded-xl bg-stone-100/80 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-800 space-y-2">
+                    <div className="p-3 rounded-xl bg-stone-100/80 dark:bg-[#201C18] border border-[#E8E4DF] dark:border-[#2A2520] space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500">
                           Authoritative Scorecard
@@ -871,11 +987,11 @@ export default function AskSparkxDrawer({
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[10.5px] font-mono">
-                        <div className="p-1.5 rounded-lg bg-white dark:bg-[#1A1714] border border-stone-200 dark:border-stone-800">
+                        <div className="p-1.5 rounded-lg bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520]">
                           <span className="text-stone-400 block text-[9px]">Must-Have Coverage</span>
                           <strong className="text-emerald-600 dark:text-emerald-400">{msg.mustHaveCoverage}%</strong>
                         </div>
-                        <div className="p-1.5 rounded-lg bg-white dark:bg-[#1A1714] border border-stone-200 dark:border-stone-800">
+                        <div className="p-1.5 rounded-lg bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520]">
                           <span className="text-stone-400 block text-[9px]">Preferred Coverage</span>
                           <strong className="text-brand-600 dark:text-brand-400">{msg.preferredCoverage}%</strong>
                         </div>
@@ -890,42 +1006,279 @@ export default function AskSparkxDrawer({
                           <span>Grounded Competency Proof ({msg.citedEvidence.length})</span>
                         </span>
                         <div className="flex flex-wrap gap-1.5 pt-0.5">
-                          {msg.citedEvidence.slice(0, 6).map((c, i) => (
-                            <span
-                              key={i}
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold border flex items-center gap-1 ${
-                                c.status === 'VERIFIED'
-                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
-                                  : c.status === 'EVIDENCED'
-                                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
-                                  : c.status === 'CLAIMED'
-                                  ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25'
-                                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25'
-                              }`}
-                              title={c.reason}
-                            >
-                              <span>{c.skill_name}</span>
-                              <span className="text-[8.5px] opacity-75">[{c.status}]</span>
-                            </span>
-                          ))}
+                          {msg.citedEvidence.slice(0, 8).map((c, i) => {
+                            const isVerified = c.status === 'VERIFIED';
+                            const isEvidenced = c.status === 'EVIDENCED';
+                            const isClaimed = c.status === 'CLAIMED';
+                            return (
+                              <div
+                                key={i}
+                                className={`group relative px-2.5 py-1 rounded-md text-[10px] font-mono font-bold border flex items-center gap-1.5 transition ${
+                                  isVerified
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+                                    : isEvidenced
+                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                                    : isClaimed
+                                    ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/25'
+                                    : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/25'
+                                }`}
+                                title={c.reason || c.quote_snippet || ''}
+                              >
+                                <span>{c.skill_name}</span>
+                                <span className="text-[8.5px] opacity-75">[{c.status}]</span>
+                                {c.artifact_url && (
+                                  <a
+                                    href={c.artifact_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="opacity-60 hover:opacity-100 hover:scale-110 transition ml-0.5"
+                                    title={`View verified record (${c.evidence_type || 'evidence'})`}
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5 inline" />
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     )}
 
                     {/* Material Gaps */}
                     {msg.materialGaps?.length > 0 && (
-                      <div className="space-y-1 text-[10.5px]">
+                      <div className="space-y-1.5 text-[10.5px]">
                         <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                           <AlertCircle className="w-3.5 h-3.5" />
                           <span>Gaps to Address ({msg.materialGaps.length})</span>
                         </span>
                         <ul className="space-y-1">
-                          {msg.materialGaps.slice(0, 2).map((g, i) => (
+                          {msg.materialGaps.slice(0, 3).map((g, i) => (
                             <li key={i} className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20 text-stone-700 dark:text-stone-300 text-[10.5px]">
                               <strong className="text-amber-700 dark:text-amber-400">{g.skill_name}:</strong> {g.mitigation_recommendation}
                             </li>
                           ))}
                         </ul>
+                      </div>
+                    )}
+
+                    {/* Grounded Evidence Records Snippets */}
+                    {msg.evidenceRecords?.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+                          <Database className="w-3 h-3" />
+                          <span>Direct Evidence Anchors</span>
+                        </span>
+                        <div className="space-y-1">
+                          {msg.evidenceRecords.slice(0, 3).map((er, idx) => (
+                            <div key={idx} className="p-2 rounded-lg bg-stone-100/60 dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] text-[10px] font-mono">
+                              <div className="flex items-center justify-between text-stone-500 mb-0.5">
+                                <span className="font-semibold uppercase tracking-wider text-brand-600 dark:text-brand-400">{er.evidence_type || 'Proof'}: {er.skill_name}</span>
+                                {er.record_ref && <span className="text-[9px] opacity-75">{er.record_ref}</span>}
+                              </div>
+                              {er.quote_snippet && (
+                                <p className="text-stone-700 dark:text-stone-300 italic text-[10.5px] line-clamp-2">
+                                  "{er.quote_snippet}"
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Interactive Suggested Follow-Up Prompts */}
+                    {msg.suggestedFollowUps?.length > 0 && (
+                      <div className="pt-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 block mb-1.5">
+                          Recommended Inquiries:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.suggestedFollowUps.map((qText, qi) => (
+                            <button
+                              key={qi}
+                              type="button"
+                              onClick={() => {
+                                setQuery(qText);
+                                processQuery(qText);
+                              }}
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-mono bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-700 dark:text-stone-300 border border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 text-left transition flex items-center gap-1 shadow-subtle group"
+                            >
+                              <span>{qText}</span>
+                              <ArrowRight className="w-2.5 h-2.5 text-stone-400 group-hover:text-brand-500 shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Limitations Disclaimer */}
+                    {msg.limitations && (
+                      <p className="text-[9.5px] text-stone-400 dark:text-stone-500 italic pt-1">
+                        ⚠️ {msg.limitations}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Job Pool Decision Assistant Card (Requisition Scope) */}
+                {msg.sender === 'ai' && msg.isJobDecisionAssistant && (
+                  <div className="mt-3.5 pt-3 border-t border-[#E8E4DF] dark:border-[#2A2520] space-y-3">
+                    {/* Requisition Header & Coverage Summary */}
+                    <div className="p-3 rounded-xl bg-stone-100/80 dark:bg-[#201C18] border border-[#E8E4DF] dark:border-[#2A2520] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300">
+                            {msg.jobTitle || 'Requisition Pool'}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/25">
+                          {msg.totalCandidates} Applicants Analyzed
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Pool-Wide Unverified Skills Alert Banner */}
+                    {msg.unverifiedSkills?.length > 0 && (
+                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-200 text-[10.5px] space-y-1">
+                        <div className="flex items-center gap-1.5 font-bold font-mono text-[10px] uppercase text-amber-700 dark:text-amber-300">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span>Competency Verification Deficit Alert</span>
+                        </div>
+                        <p className="text-[10.5px] leading-relaxed">
+                          Over 50% of the applicant pool lacks verified proof for: <strong className="font-semibold text-amber-900 dark:text-amber-100">{msg.unverifiedSkills.join(', ')}</strong>. Consider triggering targeted coding challenges or structured interview evaluation.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Ranked Leaderboard Cards */}
+                    {msg.topCandidates?.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center justify-between">
+                          <span>Top Evaluated Applicants ({msg.topCandidates.length})</span>
+                          <span className="text-[9px]">Grounded Scorecards</span>
+                        </span>
+                        <div className="space-y-1.5">
+                          {msg.topCandidates.map((cand, idx) => {
+                            const isStrong = cand.fit_tier === 'STRONG_FIT';
+                            const isModerate = cand.fit_tier === 'MODERATE_FIT';
+                            return (
+                              <div
+                                key={cand.candidate_id || idx}
+                                className="p-2.5 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-500/50 transition flex items-center justify-between gap-2 shadow-subtle"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <span className="w-5 h-5 rounded-md bg-stone-100 dark:bg-[#26201B] text-stone-600 dark:text-stone-300 text-[10px] font-mono font-bold flex items-center justify-center shrink-0">
+                                    #{idx + 1}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate">
+                                        {cand.candidate_name}
+                                      </h4>
+                                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-stone-100 dark:bg-[#201C18] text-stone-600 dark:text-stone-400 uppercase">
+                                        {cand.stage}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[10px] font-mono text-stone-500 pt-0.5">
+                                      <span className="text-emerald-600 dark:text-emerald-400">Must: {cand.must_have_coverage}%</span>
+                                      <span>•</span>
+                                      <span>Pref: {cand.preferred_coverage}%</span>
+                                      <span>•</span>
+                                      <span className="text-stone-400">{cand.verified_skills_count} verified</span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold border ${
+                                    isStrong
+                                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+                                      : isModerate
+                                      ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/25'
+                                      : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                                  }`}>
+                                    {cand.fit_score}%
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const matchedCand = candidates.find(c => String(c.id) === String(cand.candidate_id)) || {
+                                        id: cand.candidate_id,
+                                        name: cand.candidate_name,
+                                        jobTitle: msg.jobTitle
+                                      };
+                                      setContextCandidate(matchedCand);
+                                      contextCandidateRef.current = matchedCand;
+                                      const prompt = `Why is ${cand.candidate_name} rated a ${String(cand.fit_tier).replace('_', ' ')}? Summarize evidence & gaps.`;
+                                      setQuery(prompt);
+                                      processQuery(prompt);
+                                    }}
+                                    className="px-2 py-1 rounded-md text-[10px] font-mono font-bold bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-900/50 hover:bg-brand-100 hover:scale-105 transition flex items-center gap-1 shadow-subtle"
+                                    title={`Drill down into ${cand.candidate_name}'s evidence dossier`}
+                                  >
+                                    <span>Inspect</span>
+                                    <ArrowRight className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Required Skills Distribution Breakdown */}
+                    {msg.requiredSkillsBreakdown?.length > 0 && (
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 flex items-center gap-1.5">
+                          <Target className="w-3 h-3 text-brand-500" />
+                          <span>Requisition Competency Coverage Breakdown</span>
+                        </span>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {msg.requiredSkillsBreakdown.slice(0, 6).map((sb, sIdx) => (
+                            <div key={sIdx} className="p-2 rounded-lg bg-stone-50 dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] text-[10px] font-mono">
+                              <div className="flex items-center justify-between font-bold text-stone-800 dark:text-stone-200">
+                                <span className="truncate">{sb.skill_name}</span>
+                                <span className="text-[9px] uppercase px-1 rounded bg-stone-200 dark:bg-[#2A2520] text-stone-600 dark:text-stone-400 shrink-0">
+                                  {sb.importance}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-stone-500 pt-1 text-[9.5px]">
+                                <span className="text-emerald-600 dark:text-emerald-400">{sb.verified_count} verified</span>
+                                <span className={sb.unverified_rate > 50 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-stone-400'}>
+                                  {sb.unverified_rate}% unverified
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Interactive Suggested Follow-Up Prompts */}
+                    {msg.suggestedFollowUps?.length > 0 && (
+                      <div className="pt-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 block mb-1.5">
+                          Suggested Requisition Inquiries:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {msg.suggestedFollowUps.map((qText, qi) => (
+                            <button
+                              key={qi}
+                              type="button"
+                              onClick={() => {
+                                setQuery(qText);
+                                processQuery(qText);
+                              }}
+                              className="px-2.5 py-1 rounded-lg text-[10px] font-mono bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-700 dark:text-stone-300 border border-[#E8E4DF] dark:border-[#2A2520] hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 text-left transition flex items-center gap-1 shadow-subtle group"
+                            >
+                              <span>{qText}</span>
+                              <ArrowRight className="w-2.5 h-2.5 text-stone-400 group-hover:text-brand-500 shrink-0" />
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
 

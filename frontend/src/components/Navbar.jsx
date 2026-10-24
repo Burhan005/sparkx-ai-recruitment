@@ -102,6 +102,7 @@ export default function Navbar() {
   const candidateNavItems = [
     { path: '/jobs', label: 'Browse Jobs', icon: UserCheck },
     { path: '/my-applications', label: 'My Applications', icon: FileText, badge: myApplications.length > 0 ? String(myApplications.length) : null },
+    { path: '/resume-studio', label: 'Resume Studio', icon: Sparkles, badge: 'AI' },
     { path: '/interview', label: 'AI Interview', icon: Video, badge: 'Adaptive' },
     { path: '/assessment', label: isNonTech ? 'Assessment' : 'Code Challenge', icon: isNonTech ? FileText : Code2 },
     { path: '/skill-gap', label: 'Skill Gap', icon: TrendingUp },

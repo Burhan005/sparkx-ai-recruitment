@@ -172,28 +172,28 @@ export default function CandidateComparisonModal({
       }}
     >
       <div 
-        className="relative w-full max-w-6xl h-[88vh] max-h-[88vh] flex flex-col rounded-3xl bg-[#FAF8F5] dark:bg-[#141210] border border-[#E8DFD8] dark:border-[#2A2520] shadow-2xl overflow-hidden transition-all text-[#1C130E] dark:text-stone-100"
+        className="relative w-full max-w-6xl h-[88vh] max-h-[88vh] flex flex-col rounded-3xl bg-[#FDFBF7] dark:bg-[#160F0C] border border-[#E8DFD8] dark:border-[#33241C] shadow-2xl overflow-hidden transition-all text-[#1C130E] dark:text-[#FAF6F0]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="comparison-title"
       >
         {/* ─── MODAL HEADER ─── */}
-        <header className="px-6 py-4.5 bg-white/90 dark:bg-[#1A1714]/90 border-b border-[#E8DFD8] dark:border-[#2A2520] flex items-center justify-between shrink-0 backdrop-blur-md z-20">
+        <header className="px-6 py-4 bg-[#FDFBF7]/95 dark:bg-[#1A120E]/95 border-b border-[#E8DFD8] dark:border-[#33241C] flex items-center justify-between shrink-0 backdrop-blur-md z-20">
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-brand-600 via-amber-600 to-amber-700 flex items-center justify-center text-white shadow-md shadow-brand-600/25 shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#2E2017] via-[#3D2C22] to-[#C27803] flex items-center justify-center text-amber-200 border border-amber-500/30 shadow-md shrink-0">
               <Scale className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 bg-brand-500/10 dark:bg-brand-500/20 px-2 py-0.5 rounded-full border border-brand-500/20">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/25">
                   Side-by-Side Comparison Engine
                 </span>
-                <span className="text-stone-400">•</span>
-                <span className="text-xs font-semibold text-stone-500 dark:text-stone-400">
+                <span className="text-[#A89F91] dark:text-[#8C7E72]">•</span>
+                <span className="text-xs font-semibold text-[#7C7267] dark:text-[#C4B5A5]">
                   {candidateIds.length} Candidates Selected
                 </span>
               </div>
-              <h2 id="comparison-title" className="text-base sm:text-lg font-bold text-stone-900 dark:text-white truncate">
+              <h2 id="comparison-title" className="text-base sm:text-lg font-bold font-sans text-[#1C130E] dark:text-[#FAF6F0] truncate">
                 {comparisonData?.job_title || jobTitle || 'Job Requisition Candidates'}
               </h2>
             </div>
@@ -201,14 +201,14 @@ export default function CandidateComparisonModal({
 
           <div className="flex items-center space-x-2.5 shrink-0">
             {/* View Switcher Tabs */}
-            <div className="flex items-center bg-stone-100 dark:bg-[#25201C] p-1 rounded-xl border border-stone-200 dark:border-stone-800">
+            <div className="flex items-center bg-[#FAF8F5] dark:bg-[#201814] p-1 rounded-xl border border-[#E8DFD8] dark:border-[#3D2C22]">
               <button
                 type="button"
                 onClick={() => setActiveView('matrix')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeView === 'matrix'
-                    ? 'bg-white dark:bg-[#1A1714] text-brand-600 dark:text-brand-400 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+                    ? 'bg-white dark:bg-[#2B201A] text-amber-800 dark:text-amber-300 shadow-xs border border-amber-500/30'
+                    : 'text-[#7C7267] dark:text-[#C4B5A5] hover:text-[#1C130E] dark:hover:text-[#FAF6F0]'
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
@@ -219,8 +219,8 @@ export default function CandidateComparisonModal({
                 onClick={() => setActiveView('summary')}
                 className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeView === 'summary'
-                    ? 'bg-white dark:bg-[#1A1714] text-brand-600 dark:text-brand-400 shadow-xs'
-                    : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
+                    ? 'bg-white dark:bg-[#2B201A] text-amber-800 dark:text-amber-300 shadow-xs border border-amber-500/30'
+                    : 'text-[#7C7267] dark:text-[#C4B5A5] hover:text-[#1C130E] dark:hover:text-[#FAF6F0]'
                 }`}
               >
                 <Award className="w-3.5 h-3.5" />
@@ -230,7 +230,7 @@ export default function CandidateComparisonModal({
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-[#25201C] transition cursor-pointer"
+              className="p-2 rounded-xl text-[#7C7267] hover:text-[#1C130E] dark:text-[#C4B5A5] dark:hover:text-[#FAF6F0] hover:bg-[#FAF8F5] dark:hover:bg-[#201814] transition cursor-pointer border border-transparent hover:border-[#E8DFD8] dark:hover:border-[#3D2C22]"
               aria-label="Close Comparison"
             >
               <X className="w-5 h-5" />
@@ -355,8 +355,8 @@ export default function CandidateComparisonModal({
                           key={cand.candidate_id}
                           className={`relative rounded-2xl p-5 border flex flex-col justify-between transition-all duration-200 shadow-sm ${
                             isRank1
-                              ? 'bg-gradient-to-b from-brand-500/10 via-white to-white dark:from-brand-950/40 dark:via-[#1A1714] dark:to-[#1A1714] border-brand-500/60 ring-2 ring-brand-500/20'
-                              : 'bg-white dark:bg-[#1A1714] border-[#E8DFD8] dark:border-[#2A2520]'
+                              ? 'bg-gradient-to-b from-amber-500/10 via-[#FDFBF7] to-[#FDFBF7] dark:from-amber-950/40 dark:via-[#201814] dark:to-[#201814] border-amber-500/50 ring-2 ring-amber-500/20'
+                              : 'bg-[#FDFBF7] dark:bg-[#1A120E] border-[#E8DFD8] dark:border-[#33241C]'
                           }`}
                         >
                           {/* Top Rank Badge & Fit Tier */}
@@ -364,10 +364,10 @@ export default function CandidateComparisonModal({
                             <div className="flex items-center space-x-2.5 min-w-0">
                               <Avatar name={cand.candidate_name} size="md" />
                               <div className="min-w-0">
-                                <h4 className="text-sm font-bold text-stone-900 dark:text-white truncate">
+                                <h4 className="text-sm font-bold font-sans text-[#1C130E] dark:text-[#FAF6F0] truncate">
                                   {cand.candidate_name}
                                 </h4>
-                                <p className="text-[11px] text-stone-500 dark:text-stone-400 truncate">
+                                <p className="text-[11px] text-[#A89F91] dark:text-[#8C7E72] truncate">
                                   {cand.email || 'Application dossier'}
                                 </p>
                               </div>
@@ -377,13 +377,13 @@ export default function CandidateComparisonModal({
                               <div className={`px-2 py-0.5 rounded-lg text-xs font-mono font-black ${
                                 isRank1
                                   ? 'bg-amber-500 text-amber-950 shadow-sm'
-                                  : 'bg-stone-100 dark:bg-[#25201C] text-stone-600 dark:text-stone-300'
+                                  : 'bg-[#FAF8F5] dark:bg-[#201814] text-[#7C7267] dark:text-[#C4B5A5] border border-[#E8DFD8] dark:border-[#3D2C22]'
                               }`}>
                                 #{cand.rank}
                               </div>
                               <span className={`text-[9px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                                 tier === 'STRONG_FIT' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30' :
-                                tier === 'GOOD_FIT' ? 'bg-brand-500/15 text-brand-700 dark:text-brand-300 border border-brand-500/30' :
+                                tier === 'GOOD_FIT' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30' :
                                 tier === 'MODERATE_FIT' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30' :
                                 'bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
                               }`}>
@@ -393,43 +393,43 @@ export default function CandidateComparisonModal({
                           </div>
 
                           {/* Overall Score Meter */}
-                          <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-[#141210] border border-stone-200/80 dark:border-stone-800 space-y-2 mb-3">
+                          <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#140D0A] border border-[#E8DFD8] dark:border-[#33241C] space-y-2 mb-3">
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-stone-600 dark:text-stone-300">
+                              <span className="text-[11px] font-bold text-[#7C7267] dark:text-[#C4B5A5]">
                                 Scorecard Fit
                               </span>
                               <span className={`text-base font-black font-mono ${
                                 score >= 85 ? 'text-emerald-600 dark:text-emerald-400' :
-                                score >= 70 ? 'text-brand-600 dark:text-brand-400' :
+                                score >= 70 ? 'text-amber-600 dark:text-amber-400' :
                                 'text-stone-600 dark:text-stone-400'
                               }`}>
                                 {score}%
                               </span>
                             </div>
 
-                            <div className="h-2 w-full bg-stone-200 dark:bg-stone-800 rounded-full overflow-hidden">
+                            <div className="h-2 w-full bg-[#E8DFD8] dark:bg-[#201814] rounded-full overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-500 ${
                                   score >= 85 ? 'bg-gradient-to-r from-emerald-500 to-teal-500' :
-                                  score >= 70 ? 'bg-gradient-to-r from-brand-600 to-amber-500' :
+                                  score >= 70 ? 'bg-gradient-to-r from-amber-600 to-amber-500' :
                                   'bg-stone-400'
                                 }`}
                                 style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
                               />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-stone-200/50 dark:border-stone-800/80 text-[10px]">
+                            <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[#E8DFD8]/60 dark:border-[#33241C] text-[10px]">
                               <div>
-                                <span className="text-stone-400 block">Must-Have:</span>
+                                <span className="text-[#A89F91] dark:text-[#8C7E72] block">Must-Have:</span>
                                 <span className={`font-bold font-mono ${
-                                  cand.must_have.has_missing ? 'text-rose-500' : 'text-stone-800 dark:text-stone-200'
+                                  cand.must_have.has_missing ? 'text-rose-500' : 'text-[#1C130E] dark:text-[#FAF6F0]'
                                 }`}>
                                   {Math.round(cand.must_have.score)}% ({cand.must_have.matched}/{cand.must_have.total})
                                 </span>
                               </div>
                               <div>
-                                <span className="text-stone-400 block">Preferred:</span>
-                                <span className="font-bold font-mono text-stone-800 dark:text-stone-200">
+                                <span className="text-[#A89F91] dark:text-[#8C7E72] block">Preferred:</span>
+                                <span className="font-bold font-mono text-[#1C130E] dark:text-[#FAF6F0]">
                                   {Math.round(cand.preferred.score)}% ({cand.preferred.matched}/{cand.preferred.total})
                                 </span>
                               </div>
@@ -596,28 +596,31 @@ export default function CandidateComparisonModal({
                           className={`p-2.5 rounded-xl border flex items-center justify-between gap-2.5 transition-all ${
                             isRank1
                               ? 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/40 ring-1 ring-amber-500/30'
-                              : 'bg-white dark:bg-[#1A1714] border-[#E8DFD8] dark:border-[#2A2520]'
+                              : 'bg-[#FDFBF7] dark:bg-[#1A120E] border-[#E8DFD8] dark:border-[#33241C]'
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <Avatar name={cand.candidate_name} size="sm" />
                             <div className="min-w-0">
-                              <div className="text-xs font-bold text-stone-900 dark:text-white truncate">
+                              <div className="text-xs font-bold text-[#1C130E] dark:text-[#FAF6F0] truncate">
                                 {cand.candidate_name}
                               </div>
-                              <div className="flex items-center gap-1.5 text-[10px] text-stone-500 dark:text-stone-400 font-mono">
-                                <span className={isRank1 ? 'text-amber-600 dark:text-amber-400 font-bold' : ''}>#{cand.rank}</span>
+                              <div className="flex items-center gap-1.5 text-[10px] text-[#A89F91] dark:text-[#8C7E72] font-mono">
+                                <span className={isRank1 ? 'text-amber-700 dark:text-amber-400 font-bold' : ''}>#{cand.rank}</span>
                                 <span>•</span>
                                 <span>{cand.verified_evidence_count} evidence</span>
                               </div>
                             </div>
                           </div>
                           <div className="text-right shrink-0">
-                            <span className={`text-xs font-black font-mono ${
+                            <span className={`text-xs font-black font-mono block ${
                               score >= 85 ? 'text-emerald-600 dark:text-emerald-400' :
-                              score >= 70 ? 'text-brand-600 dark:text-brand-400' : 'text-stone-600'
+                              score >= 70 ? 'text-amber-600 dark:text-amber-400' : 'text-stone-600'
                             }`}>
                               {score}%
+                            </span>
+                            <span className="text-[9px] text-[#A89F91] dark:text-[#8C7E72] font-sans block">
+                              Evidence Match
                             </span>
                             {onSelectCandidate && (
                               <button
@@ -626,7 +629,7 @@ export default function CandidateComparisonModal({
                                   onClose();
                                   onSelectCandidate(cand.candidate_id, 'scorecard');
                                 }}
-                                className="block text-[10px] text-brand-600 dark:text-brand-400 hover:underline cursor-pointer"
+                                className="block text-[10px] text-amber-700 dark:text-amber-400 hover:underline cursor-pointer"
                               >
                                 Scorecard →
                               </button>
@@ -636,10 +639,10 @@ export default function CandidateComparisonModal({
                       );
                     })}
                   </div>
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-4 border-t border-[#E8DFD8] dark:border-[#2A2520]">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-4 border-t border-[#E8DFD8] dark:border-[#33241C]">
                   <div className="flex items-center space-x-2">
-                    <Layers className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-                    <h3 id="skill-matrix-heading" className="text-xs font-mono font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+                    <Layers className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <h3 id="skill-matrix-heading" className="text-xs font-mono font-bold uppercase tracking-wider text-[#7C7267] dark:text-[#C4B5A5]">
                       Authoritative Requirement Breakdown Matrix ({filteredRows.length} Requirements)
                     </h3>
                   </div>
@@ -647,13 +650,13 @@ export default function CandidateComparisonModal({
                   {/* Matrix Filters */}
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Filter Tabs */}
-                    <div className="flex p-1 rounded-xl bg-stone-100 dark:bg-[#1B1714] border border-[#E8DFD8] dark:border-[#2A2520] text-xs">
+                    <div className="flex p-1 rounded-xl bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-xs">
                       <button
                         onClick={() => setFilterType('ALL')}
                         className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
                           filterType === 'ALL'
-                            ? 'bg-white dark:bg-[#28221D] text-stone-900 dark:text-white shadow-xs'
-                            : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
+                            ? 'bg-white dark:bg-[#2B201A] text-[#1C130E] dark:text-[#FAF6F0] shadow-xs border border-[#E8DFD8] dark:border-[#3D2C22]'
+                            : 'text-[#7C7267] hover:text-[#1C130E] dark:text-[#C4B5A5] dark:hover:text-[#FAF6F0]'
                         }`}
                       >
                         All ({comparisonData.total_requirements})
@@ -662,8 +665,8 @@ export default function CandidateComparisonModal({
                         onClick={() => setFilterType('MUST_HAVE')}
                         className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
                           filterType === 'MUST_HAVE'
-                            ? 'bg-white dark:bg-[#28221D] text-stone-900 dark:text-white shadow-xs'
-                            : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
+                            ? 'bg-white dark:bg-[#2B201A] text-[#1C130E] dark:text-[#FAF6F0] shadow-xs border border-[#E8DFD8] dark:border-[#3D2C22]'
+                            : 'text-[#7C7267] hover:text-[#1C130E] dark:text-[#C4B5A5] dark:hover:text-[#FAF6F0]'
                         }`}
                       >
                         Must-Have ({comparisonData.must_have_count})
@@ -672,8 +675,8 @@ export default function CandidateComparisonModal({
                         onClick={() => setFilterType('PREFERRED')}
                         className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer ${
                           filterType === 'PREFERRED'
-                            ? 'bg-white dark:bg-[#28221D] text-stone-900 dark:text-white shadow-xs'
-                            : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
+                            ? 'bg-white dark:bg-[#2B201A] text-[#1C130E] dark:text-[#FAF6F0] shadow-xs border border-[#E8DFD8] dark:border-[#3D2C22]'
+                            : 'text-[#7C7267] hover:text-[#1C130E] dark:text-[#C4B5A5] dark:hover:text-[#FAF6F0]'
                         }`}
                       >
                         Preferred ({comparisonData.preferred_count})
@@ -682,8 +685,8 @@ export default function CandidateComparisonModal({
                         onClick={() => setFilterType('GAPS_ONLY')}
                         className={`px-3 py-1 rounded-lg font-semibold transition cursor-pointer flex items-center space-x-1 ${
                           filterType === 'GAPS_ONLY'
-                            ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 shadow-xs'
-                            : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-200'
+                            ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 shadow-xs border border-rose-500/30'
+                            : 'text-[#7C7267] hover:text-[#1C130E] dark:text-[#C4B5A5] dark:hover:text-[#FAF6F0]'
                         }`}
                       >
                         <AlertTriangle className="w-3 h-3 text-rose-500" />
@@ -707,25 +710,25 @@ export default function CandidateComparisonModal({
 
                     {/* Search Input */}
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-stone-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <Search className="w-3.5 h-3.5 text-[#A89F91] dark:text-[#8C7E72] absolute left-2.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="text"
                         placeholder="Filter skills..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-8 pr-3 py-1.5 rounded-xl text-xs bg-white dark:bg-[#1B1714] border border-[#E8DFD8] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-brand-500 w-36 sm:w-44"
+                        className="pl-8 pr-3 py-1.5 rounded-xl text-xs bg-white dark:bg-[#1A120E] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#1C130E] dark:text-[#FAF6F0] placeholder-[#A89F91] dark:placeholder-[#8C7E72] focus:outline-none focus:ring-1 focus:ring-amber-500 w-36 sm:w-44"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Side-by-Side Table */}
-                <div className="rounded-2xl border border-[#E8DFD8] dark:border-[#2A2520] bg-white dark:bg-[#1A1714] shadow-sm overflow-hidden">
+                <div className="rounded-2xl border border-[#E8DFD8] dark:border-[#33241C] bg-[#FDFBF7] dark:bg-[#1A120E] shadow-sm overflow-hidden">
                   <div className="overflow-x-auto scrollbar-thin">
                     <table className="w-full text-left border-collapse text-xs">
-                      <thead className="sticky top-0 bg-stone-50/95 dark:bg-[#141210]/95 backdrop-blur-sm z-20 border-b border-[#E8DFD8] dark:border-[#2A2520] shadow-2xs">
+                      <thead className="sticky top-0 bg-[#FAF8F5]/95 dark:bg-[#160F0C]/95 backdrop-blur-sm z-20 border-b border-[#E8DFD8] dark:border-[#33241C] shadow-2xs">
                         <tr>
-                          <th className="py-3.5 px-4 font-mono font-bold uppercase tracking-wider text-[11px] text-stone-500 dark:text-stone-400 min-w-[240px] sticky left-0 bg-stone-50 dark:bg-[#141210] z-30">
+                          <th className="py-3.5 px-4 font-mono font-bold uppercase tracking-wider text-[11px] text-[#7C7267] dark:text-[#C4B5A5] min-w-[240px] sticky left-0 bg-[#FAF8F5] dark:bg-[#160F0C] z-30">
                             Required Skill & Standard
                           </th>
                           {comparisonData.candidates.map((cand) => {
@@ -734,14 +737,14 @@ export default function CandidateComparisonModal({
                             return (
                               <th 
                                 key={cand.candidate_id} 
-                                className="py-3.5 px-4 font-bold text-stone-900 dark:text-white min-w-[220px]"
+                                className="py-3.5 px-4 font-bold text-[#1C130E] dark:text-[#FAF6F0] min-w-[220px]"
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center space-x-2 truncate">
                                     <Avatar name={cand.candidate_name} size="xs" />
                                     <div className="truncate">
-                                      <span className="block truncate text-xs font-bold">{cand.candidate_name}</span>
-                                      <span className="text-[10px] font-mono font-normal text-stone-400">
+                                      <span className="block truncate text-xs font-bold font-sans">{cand.candidate_name}</span>
+                                      <span className="text-[10px] font-mono font-normal text-[#A89F91] dark:text-[#8C7E72]">
                                         #{cand.rank} • {score}% ({tier.replace('_', ' ')})
                                       </span>
                                     </div>
@@ -756,7 +759,7 @@ export default function CandidateComparisonModal({
                                         navigate(`/recruiter/candidates/${cand.candidate_id}?tab=scorecard`);
                                       }
                                     }}
-                                    className="text-[10px] font-semibold text-brand-600 dark:text-brand-400 hover:underline shrink-0 cursor-pointer flex items-center gap-0.5"
+                                    className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 hover:underline shrink-0 cursor-pointer flex items-center gap-0.5"
                                     title="Open Scorecard"
                                   >
                                     <span>Scorecard</span>
@@ -769,10 +772,10 @@ export default function CandidateComparisonModal({
                         </tr>
                       </thead>
 
-                      <tbody className="divide-y divide-[#E8DFD8]/60 dark:divide-[#2A2520]/60">
+                      <tbody className="divide-y divide-[#E8DFD8]/60 dark:divide-[#33241C]/60">
                         {filteredRows.length === 0 ? (
                           <tr>
-                            <td colSpan={1 + comparisonData.candidates.length} className="py-12 text-center text-stone-400 italic">
+                            <td colSpan={1 + comparisonData.candidates.length} className="py-12 text-center text-[#A89F91] dark:text-[#8C7E72] italic">
                               No skill requirements matching active filters.
                             </td>
                           </tr>
@@ -781,24 +784,24 @@ export default function CandidateComparisonModal({
                             const isMustHave = row.requirement_type === 'must_have';
 
                             return (
-                              <tr key={row.skill_id} className="group hover:bg-stone-50/70 dark:hover:bg-[#201C18]/60 transition-colors">
+                              <tr key={row.skill_id} className="group hover:bg-[#FAF8F5]/70 dark:hover:bg-[#201814]/60 transition-colors">
                                 {/* Left Sticky Column: Skill Spec */}
-                                <td className="py-3.5 px-4 sticky left-0 bg-white dark:bg-[#1A1714] group-hover:bg-stone-50/90 dark:group-hover:bg-[#201C18]/90 z-10 border-r border-[#E8DFD8]/50 dark:border-[#2A2520]/50 transition-colors">
+                                <td className="py-3.5 px-4 sticky left-0 bg-[#FDFBF7] dark:bg-[#1A120E] group-hover:bg-[#FAF8F5] dark:group-hover:bg-[#201814] z-10 border-r border-[#E8DFD8]/60 dark:border-[#33241C]/60 transition-colors">
                                   <div className="space-y-1">
                                     <div className="flex items-center space-x-2">
-                                      <span className="font-bold text-stone-900 dark:text-stone-100 text-sm">
+                                      <span className="font-bold font-sans text-[#1C130E] dark:text-[#FAF6F0] text-sm">
                                         {row.skill_name}
                                       </span>
                                       <span className={`text-[9px] font-mono font-black uppercase px-1.5 py-0.5 rounded ${
                                         isMustHave
                                           ? 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/20'
-                                          : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+                                          : 'bg-[#FAF8F5] dark:bg-[#201814] text-[#7C7267] dark:text-[#C4B5A5] border border-[#E8DFD8] dark:border-[#3D2C22]'
                                       }`}>
                                         {isMustHave ? 'Must Have' : 'Preferred'}
                                       </span>
                                     </div>
 
-                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-stone-400 font-mono">
+                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-[#A89F91] dark:text-[#8C7E72] font-mono">
                                       <span>Weight: {row.weight}x</span>
                                       <span>•</span>
                                       <span>Min: {row.required_years > 0 ? `${row.required_years}y` : 'Any yrs'}</span>
@@ -927,8 +930,8 @@ export default function CandidateComparisonModal({
         </div>
 
         {/* ─── MODAL FOOTER ─── */}
-        <footer className="px-6 py-4 bg-white/90 dark:bg-[#1A1714]/90 border-t border-[#E8DFD8] dark:border-[#2A2520] flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-2 text-xs text-stone-500 dark:text-stone-400">
+        <footer className="px-6 py-4 bg-[#FDFBF7]/95 dark:bg-[#1A120E]/95 border-t border-[#E8DFD8] dark:border-[#33241C] flex items-center justify-between shrink-0">
+          <div className="flex items-center space-x-2 text-xs text-[#7C7267] dark:text-[#C4B5A5]">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span>Authoritative evidence-backed scoring powered by ARETE Skill Engine. Zero client-side computation.</span>
           </div>
@@ -941,32 +944,32 @@ export default function CandidateComparisonModal({
       {/* ─── EVIDENCE INSPECTION POPUP ─── */}
       {activeEvidenceModal && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#1A1714] border border-[#E8DFD8] dark:border-[#2A2520] shadow-2xl p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-[#E8DFD8] dark:border-[#2A2520] pb-3">
+          <div className="w-full max-w-lg rounded-2xl bg-[#FDFBF7] dark:bg-[#1A120E] border border-[#E8DFD8] dark:border-[#33241C] shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E8DFD8] dark:border-[#33241C] pb-3">
               <div className="flex items-center space-x-2">
                 <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                <h4 className="text-sm font-bold text-stone-900 dark:text-white">
+                <h4 className="text-sm font-bold font-sans text-[#1C130E] dark:text-[#FAF6F0]">
                   Evidence Ledger: {activeEvidenceModal.skillName}
                 </h4>
               </div>
               <button
                 onClick={() => setActiveEvidenceModal(null)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-200"
+                className="p-1 rounded-lg text-[#7C7267] hover:text-[#1C130E] dark:text-[#C4B5A5] dark:hover:text-[#FAF6F0]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <p className="text-xs text-stone-500 dark:text-stone-400">
-              Authentic platform records validating competencies for <strong>{activeEvidenceModal.candidateName}</strong>:
+            <p className="text-xs text-[#7C7267] dark:text-[#C4B5A5]">
+              Authentic platform records validating competencies for <strong className="text-[#1C130E] dark:text-[#FAF6F0]">{activeEvidenceModal.candidateName}</strong>:
             </p>
 
             <div className="space-y-2.5 max-h-64 overflow-y-auto scrollbar-thin">
               {activeEvidenceModal.evidence && activeEvidenceModal.evidence.length > 0 ? (
                 activeEvidenceModal.evidence.map((ev, eIdx) => (
-                  <div key={eIdx} className="p-3 rounded-xl bg-stone-50 dark:bg-[#141210] border border-stone-200/80 dark:border-stone-800 space-y-1 text-xs">
+                  <div key={eIdx} className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-1 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold uppercase text-[10px] text-brand-600 dark:text-brand-400">
+                      <span className="font-mono font-bold uppercase text-[10px] text-amber-700 dark:text-amber-400">
                         {ev.evidence_type.replace('_', ' ')}
                       </span>
                       {ev.score_contribution !== null && (
@@ -976,14 +979,14 @@ export default function CandidateComparisonModal({
                       )}
                     </div>
                     {ev.snippet && (
-                      <p className="text-stone-700 dark:text-stone-300 text-[11px] leading-relaxed">
+                      <p className="text-[#1C130E] dark:text-[#FAF6F0] text-[11px] leading-relaxed">
                         &ldquo;{ev.snippet}&rdquo;
                       </p>
                     )}
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-stone-400 italic">No structured evidence records available.</p>
+                <p className="text-xs text-[#A89F91] dark:text-[#8C7E72] italic">No structured evidence records available.</p>
               )}
             </div>
 

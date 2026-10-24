@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PublicNavbar from './PublicNavbar';
 import LandingCursor from './LandingCursor';
@@ -39,7 +39,49 @@ import {
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { isLoggedIn, userRole } = useRecruitment();
+  const { 
+    isLoggedIn, 
+    userRole,
+    isDbConnected,
+    isLoading: isDbLoading,
+    dbError,
+    syncWithDatabase
+  } = useRecruitment();
+  const [hasCheckedDb, setHasCheckedDb] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isDbConnected) {
+      setHasCheckedDb(true);
+      return;
+    }
+    if (!isDbConnected && syncWithDatabase) {
+      syncWithDatabase(true)
+        .catch(() => {})
+        .finally(() => {
+          if (isMounted) setHasCheckedDb(true);
+        });
+    } else {
+      setHasCheckedDb(true);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isDbConnected, syncWithDatabase]);
+
+  const isCheckingDb = isDbLoading || (!hasCheckedDb && !isDbConnected && !dbError);
+
+  const handleRetryDbSync = useCallback(() => {
+    if (isCheckingDb) return;
+    syncWithDatabase?.(false);
+  }, [isCheckingDb, syncWithDatabase]);
+
+  const handleKeyDownDbSync = useCallback((e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleRetryDbSync();
+    }
+  }, [handleRetryDbSync]);
   const { smoothNavigate } = useSmoothNavigate();
   const [selectedFeature, setSelectedFeature] = useState(null);
   const [contactSubmitted, setContactSubmitted] = useState(false);
@@ -227,15 +269,11 @@ export default function LandingPage() {
             className="max-w-4xl mx-auto space-y-6"
           >
             
-            {/* Pill Header — Refined Executive Badge */}
-            <div className={`inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#F3EFEA] dark:bg-[#2B201A] border border-[#E2DAD1] dark:border-[#3E2E24] shadow-2xs select-none ${prefersReduced ? '' : 'animate-fade-in-up'}`}>
+            {/* Pill Header — Core Philosophy Badge */}
+            <div className={`inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#F3EFEA] dark:bg-[#2B201A] border border-[#E2DAD1] dark:border-[#3E2E24] shadow-2xs select-none ${prefersReduced ? '' : 'animate-fade-in-up'}`}>
               <Sparkles className="w-3.5 h-3.5 text-[#C27803] dark:text-amber-400 shrink-0" />
-              <span className="text-xs font-medium text-stone-800 dark:text-[#E8DFD8] tracking-tight">
-                Next-Generation Autonomous Recruitment Intelligence
-              </span>
-              <span className="w-1 h-1 rounded-full bg-stone-300 dark:bg-[#523E32]" />
-              <span className="text-[11px] font-mono font-medium text-stone-500 dark:text-[#A8988B]">
-                v2.5
+              <span className="text-xs font-semibold text-stone-800 dark:text-[#E8DFD8] tracking-tight">
+                Less anxiety for talent • More clarity for hiring • Better decisions for everyone
               </span>
             </div>
 
@@ -333,12 +371,12 @@ export default function LandingPage() {
               </h1>
             </div>
 
-            {/* Sub-text — appears smoothly */}
+            {/* Sub-text — Human-First Objective Recruitment */}
             <p 
               className={`text-sm sm:text-base md:text-lg text-stone-600 dark:text-stone-300 max-w-2xl mx-auto leading-relaxed ${prefersReduced ? '' : 'animate-fade-in-up'}`} 
               style={prefersReduced ? {} : { animationDelay: '180ms' }}
             >
-              ARETE combines dynamic job requirement blueprinting, multi-language sandbox execution, live AI proctoring telemetry, and structured committee workflows for definitive hiring decisions.
+              ARETE replaces stressful guesswork with verifiable skill telemetry, real-time code execution, transparent candidate feedback, and auditable hiring committee workflows for definitive decisions.
             </p>
 
             {/* CTAs */}
@@ -972,13 +1010,59 @@ export default function LandingPage() {
               </p>
 
               {/* Live Platform Telemetry Pill */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#2B201A] border border-[#E8DFD8] dark:border-[#423229] shadow-2xs text-[11px]">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              <div 
+                role="status"
+                tabIndex={0}
+                aria-live="polite"
+                aria-busy={isCheckingDb}
+                aria-label={
+                  isCheckingDb 
+                    ? "Checking Database Connectivity"
+                    : isDbConnected 
+                      ? "Platform Operational: Live PostgreSQL Database Ledger Connected"
+                      : "Database Offline: PostgreSQL Ledger Disconnected"
+                }
+                onClick={handleRetryDbSync}
+                onKeyDown={handleKeyDownDbSync}
+                title={
+                  isCheckingDb
+                    ? "Checking connectivity with backend ledger..."
+                    : dbError 
+                      ? `${dbError} (Click or press Enter to retry)` 
+                      : isDbConnected 
+                        ? "Live PostgreSQL ledger connected (Click or press Enter to sync)" 
+                        : "Click or press Enter to check database connectivity"
+                }
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-[#2B201A] border border-[#E8DFD8] dark:border-[#423229] shadow-2xs text-[11px] cursor-pointer hover:border-stone-400 dark:hover:border-stone-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 dark:focus-visible:ring-stone-500 transition-colors"
+              >
+                <span className="relative flex h-2 w-2" aria-hidden="true">
+                  <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    isCheckingDb
+                      ? 'animate-pulse bg-amber-400'
+                      : isDbConnected
+                        ? 'animate-ping bg-emerald-400'
+                        : 'animate-ping bg-rose-400'
+                  }`} />
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                    isCheckingDb
+                      ? 'bg-amber-500'
+                      : isDbConnected
+                        ? 'bg-emerald-500'
+                        : 'bg-rose-500'
+                  }`} />
                 </span>
-                <span className="font-medium text-stone-800 dark:text-stone-200">
-                  Platform Operational • 99.98% Telemetry Uptime
+                <span className={`font-medium ${
+                  isCheckingDb
+                    ? 'text-stone-700 dark:text-stone-300'
+                    : isDbConnected
+                      ? 'text-stone-800 dark:text-stone-200'
+                      : 'text-rose-700 dark:text-rose-400'
+                }`}>
+                  {isCheckingDb
+                    ? 'Checking Connectivity • Verifying Database Ledger...'
+                    : isDbConnected
+                      ? 'Platform Operational • Live PostgreSQL Database Ledger'
+                      : 'Database Offline • Ledger Disconnected'}
                 </span>
               </div>
             </div>

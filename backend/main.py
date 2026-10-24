@@ -27,6 +27,7 @@ from views.copilot_views import router as copilot_router
 from views.organization_views import router as organization_router
 from views.scheduling_views import router as scheduling_router
 from views.skill_views import router as skill_router
+from views.resume_views import router as resume_router
 
 from controllers.auth_controller import check_jwt_production_guard
 from rate_limiter import RateLimitMiddleware
@@ -143,6 +144,7 @@ app.include_router(copilot_router)
 app.include_router(organization_router)
 app.include_router(scheduling_router)
 app.include_router(skill_router)
+app.include_router(resume_router)
 
 @app.get("/api/health/live")
 def liveness_check():

@@ -358,6 +358,7 @@ export const api = {
         ctc_period:           jobData.ctcPeriod || jobData.ctc_period || 'per_annum',
         variable_pay_min:     jobData.variablePayMin != null && jobData.variablePayMin !== '' ? Number(jobData.variablePayMin) : (jobData.variable_pay_min != null && jobData.variable_pay_min !== '' ? Number(jobData.variable_pay_min) : null),
         variable_pay_max:     jobData.variablePayMax != null && jobData.variablePayMax !== '' ? Number(jobData.variablePayMax) : (jobData.variable_pay_max != null && jobData.variable_pay_max !== '' ? Number(jobData.variable_pay_max) : null),
+        status:               jobData.status || 'Active',
       };
       const res = await authFetch(`${API_BASE_URL}/jobs`, {
         method: 'POST',
@@ -388,6 +389,7 @@ export const api = {
         coding_assessment:    jobData.codingAssessment || jobData.coding_assessment,
         coding_difficulty:    jobData.codingDifficulty || jobData.coding_difficulty,
         assessment_pool:      jobData.assessmentPool || jobData.assessment_pool,
+        status:               jobData.status,
         ctc_type:             jobData.ctcType !== undefined ? jobData.ctcType : jobData.ctc_type,
         ctc_min:              jobData.ctcMin !== undefined ? (jobData.ctcMin !== null && jobData.ctcMin !== '' ? Number(jobData.ctcMin) : null) : (jobData.ctc_min !== undefined ? (jobData.ctc_min !== null && jobData.ctc_min !== '' ? Number(jobData.ctc_min) : null) : undefined),
         ctc_max:              jobData.ctcMax !== undefined ? (jobData.ctcMax !== null && jobData.ctcMax !== '' ? Number(jobData.ctcMax) : null) : (jobData.ctc_max !== undefined ? (jobData.ctc_max !== null && jobData.ctc_max !== '' ? Number(jobData.ctc_max) : null) : undefined),
@@ -458,6 +460,133 @@ export const api = {
     } catch (err) {
       console.warn('[API] batchMatchJobs failed:', err.message);
       return null;
+    }
+  },
+
+  // ─── AI Resume Studio ──────────────────────────────────────────────────
+  async getResumes() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) throw new Error('Failed to fetch resumes');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getResumes failed:', err.message);
+      return [];
+    }
+  },
+
+  async getResumeInitFromProfile() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/init-from-profile`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) throw new Error('Failed to initialize resume from profile');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getResumeInitFromProfile failed:', err.message);
+      return null;
+    }
+  },
+
+  async getResume(resumeId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/${resumeId}`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) throw new Error('Failed to fetch resume');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getResume failed:', err.message);
+      return null;
+    }
+  },
+
+  async createResume(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Failed to create resume');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] createResume failed:', err.message);
+      throw err;
+    }
+  },
+
+  async updateResume(resumeId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/${resumeId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Failed to update resume');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] updateResume failed:', err.message);
+      throw err;
+    }
+  },
+
+  async deleteResume(resumeId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/${resumeId}`, {
+        method: 'DELETE',
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) throw new Error('Failed to delete resume');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] deleteResume failed:', err.message);
+      throw err;
+    }
+  },
+
+  async getResumeVersions(resumeId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/${resumeId}/versions`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) throw new Error('Failed to fetch versions');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getResumeVersions failed:', err.message);
+      return [];
+    }
+  },
+
+  async syncResumeToProfile(resumeId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/${resumeId}/sync-profile`, {
+        method: 'POST',
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) throw new Error('Failed to sync to profile');
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] syncResumeToProfile failed:', err.message);
+      throw err;
+    }
+  },
+
+  async assistResumeAI(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/ai-assist`, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(60000),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'AI assistance failed');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] assistResumeAI failed:', err.message);
+      throw err;
     }
   },
 
@@ -1722,7 +1851,7 @@ export const api = {
     }
   },
 
-  // ─── PHASE 4G.2: RECRUITER AI DECISION ASSISTANT ───────────────────────────
+  // ─── PHASE 4G.2: RECRUITER AI DECISION ASSISTANT (CANDIDATE SCOPE) ────────
   async queryDecisionAssistant({ candidateId, query, jobId = null, cohortCandidateIds = null }) {
     try {
       const res = await authFetch(`${API_BASE_URL}/candidates/${candidateId}/decision-assistant`, {
@@ -1741,6 +1870,29 @@ export const api = {
       return await res.json();
     } catch (err) {
       console.warn('[API] queryDecisionAssistant error:', err.message);
+      throw err;
+    }
+  },
+
+  // ─── PHASE 4G.3: RECRUITER AI DECISION ASSISTANT (JOB POOL SCOPE) ───────────
+  async queryJobDecisionAssistant({ jobId, query, limit = 10, filterStage = null }) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/jobs/${jobId}/decision-assistant`, {
+        method: 'POST',
+        body: JSON.stringify({
+          query,
+          limit,
+          filter_stage: filterStage
+        }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Job decision assistant query failed');
+      }
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] queryJobDecisionAssistant error:', err.message);
       throw err;
     }
   },
@@ -2033,6 +2185,150 @@ export const api = {
       return await res.json();
     } catch (err) {
       console.warn('[API] getCandidateScorecard error:', err.message);
+      throw err;
+    }
+  },
+
+  // ─── AI Resume <-> Job Description Match Analyzer ──────────────────────────
+  async analyzeResumeMatch(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/match-analyzer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Resume match analysis failed (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('[API] analyzeResumeMatch error:', err.message);
+      throw err;
+    }
+  },
+
+  async analyzeSpecificResumeMatch(resumeId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/${encodeURIComponent(resumeId)}/match-analyzer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Resume match analysis failed (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('[API] analyzeSpecificResumeMatch error:', err.message);
+      throw err;
+    }
+  },
+
+  async getMatchAnalysesHistory() {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/match-analyzer/history`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getMatchAnalysesHistory error:', err.message);
+      return [];
+    }
+  },
+
+  async getMatchAnalysis(analysisId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/match-analyzer/${encodeURIComponent(analysisId)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Analysis not found (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('[API] getMatchAnalysis error:', err.message);
+      throw err;
+    }
+  },
+
+  async getLatestResumeJobAnalysis(resumeId, jobId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/${encodeURIComponent(resumeId)}/match-analyzer/job/${encodeURIComponent(jobId)}`);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (err) {
+      console.warn('[API] getLatestResumeJobAnalysis error:', err.message);
+      return null;
+    }
+  },
+
+  async deleteMatchAnalysis(analysisId) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/resumes/match-analyzer/${encodeURIComponent(analysisId)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to delete analysis (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('[API] deleteMatchAnalysis error:', err.message);
+      throw err;
+    }
+  },
+
+  // ─── Phase 4H: AI Job Description Builder API ──────────────────────────────
+  async generateJobDescription(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/jobs/generate-description`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to generate job description (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('[API] generateJobDescription error:', err.message);
+      throw err;
+    }
+  },
+
+  async refineJobDescription(payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/jobs/refine-description`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to refine job description (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('[API] refineJobDescription error:', err.message);
+      throw err;
+    }
+  },
+
+  async syncJobSkills(jobId, payload) {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/jobs/${encodeURIComponent(jobId)}/sync-skills`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to sync job skills (${res.status})`);
+      }
+      return await res.json();
+    } catch (err) {
+      console.error('[API] syncJobSkills error:', err.message);
       throw err;
     }
   },

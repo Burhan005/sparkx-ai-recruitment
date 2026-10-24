@@ -753,7 +753,7 @@ export default function CodeAssessment() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Company:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{activeJob?.companyName || 'SparkX Technologies'}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{activeJob?.companyName || 'ARETE'}</span>
               </div>
             </div>
 
@@ -960,7 +960,7 @@ export default function CodeAssessment() {
                 {isTechRole ? 'Autonomous Technical Evaluation' : 'Autonomous Professional Evaluation'}
               </span>
               <span className="text-stone-400">•</span>
-              <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{activeJob?.companyName || 'SparkX Technologies'}</span>
+              <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{activeJob?.companyName || 'ARETE'}</span>
               <span className="text-stone-400">•</span>
               <span className="text-xs text-stone-500">{activeJob?.department || 'Engineering & Product'}</span>
             </div>
@@ -984,7 +984,7 @@ export default function CodeAssessment() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Duration</span>
                 </div>
                 <div className="text-base font-bold text-stone-900 dark:text-stone-100 tabular-nums">45:00</div>
-                <div className="text-xs text-stone-400">Timed countdown</div>
+                <div className="text-xs text-stone-400">Flexible pacing • 45m allotted</div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-stone-50/80 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
@@ -1168,7 +1168,7 @@ export default function CodeAssessment() {
             <span className="text-stone-300 dark:text-stone-700">•</span>
             <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">{activeJob?.title || (isTechRole ? 'Software Engineering' : 'Professional Evaluation')}</span>
             <span className="text-stone-300 dark:text-stone-700">•</span>
-            <span className="text-xs text-stone-400 font-medium">{activeJob?.companyName || 'SparkX Technologies'}</span>
+            <span className="text-xs text-stone-400 font-medium">{activeJob?.companyName || 'ARETE'}</span>
           </div>
           <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100 mt-0.5 font-display">
             {isTechRole ? '4-Pillar Engineering Evaluation' : '4-Pillar Professional Evaluation'}
@@ -1176,13 +1176,13 @@ export default function CodeAssessment() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono-code shadow-subtle transition-colors ${
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-mono shadow-xs transition-colors ${
             timeLeft < 300 
-              ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 animate-pulse' 
-              : 'bg-stone-50 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-700 dark:text-stone-300'
+              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300' 
+              : 'bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#33241C] text-stone-700 dark:text-stone-300'
           }`}>
-            <Clock className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-rose-500' : 'text-brand-600'}`} />
-            <span className="font-semibold">Remaining: {formatTime(timeLeft)}</span>
+            <Clock className={`w-3.5 h-3.5 ${timeLeft < 300 ? 'text-amber-600 dark:text-amber-400' : 'text-[#C27803] dark:text-amber-400'}`} />
+            <span className="font-semibold">{formatTime(timeLeft)} remaining</span>
           </div>
 
           <Button
@@ -1199,7 +1199,7 @@ export default function CodeAssessment() {
       </div>
 
       {/* 4 Category Navigation Tabs */}
-      <div className="p-1.5 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] flex items-center overflow-x-auto gap-1.5 shadow-card">
+      <div className="p-1 rounded-xl bg-[#F0EAE1] dark:bg-[#1E1510] border border-[#E0D7CC] dark:border-[#2C1F17] flex items-center overflow-x-auto gap-1 shadow-xs">
         {categories.map((cat, idx) => {
           const Icon = cat.icon;
           const isActive = activeCategory === cat.id;
@@ -1213,19 +1213,20 @@ export default function CodeAssessment() {
           return (
             <button
               key={cat.id}
+              type="button"
               onClick={() => setActiveCategory(cat.id)}
-              className={`flex-1 min-w-[150px] py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-between space-x-2 ${
+              className={`flex-1 min-w-[150px] py-2 px-3 rounded-lg text-xs font-semibold transition flex items-center justify-between space-x-2 cursor-pointer ${
                 isActive
-                  ? 'bg-brand-600 text-white shadow-subtle'
-                  : 'bg-transparent text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-100/70 dark:hover:bg-stone-800/60'
+                  ? 'bg-white dark:bg-[#2C1F18] text-[#1C130E] dark:text-[#F3ECE6] shadow-xs border border-[#E0D7CC] dark:border-amber-500/30 font-bold'
+                  : 'bg-transparent text-stone-600 dark:text-stone-400 hover:text-[#1C130E] dark:hover:text-[#F3ECE6] hover:bg-white/40 dark:hover:bg-[#251A14]'
               }`}
             >
               <div className="flex items-center space-x-2">
-                <Icon className="w-4 h-4" />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[#C27803] dark:text-amber-400' : 'text-stone-400'}`} />
                 <span>{cat.label}</span>
               </div>
               {isAnswered && (
-                <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-brand-200' : 'bg-emerald-500'}`} title="Answered / tested" />
+                <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-emerald-500/80'}`} title="Answered / tested" />
               )}
             </button>
           );
@@ -1277,14 +1278,14 @@ export default function CodeAssessment() {
                         key={optKey}
                         type="button"
                         onClick={() => setTechnicalAnswers(prev => ({ ...prev, [q.id]: optKey }))}
-                        className={`p-3 rounded-lg text-left text-xs transition-all duration-150 border flex items-start space-x-2.5 active:scale-[0.98] ${
+                        className={`p-3 rounded-xl text-left text-xs transition-all duration-150 border flex items-start space-x-2.5 active:scale-[0.98] cursor-pointer ${
                           isSelected
-                            ? 'bg-brand-50 dark:bg-brand-950/70 border-brand-500 text-brand-900 dark:text-brand-200 ring-1 ring-brand-500/50 shadow-sm'
-                            : 'bg-slate-50 dark:bg-[#14110F] hover:bg-white dark:hover:bg-stone-900/60 hover:border-stone-300 dark:hover:border-stone-700 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                            ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-500/80 dark:border-amber-500/50 text-amber-950 dark:text-amber-200 ring-1 ring-amber-500/30 shadow-xs'
+                            : 'bg-[#FAF8F5] dark:bg-[#18110D] hover:bg-white dark:hover:bg-[#201814] hover:border-amber-400/50 border-[#E8DFD8] dark:border-[#33241C] text-stone-800 dark:text-stone-200'
                         }`}
                       >
                         <span className={`w-5 h-5 rounded-md flex items-center justify-center font-bold text-xs shrink-0 font-mono ${
-                          isSelected ? 'bg-brand-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
+                          isSelected ? 'bg-gradient-to-br from-[#2E2017] to-[#C27803] text-white shadow-2xs' : 'bg-stone-200 dark:bg-[#251A14] text-stone-600 dark:text-stone-400'
                         }`}>
                           {optKey}
                         </span>
@@ -1315,26 +1316,26 @@ export default function CodeAssessment() {
       ───────────────────────────────────────────────────────────────────────────── */}
       {activeCategory === 'scenario' && (
         <div className="space-y-6 animate-fade-in-up" key="cat-scenario">
-          <div className="p-5 sm:p-6 rounded-xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
+          <div className="p-5 sm:p-6 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-card space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-semibold text-xs uppercase tracking-wider font-mono">
+              <div className="flex items-center space-x-2 text-[#C27803] dark:text-amber-400 font-semibold text-xs uppercase tracking-wider font-mono">
                 <HelpCircle className="w-4 h-4" />
                 <span>Part 2: {isTechRole ? 'Real-World Engineering Scenario' : 'Real-World Professional Scenario'}</span>
               </div>
-              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+              <span className="px-2.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25">
                 {scenarioObj.difficulty || 'Mid-Level'}
               </span>
             </div>
 
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-sans tracking-tight">
               {scenarioObj.title}
             </h3>
 
-            <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-normal bg-slate-50 dark:bg-[#14110F] p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+            <p className="text-xs sm:text-sm text-stone-700 dark:text-stone-300 leading-relaxed font-normal bg-[#FAF8F5] dark:bg-[#18110D] p-4 rounded-xl border border-[#E8DFD8] dark:border-[#33241C]">
               {scenarioObj.prompt}
             </p>
 
-            <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-start space-x-2">
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-start space-x-2">
               <Lightbulb className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Evaluation Guidance: </span>
@@ -1343,7 +1344,7 @@ export default function CodeAssessment() {
             </div>
 
             <div className="space-y-2 pt-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
                 {isTechRole ? 'Your Proposed Solution & Architecture:' : 'Your Proposed Analysis & Remediation Plan:'}
               </label>
               <textarea
@@ -1353,10 +1354,10 @@ export default function CodeAssessment() {
                 placeholder={isTechRole 
                   ? "1. Root Cause Analysis: ...\n2. Immediate Production Mitigation: ...\n3. Long-Term Architecture & Monitoring: ..."
                   : "1. Root Cause & Materiality Analysis: ...\n2. Immediate Corrective Action: ...\n3. Internal Safeguards & Compliance Controls: ..."}
-                className="w-full p-4 rounded-lg bg-white dark:bg-[#14110F] border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 leading-relaxed shadow-inner"
+                className="w-full p-4 rounded-xl bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#33241C] text-stone-900 dark:text-stone-100 text-xs sm:text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 leading-relaxed shadow-inner"
               />
-              <div className="flex justify-between text-xs text-slate-400">
-                <span>{isTechRole ? 'Structured responses covering root causes, mitigation, and resiliency score highest.' : 'Structured responses addressing accounting standards, journal impact, and governance score highest.'}</span>
+              <div className="flex justify-between text-xs text-stone-500 dark:text-stone-400">
+                <span>{isTechRole ? 'Structured responses covering root causes, mitigation, and resiliency score highest.' : 'Structured responses addressing standards, journal impact, and governance score highest.'}</span>
                 <span className="font-mono">{scenarioAnswer.length} characters</span>
               </div>
             </div>
@@ -1366,7 +1367,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => setActiveCategory('technical')}
-              className="px-3.5 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white text-xs font-semibold transition flex items-center space-x-1"
+              className="px-3.5 py-2 rounded-xl bg-[#F0EAE1] dark:bg-[#201814] text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white border border-[#E0D7CC] dark:border-[#33241C] text-xs font-semibold transition flex items-center space-x-1 cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Previous: {isTechRole ? 'Technical MCQs' : 'Core Knowledge'}</span>
@@ -1374,7 +1375,7 @@ export default function CodeAssessment() {
             <button
               type="button"
               onClick={() => setActiveCategory('hands_on')}
-              className="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-subtle"
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white text-xs font-semibold transition flex items-center space-x-1.5 shadow-xs cursor-pointer"
             >
               <span>Next: {isTechRole ? 'Hands-on Coding Challenge' : 'Practical Task Simulation'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -1390,9 +1391,9 @@ export default function CodeAssessment() {
         <div className="space-y-4 animate-fade-in-up" key="cat-hands_on">
           {/* Multi-Problem Switcher Bar */}
           {codingProblems.length > 1 && (
-            <div className="p-3.5 rounded-2xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="p-3.5 rounded-2xl bg-[#FDFBF7] dark:bg-[#1A120E] border border-[#E8DFD8] dark:border-[#33241C] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono shrink-0">Coding Problems:</span>
+                <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider font-mono shrink-0">Coding Problems:</span>
                 {codingProblems.map((prob, idx) => {
                   const isActive = idx === activeProblemIdx;
                   const probState = problemState[prob.id];
@@ -1402,26 +1403,26 @@ export default function CodeAssessment() {
                       key={prob.id}
                       type="button"
                       onClick={() => setActiveProblemIdx(idx)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shrink-0 ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-2 transition shrink-0 cursor-pointer ${
                         isActive
-                          ? 'bg-brand-600 text-white shadow-sm ring-2 ring-brand-500/30'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700/80'
+                          ? 'bg-white dark:bg-[#2C1F18] text-[#1C130E] dark:text-[#F3ECE6] shadow-xs border border-amber-500/50 dark:border-amber-500/30 font-bold'
+                          : 'bg-[#FAF8F5] dark:bg-[#18110D] text-stone-700 dark:text-stone-300 hover:bg-white dark:hover:bg-[#201814] border border-[#E8DFD8] dark:border-[#33241C]'
                       }`}
                     >
                       {isSolved ? (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                       ) : (
-                        <Code2 className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                        <Code2 className="w-3.5 h-3.5 opacity-60 shrink-0 text-[#C27803] dark:text-amber-400" />
                       )}
                       <span>{prob.title}</span>
                       <span className={`px-2 py-0.5 rounded-md text-[10px] uppercase font-mono font-bold tracking-wide transition-colors ${
                         isActive
-                          ? 'bg-white/25 text-white border border-white/30'
+                          ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/30'
                           : (prob.difficulty === 'Easy'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                              ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                               : (prob.difficulty === 'Hard' || prob.difficulty === 'Senior'
-                                  ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
-                                  : 'bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300 dark:border-amber-700'))
+                                  ? 'bg-rose-50 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                                  : 'bg-amber-50 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-200 dark:border-amber-700'))
                       }`}>
                         {prob.difficulty}
                       </span>
@@ -1434,9 +1435,9 @@ export default function CodeAssessment() {
                   );
                 })}
               </div>
-              <div className="flex items-center space-x-2 text-xs text-slate-500 shrink-0">
+              <div className="flex items-center space-x-2 text-xs text-stone-500 shrink-0">
                 <span>Completed:</span>
-                <span className="font-bold text-slate-900 dark:text-white font-mono">
+                <span className="font-bold text-stone-900 dark:text-white font-mono">
                   {codingProblems.filter(p => problemState[p.id]?.results?.length > 0 && problemState[p.id]?.results?.every(r => r.passed)).length} / {codingProblems.length}
                 </span>
               </div>

@@ -24,7 +24,8 @@ import {
   HelpCircle,
   FileCheck2,
   Check,
-  UserCheck
+  UserCheck,
+  Activity
 } from 'lucide-react';
 import { Card, Badge, Progress, Button } from '../ui/Primitives';
 import api from '../../services/api';
@@ -199,7 +200,7 @@ export default function SkillPassportView() {
       <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6">
         <Card className="p-8 text-center space-y-4 border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/20">
           <AlertCircle className="w-12 h-12 text-rose-500 mx-auto" />
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100">
             Skill Passport Unavailable
           </h2>
           <p className="text-sm text-stone-600 dark:text-stone-300 max-w-md mx-auto">
@@ -285,12 +286,12 @@ export default function SkillPassportView() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Registered Skills */}
         <Card className="p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
             <span className="text-xs font-mono font-bold uppercase tracking-wider">Total Skills</span>
             <Layers className="w-4 h-4 text-brand-600 dark:text-brand-400" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black text-slate-900 dark:text-white">
+            <span className="text-3xl font-black text-stone-900 dark:text-stone-100">
               {passport.total_skills}
             </span>
             <span className="text-xs text-stone-500 font-mono">in passport</span>
@@ -336,20 +337,20 @@ export default function SkillPassportView() {
           </div>
         </Card>
 
-        {/* Claimed (Self-Reported) */}
+        {/* Self-Reported (Profile) */}
         <Card className="p-5 flex flex-col justify-between">
-          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider">Claimed Only</span>
+          <div className="flex items-center justify-between text-stone-500 dark:text-stone-400">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider">Self-Reported</span>
             <HelpCircle className="w-4 h-4 text-stone-400" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black text-stone-600 dark:text-stone-300">
               {passport.claimed_skills_count}
             </span>
-            <span className="text-xs text-stone-500 font-mono">unsubstantiated</span>
+            <span className="text-xs text-stone-500 font-mono">from profile</span>
           </div>
           <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-            Self-reported with zero test records
+            Extracted from resume; ready for assessment
           </div>
         </Card>
       </div>
@@ -363,8 +364,8 @@ export default function SkillPassportView() {
               onClick={() => setStatusFilter('ALL')}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                 statusFilter === 'ALL'
-                  ? 'bg-white dark:bg-[#2B1F17] text-slate-900 dark:text-white shadow-sm font-bold'
-                  : 'text-stone-600 dark:text-[#A8988B] hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-white dark:bg-[#2B1F17] text-stone-900 dark:text-stone-100 shadow-sm font-bold'
+                  : 'text-stone-600 dark:text-[#A8988B] hover:text-stone-900 dark:hover:text-stone-100'
               }`}
             >
               All ({passport.total_skills})
@@ -398,7 +399,7 @@ export default function SkillPassportView() {
                   : 'text-stone-600 dark:text-stone-400 hover:bg-stone-200 dark:hover:bg-stone-800'
               }`}
             >
-              Claimed Only ({passport.claimed_skills_count})
+              Self-Reported ({passport.claimed_skills_count})
             </button>
           </div>
 
@@ -453,7 +454,7 @@ export default function SkillPassportView() {
         {filteredSkills.length === 0 ? (
           <Card className="p-12 text-center space-y-3">
             <HelpCircle className="w-10 h-10 text-stone-400 mx-auto" />
-            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+            <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
               No matching skills found
             </h3>
             <p className="text-xs text-stone-500 max-w-sm mx-auto">
@@ -504,7 +505,7 @@ export default function SkillPassportView() {
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                        <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
                           {skill.name}
                         </h3>
                         <span className="text-[11px] font-mono text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-[#251A14] px-2 py-0.5 rounded border border-stone-200 dark:border-[#38281F]">
@@ -528,11 +529,11 @@ export default function SkillPassportView() {
                       </p>
 
                       <div className="flex items-center gap-4 text-[11px] text-stone-500 dark:text-stone-400 pt-1 flex-wrap font-mono">
-                        <span>Proficiency: <strong className="text-slate-800 dark:text-stone-200 capitalize">{skill.proficiency_level}</strong></span>
+                        <span>Proficiency: <strong className="text-stone-800 dark:text-stone-200 capitalize">{skill.proficiency_level}</strong></span>
                         {skill.years_experience > 0 && (
-                          <span>Experience: <strong className="text-slate-800 dark:text-stone-200">{skill.years_experience} yrs</strong></span>
+                          <span>Experience: <strong className="text-stone-800 dark:text-stone-200">{skill.years_experience} yrs</strong></span>
                         )}
-                        <span>Latest: <strong className="text-slate-800 dark:text-stone-200">{skill.recency_label}</strong></span>
+                        <span>Latest: <strong className="text-stone-800 dark:text-stone-200">{skill.recency_label}</strong></span>
                       </div>
                     </div>
                   </div>
@@ -541,7 +542,7 @@ export default function SkillPassportView() {
                   <div className="flex items-center gap-3 self-end md:self-center">
                     <div className="text-right">
                       {skill.verified_score !== null && skill.verified_score !== undefined && (
-                        <div className="text-lg font-black text-slate-900 dark:text-white">
+                        <div className="text-lg font-black text-stone-900 dark:text-stone-100">
                           {Math.round(skill.verified_score)}%
                         </div>
                       )}
@@ -589,7 +590,7 @@ export default function SkillPassportView() {
                     {skill.evidence.length === 0 ? (
                       <div className="p-4 rounded-xl border border-dashed border-stone-300 dark:border-[#38281F] bg-white/50 dark:bg-[#1A1410]/50 text-center space-y-2">
                         <p className="text-xs text-stone-500 dark:text-stone-400 font-mono">
-                          No verified platform evidence available for this skill.
+                          No assessment evidence recorded for this skill yet. Complete a role assessment or interview to verify proficiency.
                         </p>
                         {userRole === 'candidate' && (
                           <div className="pt-1">
@@ -599,7 +600,7 @@ export default function SkillPassportView() {
                               onClick={() => navigate('/assessment')}
                               className="text-xs py-1"
                             >
-                              Launch Assessment Sandbox
+                              Take Role Assessment
                             </Button>
                           </div>
                         )}
@@ -618,7 +619,7 @@ export default function SkillPassportView() {
 
                               <div className="space-y-1 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                                  <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100">
                                     {ev.source_title}
                                   </h4>
                                   {getStrengthBadge(ev.evidence_strength)}
@@ -674,7 +675,7 @@ export default function SkillPassportView() {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <Card className="max-w-md w-full p-6 space-y-4 border-stone-300 dark:border-stone-700 shadow-2xl">
             <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
                 <UserCheck className="w-5 h-5 text-teal-600" />
                 Verify Competency: {verifyingSkill.name}
               </h3>
@@ -696,7 +697,7 @@ export default function SkillPassportView() {
                   value={verifyNotes}
                   onChange={(e) => setVerifyNotes(e.target.value)}
                   placeholder="e.g. Evaluated live technical architecture exercise and reviewed portfolio work."
-                  className="w-full p-2.5 text-xs bg-stone-50 dark:bg-[#1A1410] border border-stone-200 dark:border-[#38281F] rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  className="w-full p-2.5 text-xs bg-stone-50 dark:bg-[#1A1410] border border-stone-200 dark:border-[#38281F] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   required
                 />
               </div>
@@ -711,7 +712,7 @@ export default function SkillPassportView() {
                   max="100"
                   value={verifyScore}
                   onChange={(e) => setVerifyScore(e.target.value)}
-                  className="w-full p-2 text-xs bg-stone-50 dark:bg-[#1A1410] border border-stone-200 dark:border-[#38281F] rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  className="w-full p-2 text-xs bg-stone-50 dark:bg-[#1A1410] border border-stone-200 dark:border-[#38281F] rounded-lg text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   required
                 />
               </div>
@@ -738,25 +739,5 @@ export default function SkillPassportView() {
         </div>
       )}
     </div>
-  );
-}
-
-// Inline fallback icon for Activity
-function Activity(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-    </svg>
   );
 }

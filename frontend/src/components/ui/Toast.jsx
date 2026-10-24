@@ -59,9 +59,9 @@ function ToastItem({ id, message, type = 'info', onRemove }) {
       role="status"
       aria-live="polite"
       className={`relative flex items-center gap-3.5 px-4 py-3 rounded-2xl border select-none overflow-hidden max-w-md w-full
-        bg-[#FAF8F5]/98 dark:bg-[#1C1512]/98
-        border-[#E5DFD7] dark:border-[#382D24]
-        text-stone-800 dark:text-[#EFEAE4]
+        bg-[#FAF8F5]/98 dark:bg-[#1C1410]/98
+        border-[#E8DFD8] dark:border-[#3D2C22]
+        text-stone-800 dark:text-[#EDE8E3]
         shadow-[0_12px_32px_-6px_rgba(28,19,14,0.14)] dark:shadow-[0_16px_40px_-6px_rgba(0,0,0,0.75)]
         backdrop-blur-xl transition-all duration-300 ease-out`}
       style={{
@@ -79,7 +79,7 @@ function ToastItem({ id, message, type = 'info', onRemove }) {
 
       {/* Message content */}
       <div className="flex-1 min-w-0 pr-1">
-        <p className="text-xs font-semibold text-stone-900 dark:text-stone-100 leading-snug">
+        <p className="text-xs font-semibold text-stone-900 dark:text-[#EDE8E3] leading-snug">
           {message}
         </p>
       </div>
@@ -90,7 +90,7 @@ function ToastItem({ id, message, type = 'info', onRemove }) {
           setVisible(false);
           setTimeout(() => onRemove(id), 260);
         }}
-        className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors p-1 rounded-lg hover:bg-stone-200/50 dark:hover:bg-stone-800/60 cursor-pointer"
+        className="text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 transition-colors p-1 rounded-lg hover:bg-[#F4EFEB] dark:hover:bg-[#281D17] cursor-pointer"
         title="Dismiss notification"
       >
         <X className="w-3.5 h-3.5" />

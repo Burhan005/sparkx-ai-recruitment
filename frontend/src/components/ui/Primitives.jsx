@@ -22,6 +22,7 @@ import {
 import { formatShortcut } from '../../utils/keyboardShortcut';
 
 export { default as CustomDropdown } from './CustomDropdown';
+export { default as FancyStudioDropdown } from './FancyStudioDropdown';
 
 // ─── Button ─────────────────────────────────────────────────────────────────
 export function Button({
@@ -37,7 +38,7 @@ export function Button({
   onClick,
   ...props
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-medium select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:ring-offset-1 transition-all duration-150 active:scale-[0.97]';
+  const baseStyles = 'inline-flex items-center justify-center font-medium select-none disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/25 focus:ring-offset-1 dark:focus:ring-offset-[#0F0E0D] transition-all duration-150 active:scale-[0.97]';
 
   const sizeStyles = {
     xs: 'px-2.5 py-1 text-xs gap-1.5 font-medium',
@@ -47,13 +48,13 @@ export function Button({
   };
 
   const variantStyles = {
-    primary: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-600 hover:shadow-md hover:shadow-brand-900/15',
-    brand: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-600 hover:shadow-md hover:shadow-brand-900/15',
-    secondary: 'bg-stone-50 hover:bg-stone-100 active:bg-stone-200/70 dark:bg-[#1E1B18] dark:hover:bg-[#26221E] text-stone-900 dark:text-stone-100 border border-stone-200/90 dark:border-stone-800 shadow-sm hover:shadow-md hover:shadow-stone-900/5',
-    outline: 'bg-transparent hover:bg-stone-100 dark:hover:bg-stone-800/60 text-stone-800 dark:text-stone-200 border border-stone-200 dark:border-stone-800',
-    ghost: 'bg-transparent hover:bg-stone-100/80 dark:hover:bg-stone-800/60 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 border border-transparent',
-    danger: 'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-subtle border border-rose-600',
-    success: 'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-subtle border border-emerald-600',
+    primary: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-500/80 hover:shadow-md hover:shadow-brand-900/20',
+    brand: 'bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white shadow-sm border border-brand-500/80 hover:shadow-md hover:shadow-brand-900/20',
+    secondary: 'bg-[#FAF8F5] hover:bg-[#F4EFEB] active:bg-[#ECE4DC] dark:bg-[#201814] dark:hover:bg-[#2C1F18] dark:active:bg-[#1A120E] text-[#1C130E] dark:text-[#EDE8E3] border border-[#E8DFD8] dark:border-[#423229] hover:border-[#D5C7BC] dark:hover:border-[#5A4336] shadow-sm hover:shadow-md hover:shadow-stone-900/5',
+    outline: 'bg-transparent hover:bg-[#F4EFEB] dark:hover:bg-[#221812] active:bg-[#ECE4DC] dark:active:bg-[#1A120E] text-stone-800 dark:text-[#EDE8E3] border border-[#E8DFD8] dark:border-[#423229] hover:border-[#D5C7BC] dark:hover:border-[#5A4336]',
+    ghost: 'bg-transparent hover:bg-[#F4EFEB] dark:hover:bg-[#221812] text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-[#FAF8F5] border border-transparent',
+    danger: 'bg-rose-700 hover:bg-rose-800 active:bg-rose-900 text-white shadow-subtle border border-rose-600/80 dark:bg-rose-950/80 dark:hover:bg-rose-900 dark:text-rose-100 dark:border-rose-800/80',
+    success: 'bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white shadow-subtle border border-emerald-600/80 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 dark:text-emerald-100 dark:border-emerald-800/80',
   };
 
   return (
@@ -106,7 +107,7 @@ export function IconButton({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center justify-center transition-colors rounded-lg text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100 hover:bg-stone-100 dark:hover:bg-stone-800/80 disabled:opacity-40 disabled:cursor-not-allowed ${sizeMap[size] || sizeMap.md} ${className}`}
+      className={`inline-flex items-center justify-center transition-colors rounded-lg text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-[#FAF8F5] hover:bg-[#F4EFEB] dark:hover:bg-[#251A14] active:bg-[#ECE4DC] dark:active:bg-[#1A120E] border border-transparent hover:border-[#E8DFD8] dark:hover:border-[#3E2D23] disabled:opacity-40 disabled:cursor-not-allowed ${sizeMap[size] || sizeMap.md} ${className}`}
       {...props}
     >
       <Icon className={iconSizeMap[size] || 'w-4 h-4'} />
@@ -143,12 +144,12 @@ export function Input({
         )}
         <input
           id={inputId}
-          className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 bg-white dark:bg-[#151210] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 ${
+          className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 bg-[#FAF8F5] dark:bg-[#1A130F] text-stone-900 dark:text-[#EDE8E3] placeholder:text-stone-400 dark:placeholder:text-stone-500 ${
             Icon ? 'pl-9' : 'pl-3'
           } ${IconRight ? 'pr-9' : 'pr-3'} py-2 ${
             error
-              ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
-              : 'border-stone-200 dark:border-stone-800 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-1 focus:ring-brand-600/30'
+              ? 'border-rose-400 dark:border-rose-700/70 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+              : 'border-[#E8DFD8] dark:border-[#3D2C22] hover:border-stone-300 dark:hover:border-[#523B2F] focus:border-brand-600 dark:focus:border-amber-500 focus:ring-2 focus:ring-brand-500/20'
           } focus:outline-none ${className}`}
           {...props}
         />
@@ -159,7 +160,7 @@ export function Input({
         )}
       </div>
       {error ? (
-        <p className="text-xs text-rose-500 flex items-center gap-1 font-medium">
+        <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1 font-medium">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span>{error}</span>
         </p>
@@ -193,15 +194,15 @@ export function Textarea({
       <textarea
         id={inputId}
         rows={rows}
-        className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 p-2.5 bg-white dark:bg-[#151210] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 ${
+        className={`w-full rounded-lg border text-xs sm:text-sm transition-all duration-150 p-2.5 bg-[#FAF8F5] dark:bg-[#1A130F] text-stone-900 dark:text-[#EDE8E3] placeholder:text-stone-400 dark:placeholder:text-stone-500 ${
           error
-            ? 'border-rose-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'
-            : 'border-stone-200 dark:border-stone-800 focus:border-brand-600 dark:focus:border-brand-500 focus:ring-1 focus:ring-brand-600/30'
+            ? 'border-rose-400 dark:border-rose-700/70 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
+            : 'border-[#E8DFD8] dark:border-[#3D2C22] hover:border-stone-300 dark:hover:border-[#523B2F] focus:border-brand-600 dark:focus:border-amber-500 focus:ring-2 focus:ring-brand-500/20'
         } focus:outline-none ${className}`}
         {...props}
       />
       {error ? (
-        <p className="text-xs text-rose-500 flex items-center gap-1 font-medium">
+        <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1 font-medium">
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span>{error}</span>
         </p>
@@ -225,14 +226,14 @@ export const SearchInput = React.forwardRef(function SearchInput({
   const displayShortcut = shortcut !== undefined ? shortcut : formatShortcut('K');
   return (
     <div className={`relative flex items-center ${className}`}>
-      <Search className="w-3.5 h-3.5 text-stone-400 absolute left-3 pointer-events-none" />
+      <Search className="w-3.5 h-3.5 text-stone-400 dark:text-stone-400 absolute left-3 pointer-events-none" />
       <input
         ref={ref}
         type="text"
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full pl-8 pr-14 py-1.5 bg-stone-50 hover:bg-white dark:bg-[#2B201A] dark:hover:bg-[#352720] border border-stone-200 dark:border-[#423229] rounded-lg text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:border-brand-600 dark:focus:border-brand-500 focus:ring-1 focus:ring-brand-600/30 transition-all shadow-subtle"
+        className="w-full pl-8 pr-14 py-1.5 bg-[#FAF8F5] hover:bg-white dark:bg-[#1E1612] dark:hover:bg-[#261C16] border border-[#E8DFD8] dark:border-[#3D2C22] hover:border-[#D5C7BC] dark:hover:border-[#523B2F] rounded-lg text-xs text-stone-900 dark:text-[#EDE8E3] placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:outline-none focus:border-brand-600 dark:focus:border-amber-500 focus:ring-2 focus:ring-brand-500/20 transition-all shadow-subtle"
         {...props}
       />
       <div className="absolute right-2 flex items-center gap-1.5">
@@ -245,7 +246,7 @@ export const SearchInput = React.forwardRef(function SearchInput({
             <X className="w-3 h-3" />
           </button>
         ) : displayShortcut ? (
-          <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-sans font-medium text-stone-400 bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded shadow-subtle">
+          <kbd className="hidden sm:inline-block px-1.5 py-0.2 text-[10px] font-sans font-medium text-stone-500 dark:text-amber-400/80 bg-[#F4EFEB] dark:bg-[#2A1E17] border border-[#E8DFD8] dark:border-[#423229] rounded shadow-subtle">
             {displayShortcut}
           </kbd>
         ) : null}
@@ -264,12 +265,12 @@ export function Badge({
   ...props
 }) {
   const variantStyles = {
-    default: 'bg-stone-100 dark:bg-stone-800/80 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700',
-    brand: 'bg-brand-50 dark:bg-brand-950/40 text-brand-700 dark:text-brand-300 border-brand-200/80 dark:border-brand-800/50',
-    success: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
-    warning: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
-    danger: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60',
-    info: 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800/60',
+    default: 'bg-[#FAF8F5] dark:bg-[#201814] text-stone-700 dark:text-stone-300 border-[#E8DFD8] dark:border-[#3D2C22]',
+    brand: 'bg-brand-50 dark:bg-[#2C1D14] text-brand-800 dark:text-amber-300 border-brand-200/90 dark:border-[#523725]',
+    success: 'bg-emerald-50 dark:bg-[#12241A] text-emerald-800 dark:text-emerald-300 border-emerald-200/90 dark:border-emerald-800/60',
+    warning: 'bg-amber-50 dark:bg-[#2A1E14] text-amber-800 dark:text-amber-300 border-amber-200/90 dark:border-[#543D26]',
+    danger: 'bg-rose-50 dark:bg-[#2B1416] text-rose-800 dark:text-rose-300 border-rose-200/90 dark:border-rose-900/60',
+    info: 'bg-stone-100 dark:bg-[#201915] text-stone-800 dark:text-stone-300 border-[#E8DFD8] dark:border-[#3E2E25]',
   };
 
   const sizeStyles = {
@@ -296,7 +297,7 @@ export function StatusBadge({ status, value, dimension = 'auto', showDot = true,
 
   // Check 4D configurations
   let label = currentStatus;
-  let colorCls = 'bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700';
+  let colorCls = 'bg-[#FAF8F5] dark:bg-[#201814] text-stone-700 dark:text-stone-300 border-[#E8DFD8] dark:border-[#3D2C22]';
   let dotColor = 'bg-stone-400';
 
   const sKey = String(currentStatus).toLowerCase().replace(/[\s-]/g, '_');
@@ -331,21 +332,30 @@ export function StatusBadge({ status, value, dimension = 'auto', showDot = true,
     }
   } else {
     const legacyMap = {
-      shortlisted: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
-      rejected: 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/60',
-      evaluated: 'bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border-brand-200 dark:border-brand-800/60',
-      screening: 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/60',
-      active: 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
+      shortlisted: 'bg-emerald-50 dark:bg-[#12241A] text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60',
+      rejected: 'bg-rose-50 dark:bg-[#2B1416] text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-900/60',
+      evaluated: 'bg-brand-50 dark:bg-[#2C1D14] text-brand-800 dark:text-amber-300 border-brand-200 dark:border-[#523725]',
+      screening: 'bg-amber-50 dark:bg-[#2A1E14] text-amber-800 dark:text-amber-300 border-amber-200 dark:border-[#543D26]',
+      active: 'bg-emerald-50 dark:bg-[#12241A] text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50',
     };
     colorCls = legacyMap[sKey] || colorCls;
   }
+
+  const isLivePulse = sKey === 'in_progress' || sKey === 'active' || sKey === 'live';
 
   return (
     <span 
       role="status"
       className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorCls} ${className}`}
     >
-      {showDot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />}
+      {showDot && (
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
+          {isLivePulse && (
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotColor}`} />
+          )}
+          <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColor}`} />
+        </span>
+      )}
       <span>{label}</span>
     </span>
   );
@@ -354,8 +364,8 @@ export function StatusBadge({ status, value, dimension = 'auto', showDot = true,
 export function Card({ children, className = '', hover = false, padding = 'p-5 sm:p-6', ...props }) {
   return (
     <div
-      className={`bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-xl shadow-card ${
-        hover ? 'interactive-card cursor-pointer' : ''
+      className={`bg-[#FDFBF7] dark:bg-[#2B201A] border border-[#E8DFD8] dark:border-[#423229] rounded-xl shadow-card transition-all duration-200 ${
+        hover ? 'interactive-card cursor-pointer hover:border-[#D5C7BC] dark:hover:border-[#574134] hover:shadow-md' : ''
       } ${padding} ${className}`}
       {...props}
     >
@@ -377,13 +387,13 @@ export function Panel({
 }) {
   return (
     <div
-      className={`bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-subtle overflow-hidden ${className}`}
+      className={`bg-[#FDFBF7] dark:bg-[#2B201A] border border-[#E8DFD8] dark:border-[#423229] rounded-2xl shadow-subtle overflow-hidden relative ${className}`}
       {...props}
     >
       {(title || actions) && (
-        <div className="px-5 sm:px-6 py-4 border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between gap-4">
+        <div className="px-5 sm:px-6 py-4 border-b border-[#E8DFD8] dark:border-[#423229] flex items-center justify-between gap-4 bg-[#FAF8F5]/60 dark:bg-[#241A14]/60 backdrop-blur-sm">
           <div>
-            {title && <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-stone-100">{title}</h3>}
+            {title && <h3 className="text-sm sm:text-base font-bold text-stone-900 dark:text-[#EDE8E3] tracking-tight">{title}</h3>}
             {subtitle && <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>}
           </div>
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
@@ -391,7 +401,7 @@ export function Panel({
       )}
       <div className={bodyClassName}>{children}</div>
       {footer && (
-        <div className="px-5 sm:px-6 py-3.5 bg-stone-50/80 dark:bg-[#13110F] border-t border-[#E8E4DF] dark:border-[#2A2520] text-xs text-stone-500 dark:text-stone-400">
+        <div className="px-5 sm:px-6 py-3.5 bg-stone-50/80 dark:bg-[#201712] border-t border-[#E8DFD8] dark:border-[#423229] text-xs text-stone-500 dark:text-stone-400">
           {footer}
         </div>
       )}
@@ -428,7 +438,7 @@ export function Modal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       <div
-        className="fixed inset-0 bg-stone-950/60 backdrop-blur-lg transition-opacity animate-fade-in-up"
+        className="fixed inset-0 bg-[#0F0E0D]/75 backdrop-blur-md transition-opacity animate-fade-in-up"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -436,12 +446,15 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? 'modal-title' : undefined}
-        className={`relative w-full ${maxWidth} bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-depth-elevated overflow-hidden z-10 animate-modal-enter my-8 max-h-[90vh] flex flex-col ${className}`}
+        className={`relative w-full ${maxWidth} bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-2xl shadow-depth-elevated overflow-hidden z-10 animate-modal-enter my-8 max-h-[90vh] flex flex-col ${className}`}
       >
-        <div className="px-6 py-4.5 border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between shrink-0">
+        {/* Subtle gold hairline accent */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent pointer-events-none" />
+
+        <div className="px-6 py-4.5 border-b border-[#E8DFD8] dark:border-[#38281F] bg-[#FAF8F5]/85 dark:bg-[#1A120E]/85 backdrop-blur-sm flex items-center justify-between shrink-0">
           <div>
             {title && (
-              <h2 id="modal-title" className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100">
+              <h2 id="modal-title" className="text-base sm:text-lg font-bold font-sans text-stone-900 dark:text-[#EDE8E3] tracking-wide">
                 {title}
               </h2>
             )}
@@ -492,19 +505,22 @@ export function Drawer({
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden flex">
       <div
-        className="fixed inset-0 bg-stone-950/60 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-[#0F0E0D]/75 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         role="dialog"
         aria-modal="true"
-        className={`fixed inset-y-0 ${sidePlacement} w-full ${width} bg-[#FDFCFA] dark:bg-[#1A1714] border-l border-stone-200 dark:border-stone-800 shadow-popover z-10 flex flex-col ${sideAnimation} ${className}`}
+        className={`fixed inset-y-0 ${sidePlacement} w-full ${width} bg-[#FDFBF7] dark:bg-[#1C1410] border-l border-[#E8DFD8] dark:border-[#38281F] shadow-popover z-10 flex flex-col relative ${sideAnimation} ${className}`}
       >
-        <div className="px-6 py-4 border-b border-stone-200/80 dark:border-stone-800 flex items-center justify-between shrink-0 bg-stone-50/80 dark:bg-[#151210]/80 backdrop-blur-sm">
+        {/* Subtle gold hairline accent on left border */}
+        <div className="absolute top-0 bottom-0 left-0 w-[1.5px] bg-gradient-to-b from-transparent via-amber-500/35 to-transparent pointer-events-none" />
+
+        <div className="px-6 py-4 border-b border-[#E8DFD8] dark:border-[#38281F] flex items-center justify-between shrink-0 bg-[#FAF8F5]/90 dark:bg-[#18110D]/90 backdrop-blur-sm">
           <div>
             {title && (
-              <h2 className="text-base sm:text-lg font-bold text-stone-900 dark:text-stone-100">{title}</h2>
+              <h2 className="text-base sm:text-lg font-bold font-sans text-stone-900 dark:text-[#EDE8E3] tracking-wide">{title}</h2>
             )}
             {subtitle && (
               <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">{subtitle}</p>
@@ -514,7 +530,7 @@ export function Drawer({
         </div>
         <div className="flex-1 overflow-y-auto p-6">{children}</div>
         {footer && (
-          <div className="p-4 border-t border-stone-200/80 dark:border-stone-800 bg-stone-50/80 dark:bg-[#13110F] shrink-0">
+          <div className="p-4 border-t border-[#E8DFD8] dark:border-[#38281F] bg-[#F7F4EF]/85 dark:bg-[#150E0B]/90 shrink-0">
             {footer}
           </div>
         )}
@@ -527,7 +543,7 @@ export function Drawer({
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 export function Tabs({ tabs, activeTab, onChange, className = '' }) {
   return (
-    <div className={`flex items-center gap-0.5 border-b border-stone-200/80 dark:border-stone-800 overflow-x-auto no-scrollbar ${className}`}>
+    <div className={`flex items-center gap-0.5 border-b border-[#E8DFD8] dark:border-[#38281F] overflow-x-auto no-scrollbar ${className}`}>
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const Icon = tab.icon;
@@ -538,25 +554,25 @@ export function Tabs({ tabs, activeTab, onChange, className = '' }) {
             onClick={() => onChange(tab.id)}
             className={`relative flex items-center gap-2 px-3.5 py-2.5 text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 ${
               isActive
-                ? 'text-brand-700 dark:text-brand-400'
-                : 'text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200'
+                ? 'text-brand-700 dark:text-amber-400 font-bold'
+                : 'text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-[#EDE8E3]'
             }`}
           >
-            {Icon && <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-brand-600 dark:text-brand-400' : ''}`} />}
+            {Icon && <Icon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? 'text-brand-600 dark:text-amber-400' : ''}`} />}
             <span>{tab.label}</span>
             {tab.count !== undefined && (
               <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold transition-colors ${
                 isActive
-                  ? 'bg-brand-100 dark:bg-brand-950/70 text-brand-800 dark:text-brand-300'
-                  : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'
+                  ? 'bg-brand-100 dark:bg-[#322016] text-brand-800 dark:text-amber-300 border border-brand-200/60 dark:border-[#523725]'
+                  : 'bg-[#F4EFEB] dark:bg-[#251A14] text-stone-600 dark:text-stone-400 border border-[#E8DFD8] dark:border-[#38281F]'
               }`}>
                 {tab.count}
               </span>
             )}
             {/* Active indicator - animated underline */}
             <span
-              className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-full transition-all duration-200 ${
-                isActive ? 'bg-brand-600 dark:bg-brand-500 opacity-100' : 'opacity-0 scale-x-0'
+              className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full transition-all duration-200 ${
+                isActive ? 'bg-gradient-to-r from-brand-600 via-amber-500 to-brand-600 dark:from-brand-500 dark:via-amber-400 dark:to-brand-500 opacity-100' : 'opacity-0 scale-x-0'
               }`}
               style={{ transform: isActive ? 'scaleX(1)' : 'scaleX(0)', transformOrigin: 'left' }}
             />
@@ -596,18 +612,18 @@ export function Avatar({
         <img
           src={src}
           alt={name}
-          className={`${sizeMap[size] || sizeMap.md} rounded-full object-cover border border-stone-200 dark:border-stone-700`}
+          className={`${sizeMap[size] || sizeMap.md} rounded-full object-cover border border-[#E8DFD8] dark:border-[#38281F]`}
         />
       ) : (
         <div
-          className={`${sizeMap[size] || sizeMap.md} rounded-full bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 flex items-center justify-center border border-stone-200 dark:border-stone-700 shadow-subtle`}
+          className={`${sizeMap[size] || sizeMap.md} rounded-full bg-[#FAF8F5] dark:bg-[#221712] text-stone-700 dark:text-[#EDE8E3] flex items-center justify-center border border-[#E8DFD8] dark:border-[#38281F] shadow-subtle`}
         >
           {getInitials(name)}
         </div>
       )}
       {status && (
         <span
-          className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ring-2 ring-white dark:ring-stone-900 ${
+          className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ring-2 ring-white dark:ring-[#1C1410] ${
             status === 'online'
               ? 'bg-emerald-500'
               : status === 'busy'
@@ -636,30 +652,30 @@ export function Stat({
   return (
     <div
       onClick={onClick}
-      className={`p-4 sm:p-5 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] shadow-card select-none ${
-        isClickable ? 'interactive-card cursor-pointer active:scale-[0.99]' : ''
+      className={`p-4 sm:p-5 rounded-xl bg-[#FDFBF7] dark:bg-[#2B201A] border border-[#E8DFD8] dark:border-[#423229] shadow-card select-none transition-all duration-200 ${
+        isClickable ? 'interactive-card cursor-pointer hover:border-[#D5C7BC] dark:hover:border-[#574134] active:scale-[0.99]' : ''
       } ${className}`}
     >
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-sans font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider">{label}</span>
         {Icon && (
-          <div className="w-8 h-8 rounded-lg bg-stone-50 dark:bg-stone-800/80 border border-[#E8E4DF] dark:border-stone-700/60 flex items-center justify-center text-stone-700 dark:text-stone-300 shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] flex items-center justify-center text-brand-700 dark:text-amber-400 shrink-0 shadow-xs">
             <Icon className="w-4 h-4" />
           </div>
         )}
       </div>
       <div className="mt-2.5 flex items-baseline gap-2.5 flex-wrap">
-        <div className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-stone-100 tabular-nums tracking-tight">
+        <div className="text-2xl sm:text-3xl font-bold font-sans text-stone-900 dark:text-[#EDE8E3] tabular-nums tracking-tight">
           {value}
         </div>
         {trend && (
           <span
             className={`text-[11px] font-sans font-medium px-2 py-0.5 rounded-md border flex items-center gap-1 ${
               trendDirection === 'up'
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/50'
+                ? 'bg-emerald-50 text-emerald-800 dark:bg-[#12241A] dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
                 : trendDirection === 'down'
-                ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-200 dark:border-rose-800/50'
-                : 'bg-stone-50 text-stone-600 dark:bg-stone-800 dark:text-stone-300 border-[#E8E4DF] dark:border-stone-700'
+                ? 'bg-rose-50 text-rose-800 dark:bg-[#2B1416] dark:text-rose-300 border-rose-200 dark:border-rose-900/60'
+                : 'bg-[#FAF8F5] text-stone-700 dark:bg-[#201814] dark:text-stone-300 border-[#E8DFD8] dark:border-[#3D2C22]'
             }`}
           >
             {trend}
@@ -674,11 +690,11 @@ export function Stat({
 // ─── Empty State ────────────────────────────────────────────────────────────
 export function EmptyState({ icon: Icon = Search, title = 'No items found', description = 'Try adjusting your search filters or add a new entry.', actionLabel, onAction, className = '' }) {
   return (
-    <div className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-[#13110F] animate-fade-in-up ${className}`}>
-      <div className="w-14 h-14 rounded-2xl bg-stone-100 dark:bg-stone-800/80 flex items-center justify-center text-stone-400 dark:text-stone-500 mb-4 shadow-inner">
+    <div className={`flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-[#E8DFD8] dark:border-[#3E2D23] bg-[#FAF8F5]/60 dark:bg-[#1A130E]/60 animate-fade-in-up ${className}`}>
+      <div className="w-14 h-14 rounded-2xl bg-[#F4EFEB] dark:bg-[#261B15] text-amber-700 dark:text-amber-400/90 border border-[#E8DFD8] dark:border-[#3E2D23] flex items-center justify-center mb-4 shadow-inner">
         <Icon className="w-6 h-6" />
       </div>
-      <h4 className="text-sm sm:text-base font-bold text-stone-800 dark:text-stone-200">{title}</h4>
+      <h4 className="text-sm sm:text-base font-bold font-sans text-stone-900 dark:text-[#EDE8E3]">{title}</h4>
       <p className="text-xs text-stone-500 dark:text-stone-400 max-w-sm mt-1.5 mb-5 leading-relaxed">{description}</p>
       {actionLabel && onAction && (
         <Button variant="primary" size="sm" onClick={onAction}>
@@ -697,12 +713,12 @@ export function ErrorState({
   className = '',
 }) {
   return (
-    <div className={`p-6 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/20 text-center flex flex-col items-center justify-center ${className}`}>
-      <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-3">
+    <div className={`p-6 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/70 dark:bg-[#2B1416]/50 text-center flex flex-col items-center justify-center ${className}`}>
+      <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-400 flex items-center justify-center mb-3 border border-rose-200/80 dark:border-rose-800/60">
         <AlertTriangle className="w-5 h-5" />
       </div>
-      <h4 className="text-sm font-bold text-rose-800 dark:text-rose-200">{title}</h4>
-      <p className="text-xs text-rose-600/90 dark:text-rose-300/80 max-w-md mt-1 mb-4">{message}</p>
+      <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">{title}</h4>
+      <p className="text-xs text-rose-700 dark:text-rose-300/90 max-w-md mt-1 mb-4">{message}</p>
       {onRetry && (
         <Button variant="danger" size="sm" onClick={onRetry}>
           Try Again
@@ -813,15 +829,15 @@ export function AnimatedCounter({ value, suffix = '', duration = 1200 }) {
 
 export function SkeletonCard({ lines = 3, className = '' }) {
   return (
-    <div className={`p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-stone-200 dark:border-stone-800 space-y-3 animate-pulse ${className}`}>
-      <div className="h-3 bg-stone-200 dark:bg-stone-800 rounded-full w-1/3" />
-      <div className="h-5 bg-stone-200 dark:bg-stone-800 rounded-full w-3/4" />
+    <div className={`p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#2B201A] border border-[#E8DFD8] dark:border-[#423229] space-y-3 animate-pulse ${className}`}>
+      <div className="h-3 bg-[#ECE4DC] dark:bg-[#3A2A20] rounded-full w-1/3" />
+      <div className="h-5 bg-[#ECE4DC] dark:bg-[#3A2A20] rounded-full w-3/4" />
       {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className="h-3 bg-stone-200 dark:bg-stone-800 rounded-full" style={{ width: `${85 - i * 15}%` }} />
+        <div key={i} className="h-3 bg-[#ECE4DC] dark:bg-[#3A2A20] rounded-full" style={{ width: `${85 - i * 15}%` }} />
       ))}
       <div className="flex gap-2 pt-1">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-5 w-16 bg-stone-200 dark:bg-stone-800 rounded-md" />
+          <div key={i} className="h-5 w-16 bg-[#ECE4DC] dark:bg-[#3A2A20] rounded-md" />
         ))}
       </div>
     </div>
@@ -832,13 +848,13 @@ export function SkeletonKPI() {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {[1, 2, 3, 4].map(i => (
-        <div key={i} className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-stone-200 dark:border-stone-800 animate-pulse space-y-3">
+        <div key={i} className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#2B201A] border border-[#E8DFD8] dark:border-[#423229] animate-pulse space-y-3">
           <div className="flex justify-between">
-            <div className="h-3 bg-stone-200 dark:bg-stone-800 rounded-full w-1/2" />
-            <div className="w-8 h-8 rounded-lg bg-stone-200 dark:bg-stone-800" />
+            <div className="h-3 bg-[#ECE4DC] dark:bg-[#3A2A20] rounded-full w-1/2" />
+            <div className="w-8 h-8 rounded-lg bg-[#ECE4DC] dark:bg-[#3A2A20]" />
           </div>
-          <div className="h-8 bg-stone-200 dark:bg-stone-800 rounded-full w-1/2" />
-          <div className="h-2 bg-stone-200 dark:bg-stone-800 rounded-full w-2/3" />
+          <div className="h-8 bg-[#ECE4DC] dark:bg-[#3A2A20] rounded-full w-1/2" />
+          <div className="h-2 bg-[#ECE4DC] dark:bg-[#3A2A20] rounded-full w-2/3" />
         </div>
       ))}
     </div>

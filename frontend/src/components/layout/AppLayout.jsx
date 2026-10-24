@@ -18,48 +18,8 @@ import {
 import { formatShortcut } from '../../utils/keyboardShortcut';
 import AreteLogo from '../ui/AreteLogo';
 
-export function OfflineScreen({ error, onRetry }) {
-  return (
-    <div className="min-h-screen bg-[#0F0E0D] flex flex-col items-center justify-center p-8 text-center space-y-6">
-      <div className="w-16 h-16 rounded-2xl bg-rose-950/60 border border-rose-800/50 flex items-center justify-center">
-        <WifiOff className="w-8 h-8 text-rose-400" />
-      </div>
-      <div className="space-y-2">
-        <h2 className="text-2xl font-black text-stone-100">Backend Offline</h2>
-        <p className="text-stone-400 text-sm max-w-md mx-auto">
-          The ARETE API server is not reachable. All data is served from the backend — there is no static data.
-        </p>
-      </div>
-      <div className="p-4 rounded-2xl bg-[#1A1714] border border-[#2A2520] text-left max-w-md w-full space-y-3">
-        <div className="flex items-center space-x-2 text-xs font-bold text-stone-400 uppercase tracking-wider">
-          <Terminal className="w-3.5 h-3.5" /><span>Start the backend:</span>
-        </div>
-        <code className="block text-xs text-emerald-400 font-mono bg-[#0C0A09] p-3 rounded-xl leading-relaxed">
-          cd C:\Sparkx\sparkx-ai-recruitment\backend<br />
-          python -m uvicorn main:app --reload --port 8000
-        </code>
-        <div className="flex items-center space-x-2 text-xs font-bold text-stone-400 uppercase tracking-wider pt-1">
-          <Database className="w-3.5 h-3.5" /><span>Then seed demo data (first time):</span>
-        </div>
-        <code className="block text-xs text-amber-400 font-mono bg-[#0C0A09] p-3 rounded-xl">
-          python seed.py
-        </code>
-        {error && (
-          <div className="text-[11px] text-rose-400 font-mono bg-rose-950/30 p-2 rounded-lg border border-rose-800/40">
-            Error: {error}
-          </div>
-        )}
-      </div>
-      <button 
-        onClick={onRetry}
-        className="flex items-center space-x-2 px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-bold transition shadow-lg shadow-amber-950/30"
-      >
-        <RefreshCw className="w-4 h-4" />
-        <span>Retry Connection</span>
-      </button>
-    </div>
-  );
-}
+import OfflineScreen from '../ui/OfflineScreen';
+export { OfflineScreen };
 
 export default function AppLayout() {
   const navigate = useNavigate();
@@ -107,18 +67,18 @@ export default function AppLayout() {
         className="flex-1 flex flex-col h-full min-w-0 overflow-y-auto scrollbar-thin"
       >
         {/* Mobile Top Header */}
-        <header className="lg:hidden sticky top-0 z-30 h-14 bg-[#FAF8F5]/95 dark:bg-[#18120F]/95 backdrop-blur-xl border-b border-[#E8DFD8] dark:border-[#2C2019] px-4 flex items-center justify-between">
+        <header className="lg:hidden sticky top-0 z-30 h-14 bg-[#FAF8F5]/95 dark:bg-[#150F0D]/95 backdrop-blur-xl border-b border-[#E8DFD8] dark:border-[#2C2019] px-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setIsMobileNavOpen(true)}
-              className="p-1.5 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
+              className="p-1.5 rounded-lg text-stone-600 dark:text-stone-300 hover:bg-[#F4EFEB] dark:hover:bg-[#251A14] active:bg-[#ECE4DC] dark:active:bg-[#1A120E] transition-colors"
               aria-label="Open navigation menu"
             >
               <Menu className="w-5 h-5" />
             </button>
             <div 
-              className="cursor-pointer"
+              className="cursor-pointer flex items-center"
               onClick={() => smoothNavigate(userRole === 'recruiter' ? '/recruiter' : '/jobs')}
             >
               <AreteLogo size="xs" />
@@ -129,19 +89,19 @@ export default function AppLayout() {
             <button
               type="button"
               onClick={() => setIsAskSparkxOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-stone-100 border border-stone-200 dark:border-stone-700 text-xs font-semibold"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#FAF8F5] dark:bg-[#201814] text-stone-900 dark:text-[#EDE8E3] border border-[#E8DFD8] dark:border-[#3D2C22] text-xs font-semibold hover:border-brand-500/50 transition-colors shadow-xs"
               title={`ARETE Copilot (${formatShortcut('J')})`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+              <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-amber-400" />
               <span>ARETE AI</span>
             </button>
             <button
               type="button"
               onClick={() => setIsCommandMenuOpen(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-500 text-xs font-medium"
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#FAF8F5] dark:bg-[#201814] text-stone-500 dark:text-stone-400 border border-[#E8DFD8] dark:border-[#3D2C22] text-xs font-medium hover:border-brand-500/50 transition-colors shadow-xs"
             >
               <Search className="w-3.5 h-3.5" />
-              <kbd className="text-[10px] font-sans bg-white dark:bg-stone-700 px-1 rounded">{formatShortcut('K')}</kbd>
+              <kbd className="text-[10px] font-sans font-medium text-stone-500 dark:text-amber-400/80 bg-[#F4EFEB] dark:bg-[#2A1E17] border border-[#E8DFD8] dark:border-[#423229] px-1 rounded">{formatShortcut('K')}</kbd>
             </button>
           </div>
         </header>

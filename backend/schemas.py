@@ -25,6 +25,7 @@ class JobCreate(BaseModel):
     assessment_pool: Optional[Dict[str, Any]] = None
     assessment_version: Optional[int] = 1
     competency_blueprint: Optional[Dict[str, Any]] = None
+    status: Optional[str] = "Active"
 
     # Authoritative Employer Compensation Specification
     ctc_type: Optional[str] = "range" # "fixed" | "range" | "starting_from"
@@ -1717,6 +1718,12 @@ class EvidenceCitationItem(BaseModel):
     evidence_strength: str = "NONE" # "STRONG" | "MODERATE" | "SUPPORTING" | "NONE"
     sources: List[str] = []
     reason: Optional[str] = None
+    evidence_id: Optional[str] = None
+    evidence_type: Optional[str] = None
+    record_ref: Optional[str] = None
+    quote_snippet: Optional[str] = None
+    artifact_url: Optional[str] = None
+    timestamp: Optional[str] = None
 
 class DecisionAssistantResponse(BaseModel):
     candidate_id: str
@@ -1733,6 +1740,332 @@ class DecisionAssistantResponse(BaseModel):
     cited_evidence: List[EvidenceCitationItem] = []
     material_gaps: List[Dict[str, Any]] = []
     cohort_comparison: Optional[Dict[str, Any]] = None
+    suggested_follow_ups: List[str] = []
+    evidence_records: List[Dict[str, Any]] = []
     provider: str
     is_live_llm: bool = True
     limitations_disclaimer: str
+
+class JobDecisionCandidateSummary(BaseModel):
+    candidate_id: str
+    candidate_name: str
+    fit_score: float
+    fit_tier: str
+    stage: str
+    must_have_coverage: float
+    preferred_coverage: float
+    verified_skills: List[str] = []
+    missing_must_haves: List[str] = []
+    coding_score: Optional[float] = None
+    interview_status: Optional[str] = None
+
+class JobDecisionAssistantRequest(BaseModel):
+    query: str
+    limit: Optional[int] = 10
+    filter_stage: Optional[str] = None
+
+class JobDecisionAssistantResponse(BaseModel):
+    job_id: str
+    job_title: str
+    company_name: str
+    department: str
+    query: str
+    answer: str
+    total_candidates: int
+    evaluated_candidates_count: int
+    top_candidates: List[JobDecisionCandidateSummary] = []
+    required_skills_breakdown: List[Dict[str, Any]] = []
+    unverified_skills: List[str] = []
+    suggested_follow_ups: List[str] = []
+    provider: str
+    is_live_llm: bool = True
+    limitations_disclaimer: str
+
+
+# ─── AI Resume Studio Schemas ───────────────────────────────────────────────
+
+class ResumeContactInfo(BaseModel):
+    full_name: Optional[str] = ""
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    location: Optional[str] = ""
+    headline: Optional[str] = ""
+    linkedin_url: Optional[str] = ""
+    github_url: Optional[str] = ""
+    portfolio_url: Optional[str] = ""
+    photo_url: Optional[str] = ""
+    show_photo: Optional[bool] = False
+    theme: Optional[str] = "executive"
+    accent_color: Optional[str] = "#C27803"
+    compact: Optional[bool] = False
+    font_family: Optional[str] = "sans"
+    bullet_style: Optional[str] = "•"
+    layout_template: Optional[str] = "single_column"
+    photo_position: Optional[str] = "right"
+    photo_shape: Optional[str] = "circle"
+    photo_size: Optional[str] = "md"
+
+class ResumeExperienceItem(BaseModel):
+    id: Optional[str] = None
+    title: str = ""
+    company: str = ""
+    location: Optional[str] = ""
+    start_date: Optional[str] = ""
+    end_date: Optional[str] = ""
+    is_current: Optional[bool] = False
+    bullets: List[str] = []
+    technologies: List[str] = []
+
+class ResumeEducationItem(BaseModel):
+    id: Optional[str] = None
+    degree: str = ""
+    institution: str = ""
+    field_of_study: Optional[str] = ""
+    start_year: Optional[str] = ""
+    graduation_year: Optional[str] = ""
+    gpa: Optional[str] = ""
+
+class ResumeProjectItem(BaseModel):
+    id: Optional[str] = None
+    name: str = ""
+    description: Optional[str] = ""
+    role: Optional[str] = ""
+    technologies: List[str] = []
+    url: Optional[str] = ""
+    bullets: List[str] = []
+
+class ResumeCertificationItem(BaseModel):
+    id: Optional[str] = None
+    name: str = ""
+    issuer: str = ""
+    issue_date: Optional[str] = ""
+    expiration_date: Optional[str] = ""
+    credential_id: Optional[str] = ""
+    credential_url: Optional[str] = ""
+
+class ResumeLanguageItem(BaseModel):
+    id: Optional[str] = None
+    language: str = ""
+    proficiency: str = "Professional Working"
+
+class ResumeAwardItem(BaseModel):
+    id: Optional[str] = None
+    title: str = ""
+    issuer: str = ""
+    date: Optional[str] = ""
+    description: Optional[str] = ""
+
+class ResumeVolunteerItem(BaseModel):
+    id: Optional[str] = None
+    role: str = ""
+    organization: str = ""
+    start_date: Optional[str] = ""
+    end_date: Optional[str] = "Present"
+    is_current: Optional[bool] = False
+    description: Optional[str] = ""
+    bullets: List[str] = []
+
+class ResumeCreateRequest(BaseModel):
+    title: str = "My Resume"
+    target_job_id: Optional[str] = None
+    target_job_title: Optional[str] = None
+    is_base_resume: bool = False
+    contact_info: Optional[Dict[str, Any]] = None
+    summary: Optional[str] = ""
+    experience: List[Dict[str, Any]] = []
+    education: List[Dict[str, Any]] = []
+    skills: List[str] = []
+    projects: List[Dict[str, Any]] = []
+    certifications: List[Dict[str, Any]] = []
+    languages: List[Dict[str, Any]] = []
+    awards: List[Dict[str, Any]] = []
+    volunteering: List[Dict[str, Any]] = []
+    parent_resume_id: Optional[str] = None
+    change_summary: Optional[str] = None
+
+class ResumeUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    target_job_id: Optional[str] = None
+    target_job_title: Optional[str] = None
+    is_base_resume: Optional[bool] = None
+    contact_info: Optional[Dict[str, Any]] = None
+    summary: Optional[str] = None
+    experience: Optional[List[Dict[str, Any]]] = None
+    education: Optional[List[Dict[str, Any]]] = None
+    skills: Optional[List[str]] = None
+    projects: Optional[List[Dict[str, Any]]] = None
+    certifications: Optional[List[Dict[str, Any]]] = None
+    languages: Optional[List[Dict[str, Any]]] = None
+    awards: Optional[List[Dict[str, Any]]] = None
+    volunteering: Optional[List[Dict[str, Any]]] = None
+    change_summary: Optional[str] = None
+    create_new_version: Optional[bool] = False
+
+class ResumeResponse(BaseModel):
+    id: str
+    user_id: str
+    organization_id: Optional[str] = None
+    title: str
+    target_job_id: Optional[str] = None
+    target_job_title: Optional[str] = None
+    is_base_resume: bool = False
+    contact_info: Dict[str, Any] = {}
+    summary: Optional[str] = ""
+    experience: List[Dict[str, Any]] = []
+    education: List[Dict[str, Any]] = []
+    skills: List[str] = []
+    projects: List[Dict[str, Any]] = []
+    certifications: List[Dict[str, Any]] = []
+    languages: List[Dict[str, Any]] = []
+    awards: List[Dict[str, Any]] = []
+    volunteering: List[Dict[str, Any]] = []
+    version: int = 1
+    parent_resume_id: Optional[str] = None
+    change_summary: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+class ResumeAIAssistRequest(BaseModel):
+    action: str  # "refine_summary" | "improve_bullet" | "suggest_keywords" | "tailor_resume" | "audit_gaps"
+    section: Optional[str] = None
+    current_text: Optional[str] = ""
+    resume_context: Optional[Dict[str, Any]] = None
+    job_id: Optional[str] = None
+
+class ResumeAIAssistResponse(BaseModel):
+    action: str
+    suggestion: str
+    alternatives: List[str] = []
+    suggested_keywords: List[str] = []
+    matched_keywords: List[str] = []
+    missing_keywords: List[str] = []
+    audit_findings: List[Dict[str, Any]] = []
+    reasoning: Optional[str] = None
+    grounded_source: str = "Candidate Profile"
+    is_live_llm: bool = True
+    provider: Optional[str] = None
+
+
+class ResumeMatchAnalysisRequest(BaseModel):
+    job_id: str
+    resume_id: Optional[str] = None
+
+
+class SkillMatchEvidenceItem(BaseModel):
+    skill_name: str
+    slug: str
+    category: str
+    requirement_type: str  # "must_have" | "preferred"
+    status: str  # "verified_match" | "matched" | "partially_satisfied" | "missing"
+    verification_status: str  # "VERIFIED" | "PARTIALLY_VERIFIED" | "SELF_REPORTED" | "not_applicable"
+    is_platform_verified: bool = False
+    evidence_quote: Optional[str] = None
+    evidence_section: Optional[str] = None
+    explanation: str
+
+
+class ResumeMatchAnalysisResponse(BaseModel):
+    id: str
+    user_id: str
+    resume_id: str
+    resume_title: str
+    resume_version: int
+    job_id: str
+    job_title: str
+    company_name: str
+    department: str
+    match_score: float
+    status: str
+    summary_verdict: str
+    category_scores: Dict[str, float]
+    skills: List[SkillMatchEvidenceItem]
+    must_have_count: int
+    must_have_matched: int
+    preferred_count: int
+    preferred_matched: int
+    experience_alignment: Dict[str, Any]
+    education_alignment: Dict[str, Any]
+    role_alignment: Dict[str, Any]
+    recommendations: List[Dict[str, Any]]
+    limitations: List[str]
+    is_live_llm: bool
+    provider: Optional[str] = None
+    created_at: str
+    updated_at: str
+
+
+# ─── Phase 4H: AI Job Description Builder Schemas ──────────────────────────
+
+class SkillMappingItem(BaseModel):
+    raw_name: str
+    canonical_name: Optional[str] = None
+    skill_id: Optional[str] = None
+    category: Optional[str] = None
+    is_resolved: bool = False
+    requirement_type: str = "must_have"  # "must_have" | "preferred"
+    weight: float = 1.0
+    status: str = "UNRESOLVED"  # "RESOLVED" | "UNRESOLVED"
+
+
+class JobDescriptionGenerateRequest(BaseModel):
+    title: str
+    department: str
+    location: Optional[str] = "Remote"
+    experience_years: Optional[int] = 2
+    work_arrangement: Optional[str] = "Hybrid"  # "Remote" | "Hybrid" | "On-site"
+    seniority_level: Optional[str] = "Mid-Level"  # "Junior" | "Mid-Level" | "Senior" | "Staff/Lead" | "Principal"
+    role_brief: Optional[str] = None
+    responsibilities: Optional[List[str]] = None
+    must_have_skills: Optional[List[str]] = None
+    preferred_skills: Optional[List[str]] = None
+    qualifications: Optional[str] = None
+    assessment_expectations: Optional[str] = None
+
+
+class JobDescriptionRefineRequest(BaseModel):
+    title: str
+    department: str
+    current_description: str
+    refinement_mode: str = "improve_clarity"
+    # "improve_clarity" | "make_actionable" | "separate_qualifications" | "improve_structure" | "reduce_restrictive" | "detect_contradictions" | "inclusive_wording" | "custom"
+    custom_instruction: Optional[str] = None
+    section: Optional[str] = "all"  # "all" | "overview" | "responsibilities" | "qualifications" | "skills"
+    must_have_skills: Optional[List[str]] = None
+    preferred_skills: Optional[List[str]] = None
+
+
+class JobDescriptionDraft(BaseModel):
+    title: str
+    department: str
+    overview: str
+    responsibilities: List[str]
+    qualifications: List[str]
+    must_have_skills: List[str]
+    preferred_skills: List[str]
+    relevant_experience: str
+    role_expectations: List[str]
+    assessment_suggestions: List[str]
+    full_description: str
+    skill_mappings: List[SkillMappingItem]
+    unresolved_skills: List[str]
+    missing_information_notices: List[str]
+    provider: str = "ARETE Procedural Engine"
+    refinement_summary: Optional[str] = None
+
+
+class JobSkillRequirementSyncItem(BaseModel):
+    skill_name: str
+    requirement_type: str = "must_have"  # "must_have" | "preferred"
+    weight: Optional[float] = 1.0
+
+
+class JobSkillRequirementSyncRequest(BaseModel):
+    skills: List[JobSkillRequirementSyncItem]
+
+
+class JobSkillRequirementSyncResponse(BaseModel):
+    job_id: str
+    synced_count: int
+    resolved_skills: List[str]
+    unresolved_skills: List[str]
+

@@ -572,19 +572,19 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
     return (
       <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-4 animate-fade-in">
         {/* Top Control Bar with Requisition Selector */}
-        <div className="bg-white dark:bg-[#1A1714] rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-card">
+        <div className="bg-[#FDFBF7] dark:bg-[#201814] rounded-2xl border border-[#E8DFD8] dark:border-[#3D2C22] p-4 sm:p-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="min-w-0">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20 flex items-center gap-1.5 w-fit mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25 flex items-center gap-1.5 w-fit mb-1">
                 <Layers className="w-3 h-3" />
                 Assessment Builder Studio
               </span>
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-lg sm:text-xl font-bold text-[#2E2017] dark:text-[#FDFBF7] tracking-tight">
                 Assessment Authoring & Configuration
               </h1>
               {currentJob && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Target Requisition: <strong className="text-slate-700 dark:text-slate-300">{currentJob.title}</strong>
+                <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D]">
+                  Target Requisition: <strong className="text-[#2E2017] dark:text-[#FDFBF7]">{currentJob.title}</strong>
                 </p>
               )}
             </div>
@@ -605,21 +605,21 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
         </div>
 
         {/* Blank Slate Card */}
-        <div className="bg-white dark:bg-[#1A1714] rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center max-w-2xl mx-auto my-8 shadow-card">
-          <div className="w-14 h-14 bg-brand-500/10 text-brand-600 dark:text-brand-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-brand-500/20">
+        <div className="bg-[#FDFBF7] dark:bg-[#201814] rounded-2xl border border-[#E8DFD8] dark:border-[#3D2C22] p-8 text-center max-w-2xl mx-auto my-8 shadow-sm">
+          <div className="w-14 h-14 bg-amber-500/10 text-[#C27803] dark:text-[#F59E0B] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-amber-500/20">
             <Layers className="w-7 h-7" />
           </div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Initialize Assessment for {currentJob?.title || 'Requisition'}</h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+          <h3 className="text-xl font-bold text-[#2E2017] dark:text-[#FDFBF7] mb-2">Initialize Assessment for {currentJob?.title || 'Requisition'}</h3>
+          <p className="text-sm text-[#7A6B5D] dark:text-[#A89A8D] mb-6">
             No assessment currently exists for this job opening. Create a production-grade, multi-category assessment
             with relational skill associations, sandbox execution, and frozen version snapshots.
           </p>
-          <div className="space-y-4 max-w-md mx-auto text-left mb-6 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="space-y-4 max-w-md mx-auto text-left mb-6 bg-[#F7F4EF] dark:bg-[#150F0D] p-4 rounded-xl border border-[#E8DFD8] dark:border-[#33241C]">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Assessment Title</label>
+              <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] uppercase tracking-wider mb-1 font-mono">Assessment Title</label>
               <input 
                 type="text" 
-                className="w-full text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
+                className="w-full text-sm border border-[#E8DFD8] dark:border-[#33241C] rounded-xl px-3 py-2 bg-white dark:bg-[#201814] text-[#2E2017] dark:text-[#FDFBF7] focus:outline-none focus:border-[#F59E0B]"
                 placeholder="e.g. Senior Backend Technical Evaluation"
                 value={settingsForm.title}
                 onChange={(e) => setSettingsForm({ ...settingsForm, title: e.target.value })}
@@ -627,19 +627,19 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Time Limit (mins)</label>
+                <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] uppercase tracking-wider mb-1 font-mono">Time Limit (mins)</label>
                 <input 
                   type="number" 
-                  className="w-full text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
+                  className="w-full text-sm border border-[#E8DFD8] dark:border-[#33241C] rounded-xl px-3 py-2 bg-white dark:bg-[#201814] text-[#2E2017] dark:text-[#FDFBF7] focus:outline-none focus:border-[#F59E0B]"
                   value={settingsForm.duration_minutes}
                   onChange={(e) => setSettingsForm({ ...settingsForm, duration_minutes: parseInt(e.target.value, 10) || 45 })}
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">Passing Score (%)</label>
+                <label className="block text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] uppercase tracking-wider mb-1 font-mono">Passing Score (%)</label>
                 <input 
                   type="number" 
-                  className="w-full text-sm border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
+                  className="w-full text-sm border border-[#E8DFD8] dark:border-[#33241C] rounded-xl px-3 py-2 bg-white dark:bg-[#201814] text-[#2E2017] dark:text-[#FDFBF7] focus:outline-none focus:border-[#F59E0B]"
                   value={settingsForm.passing_score}
                   onChange={(e) => setSettingsForm({ ...settingsForm, passing_score: parseInt(e.target.value, 10) || 70 })}
                 />
@@ -661,15 +661,15 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
   return (
     <div className="w-full h-full flex flex-col p-3 sm:p-4 gap-3 min-w-0 overflow-hidden">
       {/* ─── Top Control Bar & Requisition Switcher ─── */}
-      <div className="bg-white dark:bg-[#1A1714] rounded-2xl border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 shadow-card shrink-0">
+      <div className="bg-[#FDFBF7] dark:bg-[#201814] rounded-2xl border border-[#E8DFD8] dark:border-[#3D2C22] p-3 sm:p-3.5 shadow-sm shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="flex items-center flex-wrap gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20 flex items-center gap-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wider bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25 flex items-center gap-1.5">
                 <Layers className="w-3 h-3" />
                 Assessment Builder Studio
               </span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-[#A89A8D]">•</span>
               <Badge 
                 variant={isPublished ? 'success' : isDraft ? 'warning' : 'neutral'}
                 className="uppercase tracking-wider font-semibold text-[10px]"
@@ -677,19 +677,19 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                 {assessment.status} (v{assessment.version})
               </Badge>
               {assessment.published_at && (
-                <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
+                <span className="text-[11px] text-[#A89A8D] font-mono hidden sm:inline">
                   Published {new Date(assessment.published_at).toLocaleDateString()}
                 </span>
               )}
             </div>
 
             <div className="flex items-baseline gap-2.5">
-              <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight truncate">
+              <h1 className="text-lg sm:text-xl font-bold text-[#2E2017] dark:text-[#FDFBF7] tracking-tight truncate">
                 {assessment.title}
               </h1>
               {currentJob && (
-                <span className="text-xs text-slate-500 dark:text-slate-400 truncate hidden md:inline">
-                  for <strong className="text-slate-700 dark:text-slate-300">{currentJob.title}</strong>
+                <span className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] truncate hidden md:inline">
+                  for <strong className="text-[#2E2017] dark:text-[#FDFBF7]">{currentJob.title}</strong>
                 </span>
               )}
             </div>
@@ -763,16 +763,16 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
         </div>
 
         {/* Sub-bar with View switcher & Compact stats strip */}
-        <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+        <div className="mt-2.5 pt-2 border-t border-[#E8DFD8] dark:border-[#3D2C22] flex flex-col md:flex-row md:items-center justify-between gap-2.5">
           {/* View Switcher Pills */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 w-fit">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] w-fit">
             <button
               type="button"
               onClick={() => setActiveBuilderView('questions')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 activeBuilderView === 'questions'
-                  ? 'bg-white dark:bg-[#25201C] text-brand-600 dark:text-brand-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-white dark:bg-[#201814] text-[#C27803] dark:text-[#F59E0B] shadow-xs border border-[#E8DFD8] dark:border-[#3D2C22]'
+                  : 'text-[#7A6B5D] hover:text-[#2E2017] dark:hover:text-[#FDFBF7]'
               }`}
             >
               <Layers className="w-3.5 h-3.5" />
@@ -783,8 +783,8 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               onClick={() => setActiveBuilderView('settings')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 activeBuilderView === 'settings'
-                  ? 'bg-white dark:bg-[#25201C] text-brand-600 dark:text-brand-400 shadow-xs border border-slate-200/80 dark:border-slate-700'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-white dark:bg-[#201814] text-[#C27803] dark:text-[#F59E0B] shadow-xs border border-[#E8DFD8] dark:border-[#3D2C22]'
+                  : 'text-[#7A6B5D] hover:text-[#2E2017] dark:hover:text-[#FDFBF7]'
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
@@ -794,24 +794,24 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
 
           {/* Compact Metric Ribbon */}
           <div className="flex items-center flex-wrap gap-2 text-xs">
-            <div className="px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 flex items-center gap-1.5">
-              <span className="text-slate-500 dark:text-slate-400">Total:</span>
-              <span className="font-bold text-slate-900 dark:text-white font-mono">{assessment.total_questions}</span>
+            <div className="px-2.5 py-1 rounded-lg bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] flex items-center gap-1.5">
+              <span className="text-[#7A6B5D] dark:text-[#A89A8D]">Total:</span>
+              <span className="font-bold text-[#2E2017] dark:text-[#FDFBF7] font-mono">{assessment.total_questions}</span>
             </div>
-            <div className="px-2.5 py-1 rounded-lg bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/50 flex items-center gap-1.5">
+            <div className="px-2.5 py-1 rounded-lg bg-blue-500/10 border border-blue-500/25 flex items-center gap-1.5">
               <span className="text-blue-700 dark:text-blue-300">MCQs:</span>
               <span className="font-bold text-blue-900 dark:text-blue-100 font-mono">{assessment.total_mcqs}</span>
             </div>
-            <div className="px-2.5 py-1 rounded-lg bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/50 flex items-center gap-1.5">
+            <div className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/25 flex items-center gap-1.5">
               <span className="text-purple-700 dark:text-purple-300">Coding:</span>
               <span className="font-bold text-purple-900 dark:text-purple-100 font-mono">{assessment.total_coding}</span>
             </div>
-            <div className="px-2.5 py-1 rounded-lg bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/50 flex items-center gap-1.5">
+            <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-1.5">
               <span className="text-emerald-700 dark:text-emerald-300">Points:</span>
               <span className="font-bold text-emerald-900 dark:text-emerald-100 font-mono">{assessment.total_points} pts</span>
             </div>
-            <div className="px-2.5 py-1 rounded-lg bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/50 flex items-center gap-1.5">
-              <span className="text-amber-700 dark:text-amber-300">Target:</span>
+            <div className="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center gap-1.5">
+              <span className="text-amber-800 dark:text-amber-300">Target:</span>
               <span className="font-bold text-amber-900 dark:text-amber-100 font-mono">{assessment.passing_score}%</span>
             </div>
           </div>
@@ -821,8 +821,8 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
         {validationResult && (
           <div className={`mt-3 p-3.5 rounded-xl border ${
             validationResult.is_valid 
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-200' 
-              : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/80 text-rose-900 dark:text-rose-200'
+              ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-900 dark:text-emerald-200' 
+              : 'bg-rose-500/10 border-rose-500/25 text-rose-900 dark:text-rose-200'
           }`}>
             <div className="flex items-start gap-2.5">
               {validationResult.is_valid ? (
@@ -855,14 +855,14 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
         <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3.5">
           
           {/* Left Column: Configured Questions in Assessment (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col h-full min-h-0 bg-white dark:bg-[#1A1714] rounded-2xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-4 shadow-card">
+          <div className="lg:col-span-7 flex flex-col h-full min-h-0 bg-[#FDFBF7] dark:bg-[#201814] rounded-2xl border border-[#E8DFD8] dark:border-[#3D2C22] p-3.5 sm:p-4 shadow-card">
             <div className="flex items-center justify-between mb-3 shrink-0">
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <h3 className="font-bold text-[#2E2017] dark:text-[#EDE8E1] flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#C27803] dark:text-amber-400" />
                   <span>Assessment Questions ({assessment.questions?.length || 0})</span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Ordered sequence of questions candidate will face</p>
+                <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">Ordered sequence of questions candidate will face</p>
               </div>
                 <div className="flex items-center gap-2">
                   <Button 
@@ -888,32 +888,32 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
 
               {/* Questions List (Scrollable Interior) */}
               {(!assessment.questions || assessment.questions.length === 0) ? (
-                <div className="text-center py-16 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 flex flex-col items-center justify-center flex-1">
+                <div className="text-center py-16 border-2 border-dashed border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl text-[#7A6B63] dark:text-[#A89A90] flex flex-col items-center justify-center flex-1">
                   <Layers className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">No questions configured yet</p>
-                  <p className="text-xs mt-1 text-slate-400 max-w-xs">Select questions from the repository on the right or use rule-based Auto-Select.</p>
+                  <p className="text-sm font-medium text-[#2E2017] dark:text-[#EDE8E1]">No questions configured yet</p>
+                  <p className="text-xs mt-1 text-[#7A6B63] dark:text-[#A89A90] max-w-xs">Select questions from the repository on the right or use rule-based Auto-Select.</p>
                 </div>
               ) : (
                 <div className="space-y-3 overflow-y-auto pr-1 flex-1 scrollbar-thin">
                   {assessment.questions.map((q, idx) => (
                     <div 
                       key={q.id || idx} 
-                      className="p-3.5 bg-slate-50/70 dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl flex items-start justify-between gap-3 transition-colors shadow-2xs"
+                      className="p-3.5 bg-[#F7F4EF]/70 dark:bg-[#2B201A]/60 hover:bg-[#F7F4EF] dark:hover:bg-[#2B201A] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl flex items-start justify-between gap-3 transition-colors shadow-2xs"
                     >
                       <div className="flex items-start gap-3 min-w-0 flex-1">
                         <div className="flex flex-col gap-1 items-center pt-0.5 shrink-0">
                           <button 
                             onClick={() => handleMoveQuestion(idx, -1)}
                             disabled={idx === 0 || !isDraft}
-                            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 cursor-pointer"
+                            className="p-1 text-[#7A6B63] hover:text-[#2E2017] dark:text-[#A89A90] dark:hover:text-[#EDE8E1] disabled:opacity-30 cursor-pointer"
                           >
                             <ArrowUp className="w-3.5 h-3.5" />
                           </button>
-                          <span className="text-xs font-bold text-slate-400 font-mono">{idx + 1}</span>
+                          <span className="text-xs font-bold text-[#7A6B63] dark:text-[#A89A90] font-mono">{idx + 1}</span>
                           <button 
                             onClick={() => handleMoveQuestion(idx, 1)}
                             disabled={idx === assessment.questions.length - 1 || !isDraft}
-                            className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-30 cursor-pointer"
+                            className="p-1 text-[#7A6B63] hover:text-[#2E2017] dark:text-[#A89A90] dark:hover:text-[#EDE8E1] disabled:opacity-30 cursor-pointer"
                           >
                             <ArrowDown className="w-3.5 h-3.5" />
                           </button>
@@ -934,17 +934,17 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                               {q.difficulty}
                             </Badge>
                             {q.category && (
-                              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium font-mono">
+                              <span className="text-[11px] text-[#7A6B63] dark:text-[#A89A90] font-medium font-mono">
                                 {q.category}
                               </span>
                             )}
                           </div>
 
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 line-clamp-2">
+                          <p className="text-sm font-semibold text-[#2E2017] dark:text-[#EDE8E1] line-clamp-2">
                             {q.title}
                           </p>
 
-                          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 pt-0.5">
+                          <div className="flex items-center gap-3 text-xs text-[#7A6B63] dark:text-[#A89A90] pt-0.5">
                             {q.options_count !== null && (
                               <span>{q.options_count} Options</span>
                             )}
@@ -960,11 +960,11 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
 
                       {/* Right side: Weight input & Remove button */}
                       <div className="flex items-center gap-2 flex-shrink-0 pt-1">
-                        <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1">
+                        <div className="flex items-center gap-1 text-xs text-[#2E2017] dark:text-[#EDE8E1] bg-[#FDFBF7] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg px-2 py-1">
                           <span>Pts:</span>
                           <input 
-                            type="number"
-                            className="w-12 text-center text-xs font-bold text-slate-900 dark:text-white bg-transparent border-none p-0 focus:ring-0"
+                            type="number" 
+                            className="w-12 text-center text-xs font-bold text-[#2E2017] dark:text-[#EDE8E1] bg-transparent border-none p-0 focus:ring-0"
                             defaultValue={q.weight}
                             onBlur={(e) => handleUpdateWeight(q, e.target.value)}
                             disabled={!isDraft}
@@ -973,7 +973,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                         {isDraft && (
                           <button 
                             onClick={() => handleRemoveQuestion(q.question_type, q.question_id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg transition-colors cursor-pointer"
                             title="Remove question"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -987,11 +987,11 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
             </div>
 
           {/* Right Column: Question Bank Browser (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col h-full min-h-0 bg-white dark:bg-[#1A1714] rounded-2xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-4 shadow-card">
+          <div className="lg:col-span-5 flex flex-col h-full min-h-0 bg-[#FDFBF7] dark:bg-[#201814] rounded-2xl border border-[#E8DFD8] dark:border-[#3D2C22] p-3.5 sm:p-4 shadow-card">
             <div className="flex items-center justify-between mb-3 shrink-0">
                 <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white">Question Repository</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Relational MCQ & Hands-on Coding Pool</p>
+                  <h3 className="font-bold text-[#2E2017] dark:text-[#EDE8E1]">Question Repository</h3>
+                  <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">Relational MCQ & Hands-on Coding Pool</p>
                 </div>
                 <Badge variant="neutral">{questionBank.length} available</Badge>
               </div>
@@ -1001,7 +1001,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                 <input 
                   type="text" 
                   placeholder="Search questions or skills..." 
-                  className="w-full text-xs border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-brand-500"
+                  className="w-full text-xs border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] placeholder-[#7A6B63] dark:placeholder-[#A89A90] focus:outline-none focus:border-amber-500"
                   value={bankFilter.search}
                   onChange={(e) => setBankFilter({ ...bankFilter, search: e.target.value })}
                 />
@@ -1048,12 +1048,12 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               {/* Questions Bank List */}
               <div className="space-y-2.5 overflow-y-auto pr-1 flex-1 scrollbar-thin">
                 {bankLoading ? (
-                  <div className="py-16 text-center text-slate-400">
-                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-1 text-slate-400" />
+                  <div className="py-16 text-center text-[#7A6B63] dark:text-[#A89A90]">
+                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-1 text-amber-500" />
                     <span className="text-xs">Loading questions...</span>
                   </div>
                 ) : prioritizedQuestionBank.length === 0 ? (
-                  <div className="py-16 text-center text-slate-400 text-xs border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                  <div className="py-16 text-center text-[#7A6B63] dark:text-[#A89A90] text-xs border border-dashed border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl">
                     No questions match your current filter.
                   </div>
                 ) : (
@@ -1070,10 +1070,10 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                         key={q.id} 
                         className={`p-3 rounded-xl border text-xs transition-colors shadow-2xs ${
                           isAdded 
-                            ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-70' 
+                            ? 'bg-[#F7F4EF]/50 dark:bg-[#16120F]/40 border-[#E8DFD8] dark:border-[#3D2C22] opacity-70' 
                             : isRoleRecommended
-                              ? 'bg-amber-500/[0.03] dark:bg-amber-500/[0.05] border-amber-500/30 hover:border-amber-500/60'
-                              : 'bg-white dark:bg-[#1A1714] border-slate-200 dark:border-slate-800 hover:border-brand-500/50'
+                              ? 'bg-amber-500/[0.05] dark:bg-amber-500/[0.08] border-amber-500/40 hover:border-amber-500/70'
+                              : 'bg-[#FDFBF7] dark:bg-[#251C17] border-[#E8DFD8] dark:border-[#3D2C22] hover:border-amber-500/50'
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1">
@@ -1083,8 +1083,8 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                             }`}>
                               {q.question_type}
                             </span>
-                            <span className="text-slate-400 text-[10px]">•</span>
-                            <span className="text-slate-500 dark:text-slate-400 font-medium">{q.difficulty}</span>
+                            <span className="text-stone-400 text-[10px]">•</span>
+                            <span className="text-[#7A6B63] dark:text-[#A89A90] font-medium">{q.difficulty}</span>
                             {isRoleRecommended && (
                               <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
                                 ★ Role Match
@@ -1108,12 +1108,12 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                           )}
                         </div>
 
-                        <p className="font-semibold text-slate-800 dark:text-slate-200 line-clamp-2 mt-1">
+                        <p className="font-semibold text-[#2E2017] dark:text-[#EDE8E1] line-clamp-2 mt-1">
                           {q.title || q.question_text}
                         </p>
 
                         {q.skills?.length > 0 && (
-                          <div className="mt-1 text-[10px] text-slate-400 font-mono">
+                          <div className="mt-1 text-[10px] text-[#7A6B63] dark:text-[#A89A90] font-mono">
                             {q.skills.join(', ')}
                           </div>
                         )}
@@ -1130,14 +1130,14 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
       {/* ─── TAB 2: Parameters & Security Guardrails View (Zero Scroll) ────────── */}
       {activeBuilderView === 'settings' && (
         <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 scrollbar-thin">
-          <div className="bg-white dark:bg-[#1A1714] rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-card space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-[#FDFBF7] dark:bg-[#201814] rounded-2xl border border-[#E8DFD8] dark:border-[#3D2C22] p-6 shadow-card space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[#E8DFD8] dark:border-[#3D2C22]">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Sliders className="w-5 h-5 text-brand-600 dark:text-brand-400" />
+                <h3 className="text-lg font-bold text-[#2E2017] dark:text-[#EDE8E1] flex items-center gap-2">
+                  <Sliders className="w-5 h-5 text-[#C27803] dark:text-amber-400" />
                   <span>Assessment Parameters & Security Guardrails</span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-[#7A6B63] dark:text-[#A89A90] mt-0.5">
                   Configure evaluation constraints, scoring thresholds, attempt limits, and anti-cheat policies.
                 </p>
               </div>
@@ -1150,70 +1150,70 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
 
             {/* Thresholds Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                  <Clock className="w-3.5 h-3.5 text-brand-600" />
+              <div className="p-4 rounded-xl bg-[#F7F4EF]/70 dark:bg-[#2B201A]/60 border border-[#E8DFD8] dark:border-[#3D2C22] space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#2E2017] dark:text-[#EDE8E1] uppercase tracking-wider">
+                  <Clock className="w-3.5 h-3.5 text-[#C27803] dark:text-amber-400" />
                   <span>Time Limit (Minutes)</span>
                 </div>
                 <input 
                   type="number" 
-                  className="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-brand-500"
+                  className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg px-3 py-2 bg-[#FDFBF7] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
                   value={settingsForm.duration_minutes}
                   onChange={(e) => setSettingsForm({ ...settingsForm, duration_minutes: parseInt(e.target.value, 10) || 45 })}
                   disabled={!isDraft}
                 />
-                <span className="text-[11px] text-slate-400 block">Candidate total test session duration</span>
+                <span className="text-[11px] text-[#7A6B63] dark:text-[#A89A90] block">Candidate total test session duration</span>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              <div className="p-4 rounded-xl bg-[#F7F4EF]/70 dark:bg-[#2B201A]/60 border border-[#E8DFD8] dark:border-[#3D2C22] space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#2E2017] dark:text-[#EDE8E1] uppercase tracking-wider">
                   <Award className="w-3.5 h-3.5 text-amber-500" />
                   <span>Passing Score (%)</span>
                 </div>
                 <input 
                   type="number" 
-                  className="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-brand-500"
+                  className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg px-3 py-2 bg-[#FDFBF7] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
                   value={settingsForm.passing_score}
                   onChange={(e) => setSettingsForm({ ...settingsForm, passing_score: parseInt(e.target.value, 10) || 70 })}
                   disabled={!isDraft}
                 />
-                <span className="text-[11px] text-slate-400 block">Minimum threshold to satisfy requirement</span>
+                <span className="text-[11px] text-[#7A6B63] dark:text-[#A89A90] block">Minimum threshold to satisfy requirement</span>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              <div className="p-4 rounded-xl bg-[#F7F4EF]/70 dark:bg-[#2B201A]/60 border border-[#E8DFD8] dark:border-[#3D2C22] space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#2E2017] dark:text-[#EDE8E1] uppercase tracking-wider">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
                   <span>Max Attempts</span>
                 </div>
                 <input 
                   type="number" 
-                  className="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-brand-500"
+                  className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg px-3 py-2 bg-[#FDFBF7] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
                   value={settingsForm.max_attempts}
                   onChange={(e) => setSettingsForm({ ...settingsForm, max_attempts: parseInt(e.target.value, 10) || 1 })}
                   disabled={!isDraft}
                 />
-                <span className="text-[11px] text-slate-400 block">Number of allowed submission attempts</span>
+                <span className="text-[11px] text-[#7A6B63] dark:text-[#A89A90] block">Number of allowed submission attempts</span>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              <div className="p-4 rounded-xl bg-[#F7F4EF]/70 dark:bg-[#2B201A]/60 border border-[#E8DFD8] dark:border-[#3D2C22] space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-[#2E2017] dark:text-[#EDE8E1] uppercase tracking-wider">
                   <Clock className="w-3.5 h-3.5 text-purple-500" />
                   <span>Deadline Window (Days)</span>
                 </div>
                 <input 
                   type="number" 
-                  className="w-full border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-brand-500"
+                  className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-lg px-3 py-2 bg-[#FDFBF7] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
                   value={settingsForm.deadline_days}
                   onChange={(e) => setSettingsForm({ ...settingsForm, deadline_days: parseInt(e.target.value, 10) || 7 })}
                   disabled={!isDraft}
                 />
-                <span className="text-[11px] text-slate-400 block">Invitation expiry validity duration</span>
+                <span className="text-[11px] text-[#7A6B63] dark:text-[#A89A90] block">Invitation expiry validity duration</span>
               </div>
             </div>
 
             {/* Policy & Security Toggles (Interactive Sleek Cards) */}
             <div className="space-y-3 pt-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider font-mono text-slate-400">
+              <h4 className="text-xs font-bold uppercase tracking-wider font-mono text-[#7A6B63] dark:text-[#A89A90]">
                 Evaluation Policies & Proctor Guardrails
               </h4>
 
@@ -1223,22 +1223,22 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                   onClick={() => isDraft && setSettingsForm(prev => ({ ...prev, randomize_questions: !prev.randomize_questions }))}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
                     settingsForm.randomize_questions
-                      ? 'border-brand-500/60 bg-brand-50/50 dark:bg-brand-950/20'
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700'
+                      ? 'border-amber-500/60 bg-amber-500/10 dark:bg-amber-500/10'
+                      : 'border-[#E8DFD8] dark:border-[#3D2C22] bg-[#F7F4EF]/60 dark:bg-[#251C17] hover:border-[#D0C2B6] dark:hover:border-[#523D30]'
                   }`}
                 >
                   <div className="space-y-1">
-                    <span className="text-sm font-bold text-slate-900 dark:text-white block">
+                    <span className="text-sm font-bold text-[#2E2017] dark:text-[#EDE8E1] block">
                       Randomize Question Order
                     </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">
                       Shuffles question sequence per candidate session to minimize collusion and cheating.
                     </p>
                   </div>
                   <div className={`w-11 h-6 rounded-full transition-colors flex items-center p-1 shrink-0 ${
-                    settingsForm.randomize_questions ? 'bg-brand-600 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+                    settingsForm.randomize_questions ? 'bg-amber-600 justify-end' : 'bg-stone-300 dark:bg-stone-700 justify-start'
                   }`}>
-                    <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
                   </div>
                 </div>
 
@@ -1247,22 +1247,22 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                   onClick={() => isDraft && setSettingsForm(prev => ({ ...prev, allow_review: !prev.allow_review }))}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
                     settingsForm.allow_review
-                      ? 'border-brand-500/60 bg-brand-50/50 dark:bg-brand-950/20'
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700'
+                      ? 'border-amber-500/60 bg-amber-500/10 dark:bg-amber-500/10'
+                      : 'border-[#E8DFD8] dark:border-[#3D2C22] bg-[#F7F4EF]/60 dark:bg-[#251C17] hover:border-[#D0C2B6] dark:hover:border-[#523D30]'
                   }`}
                 >
                   <div className="space-y-1">
-                    <span className="text-sm font-bold text-slate-900 dark:text-white block">
+                    <span className="text-sm font-bold text-[#2E2017] dark:text-[#EDE8E1] block">
                       Allow Candidate Review
                     </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">
                       Permits candidates to inspect, flag, and edit answers prior to final assessment lock-in.
                     </p>
                   </div>
                   <div className={`w-11 h-6 rounded-full transition-colors flex items-center p-1 shrink-0 ${
-                    settingsForm.allow_review ? 'bg-brand-600 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+                    settingsForm.allow_review ? 'bg-amber-600 justify-end' : 'bg-stone-300 dark:bg-stone-700 justify-start'
                   }`}>
-                    <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
                   </div>
                 </div>
 
@@ -1271,22 +1271,22 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                   onClick={() => isDraft && setSettingsForm(prev => ({ ...prev, allow_unanswered: !prev.allow_unanswered }))}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
                     settingsForm.allow_unanswered
-                      ? 'border-brand-500/60 bg-brand-50/50 dark:bg-brand-950/20'
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700'
+                      ? 'border-amber-500/60 bg-amber-500/10 dark:bg-amber-500/10'
+                      : 'border-[#E8DFD8] dark:border-[#3D2C22] bg-[#F7F4EF]/60 dark:bg-[#251C17] hover:border-[#D0C2B6] dark:hover:border-[#523D30]'
                   }`}
                 >
                   <div className="space-y-1">
-                    <span className="text-sm font-bold text-slate-900 dark:text-white block">
+                    <span className="text-sm font-bold text-[#2E2017] dark:text-[#EDE8E1] block">
                       Allow Unanswered Submissions
                     </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">
                       Enables final submission even if candidates left difficult or optional questions blank.
                     </p>
                   </div>
                   <div className={`w-11 h-6 rounded-full transition-colors flex items-center p-1 shrink-0 ${
-                    settingsForm.allow_unanswered ? 'bg-brand-600 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+                    settingsForm.allow_unanswered ? 'bg-amber-600 justify-end' : 'bg-stone-300 dark:bg-stone-700 justify-start'
                   }`}>
-                    <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
                   </div>
                 </div>
 
@@ -1295,22 +1295,22 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                   onClick={() => isDraft && setSettingsForm(prev => ({ ...prev, allow_resume: !prev.allow_resume }))}
                   className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-4 ${
                     settingsForm.allow_resume
-                      ? 'border-brand-500/60 bg-brand-50/50 dark:bg-brand-950/20'
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 hover:border-slate-300 dark:hover:border-slate-700'
+                      ? 'border-amber-500/60 bg-amber-500/10 dark:bg-amber-500/10'
+                      : 'border-[#E8DFD8] dark:border-[#3D2C22] bg-[#F7F4EF]/60 dark:bg-[#251C17] hover:border-[#D0C2B6] dark:hover:border-[#523D30]'
                   }`}
                 >
                   <div className="space-y-1">
-                    <span className="text-sm font-bold text-slate-900 dark:text-white block">
+                    <span className="text-sm font-bold text-[#2E2017] dark:text-[#EDE8E1] block">
                       Allow Session Resuming
                     </span>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">
                       Permits recovering from network disconnections within the allocated timer window.
                     </p>
                   </div>
                   <div className={`w-11 h-6 rounded-full transition-colors flex items-center p-1 shrink-0 ${
-                    settingsForm.allow_resume ? 'bg-brand-600 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+                    settingsForm.allow_resume ? 'bg-amber-600 justify-end' : 'bg-stone-300 dark:bg-stone-700 justify-start'
                   }`}>
-                    <div className="w-4 h-4 rounded-full bg-white shadow-sm" />
+                    <div className="w-4 h-4 rounded-full bg-white shadow-xs" />
                   </div>
                 </div>
               </div>
@@ -1322,21 +1322,21 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
       {/* ─── Auto-Select Modal ──────────────────────────────────────────────── */}
       {showAutoSelectModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Shuffle className="w-5 h-5 text-brand-600" />
+          <div className="bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E8DFD8] dark:border-[#3D2C22] pb-3">
+              <h3 className="font-bold text-[#2E2017] dark:text-[#EDE8E1] flex items-center gap-2">
+                <Shuffle className="w-5 h-5 text-[#C27803] dark:text-amber-400" />
                 <span>Rule-Based Question Auto-Selection</span>
               </h3>
               <button 
                 onClick={() => setShowAutoSelectModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">
               Query genuine database questions matching your desired distribution. If the repository lacks
               sufficient questions, the system alerts you without generating artificial placeholder items.
             </p>
@@ -1350,19 +1350,19 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Number of MCQs</label>
+                  <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Number of MCQs</label>
                   <input 
                     type="number" 
-                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-brand-500"
+                    className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] font-mono focus:outline-none focus:border-amber-500"
                     value={autoSelectRules.mcqCount}
                     onChange={(e) => setAutoSelectRules({ ...autoSelectRules, mcqCount: parseInt(e.target.value, 10) || 0 })}
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Coding Problems</label>
+                  <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Coding Problems</label>
                   <input 
                     type="number" 
-                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-brand-500"
+                    className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] font-mono focus:outline-none focus:border-amber-500"
                     value={autoSelectRules.codingCount}
                     onChange={(e) => setAutoSelectRules({ ...autoSelectRules, codingCount: parseInt(e.target.value, 10) || 0 })}
                   />
@@ -1370,7 +1370,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Target Category</label>
+                <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Target Category</label>
                 <CustomDropdown
                   value={autoSelectRules.category}
                   onChange={(val) => {
@@ -1396,7 +1396,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Target Difficulty</label>
+                <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Target Difficulty</label>
                 <CustomDropdown
                   value={autoSelectRules.difficulty}
                   onChange={(val) => setAutoSelectRules({ ...autoSelectRules, difficulty: val })}
@@ -1412,28 +1412,28 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Skill Filter (Optional)</label>
+                <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Skill Filter (Optional)</label>
                 <input 
                   type="text" 
                   placeholder={autoSelectRules.category === 'finance' ? "e.g. Tax Audit or GAAP" : "e.g. python or docker"}
-                  className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 font-mono text-xs"
+                  className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] focus:outline-none focus:border-amber-500 font-mono text-xs"
                   value={autoSelectRules.skill}
                   onChange={(e) => setAutoSelectRules({ ...autoSelectRules, skill: e.target.value })}
                 />
               </div>
 
-              <label className="flex items-center gap-2 pt-1 font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+              <label className="flex items-center gap-2 pt-1 font-medium text-[#2E2017] dark:text-[#EDE8E1] cursor-pointer">
                 <input 
                   type="checkbox"
                   checked={autoSelectRules.clearExisting}
                   onChange={(e) => setAutoSelectRules({ ...autoSelectRules, clearExisting: e.target.checked })}
-                  className="rounded text-brand-600 focus:ring-brand-500"
+                  className="rounded text-amber-600 focus:ring-amber-500"
                 />
                 Replace current assessment questions
               </label>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E8DFD8] dark:border-[#3D2C22]">
               <Button size="sm" variant="outline" onClick={() => setShowAutoSelectModal(false)}>
                 Cancel
               </Button>
@@ -1448,13 +1448,13 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
       {/* ─── Author New Question Modal ──────────────────────────────────────── */}
       {showAuthorModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-brand-600" />
+          <div className="bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-2xl shadow-2xl max-w-xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
+            <div className="flex items-center justify-between border-b border-[#E8DFD8] dark:border-[#3D2C22] pb-3">
+              <h3 className="font-bold text-[#2E2017] dark:text-[#EDE8E1] flex items-center gap-2">
+                <Plus className="w-5 h-5 text-[#C27803] dark:text-amber-400" />
                 <span>Author Authoritative Question</span>
               </h3>
-              <button onClick={() => setShowAuthorModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+              <button onClick={() => setShowAuthorModal(false)} className="text-[#7A6B63] hover:text-[#2E2017] dark:text-[#A89A90] dark:hover:text-[#EDE8E1] cursor-pointer">
                 ✕
               </button>
             </div>
@@ -1465,8 +1465,8 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                 onClick={() => setNewQuestionType('mcq')}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl border transition cursor-pointer ${
                   newQuestionType === 'mcq' 
-                    ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-300' 
-                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                    ? 'bg-amber-500/15 dark:bg-amber-500/20 border-amber-500/50 text-amber-700 dark:text-amber-300' 
+                    : 'bg-[#F7F4EF] dark:bg-[#251C17] border-[#E8DFD8] dark:border-[#3D2C22] text-[#7A6B63] dark:text-[#A89A90]'
                 }`}
               >
                 Technical MCQ / Scenario
@@ -1476,8 +1476,8 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                 onClick={() => setNewQuestionType('coding')}
                 className={`flex-1 py-2 text-xs font-bold rounded-xl border transition cursor-pointer ${
                   newQuestionType === 'coding' 
-                    ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-400 dark:border-purple-700 text-purple-700 dark:text-purple-300' 
-                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                    ? 'bg-amber-500/15 dark:bg-amber-500/20 border-amber-500/50 text-amber-700 dark:text-amber-300' 
+                    : 'bg-[#F7F4EF] dark:bg-[#251C17] border-[#E8DFD8] dark:border-[#3D2C22] text-[#7A6B63] dark:text-[#A89A90]'
                 }`}
               >
                 Hands-on Coding Problem
@@ -1487,11 +1487,11 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
             <div className="space-y-3 text-xs">
               {newQuestionType === 'coding' && (
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Problem Title</label>
+                  <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Problem Title</label>
                   <input 
                     type="text" 
                     placeholder="e.g. Reverse Linked List"
-                    className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
+                    className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] focus:outline-none focus:border-amber-500"
                     value={newQuestionForm.title}
                     onChange={(e) => setNewQuestionForm({ ...newQuestionForm, title: e.target.value })}
                   />
@@ -1499,12 +1499,12 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               )}
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">
                   {newQuestionType === 'mcq' ? 'Question Text / Scenario Prompt' : 'Problem Statement / Specification'}
                 </label>
                 <textarea 
                   rows={3}
-                  className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
+                  className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] focus:outline-none focus:border-amber-500"
                   placeholder="Enter detailed question text..."
                   value={newQuestionForm.question_text}
                   onChange={(e) => setNewQuestionForm({ ...newQuestionForm, question_text: e.target.value })}
@@ -1513,7 +1513,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Difficulty</label>
+                  <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Difficulty</label>
                   <CustomDropdown
                     value={newQuestionForm.difficulty}
                     onChange={(val) => setNewQuestionForm({ ...newQuestionForm, difficulty: val })}
@@ -1527,7 +1527,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Category</label>
+                  <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Category</label>
                   <CustomDropdown
                     value={newQuestionForm.category}
                     onChange={(val) => setNewQuestionForm({ ...newQuestionForm, category: val })}
@@ -1543,8 +1543,8 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               </div>
 
               {newQuestionType === 'mcq' && (
-                <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300">Answer Options (Select correct answer)</label>
+                <div className="space-y-2 pt-1 border-t border-[#E8DFD8] dark:border-[#3D2C22]">
+                  <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1]">Answer Options (Select correct answer)</label>
                   {newQuestionForm.options.map((opt, idx) => (
                     <div key={opt.option_key} className="flex items-center gap-2">
                       <input 
@@ -1555,13 +1555,13 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                           const updated = newQuestionForm.options.map((o, i) => ({ ...o, is_correct: i === idx }));
                           setNewQuestionForm({ ...newQuestionForm, options: updated });
                         }}
-                        className="text-brand-600 focus:ring-brand-500"
+                        className="text-amber-600 focus:ring-amber-500"
                       />
-                      <span className="font-bold w-4 text-slate-600 dark:text-slate-400 font-mono">{opt.option_key}</span>
+                      <span className="font-bold w-4 text-[#7A6B63] dark:text-[#A89A90] font-mono">{opt.option_key}</span>
                       <input 
                         type="text" 
                         placeholder={`Option ${opt.option_key} text...`}
-                        className="flex-1 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-brand-500"
+                        className="flex-1 border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-1.5 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] text-xs focus:outline-none focus:border-amber-500"
                         value={opt.option_text}
                         onChange={(e) => {
                           const updated = [...newQuestionForm.options];
@@ -1573,10 +1573,10 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                   ))}
 
                   <div className="pt-2">
-                    <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Explanation / Solution Rationale (Confidential)</label>
+                    <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Explanation / Solution Rationale (Confidential)</label>
                     <textarea 
                       rows={2}
-                      className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
+                      className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] focus:outline-none focus:border-amber-500"
                       placeholder="Why is this the correct answer?"
                       value={newQuestionForm.explanation}
                       onChange={(e) => setNewQuestionForm({ ...newQuestionForm, explanation: e.target.value })}
@@ -1586,33 +1586,33 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               )}
 
               {newQuestionType === 'coding' && (
-                <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-2 pt-1 border-t border-[#E8DFD8] dark:border-[#3D2C22]">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Sample Input Data</label>
+                      <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Sample Input Data</label>
                       <input 
                         type="text" 
-                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                        className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] font-mono"
                         value={newQuestionForm.test_input}
                         onChange={(e) => setNewQuestionForm({ ...newQuestionForm, test_input: e.target.value })}
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Expected Output</label>
+                      <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Expected Output</label>
                       <input 
                         type="text" 
-                        className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                        className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] font-mono"
                         value={newQuestionForm.test_expected}
                         onChange={(e) => setNewQuestionForm({ ...newQuestionForm, test_expected: e.target.value })}
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 pt-1 text-slate-700 dark:text-slate-300 cursor-pointer">
+                  <label className="flex items-center gap-2 pt-1 text-[#2E2017] dark:text-[#EDE8E1] cursor-pointer">
                     <input 
                       type="checkbox"
                       checked={newQuestionForm.is_hidden}
                       onChange={(e) => setNewQuestionForm({ ...newQuestionForm, is_hidden: e.target.checked })}
-                      className="rounded text-brand-600 focus:ring-brand-500"
+                      className="rounded text-amber-600 focus:ring-amber-500"
                     />
                     Mark as hidden grading test case (confidential)
                   </label>
@@ -1620,18 +1620,18 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               )}
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Associated Canonical Skills (Comma-separated)</label>
+                <label className="block font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">Associated Canonical Skills (Comma-separated)</label>
                 <input 
                   type="text" 
                   placeholder="e.g. python, fastapi, algorithms"
-                  className="w-full border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-brand-500"
+                  className="w-full border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl px-3 py-2 bg-[#F7F4EF] dark:bg-[#16120F] text-[#2E2017] dark:text-[#EDE8E1] focus:outline-none focus:border-amber-500"
                   value={newQuestionForm.skills}
                   onChange={(e) => setNewQuestionForm({ ...newQuestionForm, skills: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E8DFD8] dark:border-[#3D2C22]">
               <Button size="sm" variant="outline" onClick={() => setShowAuthorModal(false)}>
                 Cancel
               </Button>
@@ -1646,14 +1646,14 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
       {/* ─── Preview Modal ──────────────────────────────────────────────────── */}
       {showPreviewModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <div className="bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
+            <div className="flex items-center justify-between border-b border-[#E8DFD8] dark:border-[#3D2C22] pb-3">
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Eye className="w-5 h-5 text-brand-600" />
+                <h3 className="font-bold text-[#2E2017] dark:text-[#EDE8E1] flex items-center gap-2">
+                  <Eye className="w-5 h-5 text-[#C27803] dark:text-amber-400" />
                   <span>Assessment Preview ({previewAsCandidate ? 'Candidate View' : 'Recruiter View'})</span>
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">
                   {previewAsCandidate 
                     ? 'Sanitized: Correct answers, explanations, and secret test cases are hidden.' 
                     : 'Full Access: Correct options, solution explanations, and all test cases visible.'}
@@ -1674,30 +1674,30 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                 >
                   Candidate
                 </Button>
-                <button onClick={() => setShowPreviewModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 ml-2 cursor-pointer">
+                <button onClick={() => setShowPreviewModal(false)} className="text-[#7A6B63] hover:text-[#2E2017] dark:text-[#A89A90] dark:hover:text-[#EDE8E1] ml-2 cursor-pointer">
                   ✕
                 </button>
               </div>
             </div>
 
             {previewLoading ? (
-              <div className="py-12 text-center text-slate-400">
-                <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-1 text-slate-400" />
+              <div className="py-12 text-center text-[#7A6B63] dark:text-[#A89A90]">
+                <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-1 text-amber-500" />
                 <span className="text-xs">Loading preview...</span>
               </div>
             ) : !previewData ? (
-              <div className="py-8 text-center text-slate-400 text-xs">No preview data available.</div>
+              <div className="py-8 text-center text-[#7A6B63] dark:text-[#A89A90] text-xs">No preview data available.</div>
             ) : (
               <div className="space-y-4">
                 {/* MCQs Preview */}
                 {previewData.technical_mcqs?.length > 0 && (
                   <div className="space-y-3">
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    <h4 className="font-bold text-xs uppercase tracking-wider text-[#7A6B63] dark:text-[#A89A90]">
                       Technical MCQs ({previewData.technical_mcqs.length})
                     </h4>
                     {previewData.technical_mcqs.map((m, idx) => (
-                      <div key={m.id || idx} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-                        <div className="font-semibold text-slate-800 dark:text-slate-200">
+                      <div key={m.id || idx} className="p-3 bg-[#F7F4EF]/70 dark:bg-[#2B201A]/60 rounded-xl border border-[#E8DFD8] dark:border-[#3D2C22] text-xs space-y-2">
+                        <div className="font-semibold text-[#2E2017] dark:text-[#EDE8E1]">
                           {idx + 1}. {m.question}
                         </div>
                         <div className="space-y-1 pl-2">
@@ -1709,7 +1709,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                                 className={`p-1.5 rounded-lg flex items-center gap-2 ${
                                   isCorrect 
                                     ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 font-semibold' 
-                                    : 'text-slate-700 dark:text-slate-300'
+                                    : 'text-[#2E2017] dark:text-[#EDE8E1]'
                                 }`}
                               >
                                 <span className="font-mono font-bold">{key}.</span>
@@ -1720,7 +1720,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
                           })}
                         </div>
                         {m.explanation && (
-                          <div className="p-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/40 text-blue-900 dark:text-blue-200 rounded-lg text-[11px] mt-1">
+                          <div className="p-2 bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 rounded-lg text-[11px] mt-1">
                             <span className="font-semibold">Explanation: </span>
                             {m.explanation}
                           </div>
@@ -1732,28 +1732,28 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
 
                 {/* Coding Preview */}
                 {previewData.coding_problems?.length > 0 && (
-                  <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <div className="space-y-3 pt-2 border-t border-[#E8DFD8] dark:border-[#3D2C22]">
+                    <h4 className="font-bold text-xs uppercase tracking-wider text-[#7A6B63] dark:text-[#A89A90]">
                       Coding Problems ({previewData.coding_problems.length})
                     </h4>
                     {previewData.coding_problems.map((p, idx) => (
-                      <div key={p.id || idx} className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800 text-xs space-y-2">
-                        <div className="font-bold text-slate-900 dark:text-white">
+                      <div key={p.id || idx} className="p-3 bg-[#F7F4EF]/70 dark:bg-[#2B201A]/60 rounded-xl border border-[#E8DFD8] dark:border-[#3D2C22] text-xs space-y-2">
+                        <div className="font-bold text-[#2E2017] dark:text-[#EDE8E1]">
                           {idx + 1}. {p.title} ({p.difficulty})
                         </div>
-                        <p className="text-slate-700 dark:text-slate-300 font-mono text-[11px] bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <p className="text-[#2E2017] dark:text-[#EDE8E1] font-mono text-[11px] bg-[#FDFBF7] dark:bg-[#16120F] p-2.5 rounded-lg border border-[#E8DFD8] dark:border-[#3D2C22]">
                           {p.problem_statement}
                         </p>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="text-[11px] text-[#7A6B63] dark:text-[#A89A90]">
                           Allowed languages: {p.allowed_languages?.join(', ')}
                         </div>
                         {p.sample_test_cases && (
-                          <div className="text-[11px] text-slate-600 dark:text-slate-400">
+                          <div className="text-[11px] text-[#7A6B63] dark:text-[#A89A90]">
                             Public test cases: {p.sample_test_cases.length}
                           </div>
                         )}
                         {p.test_cases && (
-                          <div className="text-[11px] text-purple-700 dark:text-purple-300 font-semibold">
+                          <div className="text-[11px] text-amber-700 dark:text-amber-300 font-semibold">
                             Total evaluation test cases: {p.test_cases.length}
                           </div>
                         )}
@@ -1764,7 +1764,7 @@ export default function AssessmentBuilder({ activeJobId: propJobId, onAssessment
               </div>
             )}
 
-            <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end pt-3 border-t border-[#E8DFD8] dark:border-[#3D2C22]">
               <Button size="sm" variant="outline" onClick={() => setShowPreviewModal(false)}>
                 Close Preview
               </Button>

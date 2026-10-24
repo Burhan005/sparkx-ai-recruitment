@@ -31,20 +31,27 @@ OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 GROK_API_KEY = os.environ.get("GROK_API_KEY", "")  # xAI Grok
 
+# In-memory flags to prevent repeated failure spam on 401/403 unauthorized keys
+_GEMINI_DISABLED = False
+_GROK_DISABLED = False
+_GROQ_DISABLED = False
+_DEEPSEEK_DISABLED = False
+_OPENAI_DISABLED = False
+
 def get_llm_status() -> Dict[str, Any]:
     """Return active LLM provider and status."""
-    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
-    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
-    grok_key = os.environ.get("GROK_API_KEY", "").strip()
+    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip() if not _GEMINI_DISABLED else ""
+    groq_key = os.environ.get("GROQ_API_KEY", "").strip() if not _GROQ_DISABLED else ""
+    grok_key = os.environ.get("GROK_API_KEY", "").strip() if not _GROK_DISABLED else ""
+    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip() if not _DEEPSEEK_DISABLED else ""
+    openai_key = os.environ.get("OPENAI_API_KEY", "").strip() if not _OPENAI_DISABLED else ""
 
     if gemini_key:
         return {"active": True, "provider": "Google Gemini", "model": "gemini-flash-lite-latest", "has_key": True, "mode": "live_llm"}
-    elif grok_key:
-        return {"active": True, "provider": "xAI Grok", "model": "grok-2-latest", "has_key": True, "mode": "live_llm"}
     elif groq_key:
         return {"active": True, "provider": "Groq", "model": "llama-3.3-70b-versatile", "has_key": True, "mode": "live_llm"}
+    elif grok_key:
+        return {"active": True, "provider": "xAI Grok", "model": "grok-2-latest", "has_key": True, "mode": "live_llm"}
     elif deepseek_key:
         return {"active": True, "provider": "DeepSeek", "model": "deepseek-chat", "has_key": True, "mode": "live_llm"}
     elif openai_key:
@@ -52,10 +59,10 @@ def get_llm_status() -> Dict[str, Any]:
     else:
         return {
             "active": False,
-            "provider": "Local Semantic Analyzer",
+            "provider": "Deterministic Match Intelligence",
             "model": "Contextual Procedural Synthesizer",
             "has_key": False,
-            "mode": "simulated"
+            "mode": "deterministic"
         }
 
 def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
@@ -80,6 +87,17 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
         }
 
     os.environ[env_var_name] = clean_key
+    global _GEMINI_DISABLED, _GROQ_DISABLED, _GROK_DISABLED, _DEEPSEEK_DISABLED, _OPENAI_DISABLED
+    if env_var_name == "GEMINI_API_KEY":
+        _GEMINI_DISABLED = False
+    elif env_var_name == "GROQ_API_KEY":
+        _GROQ_DISABLED = False
+    elif env_var_name == "GROK_API_KEY":
+        _GROK_DISABLED = False
+    elif env_var_name == "DEEPSEEK_API_KEY":
+        _DEEPSEEK_DISABLED = False
+    elif env_var_name == "OPENAI_API_KEY":
+        _OPENAI_DISABLED = False
 
     # Persist to backend/.env
     env_path = os.path.join(os.path.dirname(__file__), ".env")
@@ -116,14 +134,14 @@ def set_llm_api_key(provider: str, api_key: str) -> Dict[str, Any]:
 
 def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """Direct call to Google Gemini with auto-fallback across verified active models."""
+    global _GEMINI_DISABLED
+    if _GEMINI_DISABLED:
+        return None
+
     candidate_models = [
-        "gemini-3.8-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-3.5-flash",
-        "gemini-flash-lite-latest",
-        "gemini-flash-latest",
-        "gemini-2.5-flash-lite",
-        "gemini-2.5-flash"
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro"
     ]
 
     payload: Dict[str, Any] = {
@@ -150,13 +168,16 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", ma
                     if parts and "text" in parts[0]:
                         return parts[0]["text"].strip()
         except urllib.error.HTTPError as e:
-            if e.code in (404, 503, 429):
-                # Model unavailable or busy, try next candidate model
-                print(f"[AI Engine] Gemini {model} HTTP {e.code}: {e.reason}, trying next model...")
+            if e.code == 429:
+                print(f"[AI Engine] Gemini API rate limit / quota exceeded (HTTP 429), failing over to secondary LLM...")
+                return None
+            if e.code in (404, 503):
+                # Try next model if specific model unavailable
                 continue
             if e.code in (400, 401, 403):
-                # Authentication or bad request issue
-                print(f"[AI Engine] Gemini API auth error HTTP {e.code}: {e.reason}")
+                # Authentication or bad request issue - disable for session to stop retry spam
+                _GEMINI_DISABLED = True
+                print(f"[AI Engine] Gemini API disabled due to auth error HTTP {e.code}: {e.reason}")
                 return None
             print(f"[AI Engine] Gemini {model} HTTP {e.code}: {e.reason}")
             continue
@@ -169,37 +190,63 @@ def _call_gemini_api(api_key: str, prompt: str, system_instruction: str = "", ma
     return None
 
 def _call_groq_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
-    """Direct call to Groq API with Llama 3.3 70B."""
+    """Direct call to Groq API with candidate model fallback and Cloudflare-compatible User-Agent."""
+    global _GROQ_DISABLED
+    if _GROQ_DISABLED:
+        return None
+
     url = "https://api.groq.com/openai/v1/chat/completions"
     messages = []
     if system_instruction:
         messages.append({"role": "system", "content": system_instruction})
     messages.append({"role": "user", "content": prompt})
 
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": messages,
-        "temperature": 0.3,
-        "max_tokens": max_tokens
+    candidate_models = [
+        "llama-3.3-70b-versatile",
+        "llama-3.1-8b-instant",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it"
+    ]
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
     }
-    try:
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            },
-            method="POST"
-        )
-        with urllib.request.urlopen(req, timeout=7) as response:
-            res_data = json.loads(response.read().decode("utf-8"))
-            choices = res_data.get("choices", [])
-            if choices and "message" in choices[0]:
-                return choices[0]["message"].get("content", "").strip()
-    except Exception as e:
-        print(f"[AI Engine] Groq error: {e}")
-        return None
+
+    for model in candidate_models:
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": 0.3,
+            "max_tokens": max_tokens
+        }
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers=headers,
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                choices = res_data.get("choices", [])
+                if choices and "message" in choices[0]:
+                    content = choices[0]["message"].get("content", "").strip()
+                    if content:
+                        return content
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                _GROQ_DISABLED = True
+                print(f"[AI Engine] Groq API disabled due to auth HTTP {e.code}: {e.reason}")
+                return None
+            if e.code in (404, 400, 429, 503):
+                continue
+            print(f"[AI Engine] Groq error ({model}): {e}")
+            continue
+        except Exception as e:
+            print(f"[AI Engine] Groq error: {e}")
+            continue
     return None
 
 def _call_openai_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
@@ -272,6 +319,10 @@ def _call_deepseek_api(api_key: str, prompt: str, system_instruction: str = "", 
 
 def _call_grok_api(api_key: str, prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """Direct call to xAI Grok API (OpenAI-compatible endpoint)."""
+    global _GROK_DISABLED
+    if _GROK_DISABLED:
+        return None
+
     url = "https://api.x.ai/v1/chat/completions"
     messages = []
     if system_instruction:
@@ -302,10 +353,12 @@ def _call_grok_api(api_key: str, prompt: str, system_instruction: str = "", max_
                 if choices and "message" in choices[0]:
                     return choices[0]["message"].get("content", "").strip()
         except urllib.error.HTTPError as e:
-            # If 403 or 429, don't spam, return None to trigger fallback
-            print(f"[AI Engine] xAI Grok {model_name} HTTP {e.code}: {e.reason}")
+            # If 403 or 401, key is unauthorized or expired. Disable Grok for process lifetime so it never spams again!
             if e.code in (403, 401):
+                _GROK_DISABLED = True
+                print(f"[AI Engine] xAI Grok disabled due to HTTP {e.code}: {e.reason}")
                 return None
+            print(f"[AI Engine] xAI Grok {model_name} HTTP {e.code}: {e.reason}")
             continue
         except Exception as e:
             print(f"[AI Engine] Grok {model_name} error: {e}")
@@ -315,53 +368,58 @@ def _call_grok_api(api_key: str, prompt: str, system_instruction: str = "", max_
 def call_llm(prompt: str, system_instruction: str = "", max_tokens: int = 4096) -> Optional[str]:
     """
     Unified Real-Time LLM dispatcher.
-    Checks providers in order: Gemini -> Grok (xAI) -> Groq -> DeepSeek -> OpenAI.
+    Checks providers in order: Gemini -> Groq -> Grok (xAI) -> DeepSeek -> OpenAI.
     Returns live response text from LLM, or None if no keys or network error.
     """
-    gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if gemini_key:
-        try:
-            res = _call_gemini_api(gemini_key, prompt, system_instruction, max_tokens=max_tokens)
-            if res:
-                return res
-        except Exception as e:
-            print(f"[AI Engine] Gemini call failed: {e}")
+    if not _GEMINI_DISABLED:
+        gemini_key = os.environ.get("GEMINI_API_KEY", "").strip()
+        if gemini_key:
+            try:
+                res = _call_gemini_api(gemini_key, prompt, system_instruction, max_tokens=max_tokens)
+                if res:
+                    return res
+            except Exception as e:
+                print(f"[AI Engine] Gemini call failed: {e}")
 
-    grok_key = os.environ.get("GROK_API_KEY", "").strip()
-    if grok_key:
-        try:
-            res = _call_grok_api(grok_key, prompt, system_instruction, max_tokens=max_tokens)
-            if res:
-                return res
-        except Exception as e:
-            print(f"[AI Engine] Grok call failed: {e}")
+    if not _GROQ_DISABLED:
+        groq_key = os.environ.get("GROQ_API_KEY", "").strip()
+        if groq_key:
+            try:
+                res = _call_groq_api(groq_key, prompt, system_instruction, max_tokens=max_tokens)
+                if res:
+                    return res
+            except Exception as e:
+                print(f"[AI Engine] Groq call failed: {e}")
 
-    groq_key = os.environ.get("GROQ_API_KEY", "").strip()
-    if groq_key:
-        try:
-            res = _call_groq_api(groq_key, prompt, system_instruction, max_tokens=max_tokens)
-            if res:
-                return res
-        except Exception as e:
-            print(f"[AI Engine] Groq call failed: {e}")
+    if not _GROK_DISABLED:
+        grok_key = os.environ.get("GROK_API_KEY", "").strip()
+        if grok_key:
+            try:
+                res = _call_grok_api(grok_key, prompt, system_instruction, max_tokens=max_tokens)
+                if res:
+                    return res
+            except Exception as e:
+                print(f"[AI Engine] Grok call failed: {e}")
 
-    deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
-    if deepseek_key:
-        try:
-            res = _call_deepseek_api(deepseek_key, prompt, system_instruction, max_tokens=max_tokens)
-            if res:
-                return res
-        except Exception as e:
-            print(f"[AI Engine] DeepSeek call failed: {e}")
+    if not _DEEPSEEK_DISABLED:
+        deepseek_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+        if deepseek_key:
+            try:
+                res = _call_deepseek_api(deepseek_key, prompt, system_instruction, max_tokens=max_tokens)
+                if res:
+                    return res
+            except Exception as e:
+                print(f"[AI Engine] DeepSeek call failed: {e}")
 
-    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if openai_key:
-        try:
-            res = _call_openai_api(openai_key, prompt, system_instruction, max_tokens=max_tokens)
-            if res:
-                return res
-        except Exception as e:
-            print(f"[AI Engine] OpenAI call failed: {e}")
+    if not _OPENAI_DISABLED:
+        openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+        if openai_key:
+            try:
+                res = _call_openai_api(openai_key, prompt, system_instruction, max_tokens=max_tokens)
+                if res:
+                    return res
+            except Exception as e:
+                print(f"[AI Engine] OpenAI call failed: {e}")
 
     return None
 
@@ -2191,6 +2249,12 @@ def _procedural_synthesize_bundle(
                 "title": f"Dynamic Telemetry Metric Filter for {p_skill}",
                 "instructions": f"Implement an event filter and log aggregator that processes incoming JSON log streams for {p_skill}, filters entries below the error threshold, and returns total error counts per service.",
                 "difficulty": "Mid-Level",
+                "entry_point": "solve",
+                "function_signature": {
+                    "python": "def solve(data: list) -> dict:",
+                    "javascript": "function solve(data)",
+                    "typescript": "function solve(data: any[]): Record<string, number>"
+                },
                 "starter_code": {l: _get_default_starter_code(l, f"{p_skill} Log Aggregator", job_skills) for l in allowed_langs},
                 "test_cases": [
                     {"name": "Filter warning and info logs", "input": "[{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]", "expected": "{'auth': 1}", "assertion_py": "assert solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]) == {'auth': 1}", "assertion_js": "assert.deepStrictEqual(solve([{'level': 'INFO'}, {'level': 'ERROR', 'service': 'auth'}]), {'auth': 1});"},

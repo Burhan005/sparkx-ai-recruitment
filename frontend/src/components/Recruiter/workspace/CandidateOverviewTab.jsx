@@ -354,16 +354,16 @@ export default function CandidateOverviewTab({
         </Card>
 
         {/* EVIDENCE: Grounded Verification */}
-        <Card className="p-4 border border-[#E8E8E4] dark:border-[#222634] hover:border-emerald-500/40 dark:hover:border-emerald-500/40 flex flex-col justify-between shadow-subtle hover:shadow-depth-2 hover:-translate-y-0.5 transition-all relative overflow-hidden group">
+        <Card className="p-4 border border-[#E8DFD8] dark:border-[#33241C] hover:border-emerald-500/40 dark:hover:border-emerald-500/40 flex flex-col justify-between shadow-subtle hover:shadow-depth-2 hover:-translate-y-0.5 transition-all relative overflow-hidden group bg-[#FDFBF7] dark:bg-[#1A120E]">
           <div className="space-y-1.5">
             <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>VERIFIED EVIDENCE</span>
             </span>
-            <div className="text-base font-bold text-slate-900 dark:text-white">
+            <div className="text-base font-bold font-sans text-[#1C130E] dark:text-[#FAF6F0]">
               {wf.assessmentStatus === 'evaluated' ? 'Assessment Evaluated' : 'Screening Validated'}
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-xs text-[#7C7267] dark:text-[#C4B5A5] leading-relaxed">
               {candidate.scores?.overall 
                 ? `Technical score ${candidate.scores.overall}/100 recorded via automated testing sandbox.`
                 : 'Resume parsed and verified against role requirement specifications.'}
@@ -372,7 +372,7 @@ export default function CandidateOverviewTab({
           <button
             type="button"
             onClick={() => onNavigateTab('assessment')}
-            className="pt-3 mt-2 border-t border-[#E8E8E4] dark:border-slate-800/60 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center justify-between text-left"
+            className="pt-3 mt-2 border-t border-[#E8DFD8] dark:border-[#33241C] text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center justify-between text-left"
           >
             <span>View code & test evidence</span>
             <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
@@ -380,16 +380,16 @@ export default function CandidateOverviewTab({
         </Card>
 
         {/* RISK: Objective flags */}
-        <Card className="p-4 border border-[#E8E8E4] dark:border-[#222634] hover:border-amber-500/40 dark:hover:border-amber-500/40 flex flex-col justify-between shadow-subtle hover:shadow-depth-2 hover:-translate-y-0.5 transition-all relative overflow-hidden group">
+        <Card className="p-4 border border-[#E8DFD8] dark:border-[#33241C] hover:border-amber-500/40 dark:hover:border-amber-500/40 flex flex-col justify-between shadow-subtle hover:shadow-depth-2 hover:-translate-y-0.5 transition-all relative overflow-hidden group bg-[#FDFBF7] dark:bg-[#1A120E]">
           <div className="space-y-1.5">
             <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
               <ShieldAlert className="w-3.5 h-3.5" />
               <span>INTEGRITY & RISK</span>
             </span>
-            <div className="text-base font-bold text-slate-900 dark:text-white">
+            <div className="text-base font-bold font-sans text-[#1C130E] dark:text-[#FAF6F0]">
               {candidate.integrityRisk === 'High' ? 'Attention Required' : 'Nominal Integrity Profile'}
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-xs text-[#7C7267] dark:text-[#C4B5A5] leading-relaxed">
               Integrity index: {candidate.integrityScore || 100}/100.
               {candidate.integrityRisk === 'High' 
                 ? ' Documented tab focus loss or external switching detected during session.'
@@ -399,7 +399,7 @@ export default function CandidateOverviewTab({
           <button
             type="button"
             onClick={() => onNavigateTab('integrity')}
-            className="pt-3 mt-2 border-t border-[#E8E8E4] dark:border-slate-800/60 text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline flex items-center justify-between text-left"
+            className="pt-3 mt-2 border-t border-[#E8DFD8] dark:border-[#33241C] text-[11px] font-semibold text-amber-600 dark:text-amber-400 hover:underline flex items-center justify-between text-left"
           >
             <span>Inspect telemetry log</span>
             <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
@@ -407,13 +407,13 @@ export default function CandidateOverviewTab({
         </Card>
 
         {/* NEXT: Recommended Next Step */}
-        <Card className="p-4 border border-[#E8E8E4] dark:border-[#222634] hover:border-sky-500/40 dark:hover:border-sky-500/40 flex flex-col justify-between shadow-subtle hover:shadow-depth-2 hover:-translate-y-0.5 transition-all relative overflow-hidden group">
+        <Card className="p-4 border border-[#E8DFD8] dark:border-[#33241C] hover:border-amber-500/40 dark:hover:border-amber-500/40 flex flex-col justify-between shadow-subtle hover:shadow-depth-2 hover:-translate-y-0.5 transition-all relative overflow-hidden group bg-[#FDFBF7] dark:bg-[#1A120E]">
           <div className="space-y-1.5">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-sky-600 dark:text-sky-400 font-bold flex items-center gap-1.5">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1.5">
               <ArrowRight className="w-3.5 h-3.5" />
               <span>RECOMMENDED NEXT</span>
             </span>
-            <div className="text-base font-bold text-slate-900 dark:text-white truncate">
+            <div className="text-base font-bold font-sans text-[#1C130E] dark:text-[#FAF6F0] truncate">
               {wf.stage === 'screening' 
                 ? 'Advance to Assessment' 
                 : wf.stage === 'assessment' 

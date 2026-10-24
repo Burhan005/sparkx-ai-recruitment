@@ -498,6 +498,38 @@ export default function RecruiterDecisionTab({
         </div>
       )}
 
+      {/* ── AI DECISION ASSISTANT INTERACTION BANNER ── */}
+      {onOpenAskSparkx && (
+        <div className="p-4 rounded-2xl bg-brand-50/40 dark:bg-brand-950/20 border border-brand-200/50 dark:border-brand-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-subtle">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/20 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5 font-display">
+                <span>ARETE Recruiter Decision Assistant</span>
+                <span className="text-[9.5px] font-mono px-1.5 py-0.5 rounded bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/20 uppercase font-semibold">Live Evidence</span>
+              </h4>
+              <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                Grounded briefing on candidate evidence, must-have requirements, and trade-offs.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={() => onOpenAskSparkx(candidate)}
+              className="gap-1.5 border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-300 bg-white dark:bg-[#1A1714] hover:bg-brand-50 dark:hover:bg-[#201814] shadow-subtle cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Consult Assistant</span>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ── DECISION RECORDING SURFACE ── */}
       <Card className="p-6 sm:p-7 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-200 dark:border-stone-800">

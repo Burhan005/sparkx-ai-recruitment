@@ -21,6 +21,8 @@ const CodeAssessment = lazy(() => import('./components/Candidate/CodeAssessment'
 const SkillGapReport = lazy(() => import('./components/Candidate/SkillGapReport'));
 const SkillPassportView = lazy(() => import('./components/Candidate/SkillPassportView'));
 const MyApplications = lazy(() => import('./components/Candidate/MyApplications'));
+const AIResumeStudio = lazy(() => import('./components/Candidate/AIResumeStudio'));
+const ResumeMatchAnalyzer = lazy(() => import('./components/Candidate/ResumeMatchAnalyzer'));
 const ProctorLiveMonitor = lazy(() => import('./components/Proctor/ProctorLiveMonitor'));
 const AssessmentStudio = lazy(() => import('./components/Recruiter/AssessmentStudio'));
 const AssessmentBuilder = lazy(() => import('./components/Recruiter/AssessmentBuilder'));
@@ -37,7 +39,7 @@ function PageFallback() {
         <div className="absolute inset-2 rounded-full border-2 border-brand-500/20 border-b-brand-500 animate-spin [animation-direction:reverse]" />
       </div>
       <div className="text-center space-y-0.5">
-        <p className="text-[10px] font-mono uppercase tracking-wider text-stone-400">SparkX OS</p>
+        <p className="text-[10px] font-mono uppercase tracking-wider text-stone-400">ARETE OS</p>
         <p className="text-xs font-semibold text-stone-600 dark:text-stone-300">Loading module...</p>
       </div>
     </div>
@@ -111,6 +113,9 @@ export default function App() {
                 {/* ─── Candidate-Only Requisition & Applications ─── */}
                 <Route element={<RequireRole role="candidate" redirectTo="/recruiter" />}>
                   <Route path="/my-applications" element={<MyApplications />} />
+                  <Route path="/resume-studio" element={<AIResumeStudio />} />
+                  <Route path="/resume-studio/:resumeId" element={<AIResumeStudio />} />
+                  <Route path="/resume-analyzer" element={<ResumeMatchAnalyzer />} />
                 </Route>
 
                 {/* ─── Candidate & Recruiter Shared Module Routes ─── */}

@@ -106,19 +106,19 @@ export default function CustomDropdown({
         aria-expanded={isOpen}
         className={`h-9 w-full min-w-0 px-3 rounded-lg text-xs font-semibold flex items-center justify-between gap-2.5 transition-all duration-150 select-none shadow-subtle ${
           isOpen
-            ? 'bg-[#FDFCFA] dark:bg-[#1A1714] border-brand-500 text-stone-900 dark:text-stone-100 ring-2 ring-brand-500/20'
-            : 'bg-[#FDFCFA] dark:bg-[#1A1714] hover:bg-stone-50 dark:hover:bg-[#221E1A] border-[#E8E4DF] dark:border-[#2A2520] text-stone-700 dark:text-stone-200 hover:border-stone-300 dark:hover:border-stone-700'
+            ? 'bg-[#FDFBF7] dark:bg-[#201814] border-brand-600 dark:border-amber-500 text-stone-900 dark:text-[#EDE8E3] ring-2 ring-brand-500/20'
+            : 'bg-[#FDFBF7] dark:bg-[#201814] hover:bg-[#F4EFEB] dark:hover:bg-[#281D17] border-[#E8DFD8] dark:border-[#3D2C22] text-stone-800 dark:text-[#EDE8E3] hover:border-[#D5C7BC] dark:hover:border-[#523B2F]'
         } border disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
           {PrefixIcon && (
-            <PrefixIcon className="w-3.5 h-3.5 text-stone-400 dark:text-stone-400 shrink-0" />
+            <PrefixIcon className="w-3.5 h-3.5 text-stone-400 dark:text-amber-400/80 shrink-0" />
           )}
           <span className="truncate flex-1 min-w-0">
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {selectedOption?.badge && (
-            <span className="px-1.5 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-sans text-[10px] shrink-0 hidden sm:inline">
+            <span className="px-1.5 py-0.5 rounded-md bg-[#F4EFEB] dark:bg-[#2A1E17] text-stone-600 dark:text-amber-300/80 border border-[#E8DFD8] dark:border-[#3D2C22] font-sans text-[10px] shrink-0 hidden sm:inline">
               {selectedOption.badge}
             </span>
           )}
@@ -126,7 +126,7 @@ export default function CustomDropdown({
 
         <ChevronDown 
           className={`w-3.5 h-3.5 text-stone-400 shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-brand-600 dark:text-brand-400' : ''
+            isOpen ? 'rotate-180 text-brand-600 dark:text-amber-400' : ''
           }`} 
         />
       </button>
@@ -138,7 +138,7 @@ export default function CustomDropdown({
           role="listbox"
           className={`absolute top-full mt-1.5 z-50 ${menuWidth} ${
             align === 'right' ? 'right-0' : 'left-0'
-          } bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-xl shadow-2xl p-1 overflow-hidden focus:outline-none animate-in fade-in zoom-in-95 duration-100`}
+          } bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl shadow-depth-elevated p-1 overflow-hidden focus:outline-none animate-modal-enter`}
         >
           <div className="max-h-64 overflow-y-auto space-y-0.5 custom-scrollbar">
             {normalizedOptions.map((opt, idx) => {
@@ -159,15 +159,15 @@ export default function CustomDropdown({
                   onMouseEnter={() => setHighlightedIndex(idx)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium text-left transition-colors duration-100 ${
                     isSelected
-                      ? 'bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 font-semibold'
+                      ? 'bg-brand-50 dark:bg-[#2C1D14] text-brand-800 dark:text-amber-300 font-semibold border border-brand-200/50 dark:border-[#523725]'
                       : isHighlighted
-                        ? 'bg-stone-100 dark:bg-stone-800/80 text-stone-900 dark:text-stone-100'
-                        : 'text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800/50'
+                        ? 'bg-[#F4EFEB] dark:bg-[#281D17] text-stone-900 dark:text-[#FAF8F5]'
+                        : 'text-stone-700 dark:text-stone-300 hover:bg-[#F4EFEB]/60 dark:hover:bg-[#281D17]/60'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
                     {OptIcon && (
-                      <OptIcon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-brand-600 dark:text-brand-400' : 'text-stone-400'}`} />
+                      <OptIcon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-brand-600 dark:text-amber-400' : 'text-stone-400'}`} />
                     )}
                     <div className="min-w-0 flex-1 truncate">
                       <div className="truncate">{opt.label}</div>
@@ -183,14 +183,14 @@ export default function CustomDropdown({
                     {opt.badge && (
                       <span className={`px-1.5 py-0.2 rounded font-sans text-[10px] ${
                         isSelected 
-                          ? 'bg-brand-200/50 dark:bg-brand-900/60 text-brand-800 dark:text-brand-200' 
-                          : 'bg-stone-100 dark:bg-stone-800 text-stone-500'
+                          ? 'bg-brand-200/60 dark:bg-[#3E281A] text-brand-900 dark:text-amber-200' 
+                          : 'bg-[#F4EFEB] dark:bg-[#251A14] text-stone-500 dark:text-stone-400'
                       }`}>
                         {opt.badge}
                       </span>
                     )}
                     {isSelected && (
-                      <Check className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400 shrink-0 font-bold" />
+                      <Check className="w-3.5 h-3.5 text-brand-600 dark:text-amber-400 shrink-0 font-bold" />
                     )}
                   </div>
                 </button>

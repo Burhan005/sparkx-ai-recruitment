@@ -21,7 +21,8 @@ import {
   User,
   AlertCircle,
   HelpCircle,
-  Check
+  Check,
+  Info
 } from 'lucide-react';
 
 // Curated skill-specific upskilling curricula for technical proficiencies
@@ -201,6 +202,21 @@ export default function SkillGapReport() {
   // Target job skills - zero hardcoding
   const activeJobSkills = activeJob?.requiredSkills || cand?.job?.requiredSkills || cand?.skills || [];
 
+  const candidateOptions = useMemo(() => {
+    return (candidates || []).map((c) => {
+      const cScore = (typeof c.scores?.overall === 'number' && c.scores.overall > 0)
+        ? c.scores.overall
+        : (c.matchScore ?? c.match_score ?? 0);
+      return {
+        value: String(c.id),
+        label: c.name,
+        description: c.jobTitle || c.role || 'Applicant',
+        badge: `${cScore}% match`,
+        icon: User
+      };
+    });
+  }, [candidates]);
+
   if (!cand) {
     return (
       <div className="w-full max-w-5xl mx-auto space-y-6 pb-20 py-16 text-center animate-page-enter">
@@ -208,10 +224,10 @@ export default function SkillGapReport() {
           <Award className="w-8 h-8" />
         </div>
         <div className="space-y-2">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-2xl font-black text-stone-900 dark:text-stone-100 tracking-tight">
             {userRole === 'recruiter' ? 'No Candidate Selected' : 'No Application Dossier Found'}
           </h2>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 max-w-md mx-auto leading-relaxed">
             {userRole === 'recruiter'
               ? 'Select a candidate from your pipeline or applicant queue to view their competency matrix and learning roadmap.'
               : 'Apply to open roles or complete an assessment to generate your autonomous skill gap analysis and personalized learning roadmap.'}
@@ -231,18 +247,29 @@ export default function SkillGapReport() {
 
   // Scores and telemetry - genuine data without arbitrary multipliers
   const scores = cand?.scores || {};
-  const overall = typeof scores.overall === 'number' 
-    ? scores.overall 
-    : (typeof cand?.coding_score === 'number' ? cand.coding_score : (typeof cand?.codingScore === 'number' ? cand.codingScore : (cand?.matchScore || 0)));
-  const isEvaluated = cand?.assessment_status === 'evaluated' || Boolean(cand?.assessment_data?.is_completed) || overall > 0;
+  const hasAssessmentScore = typeof scores.overall === 'number' && scores.overall > 0;
+  const matchScore = cand?.matchScore ?? cand?.match_score ?? 0;
 
-  const technicalScore = typeof scores.technicalScore === 'number' 
+  // Authoritative Overall Fit:
+  // If candidate has completed evaluation/assessment with an overall score > 0, use it.
+  // Otherwise, use authoritative resume matchScore from backend.
+  const overall = hasAssessmentScore 
+    ? scores.overall 
+    : (typeof cand?.coding_score === 'number' && cand.coding_score > 0
+        ? cand.coding_score
+        : matchScore);
+
+  const isEvaluated = cand?.assessment_status === 'evaluated' || Boolean(cand?.assessment_data?.is_completed) || hasAssessmentScore;
+
+  const technicalScore = typeof scores.technicalScore === 'number' && scores.technicalScore > 0
     ? scores.technicalScore 
-    : (typeof cand?.coding_score === 'number' ? cand.coding_score : (scores.codingScore ?? (isEvaluated ? overall : 0)));
-  const problemSolving = typeof scores.problemSolving === 'number' 
+    : (typeof cand?.coding_score === 'number' && cand.coding_score > 0 
+        ? cand.coding_score 
+        : (isEvaluated ? overall : 0));
+  const problemSolving = typeof scores.problemSolving === 'number' && scores.problemSolving > 0
     ? scores.problemSolving 
     : (scores.scenarioScore ?? (isEvaluated ? overall : 0));
-  const communication = typeof scores.communication === 'number' 
+  const communication = typeof scores.communication === 'number' && scores.communication > 0
     ? scores.communication 
     : (scores.interviewScore ?? (isEvaluated ? overall : 0));
   const integrity = cand?.integrityScore ?? cand?.integrity_score ?? null;
@@ -255,7 +282,7 @@ export default function SkillGapReport() {
   let strongSkills = [];
   if (rawGaps.strongSkills && Array.isArray(rawGaps.strongSkills) && rawGaps.strongSkills.length > 0) {
     strongSkills = rawGaps.strongSkills;
-  } else if (isEvaluated && overall >= 60) {
+  } else if (overall >= 60) {
     strongSkills = requiredSkills.filter(s => candidateSkills.some(cs => cs.toLowerCase() === s.toLowerCase()));
   }
 
@@ -263,29 +290,22 @@ export default function SkillGapReport() {
     ? rawGaps.missingSkills
     : requiredSkills.filter(s => !strongSkills.some(ss => ss.toLowerCase() === s.toLowerCase()));
 
-  // Automated Readiness Classification
-  const readiness = rawGaps.readiness || (
-    overall >= 80 ? "Immediately Job-Ready (Top 10% Calibrated)" :
+  // Automated Readiness Classification: calibrated directly to authoritative overall score
+  // Prevents stale/contradictory stored strings (e.g. 93% score showing "Needs Foundational Preparation")
+  const readiness = (
+    overall >= 80 ? "Immediately Job-Ready (Top Calibrated Tier)" :
     overall >= 50 ? "Hire-and-Develop (Trainable within 30 days)" :
-    (isEvaluated 
-      ? "Targeted Upskilling in Progress (Focus on High-Priority Modules)"
-      : "Pending Assessment Calibration (Modules Unverified)")
+    (isEvaluated
+      ? "Targeted Upskilling Needed (Core Skill Gap Identified)"
+      : (overall > 0 
+          ? `Resume Match Calibration (${overall}% Fit · Assessment Pending)`
+          : "Pending Assessment Calibration (Modules Unverified)"))
   );
 
   const readinessColor = 
     overall >= 80 ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200/80 dark:border-emerald-500/20' :
     overall >= 50 ? 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-500/10 border-brand-200/80 dark:border-brand-500/20' :
-    'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700';
-
-  const candidateOptions = useMemo(() => {
-    return (candidates || []).map((c) => ({
-      value: String(c.id),
-      label: c.name,
-      description: c.jobTitle || c.role || 'Applicant',
-      badge: `${c.matchScore || c.scores?.overall || 0}% match`,
-      icon: User
-    }));
-  }, [candidates]);
+    'text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-[#201814] border-stone-200 dark:border-[#38281F]';
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 pb-20 animate-page-enter">
@@ -336,8 +356,8 @@ export default function SkillGapReport() {
 
       {/* Multi-application Switcher Tab Bar (for candidate role) */}
       {userRole === 'candidate' && myApplications.length > 1 && (
-        <div className="flex items-center space-x-2 overflow-x-auto pb-2 border-b border-slate-200 dark:border-slate-800">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0 mr-1">
+        <div className="flex items-center space-x-2 overflow-x-auto pb-2 border-b border-[#E8DFD8] dark:border-[#2A2520]">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400 shrink-0 mr-1">
             Application:
           </span>
           {myApplications.map((app) => {
@@ -352,7 +372,7 @@ export default function SkillGapReport() {
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition flex items-center space-x-2 border ${
                   isSelected 
                     ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-brand-400'
+                    : 'bg-[#FDFBF7] dark:bg-[#1A1714] text-stone-600 dark:text-stone-300 border-[#E8DFD8] dark:border-[#2A2520] hover:border-brand-400'
                 }`}
               >
                 <Briefcase className="w-3.5 h-3.5" />
@@ -365,13 +385,13 @@ export default function SkillGapReport() {
       )}
 
       {/* Hero Header & Executive Calibration Banner */}
-      <div className="animate-fade-in-up delay-100 glass-card p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-white/[0.08] shadow-sm bg-white dark:bg-slate-900/90 relative z-0">
+      <div className="animate-fade-in-up delay-100 p-6 sm:p-8 rounded-3xl border border-[#E8DFD8] dark:border-[#2A2520] shadow-card bg-[#FDFBF7] dark:bg-[#1A1714] relative z-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           
           {/* Identity & Role Info */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border shadow-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 flex items-center space-x-1.5">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full border shadow-xs text-stone-700 dark:text-stone-300 bg-stone-100 dark:bg-[#201814] border-stone-200 dark:border-[#38281F] flex items-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 <span>Competency & Growth Dossier</span>
               </span>
@@ -381,14 +401,14 @@ export default function SkillGapReport() {
             </div>
 
             <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white tracking-tight flex items-baseline gap-3 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight flex items-baseline gap-3 flex-wrap">
                 <span>{candidateName}</span>
-                <span className="text-slate-300 dark:text-slate-700 font-normal text-lg sm:text-2xl">/</span>
+                <span className="text-stone-300 dark:text-stone-600 font-normal text-lg sm:text-2xl">/</span>
                 <span className="text-brand-600 dark:text-brand-400 text-lg sm:text-2xl font-semibold truncate">
                   {targetRoleTitle}
                 </span>
               </h1>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5 font-normal flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400 mt-1.5 font-normal flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>{companyName}</span>
                 <span>•</span>
                 <span>Department: {department}</span>
@@ -403,11 +423,11 @@ export default function SkillGapReport() {
           </div>
 
           {/* Readiness Meter Gauge Card */}
-          <div className="shrink-0 flex items-center p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-white/[0.08] shadow-xs space-x-4">
+          <div className="shrink-0 flex items-center p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#161311] border border-[#E8DFD8] dark:border-[#2A2520] shadow-xs space-x-4">
             <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                 <path
-                  className="text-slate-200 dark:text-slate-700"
+                  className="text-stone-200 dark:text-stone-700"
                   strokeWidth="3.5"
                   stroke="currentColor"
                   fill="none"
@@ -424,23 +444,23 @@ export default function SkillGapReport() {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-base sm:text-xl font-black text-slate-900 dark:text-white leading-none">
+                <span className="text-base sm:text-xl font-black text-stone-900 dark:text-stone-100 leading-none">
                   {overall}%
                 </span>
-                <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-tight mt-0.5">
+                <span className="text-[9px] font-semibold text-stone-400 uppercase tracking-tight mt-0.5">
                   Role Fit
                 </span>
               </div>
             </div>
 
             <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
                 Calibrated Readiness
               </span>
-              <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-tight max-w-[200px]">
+              <p className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 leading-tight max-w-[200px]">
                 {readiness}
               </p>
-              <div className="flex items-center space-x-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-medium pt-0.5">
+              <div className="flex items-center space-x-1.5 text-[11px] text-stone-600 dark:text-stone-400 font-medium pt-0.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>{integrity !== null ? `Verified (${integrity}% Integrity)` : 'Integrity Verified'}</span>
               </div>
@@ -450,17 +470,17 @@ export default function SkillGapReport() {
         </div>
 
         {/* 4 Pillars Telemetry Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-200/80 dark:border-white/[0.06]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-[#E8DFD8] dark:border-[#2A2520]">
           
-          <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-white/[0.06] shadow-xs">
-            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-              <span className="font-semibold text-slate-600 dark:text-slate-400">Technical Depth</span>
+          <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#161311] border border-[#E8DFD8] dark:border-[#2A2520] shadow-xs">
+            <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
+              <span className="font-semibold text-stone-600 dark:text-stone-400">Technical Depth</span>
               <Code2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
             </div>
-            <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+            <div className="text-lg sm:text-xl font-black text-stone-900 dark:text-stone-100">
               {technicalScore > 0 ? `${technicalScore}%` : 'Calibrating'}
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div className="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full mt-2 overflow-hidden">
               <div 
                 className="bg-brand-600 dark:bg-brand-500 h-full rounded-full transition-all duration-700 ease-out" 
                 style={{ width: `${Math.max(10, technicalScore)}%` }} 
@@ -468,15 +488,15 @@ export default function SkillGapReport() {
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-white/[0.06] shadow-xs">
-            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-              <span className="font-semibold text-slate-600 dark:text-slate-400">Problem Solving</span>
+          <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#161311] border border-[#E8DFD8] dark:border-[#2A2520] shadow-xs">
+            <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
+              <span className="font-semibold text-stone-600 dark:text-stone-400">Problem Solving</span>
               <Layers className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
             </div>
-            <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+            <div className="text-lg sm:text-xl font-black text-stone-900 dark:text-stone-100">
               {problemSolving > 0 ? `${problemSolving}%` : 'Calibrating'}
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div className="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full mt-2 overflow-hidden">
               <div 
                 className="bg-brand-600 dark:bg-brand-500 h-full rounded-full transition-all duration-700 ease-out" 
                 style={{ width: `${Math.max(10, problemSolving)}%` }} 
@@ -484,15 +504,15 @@ export default function SkillGapReport() {
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-white/[0.06] shadow-xs">
-            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-              <span className="font-semibold text-slate-600 dark:text-slate-400">Scenario Calibration</span>
+          <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#161311] border border-[#E8DFD8] dark:border-[#2A2520] shadow-xs">
+            <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
+              <span className="font-semibold text-stone-600 dark:text-stone-400">Scenario Calibration</span>
               <Target className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
             </div>
-            <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+            <div className="text-lg sm:text-xl font-black text-stone-900 dark:text-stone-100">
               {communication > 0 ? `${communication}%` : 'Validated'}
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div className="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full mt-2 overflow-hidden">
               <div 
                 className="bg-brand-600 dark:bg-brand-500 h-full rounded-full transition-all duration-700 ease-out" 
                 style={{ width: `${Math.max(10, communication)}%` }} 
@@ -500,15 +520,15 @@ export default function SkillGapReport() {
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-white/[0.06] shadow-xs">
-            <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-              <span className="font-semibold text-slate-600 dark:text-slate-400">Audit & Integrity</span>
+          <div className="p-3.5 rounded-2xl bg-[#FAF8F5] dark:bg-[#161311] border border-[#E8DFD8] dark:border-[#2A2520] shadow-xs">
+            <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
+              <span className="font-semibold text-stone-600 dark:text-stone-400">Audit & Integrity</span>
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+            <div className="text-lg sm:text-xl font-black text-stone-900 dark:text-stone-100">
               {typeof integrity === 'number' ? `${integrity}%` : '100%'}
             </div>
-            <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div className="w-full bg-stone-200 dark:bg-stone-700 h-1.5 rounded-full mt-2 overflow-hidden">
               <div 
                 className="bg-emerald-600 dark:bg-emerald-500 h-full rounded-full transition-all duration-700 ease-out" 
                 style={{ width: `${typeof integrity === 'number' ? integrity : 100}%` }} 
@@ -524,7 +544,7 @@ export default function SkillGapReport() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in-up delay-200">
         
         {/* Left Column: Validated Strengths */}
-        <div className="glass-card p-6 sm:p-7 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-5 shadow-xl bg-white dark:bg-slate-900/80">
+        <div className="p-6 sm:p-7 rounded-3xl border border-[#E8DFD8] dark:border-[#2A2520] space-y-5 shadow-card bg-[#FDFBF7] dark:bg-[#1A1714]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider">
               <CheckCircle2 className="w-4 h-4" />
@@ -535,8 +555,8 @@ export default function SkillGapReport() {
             </span>
           </div>
 
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Competencies demonstrated through resume evaluation, verified credentials, and technical assessments for {targetRoleTitle}.
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            Competencies demonstrated through verified credentials, resume evaluation, and technical assessments for {targetRoleTitle}.
           </p>
 
           <div className="space-y-3">
@@ -544,18 +564,18 @@ export default function SkillGapReport() {
               strongSkills.map((skill, i) => (
                 <div 
                   key={i} 
-                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.05] flex items-center justify-between"
+                  className="p-3.5 rounded-2xl bg-stone-50 dark:bg-[#161311] border border-[#E8DFD8] dark:border-[#2A2520] flex items-center justify-between"
                 >
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                       <Check className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white block">
+                      <span className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 block">
                         {skill}
                       </span>
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        Production Mastery Benchmark
+                      <span className="text-[10px] text-stone-400 font-medium">
+                        Production Benchmark Met
                       </span>
                     </div>
                   </div>
@@ -565,12 +585,12 @@ export default function SkillGapReport() {
                 </div>
               ))
             ) : (
-              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-2">
-                <HelpCircle className="w-6 h-6 text-slate-400 mx-auto" />
-                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Assessment in Progress
+              <div className="p-5 rounded-2xl bg-stone-50 dark:bg-[#161311] border border-dashed border-stone-300 dark:border-[#38281F] text-center space-y-2">
+                <HelpCircle className="w-6 h-6 text-stone-400 mx-auto" />
+                <p className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                  Assessment Calibration Pending
                 </p>
-                <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                <p className="text-[11px] text-stone-400 max-w-xs mx-auto">
                   Complete the technical role assessment to calibrate your verified strengths against role benchmarks.
                 </p>
               </div>
@@ -578,43 +598,43 @@ export default function SkillGapReport() {
           </div>
         </div>
 
-        {/* Right Column: Targeted Upskilling Areas */}
-        <div className="glass-card p-6 sm:p-7 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-5 shadow-xl bg-white dark:bg-slate-900/80">
+        {/* Right Column: Skills Awaiting Assessment Evidence */}
+        <div className="p-6 sm:p-7 rounded-3xl border border-[#E8DFD8] dark:border-[#2A2520] space-y-5 shadow-card bg-[#FDFBF7] dark:bg-[#1A1714]">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-bold text-xs uppercase tracking-wider">
               <TrendingUp className="w-4 h-4" />
-              <span>Targeted Upskilling & Growth Areas</span>
+              <span>Competencies Awaiting Assessment Evidence</span>
             </div>
             <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 border border-brand-500/20">
-              {missingSkills.length} Action Items
+              {missingSkills.length} Practice Focus
             </span>
           </div>
 
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            High-leverage engineering skills identified to accelerate your role readiness and interview progression.
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            Role requirements where platform assessment evidence is not yet recorded. Preparing these concepts will help demonstrate your capability.
           </p>
 
           <div className="space-y-3">
             {missingSkills.map((skill, i) => (
               <div 
                 key={i} 
-                className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-white/[0.05] flex items-center justify-between"
+                className="p-3.5 rounded-2xl bg-stone-50 dark:bg-[#161311] border border-[#E8DFD8] dark:border-[#2A2520] flex items-center justify-between"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-8 h-8 rounded-xl bg-brand-500/15 border border-brand-500/30 flex items-center justify-center text-brand-600 dark:text-brand-400 shrink-0 font-bold text-xs">
                     {i + 1}
                   </div>
                   <div>
-                    <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white block">
+                    <span className="text-xs sm:text-sm font-bold text-stone-900 dark:text-stone-100 block">
                       {skill}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      Role Requirement · Priority Focus
+                    <span className="text-[10px] text-stone-400 font-medium">
+                      Role Requirement · Recommended Practice
                     </span>
                   </div>
                 </div>
                 <span className="text-[11px] font-bold text-brand-600 dark:text-brand-400 px-2.5 py-1 rounded-lg bg-brand-500/10 border border-brand-500/20">
-                  Curriculum Below ↓
+                  Practice Guide Below ↓
                 </span>
               </div>
             ))}
@@ -624,26 +644,35 @@ export default function SkillGapReport() {
       </div>
 
       {/* Dynamic Personalized Career & Learning Roadmap */}
-      <div className="animate-fade-in-up delay-300 glass-card p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-white/[0.08] space-y-6 shadow-xl bg-white dark:bg-slate-900/80">
+      <div className="animate-fade-in-up delay-300 p-6 sm:p-8 rounded-3xl border border-[#E8DFD8] dark:border-[#2A2520] space-y-6 shadow-card bg-[#FDFBF7] dark:bg-[#1A1714]">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8DFD8] dark:border-[#2A2520] pb-5">
           <div className="space-y-1">
             <div className="flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-bold text-xs uppercase tracking-wider">
               <BookOpen className="w-4 h-4" />
               <span>Personalized Career & Learning Roadmap</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-[#161311] dark:text-[#FAF8F5] tracking-tight">
               Actionable Upskilling Plan for {targetRoleTitle}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+            <p className="text-xs text-[#6B6158] dark:text-[#A89F91] max-w-2xl leading-relaxed">
               Tailored curriculum modules structured by phase, containing hands-on projects, key study concepts, and production architecture challenges.
             </p>
           </div>
 
           <div className="shrink-0 flex items-center space-x-2">
-            <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-[#F4EFEA] dark:bg-[#221E1A] text-[#4A423A] dark:text-[#C4BCB3] border border-[#E8DFD8] dark:border-[#2A2520]">
               {missingSkills.length} Dedicated Modules
             </span>
+          </div>
+        </div>
+
+        {/* Educational Guidance Notice */}
+        <div className="p-4 rounded-2xl bg-[#F4EFEA] dark:bg-[#221E1A] border border-[#E8DFD8] dark:border-[#2A2520] flex items-start space-x-3 text-xs text-[#6B6158] dark:text-[#A89F91]">
+          <Info className="w-4 h-4 text-brand-600 dark:text-brand-400 shrink-0 mt-0.5" />
+          <div className="leading-relaxed">
+            <span className="font-semibold text-[#161311] dark:text-[#FAF8F5] mr-1">Educational Guidance Notice:</span>
+            These study pathways and project challenges are designed to assist your technical preparation and continuous learning. Completing recommended exercises does not guarantee an interview invitation or job offer.
           </div>
         </div>
 
@@ -654,7 +683,7 @@ export default function SkillGapReport() {
             return (
               <div 
                 key={index} 
-                className="p-5 sm:p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-white/[0.06] hover:border-brand-500/40 transition-all duration-300 space-y-4 shadow-sm"
+                className="p-5 sm:p-6 rounded-2xl bg-[#FAF8F5] dark:bg-[#161311] border border-[#E8DFD8] dark:border-[#2A2520] hover:border-brand-500/40 transition-all duration-300 space-y-4 shadow-sm"
               >
                 
                 {/* Header row */}
@@ -668,13 +697,13 @@ export default function SkillGapReport() {
                         <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
                           {curriculum.phase}
                         </span>
-                        <span className="text-slate-300 dark:text-slate-600">•</span>
-                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 flex items-center space-x-1">
+                        <span className="text-[#C4BCB3] dark:text-[#4A423A]">•</span>
+                        <span className="text-[10px] font-semibold text-[#6B6158] dark:text-[#A89F91] flex items-center space-x-1">
                           <Clock className="w-3 h-3 inline mr-1" />
                           {curriculum.duration}
                         </span>
                       </div>
-                      <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                      <h3 className="text-sm sm:text-base font-bold text-[#161311] dark:text-[#FAF8F5] mt-0.5">
                         {curriculum.title}
                       </h3>
                     </div>
@@ -690,18 +719,18 @@ export default function SkillGapReport() {
                 </div>
 
                 {/* Description */}
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#6B6158] dark:text-[#C4BCB3] leading-relaxed">
                   {curriculum.description}
                 </p>
 
                 {/* Hands-on Project Challenge */}
-                <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-white/[0.08] flex items-start space-x-3">
+                <div className="p-3.5 rounded-xl bg-[#FDFBF7] dark:bg-[#1A1714] border border-[#E8DFD8] dark:border-[#2A2520] flex items-start space-x-3">
                   <Target className="w-4 h-4 text-brand-500 shrink-0 mt-0.5" />
                   <div className="text-xs">
-                    <span className="font-bold text-slate-900 dark:text-white mr-1.5">
+                    <span className="font-bold text-[#161311] dark:text-[#FAF8F5] mr-1.5">
                       Hands-On Challenge:
                     </span>
-                    <span className="text-slate-600 dark:text-slate-300">
+                    <span className="text-[#6B6158] dark:text-[#C4BCB3]">
                       {curriculum.project}
                     </span>
                   </div>
@@ -709,14 +738,14 @@ export default function SkillGapReport() {
 
                 {/* Key Study Concepts */}
                 <div>
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
+                  <span className="text-[11px] font-bold text-[#6B6158] dark:text-[#A89F91] uppercase tracking-wider block mb-2">
                     Key Concepts to Master:
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {curriculum.topics.map((topic, tIdx) => (
                       <div 
                         key={tIdx} 
-                        className="flex items-center space-x-2 text-xs text-slate-700 dark:text-slate-300"
+                        className="flex items-center space-x-2 text-xs text-[#4A423A] dark:text-[#C4BCB3]"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                         <span className="truncate">{topic}</span>
@@ -733,12 +762,12 @@ export default function SkillGapReport() {
       </div>
 
       {/* Bottom Navigation & Action Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-[#E8DFD8] dark:border-[#2A2520]">
         {userRole === 'recruiter' ? (
           <>
             <button
               onClick={() => navigate('/recruiter')}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition shadow-sm text-center"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#F4EFEA] dark:bg-[#221E1A] hover:bg-[#EAE4DC] dark:hover:bg-[#2A2520] border border-[#E8DFD8] dark:border-[#2A2520] text-xs font-semibold text-[#4A423A] dark:text-[#C4BCB3] transition shadow-sm text-center"
             >
               ← Back to Candidate Pipeline
             </button>
@@ -757,7 +786,7 @@ export default function SkillGapReport() {
           <>
             <button
               onClick={() => navigate('/my-applications')}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition shadow-sm text-center"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#F4EFEA] dark:bg-[#221E1A] hover:bg-[#EAE4DC] dark:hover:bg-[#2A2520] border border-[#E8DFD8] dark:border-[#2A2520] text-xs font-semibold text-[#4A423A] dark:text-[#C4BCB3] transition shadow-sm text-center"
             >
               ← Return to My Applications
             </button>
@@ -765,7 +794,7 @@ export default function SkillGapReport() {
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <button
                 onClick={() => navigate('/jobs')}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition shadow-sm text-center"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#F4EFEA] dark:bg-[#221E1A] hover:bg-[#EAE4DC] dark:hover:bg-[#2A2520] border border-[#E8DFD8] dark:border-[#2A2520] text-xs font-semibold text-[#4A423A] dark:text-[#C4BCB3] transition shadow-sm text-center"
               >
                 Explore Open Roles
               </button>

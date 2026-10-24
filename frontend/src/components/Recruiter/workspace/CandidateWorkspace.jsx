@@ -221,8 +221,8 @@ export default function CandidateWorkspace({
 
   if (!currentCandidate) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#07090E] flex flex-col items-center justify-center p-8 text-center">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">No Candidate Selected</h2>
+      <div className="min-h-screen bg-[#F7F4EF] dark:bg-[#0F0E0D] flex flex-col items-center justify-center p-8 text-center">
+        <h2 className="text-xl font-bold font-sans text-[#1C130E] dark:text-[#FAF6F0]">No Candidate Selected</h2>
         <Button variant="secondary" onClick={handleBackToPipeline} className="mt-4">
           Return to Pipeline
         </Button>
@@ -242,7 +242,7 @@ export default function CandidateWorkspace({
   ];
 
   return (
-    <div className="w-full h-full bg-[#F7F5F2] dark:bg-[#0F0E0D] flex flex-col text-stone-900 dark:text-stone-100 overflow-hidden">
+    <div className="w-full h-full bg-[#F7F4EF] dark:bg-[#0F0E0D] flex flex-col text-[#1C130E] dark:text-[#FAF6F0] overflow-hidden">
       {/* ── Persistent Top Navigation Bar ── */}
       <CandidateWorkspaceHeader
         candidate={currentCandidate}
@@ -264,16 +264,16 @@ export default function CandidateWorkspace({
       {/* ── Workspace Body (Split: Candidate Quick Switcher + Main Intelligence Area) ── */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Left Candidate Rail (Desktop Collapsible, dedicated scroll) */}
-        <aside className="hidden xl:flex w-72 flex-col border-r border-[#E8E4DF] dark:border-[#2A2520] bg-[#FDFCFA]/90 dark:bg-[#14110F] shrink-0 h-full overflow-y-auto scrollbar-thin">
-          <div className="p-3 border-b border-[#E8E4DF] dark:border-[#2A2520] sticky top-0 bg-[#FDFCFA] dark:bg-[#14110F] z-10">
+        <aside className="hidden xl:flex w-72 flex-col border-r border-[#E8DFD8] dark:border-[#33241C] bg-[#FDFBF7]/90 dark:bg-[#18110D] shrink-0 h-full overflow-y-auto scrollbar-thin">
+          <div className="p-3 border-b border-[#E8DFD8] dark:border-[#33241C] sticky top-0 bg-[#FDFBF7] dark:bg-[#18110D] z-10 backdrop-blur-sm">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-stone-400" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-[#A89F91] dark:text-[#8C7E72]" />
               <input
                 type="text"
                 value={sidebarSearch}
                 onChange={e => setSidebarSearch(e.target.value)}
                 placeholder="Jump candidate..."
-                className="w-full pl-8 pr-3 py-1.5 bg-stone-100 dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-lg text-xs placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-500"
+                className="w-full pl-8 pr-3 py-1.5 bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-xl text-xs text-[#1C130E] dark:text-[#FAF6F0] placeholder:text-[#A89F91] dark:placeholder:text-[#8C7E72] focus:outline-none focus:ring-1 focus:ring-amber-500/40 focus:border-amber-500 transition-colors"
               />
             </div>
           </div>
@@ -283,12 +283,12 @@ export default function CandidateWorkspace({
               const isSelected = String(cand.id) === String(currentCandidate.id);
               const candScore = cand.matchScore || 0;
               const scoreBadgeColor = candScore >= 85 
-                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
                 : candScore >= 70
-                ? 'bg-brand-500/10 text-brand-600 dark:text-brand-400 border-brand-500/20'
+                ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
                 : candScore >= 50
-                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
+                ? 'bg-stone-500/10 text-stone-700 dark:text-stone-400 border-stone-500/20'
+                : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20';
 
               const initials = (() => {
                 if (!cand.name) return 'CD';
@@ -306,20 +306,20 @@ export default function CandidateWorkspace({
                   onClick={() => handleSelectCandidate(cand)}
                   className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-all ${
                     isSelected 
-                      ? 'bg-brand-50/90 dark:bg-brand-950/60 border-l-4 border-l-brand-600 border border-brand-200 dark:border-brand-800 text-brand-950 dark:text-white shadow-subtle'
-                      : 'hover:bg-slate-100/80 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300 border border-transparent'
+                      ? 'bg-amber-500/10 dark:bg-amber-500/15 border-l-4 border-l-amber-600 dark:border-l-amber-500 border border-amber-500/30 text-[#1C130E] dark:text-white shadow-xs'
+                      : 'hover:bg-[#FAF8F5] dark:hover:bg-[#201814]/70 text-[#7C7267] dark:text-[#C4B5A5] border border-transparent'
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-mono font-bold shrink-0 ${
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-mono font-bold shrink-0 transition-colors ${
                     isSelected 
-                      ? 'bg-brand-600 text-white shadow-xs' 
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                      ? 'bg-gradient-to-br from-[#2E2017] to-[#1C130E] text-amber-400 border border-amber-500/40 shadow-xs' 
+                      : 'bg-[#FAF8F5] dark:bg-[#201814] text-[#7C7267] dark:text-[#C4B5A5] border border-[#E8DFD8] dark:border-[#33241C]'
                   }`}>
                     {initials}
                   </div>
                   <div className="min-w-0 flex-1 truncate pr-1">
-                    <div className="text-xs font-bold truncate leading-snug">{cand.name}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    <div className="text-xs font-bold truncate leading-snug text-[#1C130E] dark:text-[#FAF6F0]">{cand.name}</div>
+                    <div className="text-[11px] text-[#A89F91] dark:text-[#8C7E72] truncate">
                       {cand.jobTitle || jobs.find(j => String(j.id) === String(cand.job_id || cand.jobId))?.title || 'Applied Position'}
                     </div>
                   </div>

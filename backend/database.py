@@ -51,66 +51,38 @@ _SQLITE_FILENAME = "test_sparkx.db" if is_testing else "sparkx_recruitment.db"
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 _SQLITE_PATH = os.path.join(_BACKEND_DIR, _SQLITE_FILENAME).replace('\\', '/')
 
-# Smart Database Initialization
+# Production PostgreSQL Database Initialization
 is_pg = DATABASE_URL.startswith("postgresql")
 pg_host, pg_port = extract_db_host_port(DATABASE_URL)
 
-if is_pg and is_postgres_running(pg_host, pg_port) and not is_testing:
-    try:
-        # Use 127.0.0.1 if host is localhost to avoid Windows IPv6 resolution latency
-        pg_url = DATABASE_URL.replace("localhost", "127.0.0.1") if "localhost" in DATABASE_URL else DATABASE_URL
-        pool_size = int(os.getenv("DB_POOL_SIZE", "20"))
-        max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
-        pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "3600"))
+if not is_pg:
+    raise RuntimeError(
+        f"FATAL DATABASE CONFIGURATION: DATABASE_URL must be a PostgreSQL connection string. "
+        f"Found: {DATABASE_URL}. SQLite is strictly prohibited."
+    )
 
-        engine = create_engine(
-            pg_url,
-            pool_pre_ping=True,
-            pool_size=pool_size,
-            max_overflow=max_overflow,
-            pool_recycle=pool_recycle,
-            connect_args={"connect_timeout": 5}
-        )
-        # Verify the connection; if the target database does not exist, check environment
-        try:
-            with engine.connect() as _conn:
-                pass
-            logger.info(f"Connected to PostgreSQL database on {pg_host}:{pg_port}.")
-        except Exception as conn_err:
-            if is_production:
-                raise RuntimeError(
-                    f"FATAL DATABASE ERROR: Production environment failed to connect to PostgreSQL ({conn_err}). "
-                    f"Silent SQLite fallback is strictly prohibited in production."
-                )
-            logger.warning(f"PostgreSQL DB connection failed ({conn_err}). Falling back to local SQLite for development.")
-            DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
-            engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-            logger.warning(f"Mode: Running on local SQLite database '{_SQLITE_PATH}'.")
-    except RuntimeError:
-        raise
-    except Exception as err:
-        if is_production:
-            raise RuntimeError(
-                f"FATAL DATABASE ERROR: Production environment failed to authenticate with PostgreSQL ({err}). "
-                f"Silent SQLite fallback is strictly prohibited in production."
-            )
-        logger.warning(f"PostgreSQL authentication failed ({err}). Falling back to local SQLite for development.")
-        DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
-        engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-        logger.warning(f"Mode: Running on local SQLite database '{_SQLITE_PATH}'.")
-else:
-    if is_production:
-        raise RuntimeError(
-            f"FATAL DATABASE ERROR: PostgreSQL service is not active on {pg_host}:{pg_port} in production. "
-            f"Silent SQLite fallback is strictly prohibited in production."
-        )
-    if is_testing:
-        logger.info(f"Test runner detected. Isolating all operations in dedicated test database '{_SQLITE_PATH}'.")
-    elif is_pg:
-        logger.info(f"PostgreSQL service is not active on {pg_host}:{pg_port}. Automatically running on local SQLite database '{_SQLITE_FILENAME}' for development.")
-    DATABASE_URL = f"sqlite:///{_SQLITE_PATH}"
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-    logger.info(f"Mode: Running on local SQLite database '{_SQLITE_PATH}'.")
+pg_url = DATABASE_URL.replace("localhost", "127.0.0.1") if "localhost" in DATABASE_URL else DATABASE_URL
+pool_size = int(os.getenv("DB_POOL_SIZE", "20"))
+max_overflow = int(os.getenv("DB_MAX_OVERFLOW", "10"))
+pool_recycle = int(os.getenv("DB_POOL_RECYCLE", "3600"))
+
+try:
+    engine = create_engine(
+        pg_url,
+        pool_pre_ping=True,
+        pool_size=pool_size,
+        max_overflow=max_overflow,
+        pool_recycle=pool_recycle,
+        connect_args={"connect_timeout": 5}
+    )
+    with engine.connect() as _conn:
+        pass
+    logger.info(f"Connected strictly to PostgreSQL database on {pg_host}:{pg_port}.")
+except Exception as conn_err:
+    raise RuntimeError(
+        f"FATAL DATABASE ERROR: Failed to connect to PostgreSQL at {pg_host}:{pg_port} ({conn_err}). "
+        f"SQLite fallback is permanently disabled."
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -134,25 +106,100 @@ def ensure_schema_columns():
     import models.db_models  # Ensure all models are registered on Base.metadata
     Base.metadata.create_all(bind=engine)
     from sqlalchemy import text
+    new_user_cols = {
+        "reset_token": "VARCHAR",
+        "reset_token_expiry": "TIMESTAMP",
+        "reset_token_attempts": "INTEGER DEFAULT 0",
+        "phone": "VARCHAR",
+        "job_role": "VARCHAR",
+        "experience_years": "FLOAT DEFAULT 0.0",
+        "skills": "JSON DEFAULT '[]'",
+        "education": "VARCHAR",
+        "resume_filename": "VARCHAR",
+        "resume_summary": "TEXT",
+        "resume_text": "TEXT",
+        "organization_id": "VARCHAR DEFAULT 'org-sparkx-default'"
+    }
+
+    new_job_cols = {
+        "company_name": "VARCHAR DEFAULT 'SparkX Technologies'",
+        "organization_id": "VARCHAR DEFAULT 'org-sparkx-default'",
+        "coding_difficulty": "VARCHAR DEFAULT 'Mid-Level'",
+        "assessment_pool": "JSON DEFAULT '{}'",
+        "assessment_version": "INTEGER DEFAULT 1",
+        "competency_blueprint": "JSON DEFAULT '{}'",
+        "ctc_type": "VARCHAR DEFAULT 'range'",
+        "ctc_min": "NUMERIC(10, 2)",
+        "ctc_max": "NUMERIC(10, 2)",
+        "ctc_currency": "VARCHAR DEFAULT 'INR'",
+        "ctc_period": "VARCHAR DEFAULT 'annual'",
+        "variable_pay_min": "NUMERIC(10, 2)",
+        "variable_pay_max": "NUMERIC(10, 2)",
+        "closed_at": "TIMESTAMP",
+        "closed_by": "VARCHAR",
+        "closure_reason": "TEXT",
+        "paused_at": "TIMESTAMP"
+    }
+
+    new_cand_cols = {
+        "interview_meeting_url": "VARCHAR",
+        "company_name": "VARCHAR DEFAULT 'SparkX Technologies'",
+        "resume_filename": "VARCHAR",
+        "resume_text": "TEXT",
+        "assessment_data": "JSON DEFAULT '{}'",
+        "coding_language": "VARCHAR",
+        "coding_score": "INTEGER DEFAULT 0",
+        "coding_submission": "TEXT",
+        "coding_results": "JSON DEFAULT '{}'",
+        "recruiter_score": "INTEGER",
+        "rejection_reason": "TEXT",
+        "rejection_category": "VARCHAR",
+        "match_details": "JSON DEFAULT '{}'",
+        "interview_transcript": "JSON DEFAULT '[]'",
+        "current_ctc": "NUMERIC(10, 2)",
+        "expected_ctc_type": "VARCHAR DEFAULT 'range'",
+        "expected_ctc_min": "NUMERIC(10, 2)",
+        "expected_ctc_max": "NUMERIC(10, 2)",
+        "ctc_currency": "VARCHAR DEFAULT 'INR'",
+        "stage": "VARCHAR DEFAULT 'applied'",
+        "assessment_status": "VARCHAR DEFAULT 'not_invited'",
+        "assessment_invited_at": "TIMESTAMP",
+        "assessment_started_at": "TIMESTAMP",
+        "assessment_submitted_at": "TIMESTAMP",
+        "assessment_evaluated_at": "TIMESTAMP",
+        "interview_started_at": "TIMESTAMP",
+        "interview_completed_at": "TIMESTAMP",
+        "hiring_decision": "VARCHAR DEFAULT 'undecided'",
+        "stage_updated_at": "TIMESTAMP",
+        "decision_updated_at": "TIMESTAMP",
+        "user_id": "VARCHAR",
+        "version": "INTEGER DEFAULT 1",
+        "expected_update_date": "VARCHAR",
+        "update_notes": "TEXT",
+        "update_status": "VARCHAR DEFAULT 'not_set'",
+        "update_sent_at": "TIMESTAMP",
+        "reminder_sent_flags": "JSON DEFAULT '{}'",
+        "assessment_version": "INTEGER DEFAULT 1",
+        "assessment_blueprint": "JSON DEFAULT '{}'",
+        "external_assessment_platform": "VARCHAR",
+        "external_assessment_id": "VARCHAR",
+        "external_assessment_url": "VARCHAR",
+        "external_assessment_result": "JSON DEFAULT '{}'",
+        "external_assessment_synced_at": "TIMESTAMP",
+        "reopened_at": "TIMESTAMP",
+        "reopened_by": "VARCHAR",
+        "reopen_reason": "TEXT",
+        "previous_final_decision": "VARCHAR",
+        "rationale_category": "VARCHAR",
+        "rationale_note": "TEXT",
+        "organization_id": "VARCHAR DEFAULT 'org-sparkx-default'"
+    }
+
     with engine.connect() as conn:
         try:
             if str(engine.url).startswith("sqlite"):
                 # Users table columns
                 user_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(users)")).fetchall()]
-                new_user_cols = {
-                    "reset_token": "VARCHAR",
-                    "reset_token_expiry": "TIMESTAMP",
-                    "reset_token_attempts": "INTEGER DEFAULT 0",
-                    "phone": "VARCHAR",
-                    "job_role": "VARCHAR",
-                    "experience_years": "FLOAT DEFAULT 0.0",
-                    "skills": "JSON DEFAULT '[]'",
-                    "education": "VARCHAR",
-                    "resume_filename": "VARCHAR",
-                    "resume_summary": "TEXT",
-                    "resume_text": "TEXT",
-                    "organization_id": "VARCHAR DEFAULT 'org-sparkx-default'"
-                }
                 for col, col_type in new_user_cols.items():
                     if col not in user_cols:
                         conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
@@ -312,6 +359,17 @@ def ensure_schema_columns():
                         if col not in mcq_cols:
                             conn.execute(text(f"ALTER TABLE mcq_questions ADD COLUMN {col} {col_type}"))
                             conn.commit()
+                if "resume_documents" in prob_tables:
+                    res_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(resume_documents)")).fetchall()]
+                    new_res_cols = {
+                        "languages": "JSON DEFAULT '[]'",
+                        "awards": "JSON DEFAULT '[]'",
+                        "volunteering": "JSON DEFAULT '[]'"
+                    }
+                    for col, col_type in new_res_cols.items():
+                        if col not in res_cols:
+                            conn.execute(text(f"ALTER TABLE resume_documents ADD COLUMN {col} {col_type}"))
+                            conn.commit()
             else:
                 # PostgreSQL schema column synchronization
                 for col, col_type in new_user_cols.items():
@@ -335,6 +393,9 @@ def ensure_schema_columns():
                     conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS allow_resume BOOLEAN DEFAULT TRUE"))
                     conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS published_at TIMESTAMP"))
                     conn.execute(text("ALTER TABLE assessments ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP"))
+                    conn.execute(text("ALTER TABLE resume_documents ADD COLUMN IF NOT EXISTS languages JSON DEFAULT '[]'"))
+                    conn.execute(text("ALTER TABLE resume_documents ADD COLUMN IF NOT EXISTS awards JSON DEFAULT '[]'"))
+                    conn.execute(text("ALTER TABLE resume_documents ADD COLUMN IF NOT EXISTS volunteering JSON DEFAULT '[]'"))
                 except Exception:
                     pass
                 conn.commit()

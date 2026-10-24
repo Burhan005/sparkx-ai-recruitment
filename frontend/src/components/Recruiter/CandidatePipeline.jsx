@@ -959,15 +959,15 @@ export default function CandidatePipeline() {
               }}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all duration-200 cursor-pointer ${
                 activeTab === 'candidates'
-                  ? 'bg-[#2E2017] dark:bg-[#2C1F18] text-[#FDFBF7] dark:text-[#F3ECE6] shadow-2xs border border-amber-600/35 dark:border-amber-500/30'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-[#2A1B14] dark:hover:text-stone-200'
+                  ? 'bg-white dark:bg-[#2C1F18] text-[#1C130E] dark:text-[#F3ECE6] shadow-xs border border-[#E0D7CC] dark:border-amber-500/30 font-bold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-[#1C130E] dark:hover:text-stone-200'
               }`}
             >
-              <Users className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+              <Users className="w-3.5 h-3.5 text-[#C27803] dark:text-amber-400" />
               <span>Candidates</span>
               <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
                 activeTab === 'candidates' 
-                  ? 'bg-amber-500/20 text-amber-300 dark:text-amber-300' 
+                  ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/30' 
                   : 'bg-stone-300/40 dark:bg-[#251A14] text-stone-700 dark:text-stone-400'
               }`}>
                 {filteredCandidates.length}
@@ -982,15 +982,15 @@ export default function CandidatePipeline() {
               }}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all duration-200 cursor-pointer ${
                 activeTab === 'jobs'
-                  ? 'bg-[#2E2017] dark:bg-[#2C1F18] text-[#FDFBF7] dark:text-[#F3ECE6] shadow-2xs border border-amber-600/35 dark:border-amber-500/30'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-[#2A1B14] dark:hover:text-stone-200'
+                  ? 'bg-white dark:bg-[#2C1F18] text-[#1C130E] dark:text-[#F3ECE6] shadow-xs border border-[#E0D7CC] dark:border-amber-500/30 font-bold'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-[#1C130E] dark:hover:text-stone-200'
               }`}
             >
-              <Briefcase className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" />
+              <Briefcase className="w-3.5 h-3.5 text-[#C27803] dark:text-amber-400" />
               <span>Job Postings</span>
               <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold ${
                 activeTab === 'jobs' 
-                  ? 'bg-amber-500/20 text-amber-300 dark:text-amber-300' 
+                  ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/30' 
                   : 'bg-stone-300/40 dark:bg-[#251A14] text-stone-700 dark:text-stone-400'
               }`}>
                 {jobs.length}
@@ -1206,7 +1206,7 @@ export default function CandidatePipeline() {
                       onClick={() => setFilterStatus(id)}
                       className={`px-3 py-1.5 rounded-xl font-medium transition-all duration-200 text-xs flex items-center gap-2 select-none cursor-pointer ${
                         isActive
-                          ? 'bg-[#2E2017] dark:bg-[#2C1F18] text-[#FDFBF7] dark:text-[#F3ECE6] shadow-2xs font-bold border border-amber-600/35 dark:border-amber-500/30'
+                          ? 'bg-white dark:bg-[#2C1F18] text-[#1C130E] dark:text-[#F3ECE6] shadow-xs font-bold border border-amber-500/50 dark:border-amber-500/30'
                           : 'bg-[#F4EFEB] dark:bg-[#1E1510] text-stone-700 dark:text-[#C5B8AC] hover:bg-[#ECE4DA] dark:hover:bg-[#251A14] border border-[#E0D7CC] dark:border-[#2C1F17]'
                       }`}
                     >
@@ -1215,7 +1215,7 @@ export default function CandidatePipeline() {
                       {count !== undefined && (
                         <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
                           isActive
-                            ? 'bg-amber-500/20 text-amber-300 dark:text-amber-300'
+                            ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/30'
                             : 'bg-stone-300/40 dark:bg-[#251A14] text-stone-700 dark:text-stone-300 border border-stone-200/50 dark:border-[#33241C]'
                         }`}>
                           {count}
@@ -1374,7 +1374,7 @@ export default function CandidatePipeline() {
                                 <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 tracking-tight">
                                   {cand.name}
                                 </h4>
-                                <p className="text-[11px] font-medium text-stone-500 dark:text-stone-400 truncate" title={getCandidateJobTitle(cand)}>
+                                <p className="text-[11px] font-medium text-stone-500 dark:text-stone-400 line-clamp-2 leading-snug break-words" title={getCandidateJobTitle(cand)}>
                                   {getCandidateJobTitle(cand)}
                                 </p>
                                 <p className="text-[10px] text-stone-400 truncate">
@@ -1405,9 +1405,9 @@ export default function CandidatePipeline() {
 
               {/* ─── PHASE 4E.4: UNIFIED BULK ACTIONS TOOLBAR ─── */}
               {selectedCandidateIds.length > 0 && (
-                <div className="mb-4 p-3.5 rounded-2xl bg-gradient-to-r from-brand-500/15 via-amber-500/10 to-[#1A1714] dark:from-brand-950/50 dark:via-amber-950/30 dark:to-[#1A1714] border border-brand-500/40 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="mb-4 p-3.5 rounded-2xl bg-[#FDFBF7] dark:bg-[#1A120E] border border-amber-500/40 dark:border-amber-500/30 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-brand-600/30 font-bold font-mono text-xs">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#2E2017] to-[#C27803] dark:from-[#3D2C22] dark:to-amber-600 text-white flex items-center justify-center shrink-0 shadow-sm font-bold font-mono text-xs border border-amber-500/30">
                       {selectedCandidateIds.length}
                     </div>
                     <div className="min-w-0">
@@ -1423,7 +1423,7 @@ export default function CandidatePipeline() {
                         {selectedCandidateIds.slice(0, 5).map(cid => {
                           const c = candidates.find(cand => String(cand.id) === String(cid));
                           return (
-                            <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-white dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 shadow-2xs">
+                            <span key={cid} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#1C130E] dark:text-[#FAF6F0] shadow-2xs">
                               <span className="truncate max-w-[100px]">{c?.name || cid}</span>
                               <button type="button" onClick={() => toggleCandidateSelection(cid)} className="hover:text-rose-500 cursor-pointer">
                                 <X className="w-2.5 h-2.5" />
@@ -1586,7 +1586,7 @@ export default function CandidatePipeline() {
               {displayMode === 'kanban' ? (
                 /* ─── FLUID KANBAN BOARD WITH NATURAL SCROLLING (ZERO SCROLL TRAPS) ─── */
                 <div className="w-full min-w-0 overflow-x-auto pb-6 pt-1">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 min-w-[960px] xl:min-w-0 gap-3 sm:gap-3.5 items-start">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 min-w-[1100px] xl:min-w-0 gap-3 sm:gap-3.5 items-start">
                     {stages.map((stage) => (
                       <div
                         key={stage.id}
@@ -1607,20 +1607,20 @@ export default function CandidatePipeline() {
                           const candId = e.dataTransfer.getData('text/plain') || draggedCandidateId;
                           handleStageDrop(candId, stage.id);
                         }}
-                        className={`w-full min-w-0 flex flex-col min-h-[480px] rounded-xl border transition-all duration-200 ${
+                        className={`w-full min-w-0 flex flex-col min-h-[480px] rounded-2xl border transition-all duration-200 ${
                           dragOverStage === stage.id
                             ? 'border-brand-500 bg-brand-50/30 dark:bg-brand-950/20 ring-2 ring-brand-500/30'
-                            : 'border-[#E5E0DA] dark:border-[#2A2520] bg-stone-100/75 dark:bg-[#14110F]/60 shadow-xs'
+                            : 'border-[#E8DFD8] dark:border-[#3A2A20] bg-[#FAF8F5]/85 dark:bg-[#18110D]/75 shadow-xs'
                         }`}
                       >
                         {/* Column Header */}
-                        <div className="px-3 py-2.5 border-b border-[#E5E0DA] dark:border-[#2A2520] flex items-center justify-between shrink-0 bg-[#FDFCFA]/95 dark:bg-[#1A1714]/90 backdrop-blur-sm rounded-t-xl">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${stage.dotColor} animate-pulse-subtle`} />
-                            <span className="text-xs font-bold text-stone-900 dark:text-stone-100">{stage.name}</span>
+                        <div className="px-3.5 py-2.5 border-b border-[#E8DFD8] dark:border-[#3D2C22] flex items-center justify-between shrink-0 bg-[#FDFBF7]/95 dark:bg-[#201814]/90 backdrop-blur-sm rounded-t-2xl">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-2 h-2 rounded-full ${stage.dotColor} animate-pulse-subtle shrink-0`} />
+                            <span className="text-xs font-bold text-stone-900 dark:text-stone-100 truncate tracking-tight">{stage.name}</span>
                           </div>
                           <span 
-                            className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-stone-100 dark:bg-[#231F1B] border border-[#E5E0DA] dark:border-[#2A2520] text-stone-700 dark:text-stone-300"
+                            className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-[#F0EAE1] dark:bg-[#2A1F18] border border-[#E0D7CC] dark:border-[#3D2C22] text-[#2A1B14] dark:text-[#F3ECE6] shrink-0"
                             title={pipelineSummary ? `Authoritative stage count: ${stage.authoritativeCount}` : undefined}
                           >
                             {pipelineSummary ? (stage.items.length !== stage.authoritativeCount ? `${stage.items.length}/${stage.authoritativeCount}` : stage.authoritativeCount) : stage.items.length}
@@ -1630,8 +1630,8 @@ export default function CandidatePipeline() {
                         {/* Cards Container with natural flow (Zero scroll trap) */}
                         <div className="p-2 space-y-2 flex-1">
                           {stage.items.length === 0 ? (
-                            <div className="h-28 flex items-center justify-center text-[11px] text-stone-500 dark:text-stone-400 font-medium border border-dashed border-[#E5E0DA] dark:border-[#2A2520] rounded-lg">
-                              Drop candidate here
+                            <div className="h-28 flex flex-col items-center justify-center text-[11px] text-stone-500 dark:text-stone-400 font-medium border border-dashed border-[#E0D7CC] dark:border-[#33251D] bg-[#F7F4EF]/50 dark:bg-[#140E0A]/40 rounded-xl">
+                              <span>Drop candidate here</span>
                             </div>
                           ) : (
                             stage.items.map((cand, cardIndex) => {
@@ -1641,7 +1641,7 @@ export default function CandidatePipeline() {
                                 ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800/60'
                                 : matchScore >= 70
                                 ? 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/50 border-brand-200 dark:border-brand-800/60'
-                                : 'text-stone-600 dark:text-stone-400 bg-stone-100 dark:bg-[#231F1B] border-[#E5E0DA] dark:border-[#2A2520]';
+                                : 'text-stone-600 dark:text-stone-400 bg-[#F0EAE1] dark:bg-[#2A1F18] border-[#E0D7CC] dark:border-[#3D2C22]';
 
                               return (
                                 <div
@@ -1656,12 +1656,12 @@ export default function CandidatePipeline() {
                                     setDragOverStage(null);
                                   }}
                                   onClick={() => handleOpenCandidate(cand)}
-                                  className={`p-3 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border transition-all duration-fast space-y-2 group select-none cursor-pointer animate-fade-in-up ${
+                                  className={`p-3 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border transition-all duration-fast space-y-2 group select-none cursor-pointer animate-fade-in-up ${
                                     draggedCandidateId === cand.id 
                                       ? 'opacity-40 scale-95 border-dashed border-brand-500 shadow-none' 
                                       : selectedCandidateIds.includes(cand.id) || selectedForComparison.includes(cand.id)
                                       ? 'ring-2 ring-brand-500 border-brand-500/80 bg-brand-50/30 dark:bg-brand-950/20'
-                                      : 'kanban-card active:scale-[0.98]'
+                                      : 'border-[#E8DFD8] dark:border-[#3D2C22] hover:border-amber-500/40 dark:hover:border-amber-500/40 shadow-xs hover:shadow-card active:scale-[0.98]'
                                   }`}
                                   style={{ animationDelay: `${Math.min(cardIndex * 50, 300)}ms` }}
                                 >
@@ -1674,23 +1674,23 @@ export default function CandidatePipeline() {
                                         title={selectedCandidateIds.includes(cand.id) ? "Deselect candidate" : "Select candidate for bulk operations"}
                                         className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all shrink-0 cursor-pointer ${
                                           selectedCandidateIds.includes(cand.id)
-                                            ? 'bg-brand-600 border-brand-600 text-white shadow-xs'
-                                            : 'border-stone-300 dark:border-stone-700 hover:border-brand-500 bg-white dark:bg-stone-900 text-transparent'
+                                            ? 'bg-brand-600 border-brand-600 text-white shadow-2xs'
+                                            : 'border-[#DCD2C7] dark:border-[#4A382C] hover:border-brand-500 bg-[#FAF8F5] dark:bg-[#1A120E] text-transparent'
                                         }`}
                                       >
                                         <Check className="w-2.5 h-2.5 stroke-[3]" />
                                       </button>
                                       <Avatar name={cand.name} size="xs" />
                                       <div className="min-w-0 flex-1">
-                                        <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors tracking-tight">
+                                        <h4 className="text-sm font-semibold text-stone-900 dark:text-stone-100 line-clamp-1 break-words group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors tracking-tight" title={cand.name}>
                                           {cand.name}
                                         </h4>
-                                        <p className="text-[11px] font-medium text-stone-500 dark:text-stone-400 truncate" title={getCandidateJobTitle(cand)}>
+                                        <p className="text-[11px] font-medium text-stone-500 dark:text-stone-400 line-clamp-2 leading-snug break-words mt-0.5" title={getCandidateJobTitle(cand)}>
                                           {getCandidateJobTitle(cand)}
                                         </p>
                                       </div>
                                     </div>
-                                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold font-mono border shrink-0 ${scoreColor}`}>
+                                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold font-mono border shrink-0 self-start ${scoreColor}`}>
                                       {matchScore}%
                                     </span>
                                   </div>
@@ -1719,7 +1719,7 @@ export default function CandidatePipeline() {
                                       return (
                                         <span 
                                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border shrink-0 ${
-                                            badgeCfg.badgeClass || 'bg-stone-100 dark:bg-[#231F1B] text-stone-700 dark:text-stone-300 border-[#E5E0DA] dark:border-[#2A2520]'
+                                            badgeCfg.badgeClass || 'bg-[#F0EAE1] dark:bg-[#2A1F18] text-[#2A1B14] dark:text-[#F3ECE6] border-[#E0D7CC] dark:border-[#3D2C22]'
                                           }`}
                                           title={cand.candidateExpectationFormatted ? `Candidate Expects: ${cand.candidateExpectationFormatted} (${badgeCfg.label})` : badgeCfg.label}
                                         >
@@ -1732,59 +1732,69 @@ export default function CandidatePipeline() {
                                     })()}
                                   </div>
 
-                                  {/* PROGRESSIVE HIERARCHY: QUALIFICATIONS & ACTION BUTTONS */}
-                                  <div className="pt-1.5 border-t border-stone-100 dark:border-[#2A2520] flex items-center justify-between text-[10px] text-stone-500 dark:text-stone-400">
-                                    <div className="flex items-center gap-1 truncate max-w-[120px]">
-                                      {cand.skills?.slice(0, 2).map((s, idx) => (
-                                        <span key={idx} className="px-1.5 py-0.2 rounded bg-stone-100 dark:bg-[#231F1B] text-[10px] font-medium text-stone-700 dark:text-stone-300 truncate">
+                                  {/* SKILLS TAGS ROW */}
+                                  {cand.skills && cand.skills.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-1 min-w-0 pt-0.5">
+                                      {cand.skills.slice(0, 3).map((s, idx) => (
+                                        <span 
+                                          key={idx} 
+                                          className="px-2 py-0.5 rounded-md bg-[#F0EAE1] dark:bg-[#2A1F18] text-[10px] font-medium text-stone-700 dark:text-stone-300 border border-[#E4DDD3] dark:border-[#382B21] max-w-[120px] truncate" 
+                                          title={s}
+                                        >
                                           {s}
                                         </span>
                                       ))}
-                                      {(cand.skills?.length || 0) > 2 && (
-                                        <span className="text-[10px] font-mono font-semibold text-stone-600 dark:text-stone-300">+{cand.skills.length - 2}</span>
+                                      {cand.skills.length > 3 && (
+                                        <span className="text-[10px] font-mono font-semibold text-stone-500 dark:text-stone-400 pl-0.5" title={cand.skills.slice(3).join(', ')}>
+                                          +{cand.skills.length - 3}
+                                        </span>
                                       )}
                                     </div>
+                                  )}
 
-                                    {/* Quick Actions & Workspace Cue */}
-                                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                  {/* ACTION BAR ROW */}
+                                  <div className="pt-2 border-t border-[#EFE9E2] dark:border-[#2D2018] flex items-center justify-between text-[11px] text-stone-500 dark:text-stone-400">
+                                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                       {NEXT_STAGE_MAP[getCandidateStage(cand)] && !['selected', 'rejected'].includes((cand.hiringDecision || cand.hiring_decision || '').toLowerCase()) && (
                                         <button
                                           type="button"
                                           onClick={(e) => handleQuickAdvance(cand, e)}
                                           title={`Advance to ${STAGE_CONFIG[NEXT_STAGE_MAP[getCandidateStage(cand)]]?.label || NEXT_STAGE_MAP[getCandidateStage(cand)]}`}
-                                          className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900 border border-brand-200 dark:border-brand-800 transition flex items-center gap-0.5 cursor-pointer"
+                                          className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 border border-amber-300/80 dark:border-amber-800 transition flex items-center gap-1 cursor-pointer shadow-2xs"
                                         >
                                           <span>{NEXT_STAGE_LABELS[getCandidateStage(cand)] || 'Advance'}</span>
                                           <ArrowRight className="w-2.5 h-2.5" />
                                         </button>
                                       )}
 
-                                      <span 
+                                      <button 
+                                        type="button"
                                         onClick={() => handleOpenCandidate(cand)}
-                                        className="text-[10px] font-semibold text-stone-500 dark:text-stone-400 group-hover:text-brand-600 dark:group-hover:text-brand-400 flex items-center gap-0.5 transition-colors cursor-pointer"
+                                        className="px-2 py-1 rounded-lg text-[10px] font-semibold text-stone-600 dark:text-stone-300 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-stone-100 dark:hover:bg-stone-800/60 flex items-center gap-0.5 transition cursor-pointer"
                                       >
                                         <span>Review</span>
                                         <ChevronRight className="w-3 h-3" />
-                                      </span>
+                                      </button>
+                                    </div>
 
-                                      {/* Quick 3-dots Menu */}
-                                      <div className="relative">
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setActiveCardMenuId(prev => prev === cand.id ? null : cand.id);
-                                          }}
-                                          title="Quick candidate actions"
-                                          className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
-                                        >
-                                          <MoreHorizontal className="w-3.5 h-3.5" />
-                                        </button>
+                                    {/* Quick 3-dots Menu */}
+                                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveCardMenuId(prev => prev === cand.id ? null : cand.id);
+                                        }}
+                                        title="Quick candidate actions"
+                                        className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                                      >
+                                        <MoreHorizontal className="w-3.5 h-3.5" />
+                                      </button>
 
                                         {activeCardMenuId === cand.id && (
                                           <div 
                                             onClick={(e) => e.stopPropagation()}
-                                            className="absolute right-0 bottom-full mb-1.5 w-48 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] shadow-depth-elevated py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs"
+                                            className="absolute right-0 bottom-full mb-1.5 w-48 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-depth-elevated py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs"
                                           >
                                             {NEXT_STAGE_MAP[getCandidateStage(cand)] && (
                                               <button
@@ -1793,7 +1803,7 @@ export default function CandidatePipeline() {
                                                   handleQuickAdvance(cand, e);
                                                   setActiveCardMenuId(null);
                                                 }}
-                                                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                                className="w-full text-left px-3 py-1.5 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
                                               >
                                                 <ArrowRight className="w-3.5 h-3.5 text-brand-600" />
                                                 <span>Advance to {STAGE_CONFIG[NEXT_STAGE_MAP[getCandidateStage(cand)]]?.label}</span>
@@ -1804,7 +1814,7 @@ export default function CandidatePipeline() {
                                               <button
                                                 type="button"
                                                 onClick={(e) => handleQuickInviteAssessment(cand, e)}
-                                                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                                className="w-full text-left px-3 py-1.5 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
                                               >
                                                 <Code2 className="w-3.5 h-3.5 text-purple-600" />
                                                 <span>Invite Assessment</span>
@@ -1815,7 +1825,7 @@ export default function CandidatePipeline() {
                                               <button
                                                 type="button"
                                                 onClick={(e) => handleQuickShortlist(cand, e)}
-                                                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                                className="w-full text-left px-3 py-1.5 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
                                               >
                                                 <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                                                 <span>Shortlist Candidate</span>
@@ -1850,7 +1860,6 @@ export default function CandidatePipeline() {
                                         )}
                                       </div>
                                     </div>
-                                  </div>
 
                                   {/* Mobile Touch Stage Selector */}
                                   <div 
@@ -1881,10 +1890,10 @@ export default function CandidatePipeline() {
                 </div>
               ) : (
             /* ─── HIGH-DENSITY TABLE VIEW ─── */
-            <div className="rounded-xl border border-[#E5E0DA] dark:border-[#2A2520] bg-[#FDFCFA] dark:bg-[#1A1714] overflow-hidden shadow-card">
+            <div className="rounded-2xl border border-[#E8DFD8] dark:border-[#3D2C22] bg-[#FDFBF7] dark:bg-[#201814] overflow-hidden shadow-card">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-stone-100/80 dark:bg-[#14110F] border-b border-[#E5E0DA] dark:border-[#2A2520] text-[11px] font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider font-mono">
+                  <thead className="bg-[#FAF8F5] dark:bg-[#18110D] border-b border-[#E8DFD8] dark:border-[#3D2C22] text-[11px] font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider font-mono">
                     <tr>
                       <th className="w-10 px-3 py-3 text-center">
                         <button
@@ -1893,10 +1902,10 @@ export default function CandidatePipeline() {
                           title={selectedCandidateIds.length === filteredCandidates.length && filteredCandidates.length > 0 ? "Deselect all" : "Select all visible candidates"}
                           className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all mx-auto cursor-pointer ${
                             selectedCandidateIds.length > 0 && selectedCandidateIds.length === filteredCandidates.length
-                              ? 'bg-brand-600 border-brand-600 text-white shadow-xs'
+                              ? 'bg-brand-600 border-brand-600 text-white shadow-2xs'
                               : selectedCandidateIds.length > 0
                               ? 'bg-brand-600/30 border-brand-600 text-brand-600'
-                              : 'border-stone-300 dark:border-stone-700 hover:border-brand-500 bg-white dark:bg-stone-900 text-transparent'
+                              : 'border-[#DCD2C7] dark:border-[#4A382C] hover:border-brand-500 bg-[#FAF8F5] dark:bg-[#1A120E] text-transparent'
                           }`}
                         >
                           <Check className="w-2.5 h-2.5 stroke-[3]" />
@@ -1913,7 +1922,7 @@ export default function CandidatePipeline() {
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                  <tbody className="divide-y divide-[#EFE9E2] dark:divide-[#2D2018]">
                     {filteredCandidates.map((cand) => {
                       const wf = normalizeWorkflow(cand);
                       const matchScore = cand.matchScore || 0;
@@ -1921,10 +1930,10 @@ export default function CandidatePipeline() {
                         <tr
                           key={cand.id}
                           onClick={() => handleOpenCandidate(cand)}
-                          className={`transition-all duration-150 cursor-pointer group ${
+                          className={`transition-colors duration-150 cursor-pointer group ${
                             selectedCandidateIds.includes(cand.id)
-                              ? 'bg-brand-500/10 dark:bg-brand-950/30'
-                              : 'hover:bg-stone-50/70 dark:hover:bg-stone-900/40'
+                              ? 'bg-amber-500/10 dark:bg-amber-950/30'
+                              : 'hover:bg-[#FAF8F5] dark:hover:bg-[#281D17]/60'
                           }`}
                         >
                           <td className="w-10 px-3 py-3 text-center" onClick={(e) => e.stopPropagation()}>
@@ -1934,8 +1943,8 @@ export default function CandidatePipeline() {
                               title={selectedCandidateIds.includes(cand.id) ? "Deselect candidate" : "Select candidate"}
                               className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all mx-auto cursor-pointer ${
                                 selectedCandidateIds.includes(cand.id)
-                                  ? 'bg-brand-600 border-brand-600 text-white shadow-xs'
-                                  : 'border-stone-300 dark:border-stone-700 hover:border-brand-500 bg-white dark:bg-stone-900 text-transparent'
+                                  ? 'bg-brand-600 border-brand-600 text-white shadow-2xs'
+                                  : 'border-[#DCD2C7] dark:border-[#4A382C] hover:border-brand-500 bg-[#FAF8F5] dark:bg-[#1A120E] text-transparent'
                               }`}
                             >
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
@@ -1945,40 +1954,40 @@ export default function CandidatePipeline() {
                             <div className="flex items-center gap-3">
                               <Avatar name={cand.name} size="sm" />
                               <div>
-                                <div className="font-bold text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400">
+                                <div className="font-semibold text-stone-900 dark:text-stone-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                                   {cand.name}
                                 </div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{cand.email}</div>
+                                <div className="text-[11px] text-stone-500 dark:text-stone-400 font-mono">{cand.email}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-slate-800 dark:text-slate-200 font-medium">
+                          <td className="px-4 py-3 text-stone-800 dark:text-stone-200 font-medium">
                             {cand.job?.title || cand.jobRole || 'Applicant'}
                           </td>
                           <td className="px-4 py-3">
                             {cand.candidateExpectationFormatted ? (
                               <div className="space-y-0.5">
-                                <div className="font-semibold text-slate-800 dark:text-slate-200">
+                                <div className="font-semibold text-stone-900 dark:text-stone-100 font-mono text-[11px]">
                                   {cand.candidateExpectationFormatted}
                                 </div>
                                 {cand.compensationAnalysis && cand.compensationAnalysis.relationship !== 'expectation_unavailable' && (() => {
                                   const badgeCfg = getCompensationBadgeConfig(cand.compensationAnalysis.relationship);
                                   return (
                                     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                                      badgeCfg.badgeClass || 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                      badgeCfg.badgeClass || 'bg-[#F0EAE1] dark:bg-[#2A1F18] text-[#2A1B14] dark:text-[#F3ECE6] border-[#E0D7CC] dark:border-[#3D2C22]'
                                     }`}>
-                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${badgeCfg.dotColor || 'bg-slate-400'}`} />
+                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${badgeCfg.dotColor || 'bg-stone-400'}`} />
                                       <span>{badgeCfg.shortLabel || badgeCfg.label}</span>
                                     </span>
                                   );
                                 })()}
                               </div>
                             ) : (
-                              <span className="text-slate-500 dark:text-slate-400 text-[11px] italic">Not specified</span>
+                              <span className="text-stone-400 dark:text-stone-500 text-[11px] italic">Not specified</span>
                             )}
                           </td>
                           <td className="px-4 py-3 font-mono font-bold">
-                            <span className={matchScore >= 85 ? 'text-emerald-600 dark:text-emerald-400' : matchScore >= 70 ? 'text-brand-600 dark:text-brand-400' : 'text-slate-500'}>
+                            <span className={matchScore >= 85 ? 'text-emerald-700 dark:text-emerald-300' : matchScore >= 70 ? 'text-amber-700 dark:text-amber-400' : 'text-stone-500 dark:text-stone-400'}>
                               {matchScore}%
                             </span>
                           </td>
@@ -2005,7 +2014,7 @@ export default function CandidatePipeline() {
                                   type="button"
                                   onClick={(e) => handleQuickAdvance(cand, e)}
                                   title={`Advance to ${STAGE_CONFIG[NEXT_STAGE_MAP[getCandidateStage(cand)]]?.label || NEXT_STAGE_MAP[getCandidateStage(cand)]}`}
-                                  className="px-2 py-1 rounded-md text-[11px] font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900 border border-brand-200 dark:border-brand-800 transition flex items-center gap-1 cursor-pointer"
+                                  className="px-2 py-1 rounded-md text-[11px] font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900 border border-amber-300/80 dark:border-amber-800 transition flex items-center gap-1 cursor-pointer"
                                 >
                                   <span>{NEXT_STAGE_LABELS[getCandidateStage(cand)] || 'Advance'}</span>
                                   <ArrowRight className="w-3 h-3" />
@@ -2033,7 +2042,7 @@ export default function CandidatePipeline() {
                                     setActiveCardMenuId(prev => prev === cand.id ? null : cand.id);
                                   }}
                                   title="Quick candidate actions"
-                                  className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-800 transition cursor-pointer"
+                                  className="p-1 rounded-md text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] transition cursor-pointer"
                                 >
                                   <MoreHorizontal className="w-3.5 h-3.5" />
                                 </button>
@@ -2041,7 +2050,7 @@ export default function CandidatePipeline() {
                                 {activeCardMenuId === cand.id && (
                                   <div 
                                     onClick={(e) => e.stopPropagation()}
-                                    className="absolute right-0 bottom-full mb-1.5 w-48 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] shadow-depth-elevated py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs text-left"
+                                    className="absolute right-0 bottom-full mb-1.5 w-48 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-depth-elevated py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs text-left"
                                   >
                                     {NEXT_STAGE_MAP[getCandidateStage(cand)] && (
                                       <button
@@ -2050,7 +2059,7 @@ export default function CandidatePipeline() {
                                           handleQuickAdvance(cand, e);
                                           setActiveCardMenuId(null);
                                         }}
-                                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                        className="w-full text-left px-3 py-1.5 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
                                       >
                                         <ArrowRight className="w-3.5 h-3.5 text-brand-600" />
                                         <span>Advance to {STAGE_CONFIG[NEXT_STAGE_MAP[getCandidateStage(cand)]]?.label}</span>
@@ -2064,7 +2073,7 @@ export default function CandidatePipeline() {
                                           handleQuickInviteAssessment(cand, e);
                                           setActiveCardMenuId(null);
                                         }}
-                                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                        className="w-full text-left px-3 py-1.5 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
                                       >
                                         <Send className="w-3.5 h-3.5 text-purple-600" />
                                         <span>Invite Assessment</span>
@@ -2078,7 +2087,7 @@ export default function CandidatePipeline() {
                                           handleQuickShortlist(cand, e);
                                           setActiveCardMenuId(null);
                                         }}
-                                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                        className="w-full text-left px-3 py-1.5 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
                                       >
                                         <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
                                         <span>Shortlist</span>
@@ -2091,18 +2100,19 @@ export default function CandidatePipeline() {
                                         toggleCandidateComparison(cand, e);
                                         setActiveCardMenuId(null);
                                       }}
-                                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-[#231F1B] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
+                                      className="w-full text-left px-3 py-1.5 hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] flex items-center gap-2 text-stone-700 dark:text-stone-200 cursor-pointer"
                                     >
                                       <Scale className="w-3.5 h-3.5 text-amber-600" />
                                       <span>{selectedForComparison.includes(cand.id) ? 'Remove Compare' : 'Add to Compare'}</span>
                                     </button>
 
-                                    <div className="my-1 border-t border-stone-200 dark:border-stone-800" />
+                                    <div className="my-1 border-t border-[#EFE9E2] dark:border-[#2D2018]" />
 
                                     <button
                                       type="button"
                                       onClick={(e) => {
                                         handleOpenRejectionModal(cand, e);
+                                        setActiveCardMenuId(null);
                                       }}
                                       className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 cursor-pointer"
                                     >
@@ -2131,7 +2141,7 @@ export default function CandidatePipeline() {
       {activeTab === 'jobs' && (
         <div className="space-y-4 animate-fade-in-up">
           {/* Sub-filter tabs for Requisitions */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E5E0DA] dark:border-[#2A2520] shadow-card">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-xs">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold text-stone-500 dark:text-stone-400 uppercase tracking-wider font-mono mr-1">
                 Filter Status:
@@ -2146,15 +2156,15 @@ export default function CandidatePipeline() {
                   key={tab.id}
                   type="button"
                   onClick={() => setJobStatusTabFilter(tab.id)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
                     jobStatusTabFilter === tab.id
-                      ? 'bg-brand-600 text-white shadow-subtle'
-                      : 'bg-stone-100 dark:bg-[#231F1B] text-stone-600 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-[#2A2520]'
+                      ? 'bg-white dark:bg-[#2C1F18] text-[#1C130E] dark:text-[#F3ECE6] shadow-xs border border-amber-500/50 dark:border-amber-500/30'
+                      : 'bg-[#F0EAE1] dark:bg-[#1A120E] text-stone-600 dark:text-stone-400 border border-[#E0D7CC] dark:border-[#2C1F17] hover:bg-[#E7DFD4] dark:hover:bg-[#251A14]'
                   }`}
                 >
                   <span>{tab.label}</span>
                   <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded ${
-                    jobStatusTabFilter === tab.id ? 'bg-white/20 text-white' : 'bg-stone-200 dark:bg-[#2A2520] text-stone-600 dark:text-stone-400'
+                    jobStatusTabFilter === tab.id ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-200/80 dark:border-amber-500/30' : 'bg-stone-300/40 dark:bg-[#251A14] text-stone-700 dark:text-stone-400'
                   }`}>
                     {tab.count}
                   </span>
@@ -2192,48 +2202,48 @@ export default function CandidatePipeline() {
                 return (
                   <div
                     key={job.id}
-                    className={`p-5 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border transition-all duration-200 flex flex-col justify-between space-y-4 shadow-card interactive-card ${
+                    className={`p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border transition-all duration-200 flex flex-col justify-between space-y-4 shadow-card hover:shadow-depth-elevated hover:border-amber-500/40 dark:hover:border-amber-500/40 ${
                       isNewlyCreated
                         ? 'border-brand-500 ring-2 ring-brand-500/20'
                         : statusStr === 'Closed'
-                        ? 'border-[#E5E0DA] dark:border-[#2A2520]/60 opacity-85'
-                        : 'border-[#E5E0DA] dark:border-[#2A2520]'
+                        ? 'border-[#E8DFD8] dark:border-[#3D2C22]/60 opacity-85'
+                        : 'border-[#E8DFD8] dark:border-[#3D2C22]'
                     }`}
                   >
                     <div className="space-y-2.5">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <span className="text-[10px] font-bold text-brand-600 dark:text-brand-400 uppercase tracking-wider font-mono">
+                          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider font-mono">
                             {job.department}
                           </span>
-                          <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+                          <h3 className="text-base font-bold font-sans text-stone-900 dark:text-stone-100 tracking-tight mt-0.5">
                             {job.title}
                           </h3>
                         </div>
 
                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                           statusStr === 'Active'
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
+                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
                             : statusStr === 'Paused'
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
-                            : 'bg-slate-500/10 text-slate-500 dark:text-slate-400 border-slate-500/25'
+                            ? 'bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30'
+                            : 'bg-stone-500/10 text-stone-600 dark:text-stone-400 border-stone-400/30'
                         }`}>
                           {statusStr}
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-stone-500 dark:text-stone-400">
                         <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                          <MapPin className="w-3.5 h-3.5 text-stone-400" />
                           <span>{job.location}</span>
                         </span>
                         <span>•</span>
                         <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          <Clock className="w-3.5 h-3.5 text-stone-400" />
                           <span>{job.experience}</span>
                         </span>
                         <span>•</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                        <span className="font-semibold text-stone-700 dark:text-stone-300 font-mono">
                           {applicantsForThisJob.length} Candidates Preserved
                         </span>
                       </div>
@@ -2247,19 +2257,19 @@ export default function CandidatePipeline() {
                       </div>
 
                       {statusStr === 'Closed' && job.closure_reason && (
-                        <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400">
-                          <span className="font-bold text-slate-700 dark:text-slate-300">Closure Note: </span>
+                        <div className="p-2.5 rounded-xl bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#33241C] text-[11px] text-stone-600 dark:text-stone-400">
+                          <span className="font-bold text-stone-700 dark:text-stone-300">Closure Note: </span>
                           <span>{job.closure_reason}</span>
                         </div>
                       )}
 
-                      <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2">
+                      <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed line-clamp-2">
                         {job.description}
                       </p>
 
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {job.requiredSkills?.map((s, idx) => (
-                          <span key={idx} className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-medium border border-slate-200 dark:border-slate-700">
+                          <span key={idx} className="px-2 py-0.5 rounded-md bg-[#F0EAE1] dark:bg-[#2A1F18] text-stone-700 dark:text-stone-300 text-[11px] font-medium border border-[#E0D7CC] dark:border-[#3D2C22]">
                             {s}
                           </span>
                         ))}
@@ -2267,7 +2277,7 @@ export default function CandidatePipeline() {
                     </div>
 
                     {/* Footer Controls & State Transition Bar */}
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                    <div className="pt-3 border-t border-[#EFE9E2] dark:border-[#2D2018] flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Button
                           variant="outline"
@@ -2299,7 +2309,7 @@ export default function CandidatePipeline() {
                             <button
                               type="button"
                               onClick={() => changeJobStatus(job.id, 'Paused')}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 transition"
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300/80 dark:border-amber-800 hover:bg-amber-100 transition cursor-pointer"
                             >
                               Pause
                             </button>
@@ -2309,7 +2319,7 @@ export default function CandidatePipeline() {
                                 setClosingJobModal(job);
                                 setClosureReasonText('');
                               }}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#F0EAE1] dark:bg-[#281D17] text-stone-700 dark:text-stone-300 border border-[#E0D7CC] dark:border-[#3D2C22] hover:bg-[#E7DFD4] dark:hover:bg-[#33251D] transition cursor-pointer"
                             >
                               Close
                             </button>
@@ -2320,7 +2330,7 @@ export default function CandidatePipeline() {
                             <button
                               type="button"
                               onClick={() => changeJobStatus(job.id, 'Active')}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition"
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
                             >
                               Reactivate
                             </button>
@@ -2330,7 +2340,7 @@ export default function CandidatePipeline() {
                                 setClosingJobModal(job);
                                 setClosureReasonText('');
                               }}
-                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[#F0EAE1] dark:bg-[#281D17] text-stone-700 dark:text-stone-300 border border-[#E0D7CC] dark:border-[#3D2C22] hover:bg-[#E7DFD4] dark:hover:bg-[#33251D] transition cursor-pointer"
                             >
                               Close
                             </button>
@@ -2340,7 +2350,7 @@ export default function CandidatePipeline() {
                           <button
                             type="button"
                             onClick={() => changeJobStatus(job.id, 'Active')}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition"
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
                           >
                             Reactivate Requisition
                           </button>
@@ -2356,17 +2366,17 @@ export default function CandidatePipeline() {
 
       {/* Closure Reason Modal */}
       {closingJobModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md p-6 rounded-2xl bg-white dark:bg-[#14161F] border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-[#FDFBF7] dark:bg-[#1A120E] border border-[#E8DFD8] dark:border-[#33241C] shadow-depth-elevated space-y-4">
+            <h3 className="text-lg font-bold font-sans text-stone-900 dark:text-stone-100">
               Close Requisition: {closingJobModal.title}
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
               Closing this job will prevent candidates from submitting new applications. All existing application dossiers, assessment results, and candidate history will remain 100% preserved.
             </p>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
                 Closure Reason (Optional):
               </label>
               <input
@@ -2374,7 +2384,7 @@ export default function CandidatePipeline() {
                 value={closureReasonText}
                 onChange={(e) => setClosureReasonText(e.target.value)}
                 placeholder="e.g. Position filled, Budget reallocated, Headcount frozen..."
-                className="w-full px-3.5 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3.5 py-2 rounded-xl text-xs bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500"
               />
             </div>
 

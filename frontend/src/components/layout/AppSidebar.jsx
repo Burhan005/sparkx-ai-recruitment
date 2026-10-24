@@ -34,7 +34,8 @@ import {
   BookmarkCheck,
   Home,
   ArrowRight,
-  CalendarCheck
+  CalendarCheck,
+  Target
 } from 'lucide-react';
 import { Avatar } from '../ui/Primitives';
 import { formatShortcut } from '../../utils/keyboardShortcut';
@@ -283,6 +284,8 @@ export default function AppSidebar({
       items: [
         { path: '/jobs', label: 'Explore Positions', icon: Briefcase, badge: totalJobsCount > 0 ? String(totalJobsCount) : null },
         { path: '/my-applications', label: 'My Applications', icon: FileText, badge: myApplications.length > 0 ? String(myApplications.length) : null },
+        { path: '/resume-studio', label: 'AI Resume Studio', icon: Sparkles, badge: 'Studio', badgeColor: 'bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
+        { path: '/resume-analyzer', label: 'Resume Match Analyzer', icon: Target, badge: 'AI Match', badgeColor: 'bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
       ]
     },
     {
@@ -553,7 +556,7 @@ export default function AppSidebar({
                         {/* Sculpted 30x30px Pedestal Tile */}
                         <div className={`w-[30px] h-[30px] rounded-lg flex items-center justify-center shrink-0 transition-all duration-300 ease-out ${
                           active
-                            ? 'bg-[#2E2017] dark:bg-[#34241A] text-amber-400 dark:text-amber-300 shadow-2xs border border-amber-600/40 dark:border-amber-500/35'
+                            ? 'bg-amber-500/15 dark:bg-[#34241A] text-amber-800 dark:text-amber-300 shadow-2xs border border-amber-600/40 dark:border-amber-500/35'
                             : 'bg-[#F2ECE3] dark:bg-[#1E1510] border border-[#E5DDD2] dark:border-[#2C1F17] text-stone-500 dark:text-stone-400 group-hover:text-amber-700 dark:group-hover:text-amber-400 group-hover:border-amber-600/30 dark:group-hover:border-amber-500/30'
                         }`}>
                           <Icon className="w-4 h-4" />
@@ -829,8 +832,14 @@ export default function AppSidebar({
           /* Expanded Bottom Dock */
           <>
             <div className="flex items-center justify-between px-1 text-xs">
-              {/* Database Telemetry */}
-              <div className="flex items-center gap-2 min-w-0">
+              {/* Database Telemetry - Clickable to Reconnect */}
+              <button
+                type="button"
+                onClick={handleSync}
+                disabled={isSyncing}
+                title={isDbConnected ? "PostgreSQL Database Live (Click to refresh)" : "Database Offline (Click to reconnect)"}
+                className="flex items-center gap-2 min-w-0 text-left hover:opacity-80 transition cursor-pointer"
+              >
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                     isDbConnected ? 'bg-emerald-400' : 'bg-rose-400'
@@ -840,32 +849,32 @@ export default function AppSidebar({
                   }`} />
                 </span>
                 <span className="text-stone-600 dark:text-[#C5B8AC] font-mono text-[10.5px] font-semibold truncate">
-                  {isDbConnected ? 'PostgreSQL Live · 14ms' : 'Database Offline'}
+                  {isDbConnected ? 'PostgreSQL Live · 14ms' : 'Database Offline (Click to Reconnect)'}
                 </span>
-              </div>
+              </button>
 
               {/* Action Cluster */}
               <div className="flex items-center gap-1 shrink-0">
+                {(!isDbConnected || userRole === 'recruiter') && (
+                  <button
+                    type="button"
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    title="Sync with PostgreSQL database"
+                    className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-[#F2ECE3] dark:hover:bg-[#241A14] transition disabled:opacity-50 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[#C27803] dark:text-amber-400' : ''}`} />
+                  </button>
+                )}
                 {userRole === 'recruiter' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleSync}
-                      disabled={isSyncing}
-                      title="Sync with PostgreSQL database"
-                      className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-[#F2ECE3] dark:hover:bg-[#241A14] transition disabled:opacity-50 cursor-pointer"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-[#C27803] dark:text-amber-400' : ''}`} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onOpenAIConfig}
-                      title="Configure AI Models & Architecture"
-                      className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-[#F2ECE3] dark:hover:bg-[#241A14] transition cursor-pointer"
-                    >
-                      <Cpu className="w-3.5 h-3.5 text-stone-400 hover:text-[#C27803] dark:hover:text-amber-400" />
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    onClick={onOpenAIConfig}
+                    title="Configure AI Models & Architecture"
+                    className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-[#F2ECE3] dark:hover:bg-[#241A14] transition cursor-pointer"
+                  >
+                    <Cpu className="w-3.5 h-3.5 text-stone-400 hover:text-[#C27803] dark:hover:text-amber-400" />
+                  </button>
                 )}
                 <button
                   type="button"
@@ -891,10 +900,10 @@ export default function AppSidebar({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-bold text-[#1C130E] dark:text-[#FAF6F2] truncate leading-tight">
-                    {currentUser?.name || (userRole === 'recruiter' ? 'SparkX Admin' : 'Candidate')}
+                    {currentUser?.name || (userRole === 'recruiter' ? 'ARETE Admin' : 'Candidate')}
                   </div>
                   <div className="text-[10px] text-stone-500 dark:text-stone-400 truncate font-mono pt-0.5">
-                    {currentUser?.email || (userRole === 'recruiter' ? 'admin@sparkx.ai' : 'candidate@sparkx.ai')}
+                    {currentUser?.email || (userRole === 'recruiter' ? 'admin@arete.ai' : 'candidate@arete.ai')}
                   </div>
                 </div>
               </div>

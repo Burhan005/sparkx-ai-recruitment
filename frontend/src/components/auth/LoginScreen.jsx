@@ -547,7 +547,7 @@ export default function LoginScreen({ mode, onLogin }) {
 
               {/* Card Header & Title */}
               <div className="text-center space-y-1.5 mb-7 w-full">
-                <h2 className="text-2xl sm:text-[1.75rem] font-serif font-bold text-[#1C130E] dark:text-white tracking-tight">
+                <h2 className="text-2xl sm:text-[1.75rem] font-sans font-bold text-[#1C130E] dark:text-white tracking-tight">
                   {tab === 'signin' && 'Sign in to ARETE'}
                   {tab === 'signup' && 'Create Your ARETE Account'}
                   {tab === 'forgot' && (forgotStep === 1 ? 'Recover Account Access' : 'Establish New Password')}

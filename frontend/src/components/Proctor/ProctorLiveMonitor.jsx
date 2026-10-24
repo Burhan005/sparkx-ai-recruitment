@@ -194,23 +194,23 @@ export default function ProctorLiveMonitor() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-500/20 uppercase tracking-wider">
-              Real-Time Biometric HUD
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25 uppercase tracking-wider font-mono">
+              Session Telemetry HUD
             </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">Autonomous Proctoring Engine</span>
+            <span className="text-xs text-[#7A6B5D] dark:text-[#A89A8D]">Continuous Verification Engine</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1 tracking-tight">
-            Interview Integrity & Anti-Cheating Command
+          <h1 className="text-2xl sm:text-3xl font-black text-[#2E2017] dark:text-[#FDFBF7] mt-1 tracking-tight">
+            Interview Integrity & Proctor Telemetry
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Real-time biometric presence, focus-loss signals, and objective risk indicator for HR.
+          <p className="text-xs sm:text-sm text-[#7A6B5D] dark:text-[#A89A8D] mt-1">
+            Objective presence signals, focus observations, and verifiable telemetry to assist fair human evaluation.
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
           <button
             onClick={resetTelemetry}
-            className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-brand-600 dark:hover:text-white transition flex items-center space-x-1.5 shadow-sm"
+            className="px-3.5 py-2 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD] hover:text-[#C27803] dark:hover:text-[#F59E0B] transition flex items-center space-x-1.5 shadow-xs"
           >
             <RefreshCcw className="w-3.5 h-3.5" />
             <span>Reset Baseline</span>
@@ -223,7 +223,7 @@ export default function ProctorLiveMonitor() {
         
         {/* Left: Live Visual Stream & HUD (6 Cols) */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="relative rounded-3xl overflow-hidden bg-slate-950 border border-slate-800 aspect-[4/3] flex items-center justify-center shadow-2xl">
+          <div className="relative rounded-2xl overflow-hidden bg-[#0C0A09] border border-[#E8DFD8] dark:border-[#3D2C22] aspect-[4/3] flex items-center justify-center shadow-sm">
             <video
               ref={videoRef}
               muted
@@ -233,11 +233,11 @@ export default function ProctorLiveMonitor() {
 
             {!cameraActive && (
               <div className="flex flex-col items-center justify-center p-6 text-center space-y-3">
-                <div className="w-20 h-20 rounded-full bg-slate-900 border border-brand-500/30 flex items-center justify-center text-brand-400">
+                <div className="w-20 h-20 rounded-full bg-[#1A1512] border border-amber-500/30 flex items-center justify-center text-[#F59E0B]">
                   <Video className="w-8 h-8" />
                 </div>
-                <div className="text-xs font-semibold text-slate-300">Biometric HUD Stream Active</div>
-                <span className="text-[10px] text-slate-500">Heuristic tracking enabled</span>
+                <div className="text-xs font-semibold text-[#E8DFD8]">Biometric HUD Stream Active</div>
+                <span className="text-[10px] text-[#A89A8D]">Heuristic tracking enabled</span>
               </div>
             )}
 
@@ -256,41 +256,41 @@ export default function ProctorLiveMonitor() {
 
             <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-slate-400 bg-black/70 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10">
               <span className="flex items-center space-x-1.5">
-                <Activity className="w-3.5 h-3.5 text-brand-400" />
+                <Activity className="w-3.5 h-3.5 text-amber-400" />
                 <span>Telemetry: Nominal</span>
               </span>
-              <span>Anti-Cheating V2.4</span>
+              <span>Verification System V2.4</span>
             </div>
           </div>
 
           {/* Interactive Simulation Controls */}
-          <div className="glass-card p-5 rounded-2xl border border-slate-800 space-y-3">
+          <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-brand-300 flex items-center space-x-1.5">
-                <Zap className="w-3.5 h-3.5 text-brand-400" />
-                <span>Simulate Anomaly Triggers (Client Presentation Mode):</span>
+              <span className="text-xs font-bold text-[#C27803] dark:text-[#F59E0B] flex items-center space-x-1.5">
+                <Zap className="w-3.5 h-3.5" />
+                <span>Simulate Telemetry Triggers (Calibration Mode):</span>
               </span>
-              <span className="text-[10px] text-slate-400">Instant Event Logging</span>
+              <span className="text-[10px] text-[#7A6B5D] dark:text-[#A89A8D]">Instant Event Logging</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
                 onClick={() => triggerEvent('TAB_SWITCH')}
-                className="p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-amber-500 text-xs font-semibold text-slate-200 transition text-center"
+                className="p-2.5 rounded-xl bg-[#F7F4EF] hover:bg-[#EFE9DF] dark:bg-[#150F0D] dark:hover:bg-[#1C1410] border border-[#E8DFD8] dark:border-[#33241C] text-xs font-semibold text-[#2E2017] dark:text-[#FDFBF7] transition text-center"
               >
                 Alt-Tab Away
               </button>
 
               <button
                 onClick={() => triggerEvent('MULTIPLE_FACES')}
-                className="p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-rose-500 text-xs font-semibold text-slate-200 transition text-center"
+                className="p-2.5 rounded-xl bg-[#F7F4EF] hover:bg-[#EFE9DF] dark:bg-[#150F0D] dark:hover:bg-[#1C1410] border border-[#E8DFD8] dark:border-[#33241C] text-xs font-semibold text-[#2E2017] dark:text-[#FDFBF7] transition text-center"
               >
                 Multi-Person Entry
               </button>
 
               <button
                 onClick={() => triggerEvent('FACE_LOST')}
-                className="p-2.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-amber-500 text-xs font-semibold text-slate-200 transition text-center"
+                className="p-2.5 rounded-xl bg-[#F7F4EF] hover:bg-[#EFE9DF] dark:bg-[#150F0D] dark:hover:bg-[#1C1410] border border-[#E8DFD8] dark:border-[#33241C] text-xs font-semibold text-[#2E2017] dark:text-[#FDFBF7] transition text-center"
               >
                 Candidate Leaves
               </button>
@@ -303,10 +303,10 @@ export default function ProctorLiveMonitor() {
           
           {/* Risk Level & Integrity Metric */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="glass-card p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
-              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Session Integrity Score</span>
-              <div className="text-3xl font-black text-slate-900 dark:text-white mt-1">{integrityScore}/100</div>
-              <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full mt-2 overflow-hidden">
+            <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm">
+              <span className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] font-medium">Session Integrity Score</span>
+              <div className="text-3xl font-black text-[#2E2017] dark:text-[#FDFBF7] mt-1">{integrityScore}/100</div>
+              <div className="w-full bg-[#E8DFD8] dark:bg-[#33241C] h-2 rounded-full mt-2 overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all duration-300 ${
                     integrityScore >= 80 ? 'bg-emerald-500' : integrityScore >= 60 ? 'bg-amber-500' : 'bg-rose-500'
@@ -316,27 +316,27 @@ export default function ProctorLiveMonitor() {
               </div>
             </div>
 
-            <div className="glass-card p-5 rounded-2xl border border-slate-800">
-              <span className="text-xs text-slate-400 font-medium">Risk Indicator for HR</span>
+            <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm">
+              <span className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] font-medium">Risk Indicator for Reviewer</span>
               <div className={`text-3xl font-black mt-1 ${
-                riskLevel === 'Low' ? 'text-emerald-400' : riskLevel === 'Medium' ? 'text-amber-400' : 'text-rose-400'
+                riskLevel === 'Low' ? 'text-emerald-600 dark:text-emerald-400' : riskLevel === 'Medium' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
               }`}>
                 {riskLevel} Risk
               </div>
-              <span className="text-[11px] text-slate-400 mt-1 block">
-                {riskLevel === 'Low' ? 'Zero suspicious anomalies' : 'Human review advised'}
+              <span className="text-[11px] text-[#7A6B5D] dark:text-[#A89A8D] mt-1 block">
+                {riskLevel === 'Low' ? 'Zero suspicious anomalies' : 'Human review advised — verify context'}
               </span>
             </div>
           </div>
 
-          {/* Timestamped Suspicious Event Stream */}
-          <div className="glass-card p-5 rounded-2xl border border-slate-800 flex-1 space-y-3 max-h-96 overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
-                <Activity className="w-4 h-4 text-brand-400" />
-                <span>Suspicious Event Audit Log ({events.length})</span>
+          {/* Timestamped Event Stream */}
+          <div className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm flex-1 space-y-3 max-h-96 overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#E8DFD8] dark:border-[#33241C] pb-2">
+              <span className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7] uppercase tracking-wider flex items-center space-x-1.5 font-mono">
+                <Activity className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
+                <span>Verification Event Audit Log ({events.length})</span>
               </span>
-              <span className="text-[10px] text-slate-500">Immutable Audit Trail</span>
+              <span className="text-[10px] text-[#7A6B5D] dark:text-[#A89A8D]">Contextual Evidence</span>
             </div>
 
             <div className="space-y-2">
@@ -345,17 +345,17 @@ export default function ProctorLiveMonitor() {
                   key={ev.id}
                   className={`p-3 rounded-xl border flex items-start space-x-3 text-xs ${
                     ev.severity === 'high' 
-                      ? 'bg-rose-950/40 border-rose-800/40 text-rose-200' 
+                      ? 'bg-rose-500/10 border-rose-500/25 text-rose-800 dark:text-rose-200' 
                       : ev.severity === 'medium'
-                      ? 'bg-amber-950/40 border-amber-800/40 text-amber-200'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-300'
+                      ? 'bg-amber-500/10 border-amber-500/25 text-amber-800 dark:text-amber-200'
+                      : 'bg-[#F7F4EF] dark:bg-[#150F0D] border-[#E8DFD8] dark:border-[#33241C] text-[#2E2017] dark:text-[#FDFBF7]'
                   }`}
                 >
-                  <div className="px-2 py-0.5 rounded bg-black/40 font-mono text-[10px] text-slate-400 mt-0.5">
+                  <div className="px-2 py-0.5 rounded bg-black/5 dark:bg-black/40 font-mono text-[10px] text-[#7A6B5D] dark:text-[#A89A8D] mt-0.5">
                     {ev.timestamp}
                   </div>
                   <div className="flex-1">
-                    <span className="font-bold uppercase tracking-wider text-[11px] mr-1">
+                    <span className="font-bold uppercase tracking-wider text-[11px] mr-1 font-mono">
                       [{ev.type}]
                     </span>
                     <span>{ev.description}</span>

@@ -72,8 +72,8 @@ export default function MyApplications() {
 
     const getStatusBadge = (app) => {
       const wf = normalizeWorkflow(app);
-      const decisionColor = wf.decisionConfig?.color || wf.decisionConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-      const stageColor = wf.stageConfig?.color || wf.stageConfig?.badge || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+      const decisionColor = wf.decisionConfig?.color || wf.decisionConfig?.badge || 'bg-[#F0EAE1] dark:bg-[#2A1F18] text-stone-700 dark:text-stone-300 border-[#E0D7CC] dark:border-[#3D2C22]';
+      const stageColor = wf.stageConfig?.color || wf.stageConfig?.badge || 'bg-[#F0EAE1] dark:bg-[#2A1F18] text-stone-700 dark:text-stone-300 border-[#E0D7CC] dark:border-[#3D2C22]';
       
       const decisionLabel = wf.decisionConfig?.label || wf.hiringDecision || 'In Review';
       const isDecisionPending = /pending|in_progress|applied|review/i.test(decisionLabel);
@@ -99,39 +99,39 @@ export default function MyApplications() {
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8 pb-16 animate-page-enter">
       
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] p-6 sm:p-8 shadow-subtle">
+      <div className="relative overflow-hidden rounded-2xl bg-[#FDFBF7] dark:bg-[#1A120E] border border-[#E8DFD8] dark:border-[#33241C] p-6 sm:p-8 shadow-subtle after:absolute after:top-0 after:left-0 after:right-0 after:h-[2px] after:bg-gradient-to-r after:from-transparent after:via-amber-500/40 after:to-transparent">
         <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-medium font-mono">
-            <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#F0EAE1] dark:bg-[#251A14] border border-[#E0D7CC] dark:border-[#3A2A20] text-stone-800 dark:text-stone-200 text-xs font-medium font-mono">
+            <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             <span>Applicant Telemetry & Status</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold font-sans text-stone-900 dark:text-[#FDFBF7] tracking-tight">
             My Applications & Tracking
           </h1>
 
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
+          <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-400 leading-relaxed font-normal">
             Track all roles you have applied for in real-time. Every recruiter decision, interview slot, and offer status updates live from the central hiring database.
           </p>
         </div>
 
         {/* Status Metrics Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 max-w-2xl">
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-slate-200 dark:border-slate-800">
-            <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">{totalCount}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Total Applied</div>
+          <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22]">
+            <div className="text-2xl font-bold font-sans text-stone-900 dark:text-stone-100">{totalCount}</div>
+            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium mt-0.5">Total Applied</div>
           </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-slate-200 dark:border-slate-800">
-            <div className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">{underReviewCount}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Under Review</div>
+          <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22]">
+            <div className="text-2xl font-bold font-sans text-amber-700 dark:text-amber-400">{underReviewCount}</div>
+            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium mt-0.5">Under Review</div>
           </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-slate-200 dark:border-slate-800">
-            <div className="text-xl font-bold font-mono text-brand-600 dark:text-brand-400">{interviewCount}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Interviews</div>
+          <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22]">
+            <div className="text-2xl font-bold font-sans text-brand-600 dark:text-brand-400">{interviewCount}</div>
+            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium mt-0.5">Interviews</div>
           </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#0E1017] border border-[#E8E8E4] dark:border-[#222634]">
-            <div className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">{selectedCount}</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Offers / Selected</div>
+          <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22]">
+            <div className="text-2xl font-bold font-sans text-emerald-700 dark:text-emerald-400">{selectedCount}</div>
+            <div className="text-xs text-stone-500 dark:text-stone-400 font-medium mt-0.5">Offers / Selected</div>
           </div>
         </div>
       </div>
@@ -139,12 +139,12 @@ export default function MyApplications() {
       {/* Applications List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+          <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 tracking-tight font-sans">
             Active Submissions ({myApplications.length})
           </h2>
           <button 
             onClick={() => smoothNavigate('/jobs')}
-            className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center space-x-1"
+            className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center space-x-1 cursor-pointer"
           >
             <span>Browse More Roles</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -152,19 +152,19 @@ export default function MyApplications() {
         </div>
 
         {myApplications.length === 0 ? (
-          <div className="p-12 text-center rounded-2xl bg-white dark:bg-[#14161F] border border-[#E8E8E4] dark:border-[#222634] space-y-4 shadow-subtle">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-brand-600 dark:text-brand-400 flex items-center justify-center mx-auto border border-[#E8E8E4] dark:border-slate-700">
+          <div className="p-12 text-center rounded-2xl bg-[#FDFBF7] dark:bg-[#1A120E] border border-[#E8DFD8] dark:border-[#33241C] space-y-4 shadow-subtle">
+            <div className="w-12 h-12 rounded-xl bg-[#FAF8F5] dark:bg-[#201814] text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto border border-[#E8DFD8] dark:border-[#3D2C22]">
               <Briefcase className="w-6 h-6" />
             </div>
             <div className="space-y-1 max-w-md mx-auto">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">No applications submitted yet</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              <h3 className="text-base font-bold text-stone-900 dark:text-stone-100 font-sans">No applications submitted yet</h3>
+              <p className="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
                 You haven&apos;t applied to any roles under <span className="font-mono text-brand-600 dark:text-brand-400">{currentUser?.email}</span>. Browse active openings to submit your resume with automated AI screening.
               </p>
             </div>
             <button
               onClick={() => smoothNavigate('/jobs')}
-              className="px-4 py-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-950 text-xs font-semibold shadow-subtle transition inline-flex items-center space-x-2"
+              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-2xs transition inline-flex items-center space-x-2 cursor-pointer"
             >
               <span>Explore Available Positions</span>
               <ChevronRight className="w-4 h-4" />
@@ -185,33 +185,33 @@ export default function MyApplications() {
 
               return (
                 <div key={app.id || idx} className="animate-fade-in-up" style={{ animationDelay: `${Math.min(idx * 70, 420)}ms` }}>
-                  <div className={`p-5 sm:p-6 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border transition-all duration-200 space-y-4 shadow-card ${
+                  <div className={`p-5 sm:p-6 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border transition-all duration-200 space-y-4 shadow-card ${
                     isSelected 
                       ? 'border-emerald-500/40 ring-1 ring-emerald-500/20' 
                       : isRejected 
                       ? 'border-rose-500/30' 
                       : isShortlisted
                       ? 'border-brand-500/40 ring-1 ring-brand-500/20' 
-                      : 'border-[#E8E4DF] dark:border-[#2A2520] hover:border-stone-300 dark:hover:border-stone-700'
+                      : 'border-[#E8DFD8] dark:border-[#3D2C22] hover:border-amber-500/40 dark:hover:border-amber-500/40'
                   }`}>
                     
                     {/* Top Row: Company, Role, Status */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center space-x-1.5">
+                          <span className="font-semibold text-stone-700 dark:text-stone-300 flex items-center space-x-1.5">
                             <Building2 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-                            <span>{app.companyName || 'SparkX Technologies'}</span>
+                            <span>{app.companyName || 'ARETE Partner'}</span>
                           </span>
-                          <span className="text-slate-400">•</span>
-                          <span className="text-slate-500 dark:text-slate-400">{app.department}</span>
-                          <span className="text-slate-400">•</span>
-                          <span className="text-slate-500 dark:text-slate-400 flex items-center space-x-1">
-                            <MapPin className="w-3 h-3 text-slate-400" />
+                          <span className="text-stone-400 dark:text-stone-600">•</span>
+                          <span className="text-stone-500 dark:text-stone-400">{app.department}</span>
+                          <span className="text-stone-400 dark:text-stone-600">•</span>
+                          <span className="text-stone-500 dark:text-stone-400 flex items-center space-x-1">
+                            <MapPin className="w-3 h-3 text-stone-400" />
                             <span>{app.location || 'Remote'}</span>
                           </span>
                         </div>
-                        <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                        <h3 className="text-base sm:text-lg font-bold font-sans text-stone-900 dark:text-stone-100 tracking-tight">
                           {app.jobTitle}
                         </h3>
                       </div>
@@ -222,15 +222,15 @@ export default function MyApplications() {
                     </div>
 
                     {/* Metadata strip: Applied Date, Hiring Stage, Resume */}
-                    <div className="flex flex-wrap items-center gap-4 text-xs pt-2 border-t border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400">
+                    <div className="flex flex-wrap items-center gap-4 text-xs pt-2 border-t border-[#EFE9E2] dark:border-[#2D2018] text-stone-500 dark:text-stone-400">
                       <div className="flex items-center space-x-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Applied on: <strong className="text-slate-700 dark:text-slate-200">{app.appliedDate || 'Recently'}</strong></span>
+                        <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                        <span>Applied on: <strong className="text-stone-700 dark:text-stone-200">{app.appliedDate || 'Recently'}</strong></span>
                       </div>
                       <span>•</span>
                       <div className="flex items-center space-x-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-                        <span>Pipeline Stage: <strong className="font-semibold text-slate-700 dark:text-slate-200">{wf.stageConfig?.label || wf.stage || 'Applied'}</strong></span>
+                        <span>Pipeline Stage: <strong className="font-semibold text-stone-700 dark:text-stone-200">{wf.stageConfig?.label || wf.stage || 'Applied'}</strong></span>
                       </div>
                       {app.resumeFilename && (
                         <>
@@ -245,7 +245,7 @@ export default function MyApplications() {
 
                     {/* Compensation Information */}
                     {(app.formattedCandidateCompensation || app.formattedJobCompensation) && (
-                      <div className="flex flex-wrap items-center gap-3 text-xs bg-stone-50 dark:bg-[#14110F] p-2.5 rounded-lg border border-[#E8E4DF] dark:border-[#2A2520]">
+                      <div className="flex flex-wrap items-center gap-3 text-xs bg-[#FAF8F5] dark:bg-[#18110D] p-2.5 rounded-xl border border-[#E8DFD8] dark:border-[#33241C]">
                         {app.formattedJobCompensation && (
                           <div className="flex items-center space-x-1.5 text-stone-600 dark:text-stone-300">
                             <DollarSign className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -267,31 +267,31 @@ export default function MyApplications() {
                     )}
 
                     {/* 4D Telemetry Strip */}
-                    <div className="flex flex-wrap items-center gap-3 text-xs bg-stone-50 dark:bg-[#14110F] p-3 rounded-lg border border-[#E8E4DF] dark:border-[#2A2520]">
+                    <div className="flex flex-wrap items-center gap-3 text-xs bg-[#FAF8F5] dark:bg-[#18110D] p-3 rounded-xl border border-[#E8DFD8] dark:border-[#33241C]">
                       <div className="flex items-center space-x-2">
                         <span className="text-stone-500 dark:text-stone-400 font-medium">Role Assessment:</span>
-                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.assessmentConfig?.color || wf.assessmentConfig?.badge || 'bg-stone-100 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 border-[#E8E4DF] dark:border-[#2A2520]'}`}>
+                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.assessmentConfig?.color || wf.assessmentConfig?.badge || 'bg-[#F0EAE1] dark:bg-[#2A1F18] text-stone-600 dark:text-stone-400 border-[#E8DFD8] dark:border-[#33241C]'}`}>
                           <span>{wf.assessmentConfig?.label || wf.assessmentStatus || 'Not Invited'}</span>
                         </span>
                       </div>
                       <span className="text-stone-300 dark:text-stone-700">•</span>
                       <div className="flex items-center space-x-2">
                         <span className="text-stone-500 dark:text-stone-400 font-medium">Interview:</span>
-                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.interviewConfig?.color || wf.interviewConfig?.badge || 'bg-stone-100 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 border-[#E8E4DF] dark:border-[#2A2520]'}`}>
+                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.interviewConfig?.color || wf.interviewConfig?.badge || 'bg-[#F0EAE1] dark:bg-[#2A1F18] text-stone-600 dark:text-stone-400 border-[#E8DFD8] dark:border-[#33241C]'}`}>
                           <span>{wf.interviewConfig?.label || wf.interviewStatus || 'Not Scheduled'}</span>
                         </span>
                       </div>
                       <span className="text-stone-300 dark:text-stone-700">•</span>
                       <div className="flex items-center space-x-2">
                         <span className="text-stone-500 dark:text-stone-400 font-medium">Hiring Decision:</span>
-                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.decisionConfig?.color || wf.decisionConfig?.badge || 'bg-stone-100 dark:bg-[#231F1B] text-stone-600 dark:text-stone-400 border-[#E8E4DF] dark:border-[#2A2520]'}`}>
+                        <span className={`inline-flex items-center space-x-1 font-semibold px-2.5 py-0.5 rounded-full text-xs border ${wf.decisionConfig?.color || wf.decisionConfig?.badge || 'bg-[#F0EAE1] dark:bg-[#2A1F18] text-stone-600 dark:text-stone-400 border-[#E8DFD8] dark:border-[#33241C]'}`}>
                           <span>{wf.decisionConfig?.label || wf.hiringDecision || 'Pending'}</span>
                         </span>
                       </div>
                     </div>
 
                     {/* Visual 6-Stage Hiring Roadmap Stepper */}
-                    <div className="p-3.5 rounded-xl bg-stone-50/80 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] space-y-2">
+                    <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#33241C] space-y-2">
                       <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 font-medium">
                         <span className="font-mono uppercase tracking-wider text-[11px]">Hiring Roadmap</span>
                         <span>Current Stage: <strong className="text-stone-900 dark:text-stone-100 capitalize">{wf.stageConfig?.label || wf.stage || 'Applied'}</strong></span>
@@ -314,8 +314,8 @@ export default function MyApplications() {
                                 step.done
                                   ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800/80'
                                   : isCurrent
-                                  ? 'bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border-brand-400 dark:border-brand-600 ring-1 ring-brand-500/30'
-                                  : 'bg-[#FDFCFA] dark:bg-[#1A1714] text-stone-400 dark:text-stone-500 border-[#E8E4DF] dark:border-[#2A2520]'
+                                  ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-400 dark:border-amber-600 ring-1 ring-amber-500/30'
+                                  : 'bg-[#FDFBF7] dark:bg-[#201814] text-stone-400 dark:text-stone-500 border-[#E8DFD8] dark:border-[#33241C]'
                               }`}
                             >
                               <div className="truncate text-xs">{step.label}</div>
@@ -330,13 +330,13 @@ export default function MyApplications() {
 
                     {/* Interview Slot Callout if Scheduled */}
                     {isInterviewScheduled && (
-                      <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-[#14110F] border border-stone-200 dark:border-[#2A2520] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#18110D] border border-[#E8DFD8] dark:border-[#33241C] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                         <div className="space-y-0.5">
                           <div className="font-semibold text-stone-900 dark:text-white flex items-center space-x-1.5">
                             <Video className="w-4 h-4 text-brand-600 dark:text-brand-400" />
                             <span>Interview ({wf.interviewConfig?.label || wf.interviewStatus || 'Scheduled'})</span>
                           </div>
-                          <p className="text-xs text-slate-600 dark:text-slate-300">
+                          <p className="text-xs text-stone-600 dark:text-stone-300">
                             Scheduled Slot: <strong>{app.interviewScheduledAt || 'Confirmed with hiring manager'}</strong>
                           </p>
                         </div>
@@ -348,7 +348,7 @@ export default function MyApplications() {
                                   setSchedulingModalApp(app);
                                   setIsRescheduling(true);
                                 }}
-                                className="px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 font-semibold text-xs transition flex items-center space-x-1"
+                                className="px-3 py-1.5 rounded-lg border border-[#E8DFD8] dark:border-[#3D2C22] hover:bg-[#F0EAE1] dark:hover:bg-[#281D17] text-stone-700 dark:text-stone-300 font-semibold text-xs transition flex items-center space-x-1 cursor-pointer"
                               >
                                 <RotateCcw className="w-3.5 h-3.5" />
                                 <span>Reschedule</span>
@@ -363,7 +363,7 @@ export default function MyApplications() {
                                     alert(err.message || 'Failed to cancel interview');
                                   }
                                 }}
-                                className="px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 font-semibold text-xs transition flex items-center space-x-1"
+                                className="px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 font-semibold text-xs transition flex items-center space-x-1 cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 <span>Cancel</span>
@@ -376,7 +376,7 @@ export default function MyApplications() {
                                 href={app.interviewMeetingUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-subtle"
+                                className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-2xs"
                               >
                                 <span>External Meet</span>
                                 <ExternalLink className="w-3.5 h-3.5" />
@@ -388,7 +388,7 @@ export default function MyApplications() {
                                   setActiveJobId(app.jobId);
                                   navigate(app.interviewMeetingUrl);
                                 }}
-                                className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-subtle"
+                                className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow-2xs cursor-pointer"
                               >
                                 <span>Enter Room</span>
                                 <ArrowRight className="w-3.5 h-3.5" />
@@ -428,10 +428,10 @@ export default function MyApplications() {
                             </span>
                           )}
                         </div>
-                        <div className="p-3 bg-[#FDFCFA] dark:bg-[#14110F] rounded-lg border border-[#E8E4DF] dark:border-[#2A2520] text-stone-700 dark:text-stone-300 text-xs leading-relaxed">
+                        <div className="p-3 bg-[#FAF8F5] dark:bg-[#18110D] rounded-xl border border-[#E8DFD8] dark:border-[#33241C] text-stone-700 dark:text-stone-300 text-xs leading-relaxed">
                           {app.rejectionReason || "Thank you for participating in our screening process. While we are proceeding with other applicants for this opening, we recommend exploring your personalized Skill Gap Roadmap to strengthen your profile for future roles."}
                         </div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-stone-500 dark:text-stone-400">
                           Review your Skill Gap Roadmap below to see AI-tailored study recommendations and bridge critical role competencies.
                         </p>
                       </div>
@@ -445,14 +445,14 @@ export default function MyApplications() {
                             setActiveJobId(app.jobId);
                             smoothNavigate(`/interview/${app.id}`);
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand-950/40 hover:bg-brand-100 dark:hover:bg-brand-900/50 text-brand-700 dark:text-brand-300 font-semibold border border-brand-200 dark:border-brand-800/60 transition flex items-center space-x-1.5"
+                          className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-800 dark:text-amber-300 font-semibold border border-amber-300/80 dark:border-amber-800/60 transition flex items-center space-x-1.5 cursor-pointer"
                         >
                           <Video className="w-3.5 h-3.5" />
                           <span>AI Interview Room ({wf.interviewConfig?.label || wf.interviewStatus || 'Scheduled'})</span>
                         </button>
                       ) : isInterviewDone ? (
                         <span 
-                          className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50 flex items-center space-x-1.5"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50 flex items-center space-x-1.5"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                           <span>Interview Completed</span>
@@ -463,7 +463,7 @@ export default function MyApplications() {
                             setSchedulingModalApp(app);
                             setIsRescheduling(false);
                           }}
-                          className="px-3.5 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold transition flex items-center space-x-1.5 shadow-subtle"
+                          className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
                           title="Choose an available slot from recruiter calendar."
                         >
                           <CalendarCheck className="w-3.5 h-3.5" />
@@ -477,7 +477,7 @@ export default function MyApplications() {
                             setActiveJobId(app.jobId);
                             smoothNavigate(`/assessment/${app.id}`);
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50 transition flex items-center space-x-1.5"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50 transition flex items-center space-x-1.5 cursor-pointer"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>View Assessment (Submitted)</span>
@@ -488,14 +488,14 @@ export default function MyApplications() {
                             setActiveJobId(app.jobId);
                             smoothNavigate(`/assessment/${app.id}`);
                           }}
-                          className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold transition flex items-center space-x-1.5 shadow-subtle"
+                          className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"
                         >
                           <FileText className="w-3.5 h-3.5" />
                           <span>Role Assessment ({wf.assessmentConfig?.label || wf.assessmentStatus || 'Invited'})</span>
                         </button>
                       ) : (
                         <span 
-                          className="px-3 py-1.5 rounded-lg bg-slate-100/70 dark:bg-slate-900/40 text-slate-400 dark:text-slate-500 font-medium border border-slate-200/50 dark:border-slate-800/50 flex items-center space-x-1.5 cursor-not-allowed"
+                          className="px-3 py-1.5 rounded-xl bg-[#F0EAE1]/70 dark:bg-[#1E1510]/60 text-stone-400 dark:text-stone-500 font-medium border border-[#E0D7CC]/60 dark:border-[#33241C]/60 flex items-center space-x-1.5 cursor-not-allowed"
                           title="Role assessment unlocks once the recruiter invites you."
                         >
                           <Lock className="w-3.5 h-3.5 text-amber-500/70" />
@@ -508,9 +508,9 @@ export default function MyApplications() {
                           setActiveJobId(app.jobId);
                           smoothNavigate(`/skill-gap/${app.id}`);
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-800 transition flex items-center space-x-1.5"
+                        className="px-3 py-1.5 rounded-xl bg-[#F0EAE1] dark:bg-[#281D17] hover:bg-[#E7DFD4] dark:hover:bg-[#33251D] text-stone-800 dark:text-stone-200 font-semibold border border-[#E0D7CC] dark:border-[#3D2C22] transition flex items-center space-x-1.5 cursor-pointer"
                       >
-                        <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>Skill Gap Roadmap</span>
                       </button>
 
@@ -519,7 +519,7 @@ export default function MyApplications() {
                           setActiveJobId(app.jobId);
                           smoothNavigate(`/skill-passport/${app.id}`);
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50 transition flex items-center space-x-1.5"
+                        className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-800/50 transition flex items-center space-x-1.5 cursor-pointer"
                       >
                         <Award className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                         <span>Skill Passport</span>

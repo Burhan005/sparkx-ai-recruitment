@@ -476,6 +476,128 @@ def test_legacy_copilot_recruiter_tenant_isolation():
     print("PASS: test_legacy_copilot_recruiter_tenant_isolation")
 
 
+def test_job_decision_assistant_authorized_query():
+    """Test 13: Authorized recruiter queries job-level decision assistant for requisition pool."""
+    f = setup_fixtures()
+    resp = client.post(
+        f"/api/jobs/{f['job_a'].id}/decision-assistant",
+        headers={"Authorization": f"Bearer {f['token_rec_a']}"},
+        json={"query": "Who are the top candidates for this role and what are the unverified skills?", "limit": 5}
+    )
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    data = resp.json()
+
+    assert data["job_id"] == f["job_a"].id
+    assert data["job_title"] == f["job_a"].title
+    assert data["total_candidates"] >= 1
+    assert "top_candidates" in data and isinstance(data["top_candidates"], list)
+    assert len(data["top_candidates"]) >= 1
+
+    top_c = data["top_candidates"][0]
+    assert "candidate_id" in top_c
+    assert "fit_score" in top_c
+    assert "fit_tier" in top_c
+    assert "must_have_coverage" in top_c
+    assert "stage" in top_c
+
+    assert "required_skills_breakdown" in data
+    assert "unverified_skills" in data and isinstance(data["unverified_skills"], list)
+    assert "suggested_follow_ups" in data and isinstance(data["suggested_follow_ups"], list)
+    assert "limitations_disclaimer" in data
+
+    # Verify audit log was created for job requisition
+    db = SessionLocal()
+    try:
+        log = db.query(AssistantAuditLogModel).filter(
+            AssistantAuditLogModel.job_id == str(f["job_a"].id),
+            AssistantAuditLogModel.organization_id == str(f["org_a"].id)
+        ).first()
+        assert log is not None, "Audit log for job decision assistant was not recorded"
+        assert log.organization_id == f["org_a"].id
+        assert log.user_id == f["recruiter_a"].id
+    finally:
+        db.close()
+    print("PASS: test_job_decision_assistant_authorized_query")
+
+
+def test_job_decision_assistant_cross_tenant_blocked():
+    """Test 14: Recruiter in Org B cannot query Job Decision Assistant for job in Org A (Tenant isolation)."""
+    f = setup_fixtures()
+    resp = client.post(
+        f"/api/jobs/{f['job_a'].id}/decision-assistant",
+        headers={"Authorization": f"Bearer {f['token_rec_b']}"},
+        json={"query": "Show me top candidates"}
+    )
+    assert resp.status_code == 403, f"Expected 403, got {resp.status_code}: {resp.text}"
+    print("PASS: test_job_decision_assistant_cross_tenant_blocked")
+
+
+def test_job_decision_assistant_candidate_role_blocked():
+    """Test 15: Candidate role is blocked with HTTP 403 Forbidden from querying job decision assistant."""
+    f = setup_fixtures()
+    resp = client.post(
+        f"/api/jobs/{f['job_a'].id}/decision-assistant",
+        headers={"Authorization": f"Bearer {f['token_cand_1']}"},
+        json={"query": "Who are the other candidates?"}
+    )
+    assert resp.status_code == 403, f"Expected 403, got {resp.status_code}: {resp.text}"
+    print("PASS: test_job_decision_assistant_candidate_role_blocked")
+
+
+def test_job_decision_assistant_empty_applicants():
+    """Test 16: Job with zero applicants returns graceful summary without errors or hallucinations."""
+    f = setup_fixtures()
+    db = SessionLocal()
+    suffix = uuid.uuid4().hex[:6]
+    empty_job_id = f"job-empty-{suffix}"
+    empty_job = JobModel(
+        id=empty_job_id,
+        title=f"Empty Requisition {suffix}",
+        department="Engineering",
+        organization_id=f["org_a"].id,
+        location="Remote",
+        experience="2-4 years",
+        education="B.S. in Computer Science or equivalent",
+        description="Empty role for pool testing.",
+        status="active"
+    )
+    db.add(empty_job)
+    db.commit()
+    db.close()
+
+    resp = client.post(
+        f"/api/jobs/{empty_job_id}/decision-assistant",
+        headers={"Authorization": f"Bearer {f['token_rec_a']}"},
+        json={"query": "Summarize applicants for this role"}
+    )
+    assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+    data = resp.json()
+    assert data["total_candidates"] == 0
+    assert len(data["top_candidates"]) == 0
+    assert "no applicants" in data["answer"].lower() or "0" in data["answer"]
+    print("PASS: test_job_decision_assistant_empty_applicants")
+
+
+def test_deep_citation_record_integrity():
+    """Test 17: Candidate decision assistant citations contain deep evidence anchors and suggested follow-ups."""
+    f = setup_fixtures()
+    resp = client.post(
+        f"/api/candidates/{f['cand_1'].id}/decision-assistant",
+        headers={"Authorization": f"Bearer {f['token_rec_a']}"},
+        json={"query": "What evidence do you have for Python and FastAPI?", "job_id": f["job_a"].id}
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "suggested_follow_ups" in data and len(data["suggested_follow_ups"]) > 0
+    assert "evidence_records" in data
+    citations = data["cited_evidence"]
+    py_cit = next((c for c in citations if "python" in c["skill_name"].lower()), None)
+    assert py_cit is not None
+    assert py_cit["status"] == "VERIFIED"
+    assert py_cit.get("quote_snippet") is not None
+    print("PASS: test_deep_citation_record_integrity")
+
+
 if __name__ == "__main__":
     print("Running Phase 4G.2 Recruiter Decision Assistant & Security Verification Suite...")
     test_decision_assistant_authorized_query()
@@ -490,4 +612,9 @@ if __name__ == "__main__":
     test_legacy_copilot_candidate_user_cannot_query_other_candidate()
     test_legacy_copilot_candidate_user_cannot_access_recruiter_pipeline()
     test_legacy_copilot_recruiter_tenant_isolation()
-    print("ALL 12 PHASE 4G.2 TEST SUITE CASES PASSED SUCCESSFULLY!")
+    test_job_decision_assistant_authorized_query()
+    test_job_decision_assistant_cross_tenant_blocked()
+    test_job_decision_assistant_candidate_role_blocked()
+    test_job_decision_assistant_empty_applicants()
+    test_deep_citation_record_integrity()
+    print("ALL 17 PHASE 4G.2 TEST SUITE CASES PASSED SUCCESSFULLY!")

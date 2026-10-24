@@ -123,28 +123,28 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
   return (
     <div className="space-y-6">
       {/* Top Banner & Control Strip */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] shadow-card">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-card">
         <div className="space-y-1">
-          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-600 dark:text-brand-400 text-xs font-semibold">
+          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Interview Availability & Scheduling</span>
           </div>
-          <h2 className="text-xl font-bold text-stone-900 dark:text-white tracking-tight">
+          <h2 className="text-xl font-bold text-[#2E2017] dark:text-[#EDE8E1] tracking-tight">
             Recruiter Availability & Bookings
           </h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
+          <p className="text-xs text-[#7A6B63] dark:text-[#A89A90]">
             Define your working interview hours and blocked periods. ARETE derives collision-free slots for candidates.
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
-          <div className="flex p-1 rounded-xl bg-stone-100 dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]">
+          <div className="flex p-1 rounded-xl bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22]">
             <button
               onClick={() => setActiveTab('availability')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 activeTab === 'availability'
-                  ? 'bg-white dark:bg-[#1A1714] text-stone-900 dark:text-white shadow-subtle'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                  ? 'bg-white dark:bg-[#2C1F18] text-[#2E2017] dark:text-[#EDE8E1] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-xs'
+                  : 'text-[#7A6B63] hover:text-[#2E2017] dark:text-[#A89A90] dark:hover:text-[#EDE8E1]'
               }`}
             >
               Availability ({availabilities.length})
@@ -153,8 +153,8 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
               onClick={() => setActiveTab('bookings')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 activeTab === 'bookings'
-                  ? 'bg-white dark:bg-[#1A1714] text-stone-900 dark:text-white shadow-subtle'
-                  : 'text-stone-500 hover:text-stone-800 dark:hover:text-stone-200'
+                  ? 'bg-white dark:bg-[#2C1F18] text-[#2E2017] dark:text-[#EDE8E1] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-xs'
+                  : 'text-[#7A6B63] hover:text-[#2E2017] dark:text-[#A89A90] dark:hover:text-[#EDE8E1]'
               }`}
             >
               Bookings ({bookings.length})
@@ -163,7 +163,7 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
 
           <button
             onClick={() => setIsAddOpen(true)}
-            className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-subtle"
+            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>Add Availability</span>
@@ -180,21 +180,21 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
 
       {/* Main Content Area */}
       {loading ? (
-        <div className="py-16 text-center text-xs text-stone-400 flex flex-col items-center justify-center space-y-2">
-          <Loader2 className="w-6 h-6 animate-spin text-brand-500" />
+        <div className="py-16 text-center text-xs text-[#7A6B63] dark:text-[#A89A90] flex flex-col items-center justify-center space-y-2">
+          <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
           <span>Loading schedules and bookings...</span>
         </div>
       ) : activeTab === 'availability' ? (
         availabilities.length === 0 ? (
-          <div className="p-12 text-center rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] space-y-3">
-            <Clock className="w-10 h-10 text-stone-300 dark:text-stone-600 mx-auto" />
-            <h3 className="text-base font-bold text-stone-800 dark:text-stone-200">No Availability Defined</h3>
-            <p className="text-xs text-stone-500 max-w-md mx-auto">
+          <div className="p-12 text-center rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-3">
+            <Clock className="w-10 h-10 text-[#C27803]/40 dark:text-amber-400/40 mx-auto" />
+            <h3 className="text-base font-bold text-[#2E2017] dark:text-[#EDE8E1]">No Availability Defined</h3>
+            <p className="text-xs text-[#7A6B63] dark:text-[#A89A90] max-w-md mx-auto">
               Publish your first working window to allow shortlisted candidates to self-schedule their technical interviews.
             </p>
             <button
               onClick={() => setIsAddOpen(true)}
-              className="px-4 py-2 rounded-xl bg-brand-600 text-white font-semibold text-xs hover:bg-brand-700 transition shadow-subtle inline-flex items-center space-x-1.5"
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition shadow-xs inline-flex items-center space-x-1.5"
             >
               <Plus className="w-4 h-4" />
               <span>Define Hours</span>
@@ -205,17 +205,17 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
             {availabilities.map(avail => (
               <div 
                 key={avail.id}
-                className="p-5 rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] shadow-card space-y-4 flex flex-col justify-between"
+                className="p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-card space-y-4 flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-[#14110F] text-xs font-bold font-mono text-stone-800 dark:text-stone-200">
-                      <Calendar className="w-3.5 h-3.5 text-brand-500" />
+                    <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22] text-xs font-bold font-mono text-[#2E2017] dark:text-[#EDE8E1]">
+                      <Calendar className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                       <span>{avail.available_date}</span>
                     </span>
                     <button
                       onClick={() => handleDelete(avail.id)}
-                      className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                      className="p-1.5 rounded-lg text-[#7A6B63] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
                       title="Deactivate window"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -223,27 +223,27 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                   </div>
 
                   <div className="space-y-1">
-                    <div className="text-lg font-bold font-mono text-stone-900 dark:text-white">
+                    <div className="text-lg font-bold font-mono text-[#2E2017] dark:text-[#EDE8E1]">
                       {avail.start_time} – {avail.end_time}
                     </div>
-                    <div className="text-xs text-stone-500 flex items-center space-x-1">
-                      <Globe className="w-3 h-3 text-stone-400" />
+                    <div className="text-xs text-[#7A6B63] dark:text-[#A89A90] flex items-center space-x-1">
+                      <Globe className="w-3 h-3 text-[#7A6B63] dark:text-[#A89A90]" />
                       <span>{avail.timezone}</span>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 text-[11px] text-stone-600 dark:text-stone-300">
-                    <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-[#14110F] border border-stone-200 dark:border-stone-800">
+                  <div className="flex flex-wrap gap-2 text-[11px] text-[#2E2017] dark:text-[#EDE8E1]">
+                    <span className="px-2 py-0.5 rounded-md bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22]">
                       Duration: <strong>{avail.slot_duration_minutes}m</strong>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-stone-100 dark:bg-[#14110F] border border-stone-200 dark:border-stone-800">
+                    <span className="px-2 py-0.5 rounded-md bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22]">
                       Buffer: <strong>{avail.buffer_minutes}m</strong>
                     </span>
                   </div>
 
                   {avail.blocks && avail.blocks.length > 0 && (
-                    <div className="pt-2 border-t border-[#E8E4DF] dark:border-[#2A2520] space-y-1.5">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 flex items-center space-x-1">
+                    <div className="pt-2 border-t border-[#E8DFD8] dark:border-[#3D2C22] space-y-1.5">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-[#7A6B63] dark:text-[#A89A90] flex items-center space-x-1">
                         <Coffee className="w-3 h-3 text-amber-500" />
                         <span>Blocked Periods ({avail.blocks.length})</span>
                       </div>
@@ -268,10 +268,10 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
       ) : (
         /* Bookings Tab */
         bookings.length === 0 ? (
-          <div className="p-12 text-center rounded-2xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] space-y-2">
-            <Video className="w-8 h-8 text-stone-300 dark:text-stone-600 mx-auto" />
-            <h4 className="text-sm font-bold text-stone-800 dark:text-stone-200">No Scheduled Interviews</h4>
-            <p className="text-xs text-stone-500 max-w-sm mx-auto">
+          <div className="p-12 text-center rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-2">
+            <Video className="w-8 h-8 text-[#C27803]/40 dark:text-amber-400/40 mx-auto" />
+            <h4 className="text-sm font-bold text-[#2E2017] dark:text-[#EDE8E1]">No Scheduled Interviews</h4>
+            <p className="text-xs text-[#7A6B63] dark:text-[#A89A90] max-w-sm mx-auto">
               Candidate bookings will appear here in real-time once candidates reserve available slots.
             </p>
           </div>
@@ -285,26 +285,26 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
               return (
                 <div 
                   key={b.id}
-                  className="p-4 rounded-xl bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="p-4 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        isScheduled ? 'bg-brand-500/10 text-brand-600 border border-brand-500/20' :
+                        isScheduled ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30' :
                         isCancelled ? 'bg-rose-500/10 text-rose-600 border border-rose-500/20' :
                         isCompleted ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' :
                         'bg-stone-100 text-stone-600'
                       }`}>
                         {b.status}
                       </span>
-                      <span className="font-semibold text-xs text-stone-800 dark:text-stone-200">
+                      <span className="font-semibold text-xs text-[#2E2017] dark:text-[#EDE8E1]">
                         {b.candidate_name} ({b.candidate_email})
                       </span>
                     </div>
-                    <div className="text-sm font-bold font-mono text-stone-900 dark:text-white">
+                    <div className="text-sm font-bold font-mono text-[#2E2017] dark:text-[#EDE8E1]">
                       {b.local_date} at {b.local_start_time} – {b.local_end_time} ({b.timezone})
                     </div>
-                    <div className="text-xs text-stone-500">
+                    <div className="text-xs text-[#7A6B63] dark:text-[#A89A90]">
                       Role: {b.job_title} • Slot ID: <span className="font-mono text-[10px]">{b.id}</span>
                     </div>
                   </div>
@@ -316,7 +316,7 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                           href={b.meeting_url || `/interview/${b.candidate_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-subtle"
+                          className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition flex items-center space-x-1.5 shadow-xs"
                         >
                           <Video className="w-3.5 h-3.5" />
                           <span>Join Room</span>
@@ -341,28 +341,28 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
       {isAddOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto overscroll-contain animate-fade-in">
           <div 
-            className="fixed inset-0 bg-stone-950/70 backdrop-blur-md transition-opacity" 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
             onClick={() => setIsAddOpen(false)} 
           />
           <div 
-            className="relative w-full max-w-lg bg-[#FDFCFA] dark:bg-[#1A1714] border border-[#E8E4DF] dark:border-[#2A2520] rounded-2xl shadow-depth-elevated overflow-hidden my-auto flex flex-col max-h-[90vh] z-10 animate-modal-spring"
+            className="relative w-full max-w-lg bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] rounded-2xl shadow-depth-elevated overflow-hidden my-auto flex flex-col max-h-[90vh] z-10 animate-modal-spring"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-5 sm:p-6 bg-stone-50/90 dark:bg-[#14110F] border-b border-[#E8E4DF] dark:border-[#2A2520] flex items-center justify-between shrink-0">
+            <div className="p-5 sm:p-6 bg-[#F7F4EF]/90 dark:bg-[#16120F] border-b border-[#E8DFD8] dark:border-[#3D2C22] flex items-center justify-between shrink-0">
               <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
                   <CalendarCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-stone-900 dark:text-white leading-tight">Publish Interview Availability</h3>
-                  <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">Define open calendar windows for candidate self-scheduling</p>
+                  <h3 className="font-bold text-base text-[#2E2017] dark:text-[#EDE8E1] leading-tight">Publish Interview Availability</h3>
+                  <p className="text-[11px] text-[#7A6B63] dark:text-[#A89A90] mt-0.5">Define open calendar windows for candidate self-scheduling</p>
                 </div>
               </div>
               <button 
                 type="button"
                 onClick={() => setIsAddOpen(false)} 
-                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-600 hover:bg-stone-200/50 dark:hover:bg-stone-800 transition"
+                className="p-1.5 rounded-lg text-[#7A6B63] hover:text-[#2E2017] dark:text-[#A89A90] dark:hover:text-[#EDE8E1] hover:bg-[#E8DFD8]/40 dark:hover:bg-[#2B201A] transition"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -379,7 +379,7 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
 
               <form onSubmit={handleCreateAvailability} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">
                     Availability Date
                   </label>
                   <input
@@ -387,13 +387,13 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                     required
                     value={availableDate}
                     onChange={e => setAvailableDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-white dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                    className="w-full px-3 py-2 rounded-xl text-xs bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#EDE8E1] focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    <label className="block text-xs font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">
                       Start Time
                     </label>
                     <input
@@ -401,11 +401,11 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                       required
                       value={startTime}
                       onChange={e => setStartTime(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl text-xs bg-white dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono"
+                      className="w-full px-3 py-2 rounded-xl text-xs bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#EDE8E1] focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    <label className="block text-xs font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">
                       End Time
                     </label>
                     <input
@@ -413,14 +413,14 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                       required
                       value={endTime}
                       onChange={e => setEndTime(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl text-xs bg-white dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] text-stone-800 dark:text-stone-200 focus:outline-none focus:ring-1 focus:ring-brand-500 font-mono"
+                      className="w-full px-3 py-2 rounded-xl text-xs bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#EDE8E1] focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    <label className="block text-xs font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">
                       Slot Duration
                     </label>
                     <CustomDropdown
@@ -436,7 +436,7 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                    <label className="block text-xs font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">
                       Buffer Between Slots
                     </label>
                     <CustomDropdown
@@ -454,7 +454,7 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#2E2017] dark:text-[#EDE8E1] mb-1">
                     Timezone
                   </label>
                   <CustomDropdown
@@ -470,15 +470,15 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                 </div>
 
                 {/* Blocked periods */}
-                <div className="pt-2 border-t border-[#E8E4DF] dark:border-[#2A2520] space-y-2">
+                <div className="pt-2 border-t border-[#E8DFD8] dark:border-[#3D2C22] space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                    <span className="text-xs font-semibold text-[#2E2017] dark:text-[#EDE8E1]">
                       Blocked / Unavailable Intervals (e.g. Lunch)
                     </span>
                     <button
                       type="button"
                       onClick={handleAddBlock}
-                      className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline flex items-center space-x-1"
+                      className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline flex items-center space-x-1"
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>Add Block</span>
@@ -491,26 +491,26 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                         type="time"
                         value={blk.start_time}
                         onChange={e => handleBlockChange(idx, 'start_time', e.target.value)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs bg-white dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] font-mono"
+                        className="px-2.5 py-1.5 rounded-lg text-xs bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#EDE8E1] font-mono"
                       />
-                      <span className="text-xs text-stone-400">to</span>
+                      <span className="text-xs text-[#7A6B63] dark:text-[#A89A90]">to</span>
                       <input
                         type="time"
                         value={blk.end_time}
                         onChange={e => handleBlockChange(idx, 'end_time', e.target.value)}
-                        className="px-2.5 py-1.5 rounded-lg text-xs bg-white dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520] font-mono"
+                        className="px-2.5 py-1.5 rounded-lg text-xs bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#EDE8E1] font-mono"
                       />
                       <input
                         type="text"
                         placeholder="Reason (e.g. Team Lunch)"
                         value={blk.reason}
                         onChange={e => handleBlockChange(idx, 'reason', e.target.value)}
-                        className="flex-1 px-2.5 py-1.5 rounded-lg text-xs bg-white dark:bg-[#14110F] border border-[#E8E4DF] dark:border-[#2A2520]"
+                        className="flex-1 px-2.5 py-1.5 rounded-lg text-xs bg-[#F7F4EF] dark:bg-[#16120F] border border-[#E8DFD8] dark:border-[#3D2C22] text-[#2E2017] dark:text-[#EDE8E1]"
                       />
                       <button
                         type="button"
                         onClick={() => handleRemoveBlock(idx)}
-                        className="p-1.5 text-stone-400 hover:text-rose-500 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                        className="p-1.5 text-[#7A6B63] hover:text-rose-500 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -518,18 +518,18 @@ export default function RecruiterAvailabilityManager({ activeJobId = null }) {
                   ))}
                 </div>
 
-                <div className="pt-4 flex items-center justify-end space-x-3 border-t border-[#E8E4DF] dark:border-[#2A2520]">
+                <div className="pt-4 flex items-center justify-end space-x-3 border-t border-[#E8DFD8] dark:border-[#3D2C22]">
                   <button
                     type="button"
                     onClick={() => setIsAddOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-600 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
+                    className="px-4 py-2 rounded-xl text-xs font-semibold text-[#7A6B63] dark:text-[#A89A90] hover:bg-[#F7F4EF] dark:hover:bg-[#2B201A] transition"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs transition shadow-subtle flex items-center space-x-2"
+                    className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-semibold text-xs transition shadow-xs flex items-center space-x-2"
                   >
                     {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
                     <span>Publish Window</span>

@@ -243,21 +243,51 @@
 }
 
 /* ─── Scrollbars ────────────────────────────────────────────────── */
+/* ─── Scrollbars ────────────────────────────────────────────────── */
 * {
   scrollbar-width: thin;
   scrollbar-color: #D6D3D1 transparent;  /* stone-300 */
 }
 
 .dark * {
-  scrollbar-color: #292524 transparent;  /* stone-800 */
+  scrollbar-color: #382A20 transparent;  /* espresso-800 */
 }
 
 ::-webkit-scrollbar               { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track         { background: transparent; }
 ::-webkit-scrollbar-thumb         { background: #D6D3D1; border-radius: 9999px; }
 ::-webkit-scrollbar-thumb:hover   { background: #A8A29E; }
-.dark ::-webkit-scrollbar-thumb   { background: #292524; }
-.dark ::-webkit-scrollbar-thumb:hover { background: #C27803; }
+.dark ::-webkit-scrollbar-thumb   { background: #382A20; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #B45309; }
+
+/* Dedicated Main Scroll Container with restrained luxury espresso thumb */
+#main-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: #D6CFC7 transparent;
+}
+.dark #main-scroll-container {
+  scrollbar-color: #382A20 transparent;
+}
+#main-scroll-container::-webkit-scrollbar {
+  width: 6px;
+}
+#main-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+#main-scroll-container::-webkit-scrollbar-thumb {
+  background: #D6CFC7;
+  border-radius: 9999px;
+}
+#main-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #C27803;
+}
+.dark #main-scroll-container::-webkit-scrollbar-thumb {
+  background: #382A20;
+  border-radius: 9999px;
+}
+.dark #main-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #C27803;
+}
 
 .scrollbar-thin {
   scrollbar-width: thin;
@@ -1010,4 +1040,59 @@ html {
 }
 .dark .arete-emblem-pillar {
   fill: url(#arete-dark-pillar) !important;
+}
+
+/* ── Dark Mode Luxury Elevation & Specular Rim Light ── */
+.dark .shadow-card {
+  box-shadow: 0 6px 24px -2px rgba(0, 0, 0, 0.75), 0 1px 3px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+}
+
+.dark .shadow-subtle {
+  box-shadow: 0 2px 8px -1px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+}
+
+.dark .shadow-depth-1 {
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+}
+
+.dark .shadow-depth-2 {
+  box-shadow: 0 10px 28px -4px rgba(0, 0, 0, 0.82), 0 2px 6px -1px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+}
+
+.dark .shadow-depth-elevated,
+.dark .shadow-popover {
+  box-shadow: 0 22px 50px -10px rgba(0, 0, 0, 0.92), 0 4px 14px 0 rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.dark .hover\:shadow-depth-elevated:hover {
+  box-shadow: 0 14px 38px -4px rgba(0, 0, 0, 0.88), 0 4px 12px 0 rgba(0, 0, 0, 0.55), inset 0 1px 0 0 rgba(245, 158, 11, 0.22);
+}
+
+/* ─── AI Resume Studio Print & Clean PDF Export ───────────────────────── */
+@media print {
+  header, nav, aside, button, select, [role="dialog"], .print\:hidden {
+    display: none !important;
+  }
+  body, #root, main {
+    background: #ffffff !important;
+    color: #111827 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print\:p-0 {
+    padding: 0 !important;
+  }
+  .print\:border-none {
+    border: none !important;
+  }
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+  .print\:max-h-none {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  @page {
+    margin: 1.2cm;
+  }
 }

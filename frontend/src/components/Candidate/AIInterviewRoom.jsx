@@ -655,25 +655,25 @@ export default function AIInterviewRoom() {
     const scheduledSlot = activeCandidate?.interviewScheduledAt || activeApp?.interviewScheduledAt || 'Confirmed by Recruiter';
 
     return (
-      <div className="max-w-4xl mx-auto space-y-6 pb-12 text-slate-900 dark:text-slate-100 animate-in fade-in zoom-in-95">
+      <div className="max-w-4xl mx-auto space-y-6 pb-12 text-[#2E2017] dark:text-[#FDFBF7] animate-in fade-in zoom-in-95">
         {/* Hero Card */}
-        <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card relative overflow-hidden space-y-4">
+        <div className="p-6 sm:p-8 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm relative overflow-hidden space-y-4">
           <div className="relative z-10 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center space-x-1.5 font-mono">
+              <span className="px-2.5 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 flex items-center space-x-1.5 font-mono">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                 <span>Interview Session Authorized</span>
               </span>
-              <span className="text-slate-400">•</span>
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{activeJob?.companyName || 'SparkX Technologies'}</span>
-              <span className="text-slate-400">•</span>
-              <span className="text-xs text-slate-500">{activeJob?.department || 'Engineering'}</span>
+              <span className="text-[#A89A8D]">•</span>
+              <span className="text-xs font-semibold text-[#5C4D42] dark:text-[#C7B9AD]">{activeJob?.companyName || 'ARETE'}</span>
+              <span className="text-[#A89A8D]">•</span>
+              <span className="text-xs text-[#7A6B5D] dark:text-[#9A8B7D]">{activeJob?.department || 'Engineering'}</span>
             </div>
 
             {userRole === 'recruiter' && (
-              <div className="p-3 px-4 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-700 dark:text-brand-300 text-xs flex items-center justify-between">
+              <div className="p-3 px-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded font-mono font-bold uppercase bg-brand-600 text-white text-[10px]">
+                  <span className="px-2 py-0.5 rounded font-mono font-bold uppercase bg-[#F59E0B] text-white text-[10px]">
                     Recruiter Preview Mode
                   </span>
                   <span>Interactive simulation for "{jobTitle}". Audio and responses in this mode are strictly simulated.</span>
@@ -681,7 +681,7 @@ export default function AIInterviewRoom() {
                 <button
                   type="button"
                   onClick={() => navigate('/recruiter/interview-studio')}
-                  className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline shrink-0 ml-3"
+                  className="text-xs font-semibold text-[#C27803] dark:text-[#F59E0B] hover:underline shrink-0 ml-3"
                 >
                   ← Return to Studio
                 </button>
@@ -689,56 +689,56 @@ export default function AIInterviewRoom() {
             )}
 
             <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#2E2017] dark:text-[#FDFBF7] tracking-tight">
                 {userRole === 'recruiter' ? 'AI Interview Simulation & Audio Test' : 'AI Technical & Conversational Interview'}
               </h1>
               {userRole === 'recruiter' ? (
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-normal">
+                <p className="text-xs sm:text-sm text-[#7A6B5D] dark:text-[#A89A8D] font-normal">
                   <strong>Recruiter Calibration:</strong> Test conversational probing, microphone dictation, and the AI's question sequence for <strong>{jobTitle}</strong>.
                 </p>
               ) : (
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-normal">
-                  Welcome, <strong>{candidateName}</strong>! Your application for <strong>{jobTitle}</strong> has been reviewed and approved for the live AI interview session.
+                <p className="text-xs sm:text-sm text-[#7A6B5D] dark:text-[#A89A8D] font-normal leading-relaxed">
+                  Welcome, <strong>{candidateName}</strong>! Take your time and answer naturally. This conversation is designed to help you showcase your actual reasoning and skills for <strong>{jobTitle}</strong> in a supportive, low-pressure environment.
                 </p>
               )}
             </div>
 
             {/* Quick Specs Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-              <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center space-x-1.5 text-brand-500 mb-1">
+              <div className="p-3.5 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C]">
+                <div className="flex items-center space-x-1.5 text-[#C27803] dark:text-[#F59E0B] mb-1">
                   <Calendar className="w-4 h-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Scheduled Slot</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#7A6B5D] dark:text-[#A89A8D]">Scheduled Slot</span>
                 </div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">{scheduledSlot}</div>
-                <div className="text-[10px] text-slate-400">Recruiter confirmed</div>
+                <div className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7] truncate">{scheduledSlot}</div>
+                <div className="text-[10px] text-[#A89A8D]">Confirmed slot</div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center space-x-1.5 text-purple-500 mb-1">
+              <div className="p-3.5 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C]">
+                <div className="flex items-center space-x-1.5 text-purple-600 dark:text-purple-400 mb-1">
                   <Bot className="w-4 h-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Interaction</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#7A6B5D] dark:text-[#A89A8D]">Interaction</span>
                 </div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white">Voice & Text</div>
-                <div className="text-[10px] text-slate-400">Adaptive AI probing</div>
+                <div className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7]">Voice & Text</div>
+                <div className="text-[10px] text-[#A89A8D]">Natural spoken or typed</div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center space-x-1.5 text-emerald-500 mb-1">
+              <div className="p-3.5 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C]">
+                <div className="flex items-center space-x-1.5 text-emerald-600 dark:text-emerald-400 mb-1">
                   <ShieldCheck className="w-4 h-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Integrity HUD</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#7A6B5D] dark:text-[#A89A8D]">Verification</span>
                 </div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white">Active Focus Lock</div>
-                <div className="text-[10px] text-slate-400">Window & tab telemetry</div>
+                <div className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7]">Live Verification</div>
+                <div className="text-[10px] text-[#A89A8D]">Session telemetry</div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center space-x-1.5 text-amber-500 mb-1">
+              <div className="p-3.5 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C]">
+                <div className="flex items-center space-x-1.5 text-[#C27803] dark:text-[#F59E0B] mb-1">
                   <Sparkles className="w-4 h-4" />
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Questions</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#7A6B5D] dark:text-[#A89A8D]">Questions</span>
                 </div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white">{questions.length} Questions</div>
-                <div className="text-[10px] text-slate-400">Job-tailored</div>
+                <div className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7]">{questions.length} Questions</div>
+                <div className="text-[10px] text-[#A89A8D]">Job-aligned scenarios</div>
               </div>
             </div>
           </div>
@@ -746,40 +746,40 @@ export default function AIInterviewRoom() {
 
         {/* Preparation Guidelines & Voice Preference */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-5 rounded-xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-card">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 flex items-center space-x-1.5 font-mono">
+          <div className="p-5 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-2.5 shadow-sm">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#C27803] dark:text-[#F59E0B] flex items-center space-x-1.5 font-mono">
               <Bot className="w-4 h-4" />
               <span>How the AI Interview Works</span>
             </h3>
-            <ul className="text-xs text-slate-600 dark:text-slate-400 space-y-2 leading-relaxed">
+            <ul className="text-xs text-[#5C4D42] dark:text-[#C7B9AD] space-y-2 leading-relaxed">
               <li className="flex items-start space-x-2">
-                <span className="text-brand-500 font-bold">•</span>
+                <span className="text-[#C27803] dark:text-[#F59E0B] font-bold">•</span>
                 <span>The AI interviewer presents questions tailored specifically to your profile and the <strong>{jobTitle}</strong> role.</span>
               </li>
               <li className="flex items-start space-x-2">
-                <span className="text-brand-500 font-bold">•</span>
-                <span>You can respond using <strong>voice dictation (Microphone)</strong> or by <strong>typing your answers</strong> directly.</span>
+                <span className="text-[#C27803] dark:text-[#F59E0B] font-bold">•</span>
+                <span>You can answer naturally using <strong>microphone dictation</strong> or by <strong>typing directly</strong>.</span>
               </li>
               <li className="flex items-start space-x-2">
-                <span className="text-brand-500 font-bold">•</span>
-                <span>The AI may initiate adaptive follow-up inquiries if your response requires deeper technical clarification.</span>
+                <span className="text-[#C27803] dark:text-[#F59E0B] font-bold">•</span>
+                <span>Feel free to take a moment before answering. The evaluation values clear reasoning over hasty responses.</span>
               </li>
             </ul>
           </div>
 
-          <div className="p-5 rounded-xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 space-y-3 shadow-card flex flex-col justify-between">
+          <div className="p-5 rounded-xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-3 shadow-sm flex flex-col justify-between">
             <div className="space-y-2.5">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center space-x-1.5 font-mono">
-                <Volume2 className="w-4 h-4 text-brand-500" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#2E2017] dark:text-[#FDFBF7] flex items-center space-x-1.5 font-mono">
+                <Volume2 className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                 <span>Audio & Voice Readout Preferences</span>
               </h3>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-                Choose whether you would like the AI interviewer to read prompts aloud over your speakers or keep the session in quiet text-only mode.
+              <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] leading-relaxed font-normal">
+                Choose whether you would like the AI interviewer to read prompts aloud or keep the session in quiet text-only mode.
               </p>
             </div>
 
-            <div className="pt-2 flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
+            <div className="pt-2 flex items-center justify-between p-3 rounded-lg bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C]">
+              <div className="flex items-center space-x-2 text-xs font-semibold text-[#2E2017] dark:text-[#FDFBF7]">
                 {isVoiceMuted ? <VolumeX className="w-4 h-4 text-amber-500" /> : <Volume2 className="w-4 h-4 text-emerald-500" />}
                 <span>{isVoiceMuted ? 'AI Voice: Muted' : 'AI Voice: Active'}</span>
               </div>
@@ -789,7 +789,7 @@ export default function AIInterviewRoom() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
                   isVoiceMuted 
                     ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' 
-                    : 'bg-brand-600 text-white border-brand-600 hover:bg-brand-700'
+                    : 'bg-[#F59E0B] hover:bg-[#D97706] text-white border-transparent'
                 }`}
               >
                 {isVoiceMuted ? 'Turn Sound On' : 'Mute Sound'}
@@ -799,14 +799,14 @@ export default function AIInterviewRoom() {
         </div>
 
         {/* Pre-Flight System & Media Readiness Check */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 shadow-card space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-3">
+        <div className="p-6 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E8DFD8] dark:border-[#33241C] pb-3">
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-2 font-mono">
-                <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#2E2017] dark:text-[#FDFBF7] flex items-center space-x-2 font-mono">
+                <ShieldCheck className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                 <span>Pre-Flight System & Media Readiness</span>
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] mt-0.5">
                 Verify your microphone, camera, and audio playback are functional prior to entering the live room.
               </p>
             </div>
@@ -815,7 +815,7 @@ export default function AIInterviewRoom() {
                 type="button"
                 onClick={handleTestHardware}
                 disabled={hardwareCheck.checking}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-500/10 text-brand-600 dark:text-brand-400 hover:bg-brand-500/20 border border-brand-500/20 transition flex items-center space-x-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/25 transition flex items-center space-x-1.5"
               >
                 <Activity className={`w-3.5 h-3.5 ${hardwareCheck.checking ? 'animate-spin' : ''}`} />
                 <span>{hardwareCheck.checking ? 'Testing...' : 'Test Mic & Camera'}</span>
@@ -823,7 +823,7 @@ export default function AIInterviewRoom() {
               <button
                 type="button"
                 onClick={handleTestSpeaker}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 border border-stone-200 dark:border-stone-700 transition flex items-center space-x-1.5"
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#F7F4EF] dark:bg-[#150F0D] text-[#5C4D42] dark:text-[#C7B9AD] hover:bg-[#EFE9DF] dark:hover:bg-[#1F1713] border border-[#E8DFD8] dark:border-[#33241C] transition flex items-center space-x-1.5"
               >
                 <Volume2 className="w-3.5 h-3.5" />
                 <span>Test Speaker</span>
@@ -833,12 +833,12 @@ export default function AIInterviewRoom() {
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             {/* Microphone */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
-                <Mic className="w-4 h-4 text-brand-500" />
+                <Mic className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white">Microphone</div>
-                  <div className="text-[10px] text-slate-500">Audio input</div>
+                  <div className="text-xs font-semibold text-[#2E2017] dark:text-[#FDFBF7]">Microphone</div>
+                  <div className="text-[10px] text-[#A89A8D]">Audio input</div>
                 </div>
               </div>
               <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
@@ -853,12 +853,12 @@ export default function AIInterviewRoom() {
             </div>
 
             {/* Camera */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
-                <Video className="w-4 h-4 text-brand-500" />
+                <Video className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white">Camera</div>
-                  <div className="text-[10px] text-slate-500">Video & Proctor</div>
+                  <div className="text-xs font-semibold text-[#2E2017] dark:text-[#FDFBF7]">Camera</div>
+                  <div className="text-[10px] text-[#A89A8D]">Video & Proctor</div>
                 </div>
               </div>
               <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
@@ -873,12 +873,12 @@ export default function AIInterviewRoom() {
             </div>
 
             {/* Audio Output */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
-                <Volume2 className="w-4 h-4 text-brand-500" />
+                <Volume2 className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white">Sound Output</div>
-                  <div className="text-[10px] text-slate-500">AI speech voice</div>
+                  <div className="text-xs font-semibold text-[#2E2017] dark:text-[#FDFBF7]">Sound Output</div>
+                  <div className="text-[10px] text-[#A89A8D]">AI speech voice</div>
                 </div>
               </div>
               <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
@@ -891,12 +891,12 @@ export default function AIInterviewRoom() {
             </div>
 
             {/* Network */}
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-3 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
-                <Activity className="w-4 h-4 text-brand-500" />
+                <Activity className="w-4 h-4 text-[#C27803] dark:text-[#F59E0B]" />
                 <div>
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white">Network</div>
-                  <div className="text-[10px] text-slate-500">Telemetry feed</div>
+                  <div className="text-xs font-semibold text-[#2E2017] dark:text-[#FDFBF7]">Network</div>
+                  <div className="text-[10px] text-[#A89A8D]">Telemetry feed</div>
                 </div>
               </div>
               <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
@@ -918,14 +918,14 @@ export default function AIInterviewRoom() {
         </div>
 
         {/* Readiness Instructions & Start Action Footer */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-card">
+        <div className="p-6 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-sm">
           <div className="space-y-1 max-w-xl">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <h3 className="text-sm font-bold text-[#2E2017] dark:text-[#FDFBF7] flex items-center space-x-2">
               <Lightbulb className="w-4 h-4 text-amber-500" />
               <span>Ready to Begin?</span>
             </h3>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
-              Clicking below will initialize your camera, start the proctoring monitor, and begin Question 1. You can pause or mute the AI voice at any time during the interview.
+            <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] leading-relaxed font-normal">
+              Clicking below will connect your media feed, initiate session verification, and begin Question 1. You can pause or adjust settings at any time during the interview.
             </p>
           </div>
 
@@ -936,7 +936,7 @@ export default function AIInterviewRoom() {
                 api.startInterview(candidateId).catch(err => console.warn('startInterview error:', err));
               }
             }}
-            className="px-6 py-3 rounded-lg bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs shadow-subtle transition flex items-center justify-center space-x-2.5 group shrink-0"
+            className="px-6 py-3 rounded-xl bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold text-xs shadow-sm transition flex items-center justify-center space-x-2.5 group shrink-0"
           >
             <Play className="w-4 h-4 fill-current transition group-hover:scale-105" />
             <span>Start AI Interview Session</span>
@@ -977,9 +977,9 @@ export default function AIInterviewRoom() {
       )}
 
       {userRole === 'recruiter' && (
-        <div className="p-3.5 px-4 rounded-xl bg-brand-50/60 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-stone-900 dark:text-stone-200 shadow-sm animate-fade-in-up">
+        <div className="p-3.5 px-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-[#2E2017] dark:text-[#FDFBF7] shadow-xs animate-fade-in-up">
           <div className="flex items-center space-x-2 text-xs">
-            <span className="px-2 py-0.5 rounded font-mono font-bold uppercase bg-brand-600 text-white text-[10px] shadow-sm">
+            <span className="px-2 py-0.5 rounded font-mono font-bold uppercase bg-[#F59E0B] text-white text-[10px] shadow-xs">
               Recruiter Preview Mode
             </span>
             <span className="font-semibold">Simulating candidate AI interview session for "{activeJob?.title || 'Selected Role'}".</span>
@@ -987,28 +987,28 @@ export default function AIInterviewRoom() {
           <button
             type="button"
             onClick={() => navigate('/recruiter/interview-studio')}
-            className="px-3 py-1 rounded-lg bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-bold transition flex items-center space-x-1 shrink-0"
+            className="px-3 py-1 rounded-lg bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] hover:bg-[#F7F4EF] dark:hover:bg-[#150F0D] text-[#5C4D42] dark:text-[#C7B9AD] text-xs font-semibold transition flex items-center space-x-1 shrink-0"
           >
             <span>← Return to Studio</span>
           </button>
         </div>
       )}
 
-      {/* Top Header Bar with Live Telemetry Badges */}
-      <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#1A1714] flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-200 dark:border-slate-800 shadow-card">
+      {/* Top Header Bar with Live Verification Badges */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-[#E8DFD8] dark:border-[#3D2C22] shadow-sm">
         <div className="flex items-center space-x-3">
           <div className="flex items-center justify-center">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs"></span>
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">Live Technical Interview Session</span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="text-xs text-brand-700 dark:text-brand-300 font-semibold px-2 py-0.5 rounded-md bg-brand-50 dark:bg-brand-950/60 border border-brand-200 dark:border-brand-800">
-                {activeJob.title}
+              <span className="text-xs font-bold text-[#2E2017] dark:text-[#FDFBF7] uppercase tracking-wider font-mono">Live Technical Interview Session</span>
+              <span className="text-[#A89A8D]">•</span>
+              <span className="text-xs text-[#C27803] dark:text-[#F59E0B] font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/25">
+                {activeJob?.title || 'Applied Role'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-normal">
+            <p className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] mt-0.5 font-normal">
               Conversational interview with speech transcription, audio synthesis & session verification
             </p>
           </div>
@@ -1018,19 +1018,19 @@ export default function AIInterviewRoom() {
         <div className="flex items-center space-x-2 shrink-0">
           <div className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center space-x-1.5 border transition-all ${
             tabFocused 
-              ? 'bg-slate-50 dark:bg-[#14110F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800' 
+              ? 'bg-[#F7F4EF] dark:bg-[#150F0D] text-[#5C4D42] dark:text-[#C7B9AD] border-[#E8DFD8] dark:border-[#33241C]' 
               : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
           }`}>
-            <Eye className="w-3.5 h-3.5 text-slate-400" />
+            <Eye className="w-3.5 h-3.5 text-[#A89A8D]" />
             <span className="font-mono text-xs">{tabFocused ? 'Focus: Active' : 'Focus: Away'}</span>
           </div>
 
           <div className={`px-2.5 py-1 rounded-lg text-xs font-medium flex items-center space-x-1.5 border transition-all ${
             riskLevel === 'High'
               ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
-              : 'bg-slate-50 dark:bg-[#14110F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+              : 'bg-[#F7F4EF] dark:bg-[#150F0D] text-[#5C4D42] dark:text-[#C7B9AD] border-[#E8DFD8] dark:border-[#33241C]'
           }`}>
-            <ShieldCheck className="w-3.5 h-3.5 text-brand-500" />
+            <ShieldCheck className="w-3.5 h-3.5 text-[#C27803] dark:text-[#F59E0B]" />
             <span className="font-mono text-xs">Integrity: {integrityScore}/100</span>
           </div>
         </div>
@@ -1043,7 +1043,7 @@ export default function AIInterviewRoom() {
         <div className="lg:col-span-5 space-y-4">
           
           {/* Webcam Box */}
-          <div className="relative rounded-xl overflow-hidden bg-[#0C0A09] border border-[#2A2520] aspect-[4/3] flex items-center justify-center shadow-card">
+          <div className="relative rounded-2xl overflow-hidden bg-[#0C0A09] border border-[#E8DFD8] dark:border-[#3D2C22] aspect-[4/3] flex items-center justify-center shadow-sm">
             {/* Real video if available */}
             <video
               ref={videoRef}
@@ -1055,26 +1055,26 @@ export default function AIInterviewRoom() {
             {/* Simulated Candidate Feed fallback if no webcam */}
             {!cameraActive && (
               <div className="flex flex-col items-center justify-center p-6 text-center space-y-3">
-                <div className="w-16 h-16 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 shadow-subtle">
+                <div className="w-16 h-16 rounded-xl bg-[#1A1512] border border-[#3D2C22] flex items-center justify-center text-[#A89A8D] shadow-xs">
                   <Video className="w-7 h-7" />
                 </div>
-                <div className="text-xs font-semibold text-slate-300">
+                <div className="text-xs font-semibold text-[#E8DFD8]">
                   {cameraError ? cameraError : "Camera feed unavailable or permissions required"}
                 </div>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-[#A89A8D]">
                   Voice input dictation and focus telemetry remain fully active
                 </span>
               </div>
             )}
 
             {/* Top-left Telemetry badge */}
-            <div className="absolute top-3 left-3 flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-sm text-xs font-mono font-medium text-white border border-white/10 shadow-subtle">
+            <div className="absolute top-3 left-3 flex items-center space-x-2 px-2.5 py-1 rounded-lg bg-black/70 backdrop-blur-sm text-xs font-mono font-medium text-white border border-white/10 shadow-xs">
               <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
               <span>{cameraActive ? 'VIDEO CONNECTED' : 'AUDIO-ONLY'}</span>
             </div>
 
             {/* Top-right REC badge */}
-            <div className="absolute top-3 right-3 flex items-center space-x-1.5 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-sm text-rose-400 text-[10px] font-mono font-semibold border border-rose-500/30 shadow-subtle">
+            <div className="absolute top-3 right-3 flex items-center space-x-1.5 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-sm text-rose-400 text-[10px] font-mono font-semibold border border-rose-500/30 shadow-xs">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
               <span>SESSION ACTIVE</span>
             </div>
@@ -1088,20 +1088,20 @@ export default function AIInterviewRoom() {
 
           {/* Telemetry Simulator / Test Triggers (Recruiter Testing Mode Only) */}
           {isRecruiterTesting && (
-            <div className="p-4 rounded-xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 space-y-3 shadow-card">
+            <div className="p-4 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-3 shadow-sm">
               <div className="flex items-center justify-between text-xs font-semibold">
-                <span className="flex items-center space-x-2 text-slate-700 dark:text-slate-300 font-mono">
-                  <Zap className="w-3.5 h-3.5 text-brand-500" />
+                <span className="flex items-center space-x-2 text-[#2E2017] dark:text-[#FDFBF7] font-mono">
+                  <Zap className="w-3.5 h-3.5 text-[#C27803] dark:text-[#F59E0B]" />
                   <span>Telemetry Simulator</span>
                 </span>
-                <span className="text-[10px] text-slate-500 font-mono">Recruiter Mode</span>
+                <span className="text-[10px] text-[#A89A8D] font-mono">Recruiter Mode</span>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => triggerCheatEvent('TAB_SWITCH')}
-                  className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition text-center"
+                  className="p-2 rounded-lg bg-[#F7F4EF] hover:bg-[#EFE9DF] dark:bg-[#150F0D] dark:hover:bg-[#1C1410] text-xs font-medium text-[#2E2017] dark:text-[#FDFBF7] border border-[#E8DFD8] dark:border-[#33241C] transition text-center"
                 >
                   Alt-Tab Switch
                 </button>
@@ -1109,7 +1109,7 @@ export default function AIInterviewRoom() {
                 <button
                   type="button"
                   onClick={() => triggerCheatEvent('MULTIPLE_FACES')}
-                  className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition text-center"
+                  className="p-2 rounded-lg bg-[#F7F4EF] hover:bg-[#EFE9DF] dark:bg-[#150F0D] dark:hover:bg-[#1C1410] text-xs font-medium text-[#2E2017] dark:text-[#FDFBF7] border border-[#E8DFD8] dark:border-[#33241C] transition text-center"
                 >
                   Multiple Faces
                 </button>
@@ -1117,7 +1117,7 @@ export default function AIInterviewRoom() {
                 <button
                   type="button"
                   onClick={() => triggerCheatEvent('NO_FACE')}
-                  className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-slate-900 dark:hover:bg-slate-800 text-xs font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 transition text-center"
+                  className="p-2 rounded-lg bg-[#F7F4EF] hover:bg-[#EFE9DF] dark:bg-[#150F0D] dark:hover:bg-[#1C1410] text-xs font-medium text-[#2E2017] dark:text-[#FDFBF7] border border-[#E8DFD8] dark:border-[#33241C] transition text-center"
                 >
                   Face Displaced
                 </button>
@@ -1131,7 +1131,7 @@ export default function AIInterviewRoom() {
         <div className="lg:col-span-7 space-y-4 flex flex-col justify-between">
           
           {/* AI Interviewer Avatar & Live Question Banner */}
-          <div className="p-5 sm:p-6 rounded-xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 space-y-4 shadow-card">
+          <div className="p-5 sm:p-6 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-4 shadow-sm">
             
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -1143,17 +1143,17 @@ export default function AIInterviewRoom() {
 
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-slate-900 dark:text-white text-sm">ARETE AI Interviewer</span>
+                    <span className="font-bold text-[#2E2017] dark:text-[#FDFBF7] text-sm">ARETE AI Interviewer</span>
                     {isFollowUpActive && (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25 font-mono">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/25 font-mono">
                         Adaptive Follow-Up
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-2 mt-0.5">
+                  <div className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] flex items-center space-x-2 mt-0.5">
                     <span>Question {currentQuestionIdx + 1} of {questions.length}</span>
                     <span>•</span>
-                    <span className="text-brand-600 dark:text-brand-400 font-medium">{currentQ?.type || 'Technical Scenario'}</span>
+                    <span className="text-[#C27803] dark:text-[#F59E0B] font-medium">{currentQ?.type || 'Technical Scenario'}</span>
                   </div>
                 </div>
               </div>
@@ -1174,8 +1174,8 @@ export default function AIInterviewRoom() {
                   }}
                   className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition ${
                     isVoiceMuted
-                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
-                      : 'bg-slate-50 dark:bg-[#14110F] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900'
+                      ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/25'
+                      : 'bg-[#F7F4EF] dark:bg-[#150F0D] text-[#5C4D42] dark:text-[#C7B9AD] border-[#E8DFD8] dark:border-[#33241C] hover:bg-[#EFE9DF]'
                   }`}
                   title={isVoiceMuted ? "Unmute AI Voice" : "Mute AI Voice"}
                 >
@@ -1183,11 +1183,11 @@ export default function AIInterviewRoom() {
                   <span className="hidden sm:inline">{isVoiceMuted ? 'Muted' : 'Voice On'}</span>
                 </button>
 
-                <div className="flex items-center space-x-2 h-8 px-3 rounded-lg bg-slate-50 dark:bg-[#0E1017] border border-[#E8E8E4] dark:border-[#222634]">
+                <div className="flex items-center space-x-2 h-8 px-3 rounded-lg bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C]">
                   {isAISpeaking ? (
                     <div className="flex items-center space-x-1.5">
-                      <span className="w-2 h-2 rounded-full bg-brand-600 dark:bg-brand-400 animate-pulse" />
-                      <span className="text-xs font-semibold text-brand-700 dark:text-brand-300 font-mono">Speaking</span>
+                      <span className="w-2 h-2 rounded-full bg-[#F59E0B] animate-pulse" />
+                      <span className="text-xs font-semibold text-[#C27803] dark:text-[#F59E0B] font-mono">Speaking</span>
                     </div>
                   ) : isMicListening ? (
                     <div className="flex items-center space-x-1.5">
@@ -1195,7 +1195,7 @@ export default function AIInterviewRoom() {
                       <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 font-mono">Listening</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-1">
+                    <span className="text-xs text-[#7A6B5D] dark:text-[#A89A8D] flex items-center space-x-1">
                       <Volume2 className="w-3.5 h-3.5" />
                       <span>{isVoiceMuted ? 'Muted' : 'Ready'}</span>
                     </span>
@@ -1205,19 +1205,19 @@ export default function AIInterviewRoom() {
             </div>
 
             {/* Current Active Question Display */}
-            <div className="p-4 sm:p-5 rounded-lg bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 relative overflow-hidden">
+            <div className="p-4 sm:p-5 rounded-xl bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] relative overflow-hidden">
               <div key={currentQ?.id || currentQuestionIdx} className="animate-fade-in-up">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400 font-mono">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#C27803] dark:text-[#F59E0B] font-mono">
                     {isFollowUpActive ? "Technical Follow-Up" : `Question ${currentQuestionIdx + 1}`}
                   </span>
                   {loadingQuestions && (
-                    <span className="text-[10px] text-brand-600 dark:text-brand-400 font-mono animate-pulse">
+                    <span className="text-[10px] text-[#C27803] dark:text-[#F59E0B] font-mono animate-pulse">
                       Preparing technical question...
                     </span>
                   )}
                 </div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1.5 leading-relaxed">
+                <p className="text-sm font-semibold text-[#2E2017] dark:text-[#FDFBF7] mt-1.5 leading-relaxed">
                   {isFollowUpActive ? activeFollowUpPrompt : (currentQ?.prompt || (loadingQuestions ? 'Preparing question...' : 'Loading scenario...'))}
                 </p>
               </div>
@@ -1226,32 +1226,32 @@ export default function AIInterviewRoom() {
           </div>
 
           {/* Live Transcript Chat Feed */}
-          <div className="p-4 rounded-xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 max-h-56 overflow-y-auto space-y-3 shadow-card">
-            <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider font-mono">Speech-to-Text Stream</span>
+          <div className="p-4 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] max-h-56 overflow-y-auto space-y-3 shadow-sm">
+            <div className="flex items-center justify-between pb-1 border-b border-[#E8DFD8] dark:border-[#33241C]">
+              <span className="text-[10px] font-semibold text-[#7A6B5D] dark:text-[#A89A8D] uppercase tracking-wider font-mono">Speech-to-Text Stream</span>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">NLP Connected</span>
             </div>
             {transcript.map((msg) => (
               <div
                 key={msg.id}
-                className={`p-3 rounded-lg text-xs space-y-1.5 ${
+                className={`p-3 rounded-xl text-xs space-y-1.5 ${
                   msg.speaker === 'ai'
                     ? msg.isAdaptive 
-                      ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-900 dark:text-amber-200' 
-                      : 'bg-slate-50 dark:bg-[#14110F] border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200'
-                    : 'bg-brand-50/70 dark:bg-brand-950/40 border border-brand-200 dark:border-brand-800/60 text-slate-900 dark:text-slate-100 ml-6'
+                      ? 'bg-amber-500/10 border border-amber-500/25 text-[#2E2017] dark:text-[#FDFBF7]' 
+                      : 'bg-[#F7F4EF] dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] text-[#2E2017] dark:text-[#FDFBF7]'
+                    : 'bg-amber-500/15 dark:bg-amber-500/20 border border-amber-500/30 text-[#2E2017] dark:text-[#FDFBF7] ml-6'
                 }`}
               >
-                <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+                <div className="flex items-center justify-between text-[10px] text-[#7A6B5D] dark:text-[#A89A8D] font-semibold">
                   <span className="flex items-center space-x-1.5">
                     <span>{msg.speaker === 'ai' ? '🤖 ARETE AI' : '👤 You (Candidate)'}</span>
                     {msg.isAdaptive && (
-                      <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300 font-mono text-[9px] font-bold">
+                      <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 font-mono text-[9px] font-bold">
                         ADAPTIVE
                       </span>
                     )}
                   </span>
-                  <span className="font-mono text-slate-400">{msg.timestamp}</span>
+                  <span className="font-mono text-[#A89A8D]">{msg.timestamp}</span>
                 </div>
                 <p className="leading-relaxed text-xs">{msg.text}</p>
               </div>
@@ -1259,31 +1259,31 @@ export default function AIInterviewRoom() {
           </div>
 
           {/* Candidate Response Input & Presets */}
-          <div className="p-4 sm:p-5 rounded-xl bg-white dark:bg-[#1A1714] border border-slate-200 dark:border-slate-800 space-y-3 shadow-card">
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#FDFBF7] dark:bg-[#201814] border border-[#E8DFD8] dark:border-[#3D2C22] space-y-3 shadow-sm">
             
             {/* Quick Demo Answers to Test Adaptive Engine with 1-click (Recruiter Preview Only) */}
             {isRecruiterTesting && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-400 pb-1 border-b border-slate-100 dark:border-slate-800">
-                <span className="font-semibold text-slate-500 uppercase tracking-wider text-[10px] font-mono">Recruiter Presets:</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-[#7A6B5D] pb-1 border-b border-[#E8DFD8] dark:border-[#33241C]">
+                <span className="font-semibold text-[#7A6B5D] dark:text-[#A89A8D] uppercase tracking-wider text-[10px] font-mono">Recruiter Presets:</span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setCandidateAnswer("I would use asynchronous FastAPI endpoints combined with streaming responses and an HNSW vector index in PostgreSQL for sub-50ms latency.")}
-                    className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 transition font-medium text-[10px]"
+                    className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 transition font-medium text-[10px]"
                   >
                     ⚡ Strong Answer
                   </button>
                   <button
                     type="button"
                     onClick={() => setCandidateAnswer("We basically use caching and databases to make it fast.")}
-                    className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 transition font-medium text-[10px]"
+                    className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/25 transition font-medium text-[10px]"
                   >
                     ❓ Vague Answer
                   </button>
                   <button
                     type="button"
                     onClick={() => setCandidateAnswer("I don't know much about this yet, haven't encountered it in production.")}
-                    className="px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 transition font-medium text-[10px]"
+                    className="px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/25 transition font-medium text-[10px]"
                   >
                     🤷 "I don't know"
                   </button>
@@ -1296,10 +1296,10 @@ export default function AIInterviewRoom() {
               <button
                 type="button"
                 onClick={toggleSpeechRecognition}
-                className={`p-2.5 rounded-lg border transition flex items-center justify-center shrink-0 ${
+                className={`p-2.5 rounded-xl border transition flex items-center justify-center shrink-0 ${
                   isMicListening
-                    ? 'bg-rose-600 text-white border-rose-500 shadow-subtle animate-pulse'
-                    : 'bg-slate-50 dark:bg-[#14110F] text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white'
+                    ? 'bg-rose-600 text-white border-rose-500 shadow-sm animate-pulse'
+                    : 'bg-[#F7F4EF] dark:bg-[#150F0D] text-[#5C4D42] dark:text-[#C7B9AD] border-[#E8DFD8] dark:border-[#33241C] hover:text-[#2E2017] dark:hover:text-white'
                 }`}
                 title={isMicListening ? "Click to Stop Mic" : "Click to Speak"}
               >
@@ -1311,13 +1311,13 @@ export default function AIInterviewRoom() {
                 placeholder={isMicListening ? "Listening to your voice... Speak now!" : "Type or speak your answer..."}
                 value={candidateAnswer}
                 onChange={e => setCandidateAnswer(e.target.value)}
-                className="flex-1 px-3.5 py-2 bg-white dark:bg-[#14110F] border border-slate-300 dark:border-slate-700 rounded-lg text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-brand-500 transition shadow-inner"
+                className="flex-1 px-3.5 py-2.5 bg-white dark:bg-[#150F0D] border border-[#E8DFD8] dark:border-[#33241C] rounded-xl text-xs sm:text-sm text-[#2E2017] dark:text-[#FDFBF7] placeholder-[#A89A8D] focus:outline-none focus:ring-1 focus:ring-[#F59E0B] transition"
               />
 
               <button
                 type="submit"
                 disabled={!candidateAnswer.trim()}
-                className="px-4 py-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-xs font-semibold rounded-lg transition flex items-center space-x-1.5 shadow-subtle shrink-0"
+                className="px-4 py-2.5 bg-[#F59E0B] hover:bg-[#D97706] disabled:opacity-40 text-white text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-xs shrink-0"
               >
                 <span>Submit</span>
                 <Send className="w-3.5 h-3.5" />
@@ -1325,7 +1325,7 @@ export default function AIInterviewRoom() {
             </form>
 
             {/* Advance / Next stage */}
-            <div className="flex items-center justify-between pt-1 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-between pt-1 text-xs text-[#7A6B5D] dark:text-[#A89A8D]">
               <span>Real-time NLP evaluates completeness and triggers deep queries.</span>
               <button
                 type="button"
@@ -1336,7 +1336,7 @@ export default function AIInterviewRoom() {
                   setIsAISpeaking(false);
                   finishInterview(transcript);
                 }}
-                className="text-brand-600 dark:text-brand-400 hover:underline font-semibold flex items-center space-x-1 transition"
+                className="text-[#C27803] dark:text-[#F59E0B] hover:underline font-semibold flex items-center space-x-1 transition"
               >
                 <span>Complete & Submit Interview</span>
                 <ArrowRight className="w-3.5 h-3.5" />

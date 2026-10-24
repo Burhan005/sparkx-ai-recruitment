@@ -2,8 +2,9 @@
 (C) Job Controller - Handles business logic for company requirements & question banks
 """
 import uuid
+from typing import Optional
 from sqlalchemy.orm import Session
-from models.db_models import JobModel
+from models.db_models import JobModel, UserModel
 from schemas import JobCreate, JobUpdate, JobMatchRequest, BatchJobMatchRequest
 from ai_engine import generate_job_questions, calculate_resume_job_match
 from services.compensation_service import format_job_compensation
@@ -37,10 +38,11 @@ class JobController:
         if organization_id:
             query = query.filter(JobModel.organization_id == organization_id)
         if status_filter and status_filter.strip().lower() != "all":
-            valid_statuses = ["Active", "Paused", "Closed"]
+            valid_statuses = ["Draft", "Active", "Paused", "Closed"]
             norm = next((s for s in valid_statuses if s.lower() == status_filter.strip().lower()), None)
             if norm:
                 query = query.filter(JobModel.status == norm)
+        query = query.order_by(JobModel.created_at.desc())
         jobs = query.offset(skip).limit(limit).all()
         for j in jobs:
             JobController._enrich_job(j, db)
@@ -81,8 +83,19 @@ class JobController:
         return match_res, None
 
     @staticmethod
-    def batch_match_jobs(payload: BatchJobMatchRequest, db: Session):
-        jobs = db.query(JobModel).all()
+    def batch_match_jobs(payload: BatchJobMatchRequest, db: Session, current_user: Optional[UserModel] = None):
+        is_recruiter = current_user and getattr(current_user, "role", None) == "recruiter"
+        query = db.query(JobModel)
+        if is_recruiter:
+            org_id = getattr(current_user, "organization_id", None)
+            if org_id:
+                query = query.filter(JobModel.organization_id == org_id)
+        else:
+            # Candidates and unauthenticated callers can only evaluate active jobs.
+            # Exclude Draft, Paused, and Closed jobs to prevent leakage of unpublished requisition metadata.
+            query = query.filter(JobModel.status == "Active")
+
+        jobs = query.all()
         cand = payload.candidate if isinstance(payload.candidate, dict) else {}
         candidate_data = {
             "name": (payload.name if payload.name != "Candidate" else None) or cand.get("name") or "Candidate",
@@ -160,7 +173,7 @@ class JobController:
             ctc_period=(payload.ctc_period or "annual").lower(),
             variable_pay_min=payload.variable_pay_min,
             variable_pay_max=payload.variable_pay_max,
-            status="Active"
+            status=payload.status if hasattr(payload, "status") and payload.status else "Active"
         )
 
         db.add(new_job)
@@ -235,10 +248,10 @@ class JobController:
             if job_org != organization_id:
                 return None, "Cross-tenant access forbidden: Job belongs to another organization."
 
-        valid_statuses = ["Active", "Paused", "Closed"]
+        valid_statuses = ["Draft", "Active", "Paused", "Closed"]
         normalized_status = next((s for s in valid_statuses if s.lower() == (new_status or "").lower()), None)
         if not normalized_status:
-            return None, f"Invalid status '{new_status}'. Valid statuses: Active, Paused, Closed"
+            return None, f"Invalid status '{new_status}'. Valid statuses: Draft, Active, Paused, Closed"
 
         job.status = normalized_status
 
