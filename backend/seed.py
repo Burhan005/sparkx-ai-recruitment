@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database import SessionLocal, engine, Base
-from models.db_models import JobModel, CandidateModel, UserModel
+from models.db_models import JobModel, CandidateModel, UserModel, OrganizationModel
 from controllers.auth_controller import hash_password
 
 Base.metadata.create_all(bind=engine)
@@ -46,6 +46,19 @@ def seed(force=False):
             db.commit()
 
         print("Seeding SparkX DB with SIH 2026 demo data & default accounts...")
+
+        # Seed Default Organization (Required by PostgreSQL Foreign Key)
+        default_org = db.query(OrganizationModel).filter_by(id="org-sparkx-default").first()
+        if not default_org:
+            default_org = OrganizationModel(
+                id="org-sparkx-default",
+                name="SparkX Technologies",
+                slug="sparkx-technologies",
+                domain="sparkx.ai",
+                is_active=True
+            )
+            db.add(default_org)
+            db.commit()
 
         # Seed Default System Users
         admin_user = UserModel(
