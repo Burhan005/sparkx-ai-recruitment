@@ -14,7 +14,7 @@ import random
 import uuid
 import urllib.request
 import urllib.error
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from dotenv import load_dotenv
 
 # Load environment variables from backend/.env regardless of current working directory

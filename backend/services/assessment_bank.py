@@ -1,4 +1,4 @@
-    """
+"""
 (S) Assessment Bank Service - Comprehensive 4-Category Technical Question Repository
 Contains job-calibrated, multi-language question pools across:
 1. Technical (MCQs & Concepts)
