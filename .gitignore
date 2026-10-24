@@ -45,4 +45,4 @@ scratch/
 !.vscode/extensions.json
 .idea
 .DS_Store
-Thumbs.db
+Thumbs.dbbackend/*.sql
